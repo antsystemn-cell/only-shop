@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -8,8 +7,8 @@ import {
   Users,
   Truck,
   LogOut,
-  ChevronDown,
 } from "lucide-react";
+import onlyLogo from "@/assets/only-logo.png";
 import {
   Sidebar,
   SidebarContent,
@@ -83,10 +82,11 @@ export function AdminSidebar() {
     <Sidebar className="border-r-0" collapsible="icon">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          {/* Logo placeholder */}
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <span className="text-primary-foreground font-bold text-lg">O</span>
-          </div>
+          <img 
+            src={onlyLogo} 
+            alt="Only Logo" 
+            className="w-10 h-10 object-contain shrink-0"
+          />
           {!collapsed && (
             <div className="flex flex-col">
               <span className="font-bold text-lg text-sidebar-foreground">Only</span>
