@@ -7,19 +7,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Lock, Mail, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, Loader2, User } from "lucide-react";
+import onlyLogo from "@/assets/only-logo.png";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Зөв имэйл хаяг оруулна уу"),
   password: z.string().min(6, "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой"),
 });
 
+const signupSchema = z.object({
+  email: z.string().trim().email("Зөв имэйл хаяг оруулна уу"),
+  password: z.string().min(6, "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой"),
+  fullName: z.string().min(2, "Нэрээ оруулна уу"),
+});
+
 export default function AdminLogin() {
+  const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string }>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -99,7 +108,7 @@ export default function AdminLogin() {
           await supabase.auth.signOut();
           toast({
             title: "Хандах эрхгүй",
-            description: "Та админ эрхгүй байна",
+            description: "Та админ эрхгүй байна. Админтай холбогдоно уу.",
             variant: "destructive",
           });
           return;
@@ -122,6 +131,75 @@ export default function AdminLogin() {
     }
   };
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    // Validate input
+    const result = signupSchema.safeParse({ email, password, fullName });
+    if (!result.success) {
+      const fieldErrors: { email?: string; password?: string; fullName?: string } = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0] === "email") fieldErrors.email = err.message;
+        if (err.path[0] === "password") fieldErrors.password = err.message;
+        if (err.path[0] === "fullName") fieldErrors.fullName = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const redirectUrl = `${window.location.origin}/admin`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: fullName,
+          },
+        },
+      });
+
+      if (error) {
+        if (error.message.includes("already registered")) {
+          toast({
+            title: "Бүртгэл байна",
+            description: "Энэ имэйл хаягаар аль хэдийн бүртгэл үүссэн байна. Нэвтрэх хэсгийг ашиглана уу.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Алдаа гарлаа",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      if (data.user) {
+        toast({
+          title: "Бүртгэл амжилттай",
+          description: "Таны бүртгэл үүслээ. Админ эрх авахын тулд админтай холбогдоно уу.",
+        });
+        setIsSignup(false);
+        setPassword("");
+      }
+    } catch (error) {
+      toast({
+        title: "Алдаа гарлаа",
+        description: "Сервертэй холбогдох үед алдаа гарлаа",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center gradient-hero p-4">
       <div className="absolute inset-0 overflow-hidden">
@@ -132,18 +210,43 @@ export default function AdminLogin() {
       <Card className="w-full max-w-md glass-card animate-scale-in relative z-10">
         <CardHeader className="text-center space-y-4">
           {/* Logo */}
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-primary flex items-center justify-center glow-green">
-            <span className="text-primary-foreground font-bold text-2xl">O</span>
+          <div className="mx-auto">
+            <img 
+              src={onlyLogo} 
+              alt="Only Logo" 
+              className="h-16 w-auto mx-auto"
+            />
           </div>
           <div>
             <CardTitle className="text-2xl">Only Admin</CardTitle>
             <CardDescription className="mt-2">
-              Админ самбарт нэвтрэх
+              {isSignup ? "Шинэ бүртгэл үүсгэх" : "Админ самбарт нэвтрэх"}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={isSignup ? handleSignup : handleLogin} className="space-y-4">
+            {isSignup && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Бүтэн нэр</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Таны нэр"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className={`pl-10 ${errors.fullName ? "border-destructive" : ""}`}
+                    disabled={isLoading}
+                  />
+                </div>
+                {errors.fullName && (
+                  <p className="text-sm text-destructive">{errors.fullName}</p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Имэйл</Label>
               <div className="relative">
@@ -197,12 +300,27 @@ export default function AdminLogin() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Нэвтэрж байна...
+                  {isSignup ? "Бүртгэж байна..." : "Нэвтэрж байна..."}
                 </>
               ) : (
-                "Нэвтрэх"
+                isSignup ? "Бүртгүүлэх" : "Нэвтрэх"
               )}
             </Button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignup(!isSignup);
+                  setErrors({});
+                }}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                {isSignup 
+                  ? "Бүртгэлтэй юу? Нэвтрэх" 
+                  : "Бүртгэлгүй юу? Бүртгүүлэх"}
+              </button>
+            </div>
           </form>
         </CardContent>
       </Card>
