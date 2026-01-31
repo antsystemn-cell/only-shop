@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Image, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, Image, GripVertical, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Banner {
@@ -60,6 +60,8 @@ export default function Banners() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [formData, setFormData] = useState<BannerFormData>(defaultFormData);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
   const { data: banners, isLoading } = useQuery({
@@ -231,16 +233,81 @@ export default function Banners() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image_url">Зургийн URL *</Label>
+                <Label>Баннер зураг *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error("Файл хэт том байна. 5MB-с бага байх ёстой.");
+                        return;
+                      }
+                      
+                      setIsUploading(true);
+                      try {
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                        
+                        const { error: uploadError } = await supabase.storage
+                          .from('banners')
+                          .upload(fileName, file);
+                        
+                        if (uploadError) throw uploadError;
+                        
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('banners')
+                          .getPublicUrl(fileName);
+                        
+                        setFormData({ ...formData, image_url: publicUrl });
+                        toast.success("Зураг амжилттай upload хийгдлээ");
+                      } catch (error: any) {
+                        toast.error("Зураг upload хийхэд алдаа гарлаа: " + error.message);
+                      } finally {
+                        setIsUploading(false);
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = '';
+                        }
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Зураг сонгох
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="text-xs text-muted-foreground">
+                  Эсвэл URL оруулах:
+                </div>
                 <Input
-                  id="image_url"
                   value={formData.image_url}
                   onChange={(e) =>
                     setFormData({ ...formData, image_url: e.target.value })
                   }
-                  required
                   placeholder="https://example.com/banner.jpg"
                 />
+                
                 {formData.image_url && (
                   <div className="mt-2 rounded-lg overflow-hidden border">
                     <img
