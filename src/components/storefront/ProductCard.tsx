@@ -55,7 +55,7 @@ export function ProductCard({ product }: ProductCardProps) {
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {discount > 0 && (
-              <Badge className="bg-destructive text-destructive-foreground">
+              <Badge className="bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold text-sm px-2.5 py-1 shadow-lg animate-pulse">
                 -{discount}%
               </Badge>
             )}
