@@ -18,6 +18,7 @@ import Auth from "./pages/storefront/Auth";
 import Checkout from "./pages/storefront/Checkout";
 import OrderConfirmation from "./pages/storefront/OrderConfirmation";
 import CustomerOrders from "./pages/storefront/CustomerOrders";
+import Wishlist from "./pages/storefront/Wishlist";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/categories" element={<CategoriesPage />} />
+                <Route path="/wishlist" element={<Wishlist />} />
               </Route>
               
               {/* Auth and checkout routes - outside layout */}

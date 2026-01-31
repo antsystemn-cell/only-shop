@@ -1,27 +1,24 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Search, Menu, X, User, LogOut } from "lucide-react";
+import { ShoppingCart, Search, Menu, X, User, LogOut, Heart } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CartDrawer } from "./CartDrawer";
 import onlyLogo from "@/assets/only-logo.png";
 import { toast } from "sonner";
 export function Header() {
-  const {
-    getItemCount
-  } = useCart();
-  const {
-    user,
-    signOut,
-    isLoading
-  } = useAuth();
+  const { getItemCount } = useCart();
+  const { user, signOut, isLoading } = useAuth();
+  const { wishlistIds } = useWishlist();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const itemCount = getItemCount();
+  const wishlistCount = wishlistIds.length;
   const handleSignOut = async () => {
     await signOut();
     toast.success("Амжилттай гарлаа");
@@ -65,6 +62,18 @@ export function Header() {
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSearchOpen(!isSearchOpen)}>
             {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
           </Button>
+
+          {/* Wishlist */}
+          <Link to="/wishlist">
+            <Button variant="ghost" size="icon" className="relative">
+              <Heart className={`h-5 w-5 ${wishlistCount > 0 ? "text-red-500 fill-red-500" : ""}`} />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs font-bold text-white flex items-center justify-center">
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              )}
+            </Button>
+          </Link>
 
           {/* User Menu */}
           {!isLoading && <>
