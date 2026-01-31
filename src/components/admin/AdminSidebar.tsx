@@ -6,6 +6,7 @@ import {
   ShoppingCart,
   Users,
   Truck,
+  Image,
   LogOut,
 } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
@@ -57,6 +58,11 @@ const menuItems = [
     title: "Хүргэлтийн тохиргоо",
     url: "/admin/delivery",
     icon: Truck,
+  },
+  {
+    title: "Баннер удирдах",
+    url: "/admin/banners",
+    icon: Image,
   },
 ];
 

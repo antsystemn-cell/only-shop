@@ -23,6 +23,7 @@ import Categories from "./pages/admin/Categories";
 import Orders from "./pages/admin/Orders";
 import Users from "./pages/admin/Users";
 import Delivery from "./pages/admin/Delivery";
+import Banners from "./pages/admin/Banners";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="orders" element={<Orders />} />
               <Route path="users" element={<Users />} />
               <Route path="delivery" element={<Delivery />} />
+              <Route path="banners" element={<Banners />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
