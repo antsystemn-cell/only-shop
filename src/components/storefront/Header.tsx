@@ -65,15 +65,15 @@ export function Header() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2 ml-auto">
           {/* Search Toggle - Mobile */}
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSearchOpen(!isSearchOpen)}>
+          <Button variant="ghost" size="icon" className="md:hidden text-white hover:text-white/80 hover:bg-white/10" onClick={() => setIsSearchOpen(!isSearchOpen)}>
             {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
           </Button>
 
           {/* Wishlist */}
           <Link to="/wishlist">
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative text-white md:text-foreground hover:text-white/80 md:hover:text-foreground hover:bg-white/10 md:hover:bg-accent">
               <Heart className={`h-5 w-5 ${wishlistCount > 0 ? "text-red-500 fill-red-500" : ""}`} />
               {wishlistCount > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs font-bold text-white flex items-center justify-center">
                   {wishlistCount > 99 ? "99+" : wishlistCount}
@@ -85,7 +85,7 @@ export function Header() {
           {!isLoading && <>
               {user ? <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" className="text-white md:text-foreground hover:text-white/80 md:hover:text-foreground hover:bg-white/10 md:hover:bg-accent">
                       <User className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -114,7 +114,7 @@ export function Header() {
           {/* Cart */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
+              <Button variant="ghost" size="icon" className="relative text-white md:text-foreground hover:text-white/80 md:hover:text-foreground hover:bg-white/10 md:hover:bg-accent">
                 <ShoppingCart className="h-5 w-5" />
                 {itemCount > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-xs font-bold text-primary-foreground flex items-center justify-center">
                     {itemCount > 99 ? "99+" : itemCount}
@@ -127,7 +127,7 @@ export function Header() {
           </Sheet>
 
           {/* Mobile Menu */}
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          <Button variant="ghost" size="icon" className="md:hidden text-white hover:text-white/80 hover:bg-white/10" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
             <Menu className="h-5 w-5" />
           </Button>
         </div>
