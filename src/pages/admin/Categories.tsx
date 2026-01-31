@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { CategoryImageUpload } from "@/components/admin/CategoryImageUpload";
 import {
   Plus,
   Pencil,
@@ -40,6 +41,7 @@ interface Category {
   name_mn: string;
   description: string | null;
   icon: string | null;
+  image_url: string | null;
   display_order: number;
   is_active: boolean;
 }
@@ -51,6 +53,7 @@ export default function Categories() {
     name_mn: "",
     description: "",
     icon: "",
+    image_url: null as string | null,
     display_order: "0",
     is_active: true,
   });
@@ -79,6 +82,7 @@ export default function Categories() {
         name_mn: data.name_mn,
         description: data.description || null,
         icon: data.icon || null,
+        image_url: data.image_url,
         display_order: parseInt(data.display_order) || 0,
         is_active: data.is_active,
       };
@@ -144,6 +148,7 @@ export default function Categories() {
       name_mn: "",
       description: "",
       icon: "",
+      image_url: null,
       display_order: "0",
       is_active: true,
     });
@@ -156,6 +161,7 @@ export default function Categories() {
       name_mn: category.name_mn,
       description: category.description || "",
       icon: category.icon || "",
+      image_url: category.image_url,
       display_order: category.display_order.toString(),
       is_active: category.is_active,
     });
@@ -248,6 +254,14 @@ export default function Categories() {
                 </div>
               </div>
 
+              {/* Category Image Upload */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <CategoryImageUpload
+                  imageUrl={formData.image_url}
+                  onImageChange={(url) => setFormData({ ...formData, image_url: url })}
+                />
+              </div>
+
               <div className="flex items-center gap-2">
                 <Switch
                   id="is_active"
@@ -316,8 +330,16 @@ export default function Categories() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
-                            <FolderTree className="h-5 w-5 text-secondary" />
+                          <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center overflow-hidden">
+                            {category.image_url ? (
+                              <img
+                                src={category.image_url}
+                                alt={category.name_mn}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <FolderTree className="h-5 w-5 text-secondary" />
+                            )}
                           </div>
                           <div className="font-medium">{category.name_mn}</div>
                         </div>
