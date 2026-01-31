@@ -120,8 +120,8 @@ export default function Home() {
         </section>}
 
       {/* Featured Products Section */}
-      {featuredProducts && featuredProducts.length > 0 && <section className="container py-12">
-          <div className="flex items-center justify-between mb-8">
+      {featuredProducts && featuredProducts.length > 0 && <section className="py-12">
+          <div className="px-2 md:container flex items-center justify-between mb-8">
             <div>
               <h2 className="md:text-3xl font-bold text-base">Онцлох бараа</h2>
               
@@ -136,7 +136,7 @@ export default function Home() {
 
           {loadingProducts ? <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div> : <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            </div> : <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-6">
               {featuredProducts.map(product => <ProductCard key={product.id} product={product} />)}
             </div>}
         </section>}
@@ -186,8 +186,8 @@ export default function Home() {
       </section>
 
       {/* All Random Products Section */}
-      <section className="container py-12">
-        <div className="mb-8">
+      <section className="py-12">
+        <div className="px-2 md:container mb-8">
           <h2 className="text-2xl md:text-3xl font-bold">Бүх төрлийн бараа</h2>
           <p className="text-muted-foreground mt-1">
             Санамсаргүй дарааллаар
@@ -196,7 +196,7 @@ export default function Home() {
 
         {loadingRandom ? <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div> : randomProducts && randomProducts.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+          </div> : randomProducts && randomProducts.length > 0 ? <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-6">
             {randomProducts.map(product => <ProductCard key={product.id} product={product} />)}
           </div> : <div className="text-center py-12 text-muted-foreground">
             Бараа олдсонгүй
