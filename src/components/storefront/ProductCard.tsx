@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Star, Package, Heart } from "lucide-react";
+import { ShoppingCart, Package, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,16 +12,19 @@ type Product = Tables<"products">;
 
 interface ProductCardProps {
   product: Product;
+  variant?: "default" | "featured";
 }
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("mn-MN").format(price) + "₮";
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, variant = "default" }: ProductCardProps) {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { toast } = useToast();
+
+  const isFeatured = variant === "featured";
 
   const discount = product.compare_price
     ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100)
@@ -104,44 +107,41 @@ export function ProductCard({ product }: ProductCardProps) {
           </Button>
         </div>
 
-        <CardContent className="p-4">
-          {/* Product Name */}
-          <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+        <CardContent className={isFeatured ? "p-3" : "p-4"}>
+          {/* Product Name - 2 lines with min-height for consistency */}
+          <h3 className={`font-medium text-sm group-hover:text-primary transition-colors ${
+            isFeatured ? "line-clamp-2 min-h-[2.5rem]" : "line-clamp-2 min-h-[2.5rem]"
+          }`}>
             {product.name_mn}
           </h3>
 
-          {/* Rating */}
-          {product.rating && product.rating > 0 && (
-            <div className="flex items-center gap-1 mb-2">
-              <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-              <span className="text-xs text-muted-foreground">
-                {product.rating.toFixed(1)} ({product.review_count})
-              </span>
-            </div>
-          )}
+          {/* Only show price and other details for default variant */}
+          {!isFeatured && (
+            <>
+              {/* Price */}
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-lg font-bold text-primary">
+                  {formatPrice(product.price)}
+                </span>
+                {product.compare_price && (
+                  <span className="text-sm text-muted-foreground line-through">
+                    {formatPrice(product.compare_price)}
+                  </span>
+                )}
+              </div>
 
-          {/* Price */}
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-primary">
-              {formatPrice(product.price)}
-            </span>
-            {product.compare_price && (
-              <span className="text-sm text-muted-foreground line-through">
-                {formatPrice(product.compare_price)}
-              </span>
-            )}
-          </div>
-
-          {/* Stock Status */}
-          {product.stock <= 5 && product.stock > 0 && (
-            <p className="text-xs text-destructive mt-2">
-              Зөвхөн {product.stock} ширхэг үлдсэн
-            </p>
-          )}
-          {product.stock === 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Дууссан
-            </p>
+              {/* Stock Status */}
+              {product.stock <= 5 && product.stock > 0 && (
+                <p className="text-xs text-destructive mt-2">
+                  Зөвхөн {product.stock} ширхэг үлдсэн
+                </p>
+              )}
+              {product.stock === 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Дууссан
+                </p>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

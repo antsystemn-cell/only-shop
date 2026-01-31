@@ -137,7 +137,7 @@ export default function Home() {
           {loadingProducts ? <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div> : <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-6">
-              {featuredProducts.map(product => <ProductCard key={product.id} product={product} />)}
+              {featuredProducts.map(product => <ProductCard key={product.id} product={product} variant="featured" />)}
             </div>}
         </section>}
 
