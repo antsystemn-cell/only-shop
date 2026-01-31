@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { HeroCarousel } from "@/components/storefront/HeroCarousel";
 import { ProductCard } from "@/components/storefront/ProductCard";
+import { DiscountProductCard } from "@/components/storefront/DiscountProductCard";
 import { CategoryCard } from "@/components/storefront/CategoryCard";
 import {
   Carousel,
@@ -121,10 +122,10 @@ export default function Home() {
               }}
               className="w-full"
             >
-              <CarouselContent className="-ml-2 md:-ml-4">
+              <CarouselContent className="-ml-3 md:-ml-4">
                 {discountedProducts.map((product) => (
-                  <CarouselItem key={product.id} className="pl-2 md:pl-4 basis-1/2 md:basis-1/4 lg:basis-1/7">
-                    <ProductCard product={product} />
+                  <CarouselItem key={product.id} className="pl-3 md:pl-4 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
+                    <DiscountProductCard product={product} />
                   </CarouselItem>
                 ))}
               </CarouselContent>
