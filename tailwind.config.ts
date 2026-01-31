@@ -110,6 +110,9 @@ export default {
         "slide-up": "slide-up 0.4s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
       },
+      flexBasis: {
+        "1/7": "14.2857143%",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
