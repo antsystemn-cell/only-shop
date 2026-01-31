@@ -8,6 +8,21 @@ import { ProductCard } from "@/components/storefront/ProductCard";
 import { CategoryCard } from "@/components/storefront/CategoryCard";
 
 export default function Home() {
+  // Fetch random products (100 items)
+  const { data: randomProducts, isLoading: loadingRandom } = useQuery({
+    queryKey: ["random-products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .limit(100);
+
+      if (error) throw error;
+      // Shuffle the array randomly
+      return data?.sort(() => Math.random() - 0.5) || [];
+    },
+  });
   // Fetch discounted products (products with compare_price)
   const { data: discountedProducts, isLoading: loadingDiscounted } = useQuery({
     queryKey: ["discounted-products"],
@@ -234,6 +249,41 @@ export default function Home() {
             Ангилал олдсонгүй
           </div>
         )}
+      </section>
+
+      {/* All Random Products Section */}
+      <section className="container py-12">
+        <div className="mb-8">
+          <h2 className="text-2xl md:text-3xl font-bold">Бүх төрлийн бараа</h2>
+          <p className="text-muted-foreground mt-1">
+            Санамсаргүй дарааллаар
+          </p>
+        </div>
+
+        {loadingRandom ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : randomProducts && randomProducts.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+            {randomProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            Бараа олдсонгүй
+          </div>
+        )}
+
+        <div className="flex justify-center mt-8">
+          <Link to="/shop">
+            <Button size="lg" className="gap-2">
+              Бүх бараа үзэх
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </section>
     </div>
   );
