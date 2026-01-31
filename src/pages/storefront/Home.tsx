@@ -1,11 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowRight, Loader2, Percent } from "lucide-react";
+import { ArrowRight, Loader2, Percent, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { HeroCarousel } from "@/components/storefront/HeroCarousel";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { CategoryCard } from "@/components/storefront/CategoryCard";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 export default function Home() {
   // Fetch random products (100 items)
@@ -23,7 +30,8 @@ export default function Home() {
       return data?.sort(() => Math.random() - 0.5) || [];
     },
   });
-  // Fetch discounted products (products with compare_price)
+
+  // Fetch discounted products (products with compare_price) - get more for carousel
   const { data: discountedProducts, isLoading: loadingDiscounted } = useQuery({
     queryKey: ["discounted-products"],
     queryFn: async () => {
@@ -33,7 +41,7 @@ export default function Home() {
         .eq("is_active", true)
         .not("compare_price", "is", null)
         .order("created_at", { ascending: false })
-        .limit(8);
+        .limit(50);
 
       if (error) throw error;
       return data?.filter(p => p.compare_price && p.compare_price > p.price) || [];
@@ -49,22 +57,6 @@ export default function Home() {
         .select("*")
         .eq("is_active", true)
         .eq("is_featured", true)
-        .order("created_at", { ascending: false })
-        .limit(8);
-
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Fetch latest products
-  const { data: latestProducts, isLoading: loadingLatest } = useQuery({
-    queryKey: ["latest-products"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
         .order("created_at", { ascending: false })
         .limit(8);
 
@@ -94,7 +86,7 @@ export default function Home() {
       {/* Hero Carousel */}
       <HeroCarousel />
 
-      {/* Discounted Products Section - NEW TOP SECTION */}
+      {/* Discounted Products Section - Carousel */}
       {discountedProducts && discountedProducts.length > 0 && (
         <section className="container py-12">
           <div className="flex items-center justify-between mb-8">
@@ -122,11 +114,23 @@ export default function Home() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {discountedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+              }}
+              className="w-full"
+            >
+              <CarouselContent className="-ml-2 md:-ml-4">
+                {discountedProducts.map((product) => (
+                  <CarouselItem key={product.id} className="pl-2 md:pl-4 basis-1/2 md:basis-1/4 lg:basis-1/7">
+                    <ProductCard product={product} />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="left-0 -translate-x-1/2" />
+              <CarouselNext className="right-0 translate-x-1/2" />
+            </Carousel>
           )}
         </section>
       )}
@@ -163,39 +167,6 @@ export default function Home() {
         </section>
       )}
 
-      {/* Latest Products Section */}
-      <section className="container py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold">Шинэ бараа</h2>
-            <p className="text-muted-foreground mt-1">
-              Сүүлд нэмэгдсэн бүтээгдэхүүнүүд
-            </p>
-          </div>
-          <Link to="/shop">
-            <Button variant="ghost" className="gap-2">
-              Бүгдийг үзэх
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-
-        {loadingLatest ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : latestProducts && latestProducts.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {latestProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            Бараа олдсонгүй
-          </div>
-        )}
-      </section>
 
       {/* Promo Banner */}
       <section className="container py-12">

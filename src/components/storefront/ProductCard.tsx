@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Star, Package } from "lucide-react";
+import { ShoppingCart, Star, Package, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -19,11 +20,14 @@ function formatPrice(price: number) {
 
 export function ProductCard({ product }: ProductCardProps) {
   const { addToCart } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
   const { toast } = useToast();
 
   const discount = product.compare_price
     ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100)
     : 0;
+
+  const inWishlist = isInWishlist(product.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -33,6 +37,12 @@ export function ProductCard({ product }: ProductCardProps) {
       title: "Сагсанд нэмэгдлээ",
       description: product.name_mn,
     });
+  };
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist(product.id);
   };
 
   return (
@@ -71,6 +81,18 @@ export function ProductCard({ product }: ProductCardProps) {
               </Badge>
             )}
           </div>
+
+          {/* Wishlist Button */}
+          <Button
+            size="icon"
+            variant="ghost"
+            className={`absolute top-2 right-2 bg-background/80 hover:bg-background transition-all ${
+              inWishlist ? "text-red-500" : "text-muted-foreground"
+            }`}
+            onClick={handleToggleWishlist}
+          >
+            <Heart className={`h-5 w-5 ${inWishlist ? "fill-current" : ""}`} />
+          </Button>
 
           {/* Quick Add Button */}
           <Button
