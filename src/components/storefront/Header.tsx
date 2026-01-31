@@ -41,7 +41,7 @@ export function Header() {
     href: "/categories",
     label: "Ангилал"
   }];
-  return <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+  return <header className="sticky top-0 z-50 w-full border-b backdrop-blur bg-secondary">
       <div className="container flex h-16 items-center justify-between gap-4 bg-secondary">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
@@ -51,7 +51,7 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          {navLinks.map(link => <Link key={link.href} to={link.href} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          {navLinks.map(link => <Link key={link.href} to={link.href} className="text-sm font-medium transition-colors text-secondary-foreground">
               {link.label}
             </Link>)}
         </nav>
@@ -65,15 +65,15 @@ export function Header() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 md:gap-2 ml-auto">
+        <div className="flex items-center gap-2">
           {/* Search Toggle - Mobile */}
-          <Button variant="ghost" size="icon" className="md:hidden text-white hover:text-white/80 hover:bg-white/10" onClick={() => setIsSearchOpen(!isSearchOpen)}>
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSearchOpen(!isSearchOpen)}>
             {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
           </Button>
 
           {/* Wishlist */}
           <Link to="/wishlist">
-            <Button variant="ghost" size="icon" className="relative text-white md:text-foreground hover:text-white/80 md:hover:text-foreground hover:bg-white/10 md:hover:bg-accent">
+            <Button variant="ghost" size="icon" className="relative">
               <Heart className={`h-5 w-5 ${wishlistCount > 0 ? "text-red-500 fill-red-500" : ""}`} />
               {wishlistCount > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs font-bold text-white flex items-center justify-center">
                   {wishlistCount > 99 ? "99+" : wishlistCount}
@@ -85,7 +85,7 @@ export function Header() {
           {!isLoading && <>
               {user ? <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-white md:text-foreground hover:text-white/80 md:hover:text-foreground hover:bg-white/10 md:hover:bg-accent">
+                    <Button variant="ghost" size="icon">
                       <User className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -114,7 +114,7 @@ export function Header() {
           {/* Cart */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative text-white md:text-foreground hover:text-white/80 md:hover:text-foreground hover:bg-white/10 md:hover:bg-accent">
+              <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
                 {itemCount > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-xs font-bold text-primary-foreground flex items-center justify-center">
                     {itemCount > 99 ? "99+" : itemCount}
@@ -127,7 +127,7 @@ export function Header() {
           </Sheet>
 
           {/* Mobile Menu */}
-          <Button variant="ghost" size="icon" className="md:hidden text-white hover:text-white/80 hover:bg-white/10" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
             <Menu className="h-5 w-5" />
           </Button>
         </div>
