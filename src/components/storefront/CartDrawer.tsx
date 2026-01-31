@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/contexts/CartContext";
 
@@ -11,7 +11,12 @@ function formatPrice(price: number) {
 
 export function CartDrawer() {
   const { items, removeFromCart, updateQuantity, getSubtotal, clearCart } = useCart();
+  const navigate = useNavigate();
   const subtotal = getSubtotal();
+
+  const handleCheckout = () => {
+    navigate("/checkout");
+  };
 
   if (items.length === 0) {
     return (
@@ -116,9 +121,11 @@ export function CartDrawer() {
         </div>
         <Separator />
         <div className="space-y-2">
-          <Button className="w-full" size="lg">
-            Захиалга өгөх
-          </Button>
+          <SheetClose asChild>
+            <Button className="w-full" size="lg" onClick={handleCheckout}>
+              Захиалга өгөх
+            </Button>
+          </SheetClose>
           <Button
             variant="outline"
             className="w-full"
