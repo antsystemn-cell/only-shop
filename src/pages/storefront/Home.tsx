@@ -84,8 +84,8 @@ export default function Home() {
       <HeroCarousel />
 
       {/* Discounted Products Section - Carousel */}
-      {discountedProducts && discountedProducts.length > 0 && <section className="container py-12">
-          <div className="flex items-center justify-between mb-8">
+      {discountedProducts && discountedProducts.length > 0 && <section className="py-12">
+          <div className="container flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-destructive/10">
                 <Percent className="h-6 w-6 text-destructive" />
@@ -108,14 +108,14 @@ export default function Home() {
             </div> : <Carousel opts={{
         align: "start",
         loop: true
-      }} className="w-full">
-              <CarouselContent className="-ml-3 md:-ml-4">
-                {discountedProducts.map(product => <CarouselItem key={product.id} className="pl-3 md:pl-4 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
+      }} className="w-full px-2 md:px-8 lg:container">
+              <CarouselContent className="-ml-2 md:-ml-4">
+                {discountedProducts.map(product => <CarouselItem key={product.id} className="pl-2 md:pl-4 basis-[45%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
                     <DiscountProductCard product={product} />
                   </CarouselItem>)}
               </CarouselContent>
-              <CarouselPrevious className="left-0 -translate-x-1/2" />
-              <CarouselNext className="right-0 translate-x-1/2" />
+              <CarouselPrevious className="left-0 md:left-2 -translate-x-1/2 hidden md:flex" />
+              <CarouselNext className="right-0 md:right-2 translate-x-1/2 hidden md:flex" />
             </Carousel>}
         </section>}
 
