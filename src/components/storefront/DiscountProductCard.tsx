@@ -44,8 +44,8 @@ export function DiscountProductCard({ product }: DiscountProductCardProps) {
             </div>
           )}
 
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          {/* Gradient Overlay - Always visible */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
           {/* Discount Badge - Large and Bold */}
           {discount > 0 && (
@@ -72,8 +72,8 @@ export function DiscountProductCard({ product }: DiscountProductCardProps) {
             <Heart className={`h-5 w-5 ${inWishlist ? "fill-current" : ""}`} />
           </Button>
 
-          {/* Product Name - Bottom overlay on hover */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+          {/* Product Name - Always visible at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 p-4">
             <h3 className="font-semibold text-white text-sm line-clamp-2 drop-shadow-lg">
               {product.name_mn}
             </h3>
