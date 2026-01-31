@@ -7,99 +7,92 @@ import { HeroCarousel } from "@/components/storefront/HeroCarousel";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { DiscountProductCard } from "@/components/storefront/DiscountProductCard";
 import { CategoryCard } from "@/components/storefront/CategoryCard";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
-
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 export default function Home() {
   // Fetch random products (100 items)
-  const { data: randomProducts, isLoading: loadingRandom } = useQuery({
+  const {
+    data: randomProducts,
+    isLoading: loadingRandom
+  } = useQuery({
     queryKey: ["random-products"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .limit(100);
-
+      const {
+        data,
+        error
+      } = await supabase.from("products").select("*").eq("is_active", true).limit(100);
       if (error) throw error;
       // Shuffle the array randomly
       return data?.sort(() => Math.random() - 0.5) || [];
-    },
+    }
   });
 
   // Fetch discounted products (products with compare_price) - get more for carousel
-  const { data: discountedProducts, isLoading: loadingDiscounted } = useQuery({
+  const {
+    data: discountedProducts,
+    isLoading: loadingDiscounted
+  } = useQuery({
     queryKey: ["discounted-products"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .not("compare_price", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
+      const {
+        data,
+        error
+      } = await supabase.from("products").select("*").eq("is_active", true).not("compare_price", "is", null).order("created_at", {
+        ascending: false
+      }).limit(50);
       if (error) throw error;
       return data?.filter(p => p.compare_price && p.compare_price > p.price) || [];
-    },
+    }
   });
 
   // Fetch featured products
-  const { data: featuredProducts, isLoading: loadingProducts } = useQuery({
+  const {
+    data: featuredProducts,
+    isLoading: loadingProducts
+  } = useQuery({
     queryKey: ["featured-products"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .eq("is_featured", true)
-        .order("created_at", { ascending: false })
-        .limit(8);
-
+      const {
+        data,
+        error
+      } = await supabase.from("products").select("*").eq("is_active", true).eq("is_featured", true).order("created_at", {
+        ascending: false
+      }).limit(8);
       if (error) throw error;
       return data;
-    },
+    }
   });
 
   // Fetch categories
-  const { data: categories, isLoading: loadingCategories } = useQuery({
+  const {
+    data: categories,
+    isLoading: loadingCategories
+  } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("is_active", true)
-        .order("display_order", { ascending: true })
-        .limit(6);
-
+      const {
+        data,
+        error
+      } = await supabase.from("categories").select("*").eq("is_active", true).order("display_order", {
+        ascending: true
+      }).limit(6);
       if (error) throw error;
       return data;
-    },
+    }
   });
-
-  return (
-    <div className="animate-fade-in">
+  return <div className="animate-fade-in">
       {/* Hero Carousel */}
       <HeroCarousel />
 
       {/* Discounted Products Section - Carousel */}
-      {discountedProducts && discountedProducts.length > 0 && (
-        <section className="container py-12">
+      {discountedProducts && discountedProducts.length > 0 && <section className="container py-12">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-destructive/10">
                 <Percent className="h-6 w-6 text-destructive" />
               </div>
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold">Хямдралтай бараа</h2>
-                <p className="text-muted-foreground mt-1">
-                  Онцгой үнийн санал
-                </p>
+                <h2 className="md:text-3xl font-bold text-sm">Хямдралтай бараа</h2>
+                
               </div>
             </div>
             <Link to="/shop?discount=true">
@@ -110,35 +103,24 @@ export default function Home() {
             </Link>
           </div>
 
-          {loadingDiscounted ? (
-            <div className="flex items-center justify-center py-12">
+          {loadingDiscounted ? <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <Carousel
-              opts={{
-                align: "start",
-                loop: true,
-              }}
-              className="w-full"
-            >
+            </div> : <Carousel opts={{
+        align: "start",
+        loop: true
+      }} className="w-full">
               <CarouselContent className="-ml-3 md:-ml-4">
-                {discountedProducts.map((product) => (
-                  <CarouselItem key={product.id} className="pl-3 md:pl-4 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
+                {discountedProducts.map(product => <CarouselItem key={product.id} className="pl-3 md:pl-4 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
                     <DiscountProductCard product={product} />
-                  </CarouselItem>
-                ))}
+                  </CarouselItem>)}
               </CarouselContent>
               <CarouselPrevious className="left-0 -translate-x-1/2" />
               <CarouselNext className="right-0 translate-x-1/2" />
-            </Carousel>
-          )}
-        </section>
-      )}
+            </Carousel>}
+        </section>}
 
       {/* Featured Products Section */}
-      {featuredProducts && featuredProducts.length > 0 && (
-        <section className="container py-12">
+      {featuredProducts && featuredProducts.length > 0 && <section className="container py-12">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold">Онцлох бараа</h2>
@@ -154,19 +136,12 @@ export default function Home() {
             </Link>
           </div>
 
-          {loadingProducts ? (
-            <div className="flex items-center justify-center py-12">
+          {loadingProducts ? <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+            </div> : <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {featuredProducts.map(product => <ProductCard key={product.id} product={product} />)}
+            </div>}
+        </section>}
 
 
       {/* Promo Banner */}
@@ -179,10 +154,7 @@ export default function Home() {
             100,000₮-с дээш захиалгад Улаанбаатар хотод үнэгүй хүргэлт
           </p>
           <Link to="/shop">
-            <Button
-              size="lg"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 glow-green"
-            >
+            <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 glow-green">
               Дэлгүүр үзэх
             </Button>
           </Link>
@@ -206,21 +178,13 @@ export default function Home() {
           </Link>
         </div>
 
-        {loadingCategories ? (
-          <div className="flex items-center justify-center py-12">
+        {loadingCategories ? <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : categories && categories.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((category) => (
-              <CategoryCard key={category.id} category={category} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-muted-foreground">
+          </div> : categories && categories.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {categories.map(category => <CategoryCard key={category.id} category={category} />)}
+          </div> : <div className="text-center py-12 text-muted-foreground">
             Ангилал олдсонгүй
-          </div>
-        )}
+          </div>}
       </section>
 
       {/* All Random Products Section */}
@@ -232,21 +196,13 @@ export default function Home() {
           </p>
         </div>
 
-        {loadingRandom ? (
-          <div className="flex items-center justify-center py-12">
+        {loadingRandom ? <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : randomProducts && randomProducts.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-            {randomProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-muted-foreground">
+          </div> : randomProducts && randomProducts.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+            {randomProducts.map(product => <ProductCard key={product.id} product={product} />)}
+          </div> : <div className="text-center py-12 text-muted-foreground">
             Бараа олдсонгүй
-          </div>
-        )}
+          </div>}
 
         <div className="flex justify-center mt-8">
           <Link to="/shop">
@@ -257,6 +213,5 @@ export default function Home() {
           </Link>
         </div>
       </section>
-    </div>
-  );
+    </div>;
 }
