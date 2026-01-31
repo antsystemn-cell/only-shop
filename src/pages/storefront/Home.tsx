@@ -123,10 +123,8 @@ export default function Home() {
       {featuredProducts && featuredProducts.length > 0 && <section className="container py-12">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold">Онцлох бараа</h2>
-              <p className="text-muted-foreground mt-1">
-                Шилдэг сонголтууд
-              </p>
+              <h2 className="md:text-3xl font-bold text-base">Онцлох бараа</h2>
+              
             </div>
             <Link to="/shop?featured=true">
               <Button variant="ghost" className="gap-2">
