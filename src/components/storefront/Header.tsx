@@ -141,6 +141,11 @@ export function Header() {
             {navLinks.map(link => <Link key={link.href} to={link.href} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                 {link.label}
               </Link>)}
+            <Link to="/wishlist" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+              <Heart className={`h-4 w-4 ${wishlistCount > 0 ? "text-red-500 fill-red-500" : ""}`} />
+              Хүслийн жагсаалт
+              {wishlistCount > 0 && <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{wishlistCount}</span>}
+            </Link>
             {!user && <Link to="/auth" className="px-4 py-2 text-sm font-medium text-primary hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                 Нэвтрэх / Бүртгүүлэх
               </Link>}
