@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import useEmblaCarousel from "embla-carousel-react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -31,7 +32,36 @@ export default function ProductDetail() {
   const { addToCart } = useCart();
   const { toast } = useToast();
   const [quantity, setQuantity] = useState(1);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  
+  // Embla carousel for swipe support
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+  
+  const scrollTo = useCallback((index: number) => {
+    if (emblaApi) emblaApi.scrollTo(index);
+  }, [emblaApi]);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on("select", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect);
+    };
+  }, [emblaApi, onSelect]);
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
 
   // Fetch product
   const { data: product, isLoading } = useQuery({
@@ -99,13 +129,13 @@ export default function ProductDetail() {
     });
   };
 
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
-  };
+  // Reset carousel when product changes
+  useEffect(() => {
+    if (emblaApi) {
+      emblaApi.scrollTo(0);
+      setSelectedIndex(0);
+    }
+  }, [id, emblaApi]);
 
   return (
     <div className="container py-8 animate-fade-in">
@@ -133,39 +163,50 @@ export default function ProductDetail() {
         <span className="text-foreground">{product.name_mn}</span>
       </nav>
 
-      <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-        {/* Image Gallery */}
+      <div className="grid lg:grid-cols-2 gap-6 lg:gap-12">
+        {/* Image Gallery with Swipe */}
         <div className="space-y-4">
-          {/* Main Image */}
-          <div className="relative aspect-square rounded-xl overflow-hidden bg-muted">
+          {/* Main Image Carousel */}
+          <div className="relative">
             {images.length > 0 ? (
-              <img
-                src={images[currentImageIndex]}
-                alt={product.name_mn}
-                className="w-full h-full object-cover"
-              />
+              <div className="overflow-hidden rounded-2xl" ref={emblaRef}>
+                <div className="flex">
+                  {images.map((image, index) => (
+                    <div 
+                      key={index} 
+                      className="flex-[0_0_100%] min-w-0 aspect-[4/5] md:aspect-square bg-muted"
+                    >
+                      <img
+                        src={image}
+                        alt={`${product.name_mn} ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="aspect-[4/5] md:aspect-square rounded-2xl bg-muted flex items-center justify-center">
                 <Package className="h-24 w-24 text-muted-foreground/30" />
               </div>
             )}
 
-            {/* Navigation Arrows */}
+            {/* Navigation Arrows - Hidden on mobile, visible on hover for desktop */}
             {images.length > 1 && (
               <>
                 <Button
                   variant="secondary"
                   size="icon"
-                  className="absolute left-2 top-1/2 -translate-y-1/2"
-                  onClick={prevImage}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 hidden md:flex opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm shadow-lg"
+                  onClick={scrollPrev}
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
                 <Button
                   variant="secondary"
                   size="icon"
-                  className="absolute right-2 top-1/2 -translate-y-1/2"
-                  onClick={nextImage}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm shadow-lg"
+                  onClick={scrollNext}
                 >
                   <ChevronRight className="h-5 w-5" />
                 </Button>
@@ -173,9 +214,9 @@ export default function ProductDetail() {
             )}
 
             {/* Badges */}
-            <div className="absolute top-4 left-4 flex flex-col gap-2">
+            <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
               {discount > 0 && (
-                <Badge className="bg-destructive text-destructive-foreground">
+                <Badge className="bg-destructive text-destructive-foreground text-sm px-3 py-1">
                   -{discount}%
                 </Badge>
               )}
@@ -185,18 +226,35 @@ export default function ProductDetail() {
                 </Badge>
               )}
             </div>
+
+            {/* Dot Indicators for Mobile */}
+            {images.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => scrollTo(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      index === selectedIndex
+                        ? "bg-white w-6"
+                        : "bg-white/50 hover:bg-white/70"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Thumbnails */}
+          {/* Thumbnails - Desktop only */}
           {images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="hidden md:flex gap-2 overflow-x-auto pb-2">
               {images.map((image, index) => (
                 <button
                   key={index}
-                  onClick={() => setCurrentImageIndex(index)}
-                  className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                    index === currentImageIndex
-                      ? "border-primary"
+                  onClick={() => scrollTo(index)}
+                  className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                    index === selectedIndex
+                      ? "border-primary ring-2 ring-primary/20"
                       : "border-transparent hover:border-muted-foreground/30"
                   }`}
                 >
