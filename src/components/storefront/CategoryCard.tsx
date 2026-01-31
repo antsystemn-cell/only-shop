@@ -14,7 +14,7 @@ export function CategoryCard({ category }: CategoryCardProps) {
       to={`/shop?category=${category.id}`}
       className="group block"
     >
-      <div className="relative aspect-square rounded-xl overflow-hidden bg-secondary hover:shadow-xl transition-all duration-300">
+      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-secondary hover:shadow-xl transition-all duration-300">
         {category.image_url ? (
           <img
             src={category.image_url}
@@ -23,20 +23,20 @@ export function CategoryCard({ category }: CategoryCardProps) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-secondary/80">
-            <Folder className="h-16 w-16 text-primary opacity-50" />
+            <Folder className="h-20 w-20 text-primary opacity-50" />
           </div>
         )}
         
         {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
         
         {/* Content */}
-        <div className="absolute inset-x-0 bottom-0 p-4">
-          <h3 className="text-lg font-semibold text-white group-hover:text-primary transition-colors">
+        <div className="absolute inset-x-0 bottom-0 p-4 md:p-6">
+          <h3 className="text-lg md:text-xl font-semibold text-white group-hover:text-primary transition-colors">
             {category.name_mn}
           </h3>
           {category.description && (
-            <p className="text-sm text-white/70 line-clamp-1 mt-1">
+            <p className="text-sm md:text-base text-white/70 line-clamp-2 mt-1">
               {category.description}
             </p>
           )}

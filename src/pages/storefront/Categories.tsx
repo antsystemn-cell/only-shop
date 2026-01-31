@@ -19,9 +19,9 @@ export default function Categories() {
   });
 
   return (
-    <div className="container py-8 animate-fade-in">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Ангилалууд</h1>
+    <div className="py-6 md:py-8 animate-fade-in">
+      <div className="px-3 md:container mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold">Ангилалууд</h1>
         <p className="text-muted-foreground mt-1">
           Бүх төрлийн бараануудыг ангилалаар нь үзэх
         </p>
@@ -32,7 +32,7 @@ export default function Categories() {
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
         </div>
       ) : categories && categories.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-6">
           {categories.map((category) => (
             <CategoryCard key={category.id} category={category} />
           ))}
