@@ -1,18 +1,33 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Search, Menu, X } from "lucide-react";
+import { ShoppingCart, Search, Menu, X, User, LogOut } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { CartDrawer } from "./CartDrawer";
 import onlyLogo from "@/assets/only-logo.png";
+import { toast } from "sonner";
 
 export function Header() {
   const { getItemCount } = useCart();
+  const { user, signOut, isLoading } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const itemCount = getItemCount();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Амжилттай гарлаа");
+  };
 
   const navLinks = [
     { href: "/", label: "Нүүр" },
@@ -71,6 +86,42 @@ export function Header() {
             )}
           </Button>
 
+          {/* User Menu */}
+          {!isLoading && (
+            <>
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <User className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <div className="px-2 py-1.5 text-sm font-medium truncate">
+                      {user.email}
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile">Миний профайл</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/orders">Миний захиалгууд</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Гарах
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                  <Link to="/auth">Нэвтрэх</Link>
+                </Button>
+              )}
+            </>
+          )}
+
           {/* Cart */}
           <Sheet>
             <SheetTrigger asChild>
@@ -128,6 +179,42 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
+            {!user && (
+              <Link
+                to="/auth"
+                className="px-4 py-2 text-sm font-medium text-primary hover:bg-muted rounded-lg transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Нэвтрэх / Бүртгүүлэх
+              </Link>
+            )}
+            {user && (
+              <>
+                <Link
+                  to="/profile"
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Миний профайл
+                </Link>
+                <Link
+                  to="/orders"
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Миний захиалгууд
+                </Link>
+                <button
+                  className="px-4 py-2 text-sm font-medium text-destructive hover:bg-muted rounded-lg transition-colors text-left"
+                  onClick={() => {
+                    handleSignOut();
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  Гарах
+                </button>
+              </>
+            )}
           </div>
         </nav>
       )}
