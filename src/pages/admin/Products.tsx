@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { ProductImageUpload } from "@/components/admin/ProductImageUpload";
 import {
   Plus,
   Search,
@@ -86,6 +87,7 @@ export default function Products() {
     category_id: "",
     is_featured: false,
     is_active: true,
+    images: [] as string[],
   });
   
   const queryClient = useQueryClient();
@@ -143,6 +145,7 @@ export default function Products() {
         category_id: data.category_id || null,
         is_featured: data.is_featured,
         is_active: data.is_active,
+        images: data.images,
       };
 
       if (data.id) {
@@ -212,6 +215,7 @@ export default function Products() {
       category_id: "",
       is_featured: false,
       is_active: true,
+      images: [],
     });
     setEditingProduct(null);
   };
@@ -228,6 +232,7 @@ export default function Products() {
       category_id: product.category_id || "",
       is_featured: product.is_featured,
       is_active: product.is_active,
+      images: product.images || [],
     });
     setIsDialogOpen(true);
   };
@@ -362,6 +367,15 @@ export default function Products() {
                 />
               </div>
 
+              {/* Product Images Upload */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <ProductImageUpload
+                  images={formData.images}
+                  onImagesChange={(images) => setFormData({ ...formData, images })}
+                  maxImages={5}
+                />
+              </div>
+
               <div className="flex gap-6">
                 <div className="flex items-center gap-2">
                   <Switch
@@ -453,8 +467,16 @@ export default function Products() {
                     <TableRow key={product.id} className="hover:bg-muted/50">
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                            <Package className="h-5 w-5 text-muted-foreground" />
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                            {product.images && product.images.length > 0 ? (
+                              <img
+                                src={product.images[0]}
+                                alt={product.name_mn}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Package className="h-5 w-5 text-muted-foreground" />
+                            )}
                           </div>
                           <div>
                             <div className="font-medium">{product.name_mn}</div>
