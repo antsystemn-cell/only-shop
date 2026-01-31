@@ -52,6 +52,7 @@ interface Product {
   compare_price: number | null;
   stock: number;
   sku: string | null;
+  brand: string | null;
   images: string[];
   is_featured: boolean;
   is_active: boolean;
@@ -84,6 +85,7 @@ export default function Products() {
     compare_price: "",
     stock: "",
     sku: "",
+    brand: "",
     category_id: "",
     is_featured: false,
     is_active: true,
@@ -142,6 +144,7 @@ export default function Products() {
         compare_price: data.compare_price ? parseFloat(data.compare_price) : null,
         stock: parseInt(data.stock) || 0,
         sku: data.sku || null,
+        brand: data.brand || null,
         category_id: data.category_id || null,
         is_featured: data.is_featured,
         is_active: data.is_active,
@@ -212,6 +215,7 @@ export default function Products() {
       compare_price: "",
       stock: "",
       sku: "",
+      brand: "",
       category_id: "",
       is_featured: false,
       is_active: true,
@@ -229,6 +233,7 @@ export default function Products() {
       compare_price: product.compare_price?.toString() || "",
       stock: product.stock.toString(),
       sku: product.sku || "",
+      brand: product.brand || "",
       category_id: product.category_id || "",
       is_featured: product.is_featured,
       is_active: product.is_active,
@@ -357,14 +362,25 @@ export default function Products() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="sku">SKU</Label>
-                <Input
-                  id="sku"
-                  value={formData.sku}
-                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                  placeholder="ELEC-001"
-                />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="sku">SKU</Label>
+                  <Input
+                    id="sku"
+                    value={formData.sku}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    placeholder="ELEC-001"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="brand">Брэнд</Label>
+                  <Input
+                    id="brand"
+                    value={formData.brand}
+                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                    placeholder="Apple, Samsung..."
+                  />
+                </div>
               </div>
 
               {/* Product Images Upload */}
