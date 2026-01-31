@@ -16,6 +16,7 @@ import CategoriesPage from "./pages/storefront/Categories";
 import Auth from "./pages/storefront/Auth";
 import Checkout from "./pages/storefront/Checkout";
 import OrderConfirmation from "./pages/storefront/OrderConfirmation";
+import CustomerOrders from "./pages/storefront/CustomerOrders";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+              <Route path="/orders" element={<CustomerOrders />} />
               
               {/* Admin routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
