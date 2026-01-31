@@ -12,9 +12,17 @@ import { CartDrawer } from "./CartDrawer";
 import onlyLogo from "@/assets/only-logo.png";
 import { toast } from "sonner";
 export function Header() {
-  const { getItemCount } = useCart();
-  const { user, signOut, isLoading } = useAuth();
-  const { wishlistIds } = useWishlist();
+  const {
+    getItemCount
+  } = useCart();
+  const {
+    user,
+    signOut,
+    isLoading
+  } = useAuth();
+  const {
+    wishlistIds
+  } = useWishlist();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const itemCount = getItemCount();
@@ -34,7 +42,7 @@ export function Header() {
     label: "Ангилал"
   }];
   return <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="container flex h-16 items-center justify-between gap-4">
+      <div className="container flex h-16 items-center justify-between gap-4 bg-secondary">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <img src={onlyLogo} alt="Only" className="h-10 w-auto" />
@@ -67,11 +75,9 @@ export function Header() {
           <Link to="/wishlist">
             <Button variant="ghost" size="icon" className="relative">
               <Heart className={`h-5 w-5 ${wishlistCount > 0 ? "text-red-500 fill-red-500" : ""}`} />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs font-bold text-white flex items-center justify-center">
+              {wishlistCount > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs font-bold text-white flex items-center justify-center">
                   {wishlistCount > 99 ? "99+" : wishlistCount}
-                </span>
-              )}
+                </span>}
             </Button>
           </Link>
 
