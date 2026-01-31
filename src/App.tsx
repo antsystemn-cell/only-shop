@@ -14,6 +14,8 @@ import Shop from "./pages/storefront/Shop";
 import ProductDetail from "./pages/storefront/ProductDetail";
 import CategoriesPage from "./pages/storefront/Categories";
 import Auth from "./pages/storefront/Auth";
+import Checkout from "./pages/storefront/Checkout";
+import OrderConfirmation from "./pages/storefront/OrderConfirmation";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -46,8 +48,10 @@ const App = () => (
                 <Route path="/categories" element={<CategoriesPage />} />
               </Route>
               
-              {/* Auth route - outside layout */}
+              {/* Auth and checkout routes - outside layout */}
               <Route path="/auth" element={<Auth />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
               
               {/* Admin routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
