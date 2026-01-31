@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { HeroCarousel } from "@/components/storefront/HeroCarousel";
@@ -8,6 +8,23 @@ import { ProductCard } from "@/components/storefront/ProductCard";
 import { CategoryCard } from "@/components/storefront/CategoryCard";
 
 export default function Home() {
+  // Fetch discounted products (products with compare_price)
+  const { data: discountedProducts, isLoading: loadingDiscounted } = useQuery({
+    queryKey: ["discounted-products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .not("compare_price", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(8);
+
+      if (error) throw error;
+      return data?.filter(p => p.compare_price && p.compare_price > p.price) || [];
+    },
+  });
+
   // Fetch featured products
   const { data: featuredProducts, isLoading: loadingProducts } = useQuery({
     queryKey: ["featured-products"],
@@ -62,39 +79,42 @@ export default function Home() {
       {/* Hero Carousel */}
       <HeroCarousel />
 
-      {/* Categories Section */}
-      <section className="container py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold">Ангилалууд</h2>
-            <p className="text-muted-foreground mt-1">
-              Бүх төрлийн бараанууд
-            </p>
+      {/* Discounted Products Section - NEW TOP SECTION */}
+      {discountedProducts && discountedProducts.length > 0 && (
+        <section className="container py-12">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-destructive/10">
+                <Percent className="h-6 w-6 text-destructive" />
+              </div>
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold">Хямдралтай бараа</h2>
+                <p className="text-muted-foreground mt-1">
+                  Онцгой үнийн санал
+                </p>
+              </div>
+            </div>
+            <Link to="/shop?discount=true">
+              <Button variant="ghost" className="gap-2">
+                Бүгдийг үзэх
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </div>
-          <Link to="/categories">
-            <Button variant="ghost" className="gap-2">
-              Бүгдийг үзэх
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
 
-        {loadingCategories ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : categories && categories.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((category) => (
-              <CategoryCard key={category.id} category={category} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            Ангилал олдсонгүй
-          </div>
-        )}
-      </section>
+          {loadingDiscounted ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {discountedProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Featured Products Section */}
       {featuredProducts && featuredProducts.length > 0 && (
@@ -180,6 +200,40 @@ export default function Home() {
             </Button>
           </Link>
         </div>
+      </section>
+
+      {/* Categories Section - MOVED TO BOTTOM */}
+      <section className="container py-12">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold">Ангилалууд</h2>
+            <p className="text-muted-foreground mt-1">
+              Бүх төрлийн бараанууд
+            </p>
+          </div>
+          <Link to="/categories">
+            <Button variant="ghost" className="gap-2">
+              Бүгдийг үзэх
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+
+        {loadingCategories ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : categories && categories.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {categories.map((category) => (
+              <CategoryCard key={category.id} category={category} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            Ангилал олдсонгүй
+          </div>
+        )}
       </section>
     </div>
   );
