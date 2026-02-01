@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ProductImageUpload } from "@/components/admin/ProductImageUpload";
+import { ProductVariantsManager } from "@/components/admin/ProductVariantsManager";
 import {
   Plus,
   Search,
@@ -41,6 +42,7 @@ import {
   Package,
   Star,
   Loader2,
+  Box,
 } from "lucide-react";
 
 interface Product {
@@ -411,6 +413,16 @@ export default function Products() {
                 </div>
               </div>
 
+              {/* Product Variants Manager - Only show when editing existing product */}
+              {editingProduct && (
+                <div className="border-t pt-4 mt-4">
+                  <ProductVariantsManager 
+                    productId={editingProduct.id} 
+                    productName={editingProduct.name_mn} 
+                  />
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-4">
                 <Button
                   type="button"
@@ -537,6 +549,7 @@ export default function Products() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(product)}
+                            title="Засах"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -545,6 +558,7 @@ export default function Products() {
                             size="icon"
                             onClick={() => handleDelete(product.id)}
                             className="text-destructive hover:text-destructive"
+                            title="Устгах"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
