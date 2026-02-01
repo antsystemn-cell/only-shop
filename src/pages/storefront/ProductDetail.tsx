@@ -272,8 +272,13 @@ export default function ProductDetail() {
 
         {/* Product Info */}
         <div className="space-y-6">
-          {/* Title & Rating */}
+          {/* Brand & Title */}
           <div>
+            {product.brand && (
+              <span className="text-sm font-medium text-primary uppercase tracking-wide">
+                {product.brand}
+              </span>
+            )}
             <h1 className="text-2xl lg:text-3xl font-bold">{product.name_mn}</h1>
             {product.rating && product.rating > 0 && (
               <div className="flex items-center gap-2 mt-2">
