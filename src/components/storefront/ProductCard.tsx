@@ -108,6 +108,13 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
         </div>
 
         <CardContent className={isFeatured ? "p-3" : "p-4"}>
+          {/* Brand */}
+          {product.brand && !isFeatured && (
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {product.brand}
+            </span>
+          )}
+          
           {/* Product Name - 2 lines with min-height for consistency */}
           <h3 className={`font-medium text-sm group-hover:text-primary transition-colors ${
             isFeatured ? "line-clamp-2 min-h-[2.5rem]" : "line-clamp-2 min-h-[2.5rem]"
