@@ -46,6 +46,14 @@ export default function ProductDetail() {
     setSelectedIndex(emblaApi.selectedScrollSnap());
   }, [emblaApi]);
 
+  // Reset carousel when product changes
+  useEffect(() => {
+    if (emblaApi) {
+      emblaApi.scrollTo(0);
+      setSelectedIndex(0);
+    }
+  }, [id, emblaApi]);
+
   useEffect(() => {
     if (!emblaApi) return;
     onSelect();
@@ -129,13 +137,6 @@ export default function ProductDetail() {
     });
   };
 
-  // Reset carousel when product changes
-  useEffect(() => {
-    if (emblaApi) {
-      emblaApi.scrollTo(0);
-      setSelectedIndex(0);
-    }
-  }, [id, emblaApi]);
 
   return (
     <div className="container py-8 animate-fade-in">
