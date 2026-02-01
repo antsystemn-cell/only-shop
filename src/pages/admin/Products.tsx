@@ -72,6 +72,20 @@ interface Category {
   name_mn: string;
 }
 
+// Local variant type for creating new product with variants
+interface LocalVariant {
+  id: string; // temporary local id
+  size: string;
+  color: string;
+  color_hex: string;
+  dimensions: string;
+  style: string;
+  price_adjustment: string;
+  stock: string;
+  sku_suffix: string;
+  is_active: boolean;
+}
+
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("mn-MN").format(amount) + "₮";
 }
@@ -93,6 +107,23 @@ export default function Products() {
     is_active: true,
     images: [] as string[],
   });
+
+  // Local variants for new product creation
+  const [localVariants, setLocalVariants] = useState<LocalVariant[]>([]);
+  const [showVariantForm, setShowVariantForm] = useState(false);
+  const [variantFormData, setVariantFormData] = useState<LocalVariant>({
+    id: "",
+    size: "",
+    color: "",
+    color_hex: "#000000",
+    dimensions: "",
+    style: "",
+    price_adjustment: "0",
+    stock: "0",
+    sku_suffix: "",
+    is_active: true,
+  });
+  const [editingLocalVariant, setEditingLocalVariant] = useState<string | null>(null);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -137,7 +168,7 @@ export default function Products() {
 
   // Create/Update mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: typeof formData & { id?: string }) => {
+    mutationFn: async (data: typeof formData & { id?: string; variants?: LocalVariant[] }) => {
       const productData = {
         name: data.name_mn, // Use Mongolian name as primary
         name_mn: data.name_mn,
@@ -153,6 +184,8 @@ export default function Products() {
         images: data.images,
       };
 
+      let productId = data.id;
+
       if (data.id) {
         const { error } = await supabase
           .from("products")
@@ -160,10 +193,34 @@ export default function Products() {
           .eq("id", data.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { data: newProduct, error } = await supabase
           .from("products")
-          .insert([productData]);
+          .insert([productData])
+          .select("id")
+          .single();
         if (error) throw error;
+        productId = newProduct.id;
+      }
+
+      // Save variants for new product
+      if (!data.id && data.variants && data.variants.length > 0 && productId) {
+        const variantsToInsert = data.variants.map((v, index) => ({
+          product_id: productId,
+          size: v.size || null,
+          color: v.color || null,
+          color_hex: v.color_hex || null,
+          dimensions: v.dimensions || null,
+          price_adjustment: parseFloat(v.price_adjustment) || 0,
+          stock: parseInt(v.stock) || 0,
+          sku_suffix: v.sku_suffix || null,
+          is_active: v.is_active,
+          display_order: index,
+        }));
+
+        const { error: variantError } = await supabase
+          .from("product_variants")
+          .insert(variantsToInsert);
+        if (variantError) throw variantError;
       }
     },
     onSuccess: () => {
@@ -224,6 +281,52 @@ export default function Products() {
       images: [],
     });
     setEditingProduct(null);
+    setLocalVariants([]);
+    setShowVariantForm(false);
+    setEditingLocalVariant(null);
+    resetVariantForm();
+  };
+
+  const resetVariantForm = () => {
+    setVariantFormData({
+      id: "",
+      size: "",
+      color: "",
+      color_hex: "#000000",
+      dimensions: "",
+      style: "",
+      price_adjustment: "0",
+      stock: "0",
+      sku_suffix: "",
+      is_active: true,
+    });
+  };
+
+  const handleAddLocalVariant = () => {
+    if (editingLocalVariant) {
+      setLocalVariants(prev => 
+        prev.map(v => v.id === editingLocalVariant ? { ...variantFormData, id: editingLocalVariant } : v)
+      );
+      setEditingLocalVariant(null);
+    } else {
+      const newVariant: LocalVariant = {
+        ...variantFormData,
+        id: `local-${Date.now()}`,
+      };
+      setLocalVariants(prev => [...prev, newVariant]);
+    }
+    resetVariantForm();
+    setShowVariantForm(false);
+  };
+
+  const handleEditLocalVariant = (variant: LocalVariant) => {
+    setVariantFormData(variant);
+    setEditingLocalVariant(variant.id);
+    setShowVariantForm(true);
+  };
+
+  const handleDeleteLocalVariant = (id: string) => {
+    setLocalVariants(prev => prev.filter(v => v.id !== id));
   };
 
   const handleEdit = (product: Product) => {
@@ -249,6 +352,7 @@ export default function Products() {
     saveMutation.mutate({
       ...formData,
       id: editingProduct?.id,
+      variants: localVariants,
     });
   };
 
@@ -413,13 +517,258 @@ export default function Products() {
                 </div>
               </div>
 
-              {/* Product Variants Manager - Only show when editing existing product */}
-              {editingProduct && (
+              {/* Product Variants - Show different UI for new vs existing product */}
+              {editingProduct ? (
                 <div className="border-t pt-4 mt-4">
                   <ProductVariantsManager 
                     productId={editingProduct.id} 
                     productName={editingProduct.name_mn} 
                   />
+                </div>
+              ) : (
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Box className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold">Хувилбарууд (Загвар, Өнгө, Хэмжээ)</h3>
+                      {localVariants.length > 0 && (
+                        <Badge variant="secondary">{localVariants.length}</Badge>
+                      )}
+                    </div>
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setShowVariantForm(true);
+                        setEditingLocalVariant(null);
+                        resetVariantForm();
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Хувилбар нэмэх
+                    </Button>
+                  </div>
+
+                  {/* Variant Form */}
+                  {showVariantForm && (
+                    <div className="border rounded-lg p-4 bg-muted/30 mb-4 space-y-4">
+                      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="var_style" className="flex items-center gap-1">
+                            <Box className="h-3 w-3" />
+                            Загвар
+                          </Label>
+                          <Input
+                            id="var_style"
+                            value={variantFormData.style}
+                            onChange={(e) => setVariantFormData({ ...variantFormData, style: e.target.value })}
+                            placeholder="Pro, Max, Ultra..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="var_size">Размер</Label>
+                          <Input
+                            id="var_size"
+                            value={variantFormData.size}
+                            onChange={(e) => setVariantFormData({ ...variantFormData, size: e.target.value })}
+                            placeholder="S, M, L, XL..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="var_dimensions">Хэмжээ</Label>
+                          <Input
+                            id="var_dimensions"
+                            value={variantFormData.dimensions}
+                            onChange={(e) => setVariantFormData({ ...variantFormData, dimensions: e.target.value })}
+                            placeholder="128GB, 256GB..."
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="var_color">Өнгө</Label>
+                          <Input
+                            id="var_color"
+                            value={variantFormData.color}
+                            onChange={(e) => setVariantFormData({ ...variantFormData, color: e.target.value })}
+                            placeholder="Улаан, Хар..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="var_color_hex">Өнгөний код</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="var_color_hex"
+                              type="color"
+                              value={variantFormData.color_hex}
+                              onChange={(e) => setVariantFormData({ ...variantFormData, color_hex: e.target.value })}
+                              className="w-12 h-10 p-1 cursor-pointer"
+                            />
+                            <Input
+                              value={variantFormData.color_hex}
+                              onChange={(e) => setVariantFormData({ ...variantFormData, color_hex: e.target.value })}
+                              placeholder="#000000"
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="var_sku_suffix">SKU дагавар</Label>
+                          <Input
+                            id="var_sku_suffix"
+                            value={variantFormData.sku_suffix}
+                            onChange={(e) => setVariantFormData({ ...variantFormData, sku_suffix: e.target.value })}
+                            placeholder="-PRO-RED"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="var_stock">Нөөц</Label>
+                          <Input
+                            id="var_stock"
+                            type="number"
+                            value={variantFormData.stock}
+                            onChange={(e) => setVariantFormData({ ...variantFormData, stock: e.target.value })}
+                            placeholder="0"
+                            min="0"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="var_price_adjustment">Үнийн өөрчлөлт (₮)</Label>
+                          <Input
+                            id="var_price_adjustment"
+                            type="number"
+                            value={variantFormData.price_adjustment}
+                            onChange={(e) => setVariantFormData({ ...variantFormData, price_adjustment: e.target.value })}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="flex items-end gap-2 pb-2">
+                          <Switch
+                            id="var_is_active"
+                            checked={variantFormData.is_active}
+                            onCheckedChange={(checked) => setVariantFormData({ ...variantFormData, is_active: checked })}
+                          />
+                          <Label htmlFor="var_is_active">Идэвхтэй</Label>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setShowVariantForm(false);
+                            resetVariantForm();
+                            setEditingLocalVariant(null);
+                          }}
+                        >
+                          Болих
+                        </Button>
+                        <Button 
+                          type="button" 
+                          size="sm"
+                          onClick={handleAddLocalVariant}
+                        >
+                          {editingLocalVariant ? "Хадгалах" : "Нэмэх"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Local Variants List */}
+                  {localVariants.length > 0 ? (
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Загвар</TableHead>
+                            <TableHead>Размер</TableHead>
+                            <TableHead>Өнгө</TableHead>
+                            <TableHead>Хэмжээ</TableHead>
+                            <TableHead className="text-center">Нөөц</TableHead>
+                            <TableHead className="text-right">Үйлдэл</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {localVariants.map((variant) => (
+                            <TableRow key={variant.id}>
+                              <TableCell>
+                                {variant.style ? (
+                                  <Badge variant="outline">{variant.style}</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {variant.size ? (
+                                  <Badge variant="outline">{variant.size}</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {variant.color ? (
+                                  <div className="flex items-center gap-2">
+                                    {variant.color_hex && (
+                                      <div
+                                        className="w-4 h-4 rounded-full border border-border"
+                                        style={{ backgroundColor: variant.color_hex }}
+                                      />
+                                    )}
+                                    <span className="text-sm">{variant.color}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {variant.dimensions || <span className="text-muted-foreground">—</span>}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={parseInt(variant.stock) > 0 ? "secondary" : "destructive"}>
+                                  {variant.stock}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => handleEditLocalVariant(variant)}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-destructive hover:text-destructive"
+                                    onClick={() => handleDeleteLocalVariant(variant.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-muted-foreground border rounded-lg bg-muted/30">
+                      <Box className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Хувилбар байхгүй байна</p>
+                      <p className="text-xs mt-1">Загвар, өнгө, хэмжээ нэмэхийн тулд дээрх товчийг дарна уу</p>
+                    </div>
+                  )}
                 </div>
               )}
 
