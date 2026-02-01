@@ -38,7 +38,7 @@ export function MobileBottomNav() {
               <Link
                 key={item.href}
                 to={item.href}
-                className="flex flex-col items-center -mt-6"
+                className="flex flex-col items-center justify-center w-16 -mt-6"
               >
                 <div className={cn(
                   "w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform",
@@ -62,9 +62,9 @@ export function MobileBottomNav() {
             <Link
               key={item.href}
               to={item.href}
-              className="flex flex-col items-center gap-1 py-1 px-3 relative"
+              className="flex flex-col items-center justify-center gap-1 py-1 w-16 relative"
             >
-              <div className="relative">
+              <div className="relative h-6 w-6 flex items-center justify-center">
                 <Icon className={cn(
                   "h-6 w-6 transition-colors",
                   active ? "text-primary" : "text-muted-foreground",
