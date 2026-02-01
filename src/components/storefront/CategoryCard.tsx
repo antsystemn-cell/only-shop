@@ -14,9 +14,9 @@ export function CategoryCard({ category }: CategoryCardProps) {
       to={`/shop?category=${category.id}`}
       className="group block"
     >
-      <div className="flex flex-col items-center gap-2 md:gap-3">
-        {/* Image Container - transparent background */}
-        <div className="relative aspect-square w-full flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+      <div className="flex flex-col items-center gap-3 md:gap-4">
+        {/* Image Container - larger, transparent background */}
+        <div className="relative aspect-square w-full max-w-[180px] md:max-w-[220px] mx-auto flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
           {category.image_url ? (
             <img
               src={category.image_url}
@@ -25,13 +25,13 @@ export function CategoryCard({ category }: CategoryCardProps) {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Folder className="h-16 w-16 md:h-20 md:w-20 text-muted-foreground opacity-50" />
+              <Folder className="h-20 w-20 md:h-24 md:w-24 text-muted-foreground opacity-50" />
             </div>
           )}
         </div>
         
         {/* Label */}
-        <h3 className="text-sm md:text-base font-medium text-foreground text-center group-hover:text-primary transition-colors">
+        <h3 className="text-base md:text-lg font-medium text-foreground text-center group-hover:text-primary transition-colors">
           {category.name_mn}
         </h3>
       </div>
