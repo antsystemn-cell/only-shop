@@ -8,7 +8,6 @@ import { ProductCard } from "@/components/storefront/ProductCard";
 import { DiscountProductCard } from "@/components/storefront/DiscountProductCard";
 import { CategoryStrip } from "@/components/storefront/CategoryStrip";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-
 export default function Home() {
   // Fetch random products (100 items)
   const {
@@ -85,9 +84,7 @@ export default function Home() {
       <HeroCarousel />
 
       {/* Category Strip - Right below hero */}
-      {!loadingCategories && categories && categories.length > 0 && (
-        <CategoryStrip categories={categories} />
-      )}
+      {!loadingCategories && categories && categories.length > 0 && <CategoryStrip categories={categories} />}
 
       {/* Discounted Products Section - Carousel */}
       {discountedProducts && discountedProducts.length > 0 && <section className="py-12">
@@ -168,9 +165,9 @@ export default function Home() {
       {/* All Random Products Section */}
       <section className="py-12">
         <div className="px-2 md:container mb-8">
-          <h2 className="text-2xl md:text-3xl font-bold">Бүх төрлийн бараа</h2>
+          <h2 className="md:text-3xl font-bold text-base">Бүх төрлийн бараа</h2>
           <p className="text-muted-foreground mt-1">
-            Санамсаргүй дарааллаар
+            ​
           </p>
         </div>
 
