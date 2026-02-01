@@ -410,20 +410,21 @@ export default function ProductDetail() {
 
           <Separator />
 
-          {/* Size Selection */}
+          {/* Size Selection - Card Style */}
           {availableSizes.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Хэмжээ</span>
                 {selectedSize && (
-                  <span className="text-sm text-muted-foreground">{selectedSize}</span>
+                  <span className="text-sm text-muted-foreground">Сонгосон: {selectedSize}</span>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {availableSizes.map((size) => {
                   const isSelected = selectedSize === size;
                   const variant = variants.find(v => v.size === size && (!selectedColor || v.color === selectedColor));
                   const isAvailable = variant ? variant.stock > 0 : true;
+                  const priceAdjustment = variant?.price_adjustment || 0;
                   
                   return (
                     <button
@@ -431,15 +432,32 @@ export default function ProductDetail() {
                       onClick={() => setSelectedSize(size)}
                       disabled={!isAvailable}
                       className={`
-                        min-w-[48px] h-10 px-4 rounded-lg border text-sm font-medium transition-all
+                        relative p-3 rounded-xl border-2 text-center transition-all
                         ${isSelected 
-                          ? "border-primary bg-primary text-primary-foreground" 
-                          : "border-input bg-background hover:border-primary/50"
+                          ? "border-primary bg-primary/5 shadow-md" 
+                          : "border-input bg-background hover:border-primary/50 hover:bg-muted/50"
                         }
-                        ${!isAvailable && "opacity-40 cursor-not-allowed line-through"}
+                        ${!isAvailable && "opacity-40 cursor-not-allowed"}
                       `}
                     >
-                      {size}
+                      <span className={`block font-semibold ${isSelected ? "text-primary" : ""}`}>
+                        {size}
+                      </span>
+                      {priceAdjustment !== 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {priceAdjustment > 0 ? "+" : ""}{formatPrice(priceAdjustment)}
+                        </span>
+                      )}
+                      {!isAvailable && (
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          <span className="w-full h-0.5 bg-destructive/50 rotate-45 absolute" />
+                        </span>
+                      )}
+                      {isSelected && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                          <Check className="h-3 w-3 text-primary-foreground" />
+                        </div>
+                      )}
                     </button>
                   );
                 })}
@@ -447,48 +465,60 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Color Selection */}
+          {/* Color Selection - Card Style with Labels */}
           {availableColors.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Өнгө</span>
                 {selectedColor && (
-                  <span className="text-sm text-muted-foreground">{selectedColor}</span>
+                  <span className="text-sm text-muted-foreground">Сонгосон: {selectedColor}</span>
                 )}
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {availableColors.map((color) => {
                   const isSelected = selectedColor === color.name;
                   const variant = variants.find(v => v.color === color.name && (!selectedSize || v.size === selectedSize));
                   const isAvailable = variant ? variant.stock > 0 : true;
+                  const priceAdjustment = variant?.price_adjustment || 0;
                   
                   return (
                     <button
                       key={color.name}
                       onClick={() => setSelectedColor(color.name)}
                       disabled={!isAvailable}
-                      title={color.name}
                       className={`
-                        relative w-10 h-10 rounded-full border-2 transition-all
+                        relative p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2
                         ${isSelected 
-                          ? "border-primary ring-2 ring-primary/30" 
-                          : "border-transparent hover:border-primary/50"
+                          ? "border-primary bg-primary/5 shadow-md" 
+                          : "border-input bg-background hover:border-primary/50 hover:bg-muted/50"
                         }
                         ${!isAvailable && "opacity-40 cursor-not-allowed"}
                       `}
-                      style={{ 
-                        backgroundColor: color.hex || "#888888",
-                      }}
                     >
-                      {isSelected && (
-                        <Check className={`absolute inset-0 m-auto h-5 w-5 ${
-                          color.hex && isLightColor(color.hex) ? "text-foreground" : "text-white"
-                        }`} />
+                      {/* Color swatch */}
+                      <div 
+                        className={`w-8 h-8 rounded-full border shadow-sm ${
+                          color.hex && isLightColor(color.hex) ? "border-border" : "border-transparent"
+                        }`}
+                        style={{ backgroundColor: color.hex || "#888888" }}
+                      />
+                      <span className={`text-xs font-medium truncate w-full text-center ${isSelected ? "text-primary" : ""}`}>
+                        {color.name}
+                      </span>
+                      {priceAdjustment !== 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {priceAdjustment > 0 ? "+" : ""}{formatPrice(priceAdjustment)}
+                        </span>
                       )}
                       {!isAvailable && (
                         <span className="absolute inset-0 flex items-center justify-center">
-                          <span className="w-full h-0.5 bg-destructive rotate-45 absolute" />
+                          <span className="w-full h-0.5 bg-destructive/50 rotate-45 absolute" />
                         </span>
+                      )}
+                      {isSelected && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                          <Check className="h-3 w-3 text-primary-foreground" />
+                        </div>
                       )}
                     </button>
                   );
