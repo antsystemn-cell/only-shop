@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowRight, Loader2, Percent, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, Loader2, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { HeroCarousel } from "@/components/storefront/HeroCarousel";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { DiscountProductCard } from "@/components/storefront/DiscountProductCard";
-import { CategoryCard } from "@/components/storefront/CategoryCard";
+import { CategoryStrip } from "@/components/storefront/CategoryStrip";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+
 export default function Home() {
   // Fetch random products (100 items)
   const {
@@ -62,19 +63,19 @@ export default function Home() {
     }
   });
 
-  // Fetch categories
+  // Fetch all categories for strip
   const {
     data: categories,
     isLoading: loadingCategories
   } = useQuery({
-    queryKey: ["categories"],
+    queryKey: ["categories-all"],
     queryFn: async () => {
       const {
         data,
         error
       } = await supabase.from("categories").select("*").eq("is_active", true).order("display_order", {
         ascending: true
-      }).limit(6);
+      });
       if (error) throw error;
       return data;
     }
@@ -82,6 +83,11 @@ export default function Home() {
   return <div className="animate-fade-in">
       {/* Hero Carousel */}
       <HeroCarousel />
+
+      {/* Category Strip - Right below hero */}
+      {!loadingCategories && categories && categories.length > 0 && (
+        <CategoryStrip categories={categories} />
+      )}
 
       {/* Discounted Products Section - Carousel */}
       {discountedProducts && discountedProducts.length > 0 && <section className="py-12">
@@ -157,32 +163,6 @@ export default function Home() {
             </Button>
           </Link>
         </div>
-      </section>
-
-      {/* Categories Section - MOVED TO BOTTOM */}
-      <section className="container py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold">Ангилалууд</h2>
-            <p className="text-muted-foreground mt-1">
-              Бүх төрлийн бараанууд
-            </p>
-          </div>
-          <Link to="/categories">
-            <Button variant="ghost" className="gap-2">
-              Бүгдийг үзэх
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-
-        {loadingCategories ? <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div> : categories && categories.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map(category => <CategoryCard key={category.id} category={category} />)}
-          </div> : <div className="text-center py-12 text-muted-foreground">
-            Ангилал олдсонгүй
-          </div>}
       </section>
 
       {/* All Random Products Section */}
