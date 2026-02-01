@@ -11,7 +11,7 @@ export function CategoryStrip({
   return <div className="py-3 md:py-4 bg-secondary">
       {/* Full-width on mobile, container on desktop */}
       <div className="md:container bg-secondary">
-        <div className="flex items-center gap-2 md:gap-4 overflow-x-auto scrollbar-hide px-3 md:px-0 pb-1 border-black">
+        <div className="flex items-center gap-2 md:gap-4 overflow-x-auto scrollbar-hide px-3 md:px-0">
           {categories.map(category => <Link key={category.id} to={`/shop?category=${category.id}`} className="group flex flex-col items-center gap-2 md:gap-3 min-w-[70px] md:min-w-[110px] shrink-0">
               {/* Icon/Image Container - larger, transparent */}
               <div className="w-14 h-14 md:w-20 md:h-20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
