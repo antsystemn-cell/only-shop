@@ -30,6 +30,7 @@ export default function Shop() {
   const [gridCols, setGridCols] = useState<3 | 4>(4);
   
   const categoryFilter = searchParams.get("category");
+  const brandFilter = searchParams.get("brand");
   const sortBy = (searchParams.get("sort") as SortOption) || "newest";
   const searchQuery = searchParams.get("q") || "";
   const featuredOnly = searchParams.get("featured") === "true";
@@ -49,9 +50,26 @@ export default function Shop() {
     },
   });
 
+  // Fetch unique brands
+  const { data: brands } = useQuery({
+    queryKey: ["all-brands"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("brand")
+        .eq("is_active", true)
+        .not("brand", "is", null);
+
+      if (error) throw error;
+      // Get unique brands
+      const uniqueBrands = [...new Set(data.map(p => p.brand).filter(Boolean))];
+      return uniqueBrands.sort() as string[];
+    },
+  });
+
   // Fetch products
   const { data: products, isLoading } = useQuery({
-    queryKey: ["shop-products", categoryFilter, sortBy, searchQuery, featuredOnly],
+    queryKey: ["shop-products", categoryFilter, brandFilter, sortBy, searchQuery, featuredOnly],
     queryFn: async () => {
       let query = supabase
         .from("products")
@@ -63,6 +81,11 @@ export default function Shop() {
         query = query.eq("category_id", categoryFilter);
       }
 
+      // Brand filter
+      if (brandFilter) {
+        query = query.eq("brand", brandFilter);
+      }
+
       // Featured filter
       if (featuredOnly) {
         query = query.eq("is_featured", true);
@@ -70,7 +93,7 @@ export default function Shop() {
 
       // Search
       if (searchQuery) {
-        query = query.or(`name_mn.ilike.%${searchQuery}%,name.ilike.%${searchQuery}%`);
+        query = query.or(`name_mn.ilike.%${searchQuery}%,name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`);
       }
 
       // Sort
@@ -108,7 +131,7 @@ export default function Shop() {
     setSearchParams(new URLSearchParams());
   };
 
-  const hasFilters = categoryFilter || featuredOnly || searchQuery;
+  const hasFilters = categoryFilter || brandFilter || featuredOnly || searchQuery;
 
   const FilterContent = () => (
     <div className="space-y-6">
@@ -132,6 +155,29 @@ export default function Shop() {
           ))}
         </div>
       </div>
+
+      {/* Brands */}
+      {brands && brands.length > 0 && (
+        <div>
+          <h3 className="font-semibold mb-3">Брэнд</h3>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {brands.map((brand) => (
+              <div key={brand} className="flex items-center gap-2">
+                <Checkbox
+                  id={`brand-${brand}`}
+                  checked={brandFilter === brand}
+                  onCheckedChange={(checked) =>
+                    updateFilter("brand", checked ? brand : null)
+                  }
+                />
+                <Label htmlFor={`brand-${brand}`} className="text-sm cursor-pointer">
+                  {brand}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Featured */}
       <div>
@@ -260,6 +306,17 @@ export default function Shop() {
                   onClick={() => updateFilter("category", null)}
                 >
                   {categories.find((c) => c.id === categoryFilter)?.name_mn}
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+              {brandFilter && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => updateFilter("brand", null)}
+                >
+                  {brandFilter}
                   <X className="h-3 w-3" />
                 </Button>
               )}
