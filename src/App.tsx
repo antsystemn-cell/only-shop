@@ -27,6 +27,7 @@ import AdminLogin from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import Products from "./pages/admin/Products";
 import Categories from "./pages/admin/Categories";
+import Brands from "./pages/admin/Brands";
 import Orders from "./pages/admin/Orders";
 import Users from "./pages/admin/Users";
 import Delivery from "./pages/admin/Delivery";
@@ -72,6 +73,7 @@ const App = () => (
                 <Route index element={<Dashboard />} />
                 <Route path="products" element={<Products />} />
                 <Route path="categories" element={<Categories />} />
+                <Route path="brands" element={<Brands />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="users" element={<Users />} />
                 <Route path="delivery" element={<Delivery />} />

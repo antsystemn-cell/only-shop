@@ -82,20 +82,18 @@ export default function Home() {
     }
   });
 
-  // Fetch unique brands for carousel
+  // Fetch brands from brands table
   const { data: brands } = useQuery({
     queryKey: ["all-brands-home"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("products")
-        .select("brand")
+        .from("brands")
+        .select("*")
         .eq("is_active", true)
-        .not("brand", "is", null);
+        .order("display_order", { ascending: true });
 
       if (error) throw error;
-      // Get unique brands and format them
-      const uniqueBrands = [...new Set(data.map(p => p.brand).filter(Boolean))];
-      return uniqueBrands.sort().map(name => ({ name: name as string, logo_url: null }));
+      return data?.map(b => ({ name: b.name, logo_url: b.logo_url })) || [];
     },
   });
   return <div className="animate-fade-in">
