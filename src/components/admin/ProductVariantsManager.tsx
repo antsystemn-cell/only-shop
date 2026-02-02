@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, Palette, Ruler, Box, Scale } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Palette, Ruler, Box, Scale, ImagePlus, X, Image as ImageIcon } from "lucide-react";
 
 interface ProductVariant {
   id: string;
@@ -37,6 +37,7 @@ interface ProductVariant {
   sku_suffix: string | null;
   is_active: boolean;
   display_order: number;
+  images: string[] | null;
 }
 
 interface ProductVariantsManagerProps {
@@ -57,7 +58,10 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
     stock: "0",
     sku_suffix: "",
     is_active: true,
+    images: [] as string[],
   });
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -90,6 +94,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
         stock: parseInt(data.stock) || 0,
         sku_suffix: data.sku_suffix || null,
         is_active: data.is_active,
+        images: data.images.length > 0 ? data.images : null,
       };
 
       if (data.id) {
@@ -159,6 +164,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
       stock: "0",
       sku_suffix: "",
       is_active: true,
+      images: [],
     });
     setEditingVariant(null);
   };
@@ -175,6 +181,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
       stock: variant.stock.toString(),
       sku_suffix: variant.sku_suffix || "",
       is_active: variant.is_active,
+      images: variant.images || [],
     });
     setIsDialogOpen(true);
   };
@@ -191,6 +198,62 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
     if (confirm("Энэ variant-ыг устгахдаа итгэлтэй байна уу?")) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    const newImages: string[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${productId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("products")
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("products")
+          .getPublicUrl(fileName);
+
+        newImages.push(urlData.publicUrl);
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, ...newImages],
+      }));
+
+      toast({
+        title: "Зураг нэмэгдлээ",
+        description: `${newImages.length} зураг амжилттай upload хийгдлээ`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Алдаа гарлаа",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
   };
 
   return (
@@ -211,13 +274,58 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
               Хувилбар нэмэх
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingVariant ? "Хувилбар засах" : "Шинэ хувилбар нэмэх"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+              {/* Images Section */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <ImageIcon className="h-3 w-3" />
+                  Хувилбарын зургууд
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {formData.images.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={image}
+                        alt={`Variant image ${index + 1}`}
+                        className="w-16 h-16 object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="w-16 h-16 flex items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg cursor-pointer hover:border-primary transition-colors">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
+                    {isUploading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    ) : (
+                      <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Хувилбарт зориулсан зураг оруулна уу (олон зураг сонгож болно)
+                </p>
+              </div>
+
               <div className="grid gap-4 grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="size" className="flex items-center gap-1">
@@ -341,7 +449,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
                 </Button>
                 <Button
                   type="submit"
-                  disabled={saveMutation.isPending}
+                  disabled={saveMutation.isPending || isUploading}
                   className="bg-primary hover:bg-primary/90"
                 >
                   {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -360,6 +468,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-16">Зураг</TableHead>
                 <TableHead>Размер</TableHead>
                 <TableHead>Өнгө</TableHead>
                 <TableHead>Хэмжээ</TableHead>
@@ -373,6 +482,19 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
             <TableBody>
               {variants.map((variant) => (
                 <TableRow key={variant.id}>
+                  <TableCell>
+                    {variant.images && variant.images.length > 0 ? (
+                      <img
+                        src={variant.images[0]}
+                        alt="Variant"
+                        className="w-10 h-10 object-cover rounded"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 bg-muted rounded flex items-center justify-center">
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {variant.size ? (
                       <Badge variant="outline">{variant.size}</Badge>
