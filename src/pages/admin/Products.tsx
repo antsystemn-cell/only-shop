@@ -72,6 +72,11 @@ interface Category {
   name_mn: string;
 }
 
+interface Brand {
+  id: string;
+  name: string;
+}
+
 // Local variant type for creating new product with variants
 interface LocalVariant {
   id: string; // temporary local id
@@ -163,6 +168,20 @@ export default function Products() {
         .order("display_order");
       if (error) throw error;
       return data as Category[];
+    },
+  });
+
+  // Fetch brands for dropdown
+  const { data: brands } = useQuery({
+    queryKey: ["admin", "brands-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brands")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("display_order");
+      if (error) throw error;
+      return data as Brand[];
     },
   });
 
@@ -480,12 +499,22 @@ export default function Products() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="brand">Брэнд</Label>
-                  <Input
-                    id="brand"
+                  <Select
                     value={formData.brand}
-                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                    placeholder="Apple, Samsung..."
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, brand: value === "none" ? "" : value })}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Брэнд сонгох..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50">
+                      <SelectItem value="none">Брэндгүй</SelectItem>
+                      {brands?.map((brand) => (
+                        <SelectItem key={brand.id} value={brand.name}>
+                          {brand.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
