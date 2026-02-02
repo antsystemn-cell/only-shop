@@ -41,7 +41,7 @@ export function BrandCarousel({ brands }: BrandCarouselProps) {
           </Link>
         ))}
       </div>
-      <ScrollBar orientation="horizontal" />
+      <ScrollBar orientation="horizontal" className="hidden" />
     </ScrollArea>
   );
 }
