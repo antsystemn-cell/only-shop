@@ -43,6 +43,9 @@ import {
   Star,
   Loader2,
   Box,
+  ImagePlus,
+  X,
+  Image as ImageIcon,
 } from "lucide-react";
 
 interface Product {
@@ -89,6 +92,7 @@ interface LocalVariant {
   stock: string;
   sku_suffix: string;
   is_active: boolean;
+  images: string[];
 }
 
 function formatCurrency(amount: number): string {
@@ -127,7 +131,9 @@ export default function Products() {
     stock: "0",
     sku_suffix: "",
     is_active: true,
+    images: [],
   });
+  const [isVariantImageUploading, setIsVariantImageUploading] = useState(false);
   const [editingLocalVariant, setEditingLocalVariant] = useState<string | null>(null);
   
   const queryClient = useQueryClient();
@@ -234,6 +240,7 @@ export default function Products() {
           sku_suffix: v.sku_suffix || null,
           is_active: v.is_active,
           display_order: index,
+          images: v.images.length > 0 ? v.images : null,
         }));
 
         const { error: variantError } = await supabase
@@ -318,7 +325,61 @@ export default function Products() {
       stock: "0",
       sku_suffix: "",
       is_active: true,
+      images: [],
     });
+  };
+
+  const handleVariantImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsVariantImageUploading(true);
+    const newImages: string[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split(".").pop();
+        const fileName = `variants/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("products")
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("products")
+          .getPublicUrl(fileName);
+
+        newImages.push(urlData.publicUrl);
+      }
+
+      setVariantFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, ...newImages],
+      }));
+
+      toast({
+        title: "Зураг нэмэгдлээ",
+        description: `${newImages.length} зураг амжилттай upload хийгдлээ`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Алдаа гарлаа",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsVariantImageUploading(false);
+    }
+  };
+
+  const removeVariantImage = (index: number) => {
+    setVariantFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
   };
 
   const handleAddLocalVariant = () => {
@@ -582,6 +643,50 @@ export default function Products() {
                   {/* Variant Form */}
                   {showVariantForm && (
                     <div className="border rounded-lg p-4 bg-muted/30 mb-4 space-y-4">
+                      {/* Images Section */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1">
+                          <ImageIcon className="h-3 w-3" />
+                          Хувилбарын зургууд
+                        </Label>
+                        <div className="flex flex-wrap gap-2">
+                          {variantFormData.images.map((image, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={image}
+                                alt={`Variant image ${index + 1}`}
+                                className="w-16 h-16 object-cover rounded-lg border"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeVariantImage(index)}
+                                className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                          <label className="w-16 h-16 flex items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg cursor-pointer hover:border-primary transition-colors">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={handleVariantImageUpload}
+                              className="hidden"
+                              disabled={isVariantImageUploading}
+                            />
+                            {isVariantImageUploading ? (
+                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            ) : (
+                              <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                            )}
+                          </label>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Хувилбарт зориулсан зураг оруулна уу (олон зураг сонгож болно)
+                        </p>
+                      </div>
+
                       <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
                         <div className="space-y-2">
                           <Label htmlFor="var_style" className="flex items-center gap-1">
@@ -703,6 +808,7 @@ export default function Products() {
                           type="button" 
                           size="sm"
                           onClick={handleAddLocalVariant}
+                          disabled={isVariantImageUploading}
                         >
                           {editingLocalVariant ? "Хадгалах" : "Нэмэх"}
                         </Button>
@@ -716,17 +822,32 @@ export default function Products() {
                       <Table>
                         <TableHeader>
                           <TableRow>
+                            <TableHead className="w-16">Зураг</TableHead>
                             <TableHead>Загвар</TableHead>
                             <TableHead>Размер</TableHead>
                             <TableHead>Өнгө</TableHead>
                             <TableHead>Хэмжээ</TableHead>
                             <TableHead className="text-center">Нөөц</TableHead>
+                            <TableHead className="text-right">Үнийн өөрчлөлт</TableHead>
                             <TableHead className="text-right">Үйлдэл</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {localVariants.map((variant) => (
                             <TableRow key={variant.id}>
+                              <TableCell>
+                                {variant.images && variant.images.length > 0 ? (
+                                  <img
+                                    src={variant.images[0]}
+                                    alt="Variant"
+                                    className="w-10 h-10 object-cover rounded"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 bg-muted rounded flex items-center justify-center">
+                                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </TableCell>
                               <TableCell>
                                 {variant.style ? (
                                   <Badge variant="outline">{variant.style}</Badge>
@@ -763,6 +884,15 @@ export default function Products() {
                                 <Badge variant={parseInt(variant.stock) > 0 ? "secondary" : "destructive"}>
                                   {variant.stock}
                                 </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {parseFloat(variant.price_adjustment) !== 0 ? (
+                                  <span className={parseFloat(variant.price_adjustment) > 0 ? "text-green-600" : "text-red-600"}>
+                                    {parseFloat(variant.price_adjustment) > 0 ? "+" : ""}{formatCurrency(parseFloat(variant.price_adjustment))}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-1">
