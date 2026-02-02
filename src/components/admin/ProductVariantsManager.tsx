@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, Palette, Ruler, Box } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Palette, Ruler, Box, Scale } from "lucide-react";
 
 interface ProductVariant {
   id: string;
@@ -31,6 +31,7 @@ interface ProductVariant {
   color: string | null;
   color_hex: string | null;
   dimensions: string | null;
+  weight: string | null;
   price_adjustment: number;
   stock: number;
   sku_suffix: string | null;
@@ -51,6 +52,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
     color: "",
     color_hex: "#000000",
     dimensions: "",
+    weight: "",
     price_adjustment: "0",
     stock: "0",
     sku_suffix: "",
@@ -83,6 +85,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
         color: data.color || null,
         color_hex: data.color_hex || null,
         dimensions: data.dimensions || null,
+        weight: data.weight || null,
         price_adjustment: parseFloat(data.price_adjustment) || 0,
         stock: parseInt(data.stock) || 0,
         sku_suffix: data.sku_suffix || null,
@@ -151,6 +154,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
       color: "",
       color_hex: "#000000",
       dimensions: "",
+      weight: "",
       price_adjustment: "0",
       stock: "0",
       sku_suffix: "",
@@ -166,6 +170,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
       color: variant.color || "",
       color_hex: variant.color_hex || "#000000",
       dimensions: variant.dimensions || "",
+      weight: variant.weight || "",
       price_adjustment: variant.price_adjustment.toString(),
       stock: variant.stock.toString(),
       sku_suffix: variant.sku_suffix || "",
@@ -227,7 +232,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dimensions">Хэмжээ</Label>
+                  <Label htmlFor="dimensions">Хэмжээ (урт x өргөн)</Label>
                   <Input
                     id="dimensions"
                     value={formData.dimensions}
@@ -235,6 +240,19 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
                     placeholder="10x20x5 см"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="weight" className="flex items-center gap-1">
+                  <Scale className="h-3 w-3" />
+                  Жин
+                </Label>
+                <Input
+                  id="weight"
+                  value={formData.weight}
+                  onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                  placeholder="500г, 1кг..."
+                />
               </div>
 
               <div className="grid gap-4 grid-cols-2">
@@ -345,6 +363,7 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
                 <TableHead>Размер</TableHead>
                 <TableHead>Өнгө</TableHead>
                 <TableHead>Хэмжээ</TableHead>
+                <TableHead>Жин</TableHead>
                 <TableHead className="text-center">Нөөц</TableHead>
                 <TableHead className="text-right">Үнийн өөрчлөлт</TableHead>
                 <TableHead className="text-center">Төлөв</TableHead>
@@ -378,6 +397,9 @@ export function ProductVariantsManager({ productId, productName }: ProductVarian
                   </TableCell>
                   <TableCell>
                     {variant.dimensions || <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell>
+                    {variant.weight || <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge variant={variant.stock > 0 ? "secondary" : "destructive"}>

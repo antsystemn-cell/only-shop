@@ -309,6 +309,7 @@ export type Database = {
           sku_suffix: string | null
           stock: number
           updated_at: string
+          weight: string | null
         }
         Insert: {
           color?: string | null
@@ -324,6 +325,7 @@ export type Database = {
           sku_suffix?: string | null
           stock?: number
           updated_at?: string
+          weight?: string | null
         }
         Update: {
           color?: string | null
@@ -339,6 +341,7 @@ export type Database = {
           sku_suffix?: string | null
           stock?: number
           updated_at?: string
+          weight?: string | null
         }
         Relationships: [
           {
