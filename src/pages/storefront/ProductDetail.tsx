@@ -137,12 +137,16 @@ export default function ProductDetail() {
   const selectedVariant = useMemo(() => {
     if (!variants.length) return null;
     
+    // If both size and color exist in variants, find exact match
+    const hasSizes = variants.some(v => v.size);
+    const hasColors = variants.some(v => v.color);
+    
     return variants.find((v) => {
-      const sizeMatch = !availableSizes.length || !selectedSize || v.size === selectedSize;
-      const colorMatch = !availableColors.length || !selectedColor || v.color === selectedColor;
+      const sizeMatch = !hasSizes || !selectedSize || v.size === selectedSize;
+      const colorMatch = !hasColors || !selectedColor || v.color === selectedColor;
       return sizeMatch && colorMatch;
     }) || null;
-  }, [variants, selectedSize, selectedColor, availableSizes.length, availableColors.length]);
+  }, [variants, selectedSize, selectedColor]);
 
   // Calculate effective price and stock
   const effectivePrice = useMemo(() => {
@@ -151,10 +155,26 @@ export default function ProductDetail() {
     return product.price + adjustment;
   }, [product, selectedVariant]);
 
+  // Calculate effective stock - use variant stock if variants exist
   const effectiveStock = useMemo(() => {
+    if (!product) return 0;
+    
+    // If no variants, use product stock
+    if (!variants.length) return product.stock;
+    
+    // If a specific variant is selected, use that variant's stock
     if (selectedVariant) return selectedVariant.stock;
-    return product?.stock || 0;
-  }, [product, selectedVariant]);
+    
+    // If variants exist but no specific one selected, sum all variant stocks
+    const totalVariantStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+    return totalVariantStock;
+  }, [product, variants, selectedVariant]);
+
+  // Check if any variant has stock (for overall availability)
+  const hasAnyStock = useMemo(() => {
+    if (!variants.length) return (product?.stock || 0) > 0;
+    return variants.some(v => v.stock > 0);
+  }, [product, variants]);
 
   // Auto-select first variant options if available
   useEffect(() => {
@@ -542,13 +562,29 @@ export default function ProductDetail() {
 
           {/* Stock Status */}
           <div className="flex items-center gap-2">
-            {effectiveStock > 0 ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-primary" />
-                <span className="text-sm">
-                  Нөөцөнд {effectiveStock} ширхэг байна
-                </span>
-              </>
+            {hasAnyStock ? (
+              selectedVariant ? (
+                selectedVariant.stock > 0 ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="text-sm">
+                      Нөөцөнд {selectedVariant.stock} ширхэг байна
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-destructive" />
+                    <span className="text-sm text-destructive">Энэ хувилбар дууссан</span>
+                  </>
+                )
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="text-sm">
+                    Нөөцөнд {effectiveStock} ширхэг байна
+                  </span>
+                </>
+              )
             ) : (
               <>
                 <span className="w-2 h-2 rounded-full bg-destructive" />
@@ -572,8 +608,8 @@ export default function ProductDetail() {
               <Button
                 variant="ghost"
                 size="icon"
-              onClick={() => setQuantity((q) => Math.min(effectiveStock, q + 1))}
-              disabled={quantity >= effectiveStock}
+              onClick={() => setQuantity((q) => Math.min(selectedVariant?.stock || effectiveStock, q + 1))}
+              disabled={quantity >= (selectedVariant?.stock || effectiveStock) || !hasAnyStock}
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -583,7 +619,7 @@ export default function ProductDetail() {
               size="lg"
               className="flex-1 gap-2 glow-green"
               onClick={handleAddToCart}
-              disabled={effectiveStock === 0}
+              disabled={!hasAnyStock || (selectedVariant && selectedVariant.stock === 0)}
             >
               <ShoppingCart className="h-5 w-5" />
               Сагсанд нэмэх
