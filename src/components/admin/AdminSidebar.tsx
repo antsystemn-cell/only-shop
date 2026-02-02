@@ -8,6 +8,7 @@ import {
   Truck,
   Image,
   LogOut,
+  Tags,
 } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
@@ -43,6 +44,11 @@ const menuItems = [
     title: "Ангилал удирдах",
     url: "/admin/categories",
     icon: FolderTree,
+  },
+  {
+    title: "Брэнд удирдах",
+    url: "/admin/brands",
+    icon: Tags,
   },
   {
     title: "Захиалга харах",
