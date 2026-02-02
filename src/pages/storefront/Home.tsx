@@ -167,18 +167,23 @@ export default function Home() {
         
       </section>
 
+      {/* Featured Brands Section */}
+      {brands && brands.length > 0 && (
+        <section className="py-8">
+          <div className="px-2 md:container mb-6">
+            <h2 className="md:text-3xl font-bold text-base">Онцлох брэндүүд</h2>
+          </div>
+          <div className="px-2 md:container">
+            <BrandCarousel brands={brands} />
+          </div>
+        </section>
+      )}
+
       {/* All Random Products Section */}
       <section className="py-12">
         <div className="px-2 md:container mb-6">
           <h2 className="md:text-3xl font-bold text-base">Бүх төрлийн бараа</h2>
         </div>
-
-        {/* Brand Carousel */}
-        {brands && brands.length > 0 && (
-          <div className="px-2 md:container mb-8">
-            <BrandCarousel brands={brands} />
-          </div>
-        )}
 
         {loadingRandom ? <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
