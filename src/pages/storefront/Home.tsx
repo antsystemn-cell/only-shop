@@ -7,7 +7,9 @@ import { HeroCarousel } from "@/components/storefront/HeroCarousel";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { DiscountProductCard } from "@/components/storefront/DiscountProductCard";
 import { CategoryStrip } from "@/components/storefront/CategoryStrip";
+import { BrandCarousel } from "@/components/storefront/BrandCarousel";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+
 export default function Home() {
   // Fetch random products (100 items)
   const {
@@ -78,6 +80,23 @@ export default function Home() {
       if (error) throw error;
       return data;
     }
+  });
+
+  // Fetch unique brands for carousel
+  const { data: brands } = useQuery({
+    queryKey: ["all-brands-home"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("brand")
+        .eq("is_active", true)
+        .not("brand", "is", null);
+
+      if (error) throw error;
+      // Get unique brands and format them
+      const uniqueBrands = [...new Set(data.map(p => p.brand).filter(Boolean))];
+      return uniqueBrands.sort().map(name => ({ name: name as string, logo_url: null }));
+    },
   });
   return <div className="animate-fade-in">
       {/* Hero Carousel */}
@@ -152,12 +171,16 @@ export default function Home() {
 
       {/* All Random Products Section */}
       <section className="py-12">
-        <div className="px-2 md:container mb-8">
+        <div className="px-2 md:container mb-6">
           <h2 className="md:text-3xl font-bold text-base">Бүх төрлийн бараа</h2>
-          <p className="text-muted-foreground mt-1">
-            ​
-          </p>
         </div>
+
+        {/* Brand Carousel */}
+        {brands && brands.length > 0 && (
+          <div className="px-2 md:container mb-8">
+            <BrandCarousel brands={brands} />
+          </div>
+        )}
 
         {loadingRandom ? <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
