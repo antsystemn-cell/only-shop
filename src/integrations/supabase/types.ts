@@ -304,6 +304,8 @@ export type Database = {
           id: string
           images: string[] | null
           is_active: boolean | null
+          name: string | null
+          price: number | null
           price_adjustment: number | null
           product_id: string
           size: string | null
@@ -321,6 +323,8 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          name?: string | null
+          price?: number | null
           price_adjustment?: number | null
           product_id: string
           size?: string | null
@@ -338,6 +342,8 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          name?: string | null
+          price?: number | null
           price_adjustment?: number | null
           product_id?: string
           size?: string | null

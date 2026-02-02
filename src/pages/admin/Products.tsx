@@ -34,6 +34,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ProductImageUpload } from "@/components/admin/ProductImageUpload";
 import { ProductVariantsManager } from "@/components/admin/ProductVariantsManager";
+import { MultiVariantCreator } from "@/components/admin/MultiVariantCreator";
+import { VariantFormData } from "@/components/admin/VariantFormFields";
 import {
   Plus,
   Search,
@@ -42,10 +44,6 @@ import {
   Package,
   Star,
   Loader2,
-  Box,
-  ImagePlus,
-  X,
-  Image as ImageIcon,
 } from "lucide-react";
 
 interface Product {
@@ -80,21 +78,6 @@ interface Brand {
   name: string;
 }
 
-// Local variant type for creating new product with variants
-interface LocalVariant {
-  id: string; // temporary local id
-  size: string;
-  color: string;
-  color_hex: string;
-  dimensions: string;
-  weight: string;
-  price_adjustment: string;
-  stock: string;
-  sku_suffix: string;
-  is_active: boolean;
-  images: string[];
-}
-
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("mn-MN").format(amount) + "₮";
 }
@@ -118,24 +101,8 @@ export default function Products() {
   });
 
   // Local variants for new product creation
-  const [localVariants, setLocalVariants] = useState<LocalVariant[]>([]);
-  const [showVariantForm, setShowVariantForm] = useState(false);
-  const [variantFormData, setVariantFormData] = useState<LocalVariant>({
-    id: "",
-    size: "",
-    color: "",
-    color_hex: "#000000",
-    dimensions: "",
-    weight: "",
-    price_adjustment: "0",
-    stock: "0",
-    sku_suffix: "",
-    is_active: true,
-    images: [],
-  });
-  const [isVariantImageUploading, setIsVariantImageUploading] = useState(false);
-  const [editingLocalVariant, setEditingLocalVariant] = useState<string | null>(null);
-  
+  const [localVariants, setLocalVariants] = useState<VariantFormData[]>([]);
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -154,7 +121,9 @@ export default function Products() {
         .order("created_at", { ascending: false });
 
       if (searchQuery) {
-        query = query.or(`name_mn.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%`);
+        query = query.or(
+          `name_mn.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%`
+        );
       }
 
       const { data, error } = await query;
@@ -193,9 +162,11 @@ export default function Products() {
 
   // Create/Update mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: typeof formData & { id?: string; variants?: LocalVariant[] }) => {
+    mutationFn: async (
+      data: typeof formData & { id?: string; variants?: VariantFormData[] }
+    ) => {
       const productData = {
-        name: data.name_mn, // Use Mongolian name as primary
+        name: data.name_mn,
         name_mn: data.name_mn,
         description_mn: data.description_mn || null,
         price: parseFloat(data.price) || 0,
@@ -229,14 +200,17 @@ export default function Products() {
 
       // Save variants for new product
       if (!data.id && data.variants && data.variants.length > 0 && productId) {
+        const basePrice = parseFloat(data.price) || 0;
         const variantsToInsert = data.variants.map((v, index) => ({
           product_id: productId,
+          name: v.name || null,
           size: v.size || null,
           color: v.color || null,
           color_hex: v.color_hex || null,
           dimensions: v.dimensions || null,
           weight: v.weight || null,
-          price_adjustment: parseFloat(v.price_adjustment) || 0,
+          price: parseFloat(v.price) || basePrice,
+          price_adjustment: 0, // Deprecated
           stock: parseInt(v.stock) || 0,
           sku_suffix: v.sku_suffix || null,
           is_active: v.is_active,
@@ -271,10 +245,7 @@ export default function Products() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("products")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.from("products").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -309,105 +280,6 @@ export default function Products() {
     });
     setEditingProduct(null);
     setLocalVariants([]);
-    setShowVariantForm(false);
-    setEditingLocalVariant(null);
-    resetVariantForm();
-  };
-
-  const resetVariantForm = () => {
-    setVariantFormData({
-      id: "",
-      size: "",
-      color: "",
-      color_hex: "#000000",
-      dimensions: "",
-      weight: "",
-      price_adjustment: "0",
-      stock: "0",
-      sku_suffix: "",
-      is_active: true,
-      images: [],
-    });
-  };
-
-  const handleVariantImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setIsVariantImageUploading(true);
-    const newImages: string[] = [];
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileExt = file.name.split(".").pop();
-        const fileName = `variants/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("products")
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from("products")
-          .getPublicUrl(fileName);
-
-        newImages.push(urlData.publicUrl);
-      }
-
-      setVariantFormData((prev) => ({
-        ...prev,
-        images: [...prev.images, ...newImages],
-      }));
-
-      toast({
-        title: "Зураг нэмэгдлээ",
-        description: `${newImages.length} зураг амжилттай upload хийгдлээ`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Алдаа гарлаа",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsVariantImageUploading(false);
-    }
-  };
-
-  const removeVariantImage = (index: number) => {
-    setVariantFormData((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleAddLocalVariant = () => {
-    if (editingLocalVariant) {
-      setLocalVariants(prev => 
-        prev.map(v => v.id === editingLocalVariant ? { ...variantFormData, id: editingLocalVariant } : v)
-      );
-      setEditingLocalVariant(null);
-    } else {
-      const newVariant: LocalVariant = {
-        ...variantFormData,
-        id: `local-${Date.now()}`,
-      };
-      setLocalVariants(prev => [...prev, newVariant]);
-    }
-    resetVariantForm();
-    setShowVariantForm(false);
-  };
-
-  const handleEditLocalVariant = (variant: LocalVariant) => {
-    setVariantFormData(variant);
-    setEditingLocalVariant(variant.id);
-    setShowVariantForm(true);
-  };
-
-  const handleDeleteLocalVariant = (id: string) => {
-    setLocalVariants(prev => prev.filter(v => v.id !== id));
   };
 
   const handleEdit = (product: Product) => {
@@ -425,6 +297,7 @@ export default function Products() {
       is_active: product.is_active,
       images: product.images || [],
     });
+    setLocalVariants([]);
     setIsDialogOpen(true);
   };
 
@@ -453,30 +326,39 @@ export default function Products() {
             Бүтээгдэхүүнүүдийг удирдах
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
-        }}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               Бараа нэмэх
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
               <DialogTitle>
                 {editingProduct ? "Бараа засах" : "Шинэ бараа нэмэх"}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <form
+              onSubmit={handleSubmit}
+              className="flex-1 overflow-y-auto px-6 py-4 space-y-6"
+            >
+              {/* Basic Info */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name_mn">Барааны нэр *</Label>
                   <Input
                     id="name_mn"
                     value={formData.name_mn}
-                    onChange={(e) => setFormData({ ...formData, name_mn: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name_mn: e.target.value })
+                    }
                     placeholder="iPhone 15 Pro Max"
                     required
                   />
@@ -485,7 +367,9 @@ export default function Products() {
                   <Label htmlFor="category">Ангилал</Label>
                   <Select
                     value={formData.category_id}
-                    onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, category_id: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Ангилал сонгох" />
@@ -506,46 +390,68 @@ export default function Products() {
                 <Textarea
                   id="description_mn"
                   value={formData.description_mn}
-                  onChange={(e) => setFormData({ ...formData, description_mn: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description_mn: e.target.value })
+                  }
                   placeholder="Барааны тайлбар..."
                   rows={3}
                 />
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="price">Үнэ (₮) *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    placeholder="0"
-                    min="0"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="compare_price">Хуучин үнэ (₮)</Label>
-                  <Input
-                    id="compare_price"
-                    type="number"
-                    value={formData.compare_price}
-                    onChange={(e) => setFormData({ ...formData, compare_price: e.target.value })}
-                    placeholder="0"
-                    min="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="stock">Нөөц</Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    placeholder="0"
-                    min="0"
-                  />
+              {/* Pricing Section */}
+              <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+                <h4 className="font-semibold text-sm">Үнэ & Нөөц</h4>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  {localVariants.length > 0
+                    ? "⚠️ Хувилбар нэмсэн тул суурь үнэ, нөөц ашиглагдахгүй. Хувилбар бүрийн үнэ, нөөцийг тохируулна уу."
+                    : "Хувилбаргүй үед энэ үнэ, нөөц ашиглагдана."}
+                </p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Суурь үнэ (₮) *</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) =>
+                        setFormData({ ...formData, price: e.target.value })
+                      }
+                      placeholder="0"
+                      min="0"
+                      required
+                      className={localVariants.length > 0 ? "opacity-60" : ""}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="compare_price">Хуучин үнэ (₮)</Label>
+                    <Input
+                      id="compare_price"
+                      type="number"
+                      value={formData.compare_price}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          compare_price: e.target.value,
+                        })
+                      }
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="stock">Суурь нөөц</Label>
+                    <Input
+                      id="stock"
+                      type="number"
+                      value={formData.stock}
+                      onChange={(e) =>
+                        setFormData({ ...formData, stock: e.target.value })
+                      }
+                      placeholder="0"
+                      min="0"
+                      className={localVariants.length > 0 ? "opacity-60" : ""}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -555,7 +461,9 @@ export default function Products() {
                   <Input
                     id="sku"
                     value={formData.sku}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, sku: e.target.value })
+                    }
                     placeholder="ELEC-001"
                   />
                 </div>
@@ -563,7 +471,12 @@ export default function Products() {
                   <Label htmlFor="brand">Брэнд</Label>
                   <Select
                     value={formData.brand}
-                    onValueChange={(value) => setFormData({ ...formData, brand: value === "none" ? "" : value })}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        brand: value === "none" ? "" : value,
+                      })
+                    }
                   >
                     <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Брэнд сонгох..." />
@@ -584,7 +497,9 @@ export default function Products() {
               <div className="border rounded-lg p-4 bg-muted/30">
                 <ProductImageUpload
                   images={formData.images}
-                  onImagesChange={(images) => setFormData({ ...formData, images })}
+                  onImagesChange={(images) =>
+                    setFormData({ ...formData, images })
+                  }
                   maxImages={5}
                 />
               </div>
@@ -594,7 +509,9 @@ export default function Products() {
                   <Switch
                     id="is_featured"
                     checked={formData.is_featured}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_featured: checked })}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, is_featured: checked })
+                    }
                   />
                   <Label htmlFor="is_featured">Онцлох бараа</Label>
                 </div>
@@ -602,330 +519,33 @@ export default function Products() {
                   <Switch
                     id="is_active"
                     checked={formData.is_active}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, is_active: checked })
+                    }
                   />
                   <Label htmlFor="is_active">Идэвхтэй</Label>
                 </div>
               </div>
 
-              {/* Product Variants - Show different UI for new vs existing product */}
-              {editingProduct ? (
-                <div className="border-t pt-4 mt-4">
-                  <ProductVariantsManager 
-                    productId={editingProduct.id} 
-                    productName={editingProduct.name_mn} 
+              {/* Variants Section */}
+              <div className="border-t pt-6">
+                {editingProduct ? (
+                  <ProductVariantsManager
+                    productId={editingProduct.id}
+                    productName={editingProduct.name_mn}
+                    basePrice={parseFloat(formData.price) || 0}
                   />
-                </div>
-              ) : (
-                <div className="border-t pt-4 mt-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Box className="h-5 w-5 text-primary" />
-                      <h3 className="font-semibold">Хувилбарууд (Загвар, Өнгө, Хэмжээ)</h3>
-                      {localVariants.length > 0 && (
-                        <Badge variant="secondary">{localVariants.length}</Badge>
-                      )}
-                    </div>
-                    <Button 
-                      type="button" 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => {
-                        setShowVariantForm(true);
-                        setEditingLocalVariant(null);
-                        resetVariantForm();
-                      }}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Хувилбар нэмэх
-                    </Button>
-                  </div>
+                ) : (
+                  <MultiVariantCreator
+                    variants={localVariants}
+                    onChange={setLocalVariants}
+                    basePrice={parseFloat(formData.price) || 0}
+                  />
+                )}
+              </div>
 
-                  {/* Variant Form */}
-                  {showVariantForm && (
-                    <div className="border rounded-lg p-4 bg-muted/30 mb-4 space-y-4">
-                      {/* Images Section */}
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1">
-                          <ImageIcon className="h-3 w-3" />
-                          Хувилбарын зургууд
-                        </Label>
-                        <div className="flex flex-wrap gap-2">
-                          {variantFormData.images.map((image, index) => (
-                            <div key={index} className="relative group">
-                              <img
-                                src={image}
-                                alt={`Variant image ${index + 1}`}
-                                className="w-16 h-16 object-cover rounded-lg border"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => removeVariantImage(index)}
-                                className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
-                          <label className="w-16 h-16 flex items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg cursor-pointer hover:border-primary transition-colors">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              onChange={handleVariantImageUpload}
-                              className="hidden"
-                              disabled={isVariantImageUploading}
-                            />
-                            {isVariantImageUploading ? (
-                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                            ) : (
-                              <ImagePlus className="h-5 w-5 text-muted-foreground" />
-                            )}
-                          </label>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Хувилбарт зориулсан зураг оруулна уу (олон зураг сонгож болно)
-                        </p>
-                      </div>
-
-                      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="var_size">Размер</Label>
-                          <Input
-                            id="var_size"
-                            value={variantFormData.size}
-                            onChange={(e) => setVariantFormData({ ...variantFormData, size: e.target.value })}
-                            placeholder="S, M, L, XL..."
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="var_dimensions">Хэмжээ</Label>
-                          <Input
-                            id="var_dimensions"
-                            value={variantFormData.dimensions}
-                            onChange={(e) => setVariantFormData({ ...variantFormData, dimensions: e.target.value })}
-                            placeholder="128GB, 256GB..."
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="var_weight">Жин</Label>
-                          <Input
-                            id="var_weight"
-                            value={variantFormData.weight}
-                            onChange={(e) => setVariantFormData({ ...variantFormData, weight: e.target.value })}
-                            placeholder="500г, 1кг..."
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="var_color">Өнгө</Label>
-                          <Input
-                            id="var_color"
-                            value={variantFormData.color}
-                            onChange={(e) => setVariantFormData({ ...variantFormData, color: e.target.value })}
-                            placeholder="Улаан, Хар..."
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="var_color_hex">Өнгөний код</Label>
-                          <div className="flex gap-2">
-                            <Input
-                              id="var_color_hex"
-                              type="color"
-                              value={variantFormData.color_hex}
-                              onChange={(e) => setVariantFormData({ ...variantFormData, color_hex: e.target.value })}
-                              className="w-12 h-10 p-1 cursor-pointer"
-                            />
-                            <Input
-                              value={variantFormData.color_hex}
-                              onChange={(e) => setVariantFormData({ ...variantFormData, color_hex: e.target.value })}
-                              placeholder="#000000"
-                              className="flex-1"
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="var_sku_suffix">SKU дагавар</Label>
-                          <Input
-                            id="var_sku_suffix"
-                            value={variantFormData.sku_suffix}
-                            onChange={(e) => setVariantFormData({ ...variantFormData, sku_suffix: e.target.value })}
-                            placeholder="-PRO-RED"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="var_stock">Нөөц</Label>
-                          <Input
-                            id="var_stock"
-                            type="number"
-                            value={variantFormData.stock}
-                            onChange={(e) => setVariantFormData({ ...variantFormData, stock: e.target.value })}
-                            placeholder="0"
-                            min="0"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="var_price_adjustment">Үнийн өөрчлөлт (₮)</Label>
-                          <Input
-                            id="var_price_adjustment"
-                            type="number"
-                            value={variantFormData.price_adjustment}
-                            onChange={(e) => setVariantFormData({ ...variantFormData, price_adjustment: e.target.value })}
-                            placeholder="0"
-                          />
-                        </div>
-                        <div className="flex items-end gap-2 pb-2">
-                          <Switch
-                            id="var_is_active"
-                            checked={variantFormData.is_active}
-                            onCheckedChange={(checked) => setVariantFormData({ ...variantFormData, is_active: checked })}
-                          />
-                          <Label htmlFor="var_is_active">Идэвхтэй</Label>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            setShowVariantForm(false);
-                            resetVariantForm();
-                            setEditingLocalVariant(null);
-                          }}
-                        >
-                          Болих
-                        </Button>
-                        <Button 
-                          type="button" 
-                          size="sm"
-                          onClick={handleAddLocalVariant}
-                          disabled={isVariantImageUploading}
-                        >
-                          {editingLocalVariant ? "Хадгалах" : "Нэмэх"}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Local Variants List */}
-                  {localVariants.length > 0 ? (
-                    <div className="border rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-16">Зураг</TableHead>
-                            <TableHead>Размер</TableHead>
-                            <TableHead>Өнгө</TableHead>
-                            <TableHead>Хэмжээ</TableHead>
-                            <TableHead>Жин</TableHead>
-                            <TableHead className="text-center">Нөөц</TableHead>
-                            <TableHead className="text-right">Үнийн өөрчлөлт</TableHead>
-                            <TableHead className="text-right">Үйлдэл</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {localVariants.map((variant) => (
-                            <TableRow key={variant.id}>
-                              <TableCell>
-                                {variant.images && variant.images.length > 0 ? (
-                                  <img
-                                    src={variant.images[0]}
-                                    alt="Variant"
-                                    className="w-10 h-10 object-cover rounded"
-                                  />
-                                ) : (
-                                  <div className="w-10 h-10 bg-muted rounded flex items-center justify-center">
-                                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {variant.size ? (
-                                  <Badge variant="outline">{variant.size}</Badge>
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {variant.color ? (
-                                  <div className="flex items-center gap-2">
-                                    {variant.color_hex && (
-                                      <div
-                                        className="w-4 h-4 rounded-full border border-border"
-                                        style={{ backgroundColor: variant.color_hex }}
-                                      />
-                                    )}
-                                    <span className="text-sm">{variant.color}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {variant.dimensions || <span className="text-muted-foreground">—</span>}
-                              </TableCell>
-                              <TableCell>
-                                {variant.weight || <span className="text-muted-foreground">—</span>}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant={parseInt(variant.stock) > 0 ? "secondary" : "destructive"}>
-                                  {variant.stock}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {parseFloat(variant.price_adjustment) !== 0 ? (
-                                  <span className={parseFloat(variant.price_adjustment) > 0 ? "text-green-600" : "text-red-600"}>
-                                    {parseFloat(variant.price_adjustment) > 0 ? "+" : ""}{formatCurrency(parseFloat(variant.price_adjustment))}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-1">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    onClick={() => handleEditLocalVariant(variant)}
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-destructive hover:text-destructive"
-                                    onClick={() => handleDeleteLocalVariant(variant.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-6 text-muted-foreground border rounded-lg bg-muted/30">
-                      <Box className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Хувилбар байхгүй байна</p>
-                      <p className="text-xs mt-1">Загвар, өнгө, хэмжээ нэмэхийн тулд дээрх товчийг дарна уу</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-4">
+              {/* Submit Button */}
+              <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-background pb-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -938,7 +558,9 @@ export default function Products() {
                   disabled={saveMutation.isPending}
                   className="bg-primary hover:bg-primary/90"
                 >
-                  {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {saveMutation.isPending && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   {editingProduct ? "Хадгалах" : "Нэмэх"}
                 </Button>
               </div>
@@ -1010,7 +632,9 @@ export default function Products() {
                           </div>
                           <div>
                             <div className="font-medium">{product.name_mn}</div>
-                            <div className="text-xs text-muted-foreground">{product.sku}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {product.sku}
+                            </div>
                           </div>
                         </div>
                       </TableCell>
@@ -1020,7 +644,9 @@ export default function Products() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="font-medium">{formatCurrency(product.price)}</div>
+                        <div className="font-medium">
+                          {formatCurrency(product.price)}
+                        </div>
                         {product.compare_price && (
                           <div className="text-xs text-muted-foreground line-through">
                             {formatCurrency(product.compare_price)}
@@ -1028,7 +654,11 @@ export default function Products() {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant={product.stock > 0 ? "secondary" : "destructive"}>
+                        <Badge
+                          variant={
+                            product.stock > 0 ? "secondary" : "destructive"
+                          }
+                        >
                           {product.stock}
                         </Badge>
                       </TableCell>
@@ -1040,7 +670,9 @@ export default function Products() {
                       </TableCell>
                       <TableCell className="text-center">
                         {product.is_active ? (
-                          <Badge className="bg-green-100 text-green-800">Идэвхтэй</Badge>
+                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                            Идэвхтэй
+                          </Badge>
                         ) : (
                           <Badge variant="secondary">Идэвхгүй</Badge>
                         )}

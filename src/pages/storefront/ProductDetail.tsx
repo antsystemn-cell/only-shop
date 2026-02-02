@@ -23,9 +23,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { ProductCard } from "@/components/storefront/ProductCard";
-import type { Tables } from "@/integrations/supabase/types";
 
-type ProductVariant = Tables<"product_variants">;
+interface ProductVariant {
+  id: string;
+  product_id: string;
+  name: string | null;
+  size: string | null;
+  color: string | null;
+  color_hex: string | null;
+  dimensions: string | null;
+  weight: string | null;
+  price: number | null;
+  price_adjustment: number | null;
+  stock: number;
+  sku_suffix: string | null;
+  is_active: boolean | null;
+  display_order: number | null;
+  images: string[] | null;
+}
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("mn-MN").format(price) + "₮";
@@ -37,15 +52,17 @@ export default function ProductDetail() {
   const { toast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+
   // Embla carousel for swipe support
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
-  
-  const scrollTo = useCallback((index: number) => {
-    if (emblaApi) emblaApi.scrollTo(index);
-  }, [emblaApi]);
+
+  const scrollTo = useCallback(
+    (index: number) => {
+      if (emblaApi) emblaApi.scrollTo(index);
+    },
+    [emblaApi]
+  );
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -58,9 +75,8 @@ export default function ProductDetail() {
       emblaApi.scrollTo(0);
       setSelectedIndex(0);
     }
-    // Reset variant selections when product changes
-    setSelectedSize(null);
-    setSelectedColor(null);
+    setSelectedVariantId(null);
+    setQuantity(1);
   }, [id, emblaApi]);
 
   useEffect(() => {
@@ -113,78 +129,80 @@ export default function ProductDetail() {
     enabled: !!id,
   });
 
-  // Extract unique sizes and colors from variants
-  const { availableSizes, availableColors } = useMemo(() => {
-    const sizes = new Set<string>();
-    const colors: { name: string; hex: string | null }[] = [];
-    const colorSet = new Set<string>();
-
-    variants.forEach((variant) => {
-      if (variant.size) sizes.add(variant.size);
-      if (variant.color && !colorSet.has(variant.color)) {
-        colorSet.add(variant.color);
-        colors.push({ name: variant.color, hex: variant.color_hex });
-      }
-    });
-
-    return {
-      availableSizes: Array.from(sizes),
-      availableColors: colors,
-    };
-  }, [variants]);
-
-  // Find selected variant based on size and color
+  // Selected variant object
   const selectedVariant = useMemo(() => {
-    if (!variants.length) return null;
-    
-    // If both size and color exist in variants, find exact match
-    const hasSizes = variants.some(v => v.size);
-    const hasColors = variants.some(v => v.color);
-    
-    return variants.find((v) => {
-      const sizeMatch = !hasSizes || !selectedSize || v.size === selectedSize;
-      const colorMatch = !hasColors || !selectedColor || v.color === selectedColor;
-      return sizeMatch && colorMatch;
-    }) || null;
-  }, [variants, selectedSize, selectedColor]);
+    if (!selectedVariantId) return null;
+    return variants.find((v) => v.id === selectedVariantId) || null;
+  }, [variants, selectedVariantId]);
 
-  // Calculate effective price and stock
+  // Auto-select first variant when variants load
+  useEffect(() => {
+    if (variants.length > 0 && !selectedVariantId) {
+      // Select first variant with stock, or just first one
+      const firstWithStock = variants.find((v) => v.stock > 0);
+      setSelectedVariantId(firstWithStock?.id || variants[0].id);
+    }
+  }, [variants, selectedVariantId]);
+
+  // Calculate effective price - NEW LOGIC: Use variant's absolute price
   const effectivePrice = useMemo(() => {
     if (!product) return 0;
-    const adjustment = selectedVariant?.price_adjustment || 0;
-    return product.price + adjustment;
-  }, [product, selectedVariant]);
 
-  // Calculate effective stock - use variant stock if variants exist
-  const effectiveStock = useMemo(() => {
-    if (!product) return 0;
-    
-    // If no variants, use product stock
-    if (!variants.length) return product.stock;
-    
-    // If a specific variant is selected, use that variant's stock
-    if (selectedVariant) return selectedVariant.stock;
-    
-    // If variants exist but no specific one selected, sum all variant stocks
-    const totalVariantStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
-    return totalVariantStock;
+    // If no variants, use base product price
+    if (!variants.length) return product.price;
+
+    // If variant selected, use variant's own price (absolute, not additive)
+    if (selectedVariant) {
+      // Use variant.price if set, otherwise fall back to base price + adjustment (legacy)
+      if (
+        selectedVariant.price !== null &&
+        selectedVariant.price !== undefined
+      ) {
+        return selectedVariant.price;
+      }
+      // Legacy fallback
+      return product.price + (selectedVariant.price_adjustment || 0);
+    }
+
+    // No variant selected yet, show minimum price
+    const minPrice = Math.min(
+      ...variants.map((v) =>
+        v.price !== null ? v.price : product.price + (v.price_adjustment || 0)
+      )
+    );
+    return minPrice;
   }, [product, variants, selectedVariant]);
 
-  // Check if any variant has stock (for overall availability)
+  // Calculate effective stock
+  const effectiveStock = useMemo(() => {
+    if (!product) return 0;
+
+    // If no variants, use product stock
+    if (!variants.length) return product.stock;
+
+    // If variant selected, use that variant's stock
+    if (selectedVariant) return selectedVariant.stock;
+
+    // Total of all variants
+    return variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+  }, [product, variants, selectedVariant]);
+
+  // Check if any variant has stock
   const hasAnyStock = useMemo(() => {
     if (!variants.length) return (product?.stock || 0) > 0;
-    return variants.some(v => v.stock > 0);
+    return variants.some((v) => v.stock > 0);
   }, [product, variants]);
 
-  // Auto-select first variant options if available
-  useEffect(() => {
-    if (availableSizes.length > 0 && !selectedSize) {
-      setSelectedSize(availableSizes[0]);
+  // Get images - use variant images if selected, otherwise product images
+  const displayImages = useMemo(() => {
+    if (
+      selectedVariant?.images &&
+      selectedVariant.images.length > 0
+    ) {
+      return selectedVariant.images;
     }
-    if (availableColors.length > 0 && !selectedColor) {
-      setSelectedColor(availableColors[0].name);
-    }
-  }, [availableSizes, availableColors, selectedSize, selectedColor]);
+    return product?.images || [];
+  }, [product, selectedVariant]);
 
   // Fetch related products
   const { data: relatedProducts } = useQuery({
@@ -223,18 +241,35 @@ export default function ProductDetail() {
     );
   }
 
-  const images = product.images || [];
   const discount = product.compare_price
-    ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100)
+    ? Math.round(
+        ((product.compare_price - effectivePrice) / product.compare_price) * 100
+      )
     : 0;
 
   const handleAddToCart = () => {
     addToCart(product, quantity);
-    const variantInfo = [selectedSize, selectedColor].filter(Boolean).join(", ");
+    const variantName = selectedVariant?.name || 
+      [selectedVariant?.size, selectedVariant?.color, selectedVariant?.dimensions]
+        .filter(Boolean)
+        .join(", ");
     toast({
       title: "Сагсанд нэмэгдлээ",
-      description: `${product.name_mn}${variantInfo ? ` (${variantInfo})` : ""} - ${quantity} ширхэг`,
+      description: `${product.name_mn}${variantName ? ` (${variantName})` : ""} - ${quantity} ширхэг`,
     });
+  };
+
+  const getVariantDisplayName = (v: ProductVariant) => {
+    if (v.name) return v.name;
+    const parts = [v.size, v.color, v.dimensions].filter(Boolean);
+    return parts.length > 0 ? parts.join(" / ") : "Хувилбар";
+  };
+
+  const getVariantPrice = (v: ProductVariant) => {
+    if (v.price !== null && v.price !== undefined) {
+      return v.price;
+    }
+    return product.price + (v.price_adjustment || 0);
   };
 
   // Helper to determine if a color is light
@@ -246,7 +281,6 @@ export default function ProductDetail() {
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
     return brightness > 155;
   }
-
 
   return (
     <div className="container py-8 animate-fade-in">
@@ -278,13 +312,13 @@ export default function ProductDetail() {
         {/* Image Gallery with Swipe */}
         <div className="space-y-4">
           {/* Main Image Carousel */}
-          <div className="relative">
-            {images.length > 0 ? (
+          <div className="relative group">
+            {displayImages.length > 0 ? (
               <div className="overflow-hidden rounded-2xl" ref={emblaRef}>
                 <div className="flex">
-                  {images.map((image, index) => (
-                    <div 
-                      key={index} 
+                  {displayImages.map((image, index) => (
+                    <div
+                      key={index}
                       className="flex-[0_0_100%] min-w-0 aspect-[4/5] md:aspect-square bg-muted"
                     >
                       <img
@@ -302,13 +336,13 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Navigation Arrows - Hidden on mobile, visible on hover for desktop */}
-            {images.length > 1 && (
+            {/* Navigation Arrows */}
+            {displayImages.length > 1 && (
               <>
                 <Button
                   variant="secondary"
                   size="icon"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 hidden md:flex opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm shadow-lg"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 hidden md:flex opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm shadow-lg"
                   onClick={scrollPrev}
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -316,7 +350,7 @@ export default function ProductDetail() {
                 <Button
                   variant="secondary"
                   size="icon"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm shadow-lg"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm shadow-lg"
                   onClick={scrollNext}
                 >
                   <ChevronRight className="h-5 w-5" />
@@ -338,10 +372,10 @@ export default function ProductDetail() {
               )}
             </div>
 
-            {/* Dot Indicators for Mobile */}
-            {images.length > 1 && (
+            {/* Dot Indicators */}
+            {displayImages.length > 1 && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                {images.map((_, index) => (
+                {displayImages.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => scrollTo(index)}
@@ -357,9 +391,9 @@ export default function ProductDetail() {
           </div>
 
           {/* Thumbnails - Desktop only */}
-          {images.length > 1 && (
+          {displayImages.length > 1 && (
             <div className="hidden md:flex gap-2 overflow-x-auto pb-2">
-              {images.map((image, index) => (
+              {displayImages.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => scrollTo(index)}
@@ -414,60 +448,89 @@ export default function ProductDetail() {
           {/* Price */}
           <div className="flex items-baseline gap-3">
             <span className="text-3xl font-bold text-primary">
+              {variants.length > 0 && !selectedVariant && "₮"}
               {formatPrice(effectivePrice)}
             </span>
-            {product.compare_price && (
+            {product.compare_price && product.compare_price > effectivePrice && (
               <span className="text-xl text-muted-foreground line-through">
                 {formatPrice(product.compare_price)}
-              </span>
-            )}
-            {selectedVariant?.price_adjustment && selectedVariant.price_adjustment !== 0 && (
-              <span className="text-sm text-muted-foreground">
-                ({selectedVariant.price_adjustment > 0 ? "+" : ""}{formatPrice(selectedVariant.price_adjustment)})
               </span>
             )}
           </div>
 
           <Separator />
 
-          {/* Size Selection - Card Style */}
-          {availableSizes.length > 0 && (
+          {/* Variant Selection - New Card Style */}
+          {variants.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Хэмжээ</span>
-                {selectedSize && (
-                  <span className="text-sm text-muted-foreground">Сонгосон: {selectedSize}</span>
+                <span className="text-sm font-medium">Хувилбар сонгох</span>
+                {selectedVariant && (
+                  <span className="text-sm text-muted-foreground">
+                    Сонгосон: {getVariantDisplayName(selectedVariant)}
+                  </span>
                 )}
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {availableSizes.map((size) => {
-                  const isSelected = selectedSize === size;
-                  const variant = variants.find(v => v.size === size && (!selectedColor || v.color === selectedColor));
-                  const isAvailable = variant ? variant.stock > 0 : true;
-                  const priceAdjustment = variant?.price_adjustment || 0;
-                  
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {variants.map((variant) => {
+                  const isSelected = selectedVariantId === variant.id;
+                  const isAvailable = variant.stock > 0;
+                  const variantPrice = getVariantPrice(variant);
+
                   return (
                     <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
+                      key={variant.id}
+                      onClick={() => {
+                        setSelectedVariantId(variant.id);
+                        setQuantity(1);
+                        setSelectedIndex(0);
+                      }}
                       disabled={!isAvailable}
                       className={`
-                        relative p-3 rounded-xl border-2 text-center transition-all
-                        ${isSelected 
-                          ? "border-primary bg-primary/5 shadow-md" 
-                          : "border-input bg-background hover:border-primary/50 hover:bg-muted/50"
+                        relative p-3 rounded-xl border-2 text-left transition-all
+                        ${
+                          isSelected
+                            ? "border-primary bg-primary/5 shadow-md"
+                            : "border-input bg-background hover:border-primary/50 hover:bg-muted/50"
                         }
                         ${!isAvailable && "opacity-40 cursor-not-allowed"}
                       `}
                     >
-                      <span className={`block font-semibold ${isSelected ? "text-primary" : ""}`}>
-                        {size}
-                      </span>
-                      {priceAdjustment !== 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          {priceAdjustment > 0 ? "+" : ""}{formatPrice(priceAdjustment)}
-                        </span>
-                      )}
+                      <div className="flex items-start gap-2">
+                        {/* Color swatch if exists */}
+                        {variant.color_hex && (
+                          <div
+                            className={`w-6 h-6 rounded-full border shrink-0 ${
+                              isLightColor(variant.color_hex)
+                                ? "border-border"
+                                : "border-transparent"
+                            }`}
+                            style={{ backgroundColor: variant.color_hex }}
+                          />
+                        )}
+                        {/* Variant image thumbnail */}
+                        {!variant.color_hex &&
+                          variant.images &&
+                          variant.images[0] && (
+                            <img
+                              src={variant.images[0]}
+                              alt=""
+                              className="w-6 h-6 rounded object-cover shrink-0"
+                            />
+                          )}
+                        <div className="flex-1 min-w-0">
+                          <span
+                            className={`block font-medium text-sm truncate ${
+                              isSelected ? "text-primary" : ""
+                            }`}
+                          >
+                            {getVariantDisplayName(variant)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatPrice(variantPrice)}
+                          </span>
+                        </div>
+                      </div>
                       {!isAvailable && (
                         <span className="absolute inset-0 flex items-center justify-center">
                           <span className="w-full h-0.5 bg-destructive/50 rotate-45 absolute" />
@@ -485,73 +548,25 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Color Selection - Card Style with Labels */}
-          {availableColors.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Өнгө</span>
-                {selectedColor && (
-                  <span className="text-sm text-muted-foreground">Сонгосон: {selectedColor}</span>
-                )}
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {availableColors.map((color) => {
-                  const isSelected = selectedColor === color.name;
-                  const variant = variants.find(v => v.color === color.name && (!selectedSize || v.size === selectedSize));
-                  const isAvailable = variant ? variant.stock > 0 : true;
-                  const priceAdjustment = variant?.price_adjustment || 0;
-                  
-                  return (
-                    <button
-                      key={color.name}
-                      onClick={() => setSelectedColor(color.name)}
-                      disabled={!isAvailable}
-                      className={`
-                        relative p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2
-                        ${isSelected 
-                          ? "border-primary bg-primary/5 shadow-md" 
-                          : "border-input bg-background hover:border-primary/50 hover:bg-muted/50"
-                        }
-                        ${!isAvailable && "opacity-40 cursor-not-allowed"}
-                      `}
-                    >
-                      {/* Color swatch */}
-                      <div 
-                        className={`w-8 h-8 rounded-full border shadow-sm ${
-                          color.hex && isLightColor(color.hex) ? "border-border" : "border-transparent"
-                        }`}
-                        style={{ backgroundColor: color.hex || "#888888" }}
-                      />
-                      <span className={`text-xs font-medium truncate w-full text-center ${isSelected ? "text-primary" : ""}`}>
-                        {color.name}
-                      </span>
-                      {priceAdjustment !== 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          {priceAdjustment > 0 ? "+" : ""}{formatPrice(priceAdjustment)}
-                        </span>
-                      )}
-                      {!isAvailable && (
-                        <span className="absolute inset-0 flex items-center justify-center">
-                          <span className="w-full h-0.5 bg-destructive/50 rotate-45 absolute" />
-                        </span>
-                      )}
-                      {isSelected && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                          <Check className="h-3 w-3 text-primary-foreground" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Dimensions from variant */}
-          {selectedVariant?.dimensions && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="font-medium">Хэмжээс:</span>
-              <span className="text-muted-foreground">{selectedVariant.dimensions}</span>
+          {/* Selected Variant Details */}
+          {selectedVariant && (
+            <div className="flex flex-wrap gap-4 text-sm">
+              {selectedVariant.dimensions && (
+                <div>
+                  <span className="font-medium">Хэмжээ:</span>{" "}
+                  <span className="text-muted-foreground">
+                    {selectedVariant.dimensions}
+                  </span>
+                </div>
+              )}
+              {selectedVariant.weight && (
+                <div>
+                  <span className="font-medium">Жин:</span>{" "}
+                  <span className="text-muted-foreground">
+                    {selectedVariant.weight}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -574,9 +589,16 @@ export default function ProductDetail() {
                 ) : (
                   <>
                     <span className="w-2 h-2 rounded-full bg-destructive" />
-                    <span className="text-sm text-destructive">Энэ хувилбар дууссан</span>
+                    <span className="text-sm text-destructive">
+                      Энэ хувилбар дууссан
+                    </span>
                   </>
                 )
+              ) : variants.length > 0 ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="text-sm">Хувилбар сонгоно уу</span>
+                </>
               ) : (
                 <>
                   <span className="w-2 h-2 rounded-full bg-primary" />
@@ -608,18 +630,29 @@ export default function ProductDetail() {
               <Button
                 variant="ghost"
                 size="icon"
-              onClick={() => setQuantity((q) => Math.min(selectedVariant?.stock || effectiveStock, q + 1))}
-              disabled={quantity >= (selectedVariant?.stock || effectiveStock) || !hasAnyStock}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+                onClick={() =>
+                  setQuantity((q) =>
+                    Math.min(selectedVariant?.stock || effectiveStock, q + 1)
+                  )
+                }
+                disabled={
+                  quantity >= (selectedVariant?.stock || effectiveStock) ||
+                  !hasAnyStock
+                }
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
 
             <Button
               size="lg"
               className="flex-1 gap-2 glow-green"
               onClick={handleAddToCart}
-              disabled={!hasAnyStock || (selectedVariant && selectedVariant.stock === 0)}
+              disabled={
+                !hasAnyStock ||
+                (variants.length > 0 && !selectedVariant) ||
+                (selectedVariant && selectedVariant.stock === 0)
+              }
             >
               <ShoppingCart className="h-5 w-5" />
               Сагсанд нэмэх
@@ -668,17 +701,23 @@ export default function ProductDetail() {
             </div>
           </TabsContent>
           <TabsContent value="specs" className="mt-4">
-            {product.specs && typeof product.specs === "object" && Object.keys(product.specs).length > 0 ? (
+            {product.specs &&
+            typeof product.specs === "object" &&
+            Object.keys(product.specs).length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(product.specs as Record<string, string>).map(([key, value]) => (
-                  <div key={key} className="flex justify-between py-2 border-b">
-                    <span className="font-medium">{key}</span>
-                    <span className="text-muted-foreground">{value}</span>
-                  </div>
-                ))}
+                {Object.entries(product.specs as Record<string, string>).map(
+                  ([key, value]) => (
+                    <div key={key} className="flex justify-between py-2 border-b">
+                      <span className="font-medium">{key}</span>
+                      <span className="text-muted-foreground">{value}</span>
+                    </div>
+                  )
+                )}
               </div>
             ) : (
-              <p className="text-muted-foreground">Техникийн үзүүлэлт байхгүй</p>
+              <p className="text-muted-foreground">
+                Техникийн үзүүлэлт байхгүй
+              </p>
             )}
           </TabsContent>
         </Tabs>
