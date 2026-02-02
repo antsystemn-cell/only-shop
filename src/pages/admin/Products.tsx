@@ -87,7 +87,7 @@ interface LocalVariant {
   color: string;
   color_hex: string;
   dimensions: string;
-  style: string;
+  weight: string;
   price_adjustment: string;
   stock: string;
   sku_suffix: string;
@@ -126,7 +126,7 @@ export default function Products() {
     color: "",
     color_hex: "#000000",
     dimensions: "",
-    style: "",
+    weight: "",
     price_adjustment: "0",
     stock: "0",
     sku_suffix: "",
@@ -235,6 +235,7 @@ export default function Products() {
           color: v.color || null,
           color_hex: v.color_hex || null,
           dimensions: v.dimensions || null,
+          weight: v.weight || null,
           price_adjustment: parseFloat(v.price_adjustment) || 0,
           stock: parseInt(v.stock) || 0,
           sku_suffix: v.sku_suffix || null,
@@ -320,7 +321,7 @@ export default function Products() {
       color: "",
       color_hex: "#000000",
       dimensions: "",
-      style: "",
+      weight: "",
       price_adjustment: "0",
       stock: "0",
       sku_suffix: "",
@@ -689,18 +690,6 @@ export default function Products() {
 
                       <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
                         <div className="space-y-2">
-                          <Label htmlFor="var_style" className="flex items-center gap-1">
-                            <Box className="h-3 w-3" />
-                            Загвар
-                          </Label>
-                          <Input
-                            id="var_style"
-                            value={variantFormData.style}
-                            onChange={(e) => setVariantFormData({ ...variantFormData, style: e.target.value })}
-                            placeholder="Pro, Max, Ultra..."
-                          />
-                        </div>
-                        <div className="space-y-2">
                           <Label htmlFor="var_size">Размер</Label>
                           <Input
                             id="var_size"
@@ -716,6 +705,15 @@ export default function Products() {
                             value={variantFormData.dimensions}
                             onChange={(e) => setVariantFormData({ ...variantFormData, dimensions: e.target.value })}
                             placeholder="128GB, 256GB..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="var_weight">Жин</Label>
+                          <Input
+                            id="var_weight"
+                            value={variantFormData.weight}
+                            onChange={(e) => setVariantFormData({ ...variantFormData, weight: e.target.value })}
+                            placeholder="500г, 1кг..."
                           />
                         </div>
                       </div>
@@ -823,10 +821,10 @@ export default function Products() {
                         <TableHeader>
                           <TableRow>
                             <TableHead className="w-16">Зураг</TableHead>
-                            <TableHead>Загвар</TableHead>
                             <TableHead>Размер</TableHead>
                             <TableHead>Өнгө</TableHead>
                             <TableHead>Хэмжээ</TableHead>
+                            <TableHead>Жин</TableHead>
                             <TableHead className="text-center">Нөөц</TableHead>
                             <TableHead className="text-right">Үнийн өөрчлөлт</TableHead>
                             <TableHead className="text-right">Үйлдэл</TableHead>
@@ -846,13 +844,6 @@ export default function Products() {
                                   <div className="w-10 h-10 bg-muted rounded flex items-center justify-center">
                                     <ImageIcon className="h-4 w-4 text-muted-foreground" />
                                   </div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {variant.style ? (
-                                  <Badge variant="outline">{variant.style}</Badge>
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
                                 )}
                               </TableCell>
                               <TableCell>
@@ -879,6 +870,9 @@ export default function Products() {
                               </TableCell>
                               <TableCell>
                                 {variant.dimensions || <span className="text-muted-foreground">—</span>}
+                              </TableCell>
+                              <TableCell>
+                                {variant.weight || <span className="text-muted-foreground">—</span>}
                               </TableCell>
                               <TableCell className="text-center">
                                 <Badge variant={parseInt(variant.stock) > 0 ? "secondary" : "destructive"}>

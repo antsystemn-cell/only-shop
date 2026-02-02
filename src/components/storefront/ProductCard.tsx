@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Product = Tables<"products">;
@@ -31,6 +33,27 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
     : 0;
 
   const inWishlist = isInWishlist(product.id);
+
+  // Fetch variant stock to determine true availability
+  const { data: variantStock } = useQuery({
+    queryKey: ["product-variant-stock", product.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_variants")
+        .select("stock")
+        .eq("product_id", product.id)
+        .eq("is_active", true);
+      
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
+
+  // Calculate effective stock - if variants exist, sum variant stocks; otherwise use product stock
+  const effectiveStock = variantStock && variantStock.length > 0
+    ? variantStock.reduce((sum, v) => sum + (v.stock || 0), 0)
+    : product.stock;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -138,12 +161,12 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
               </div>
 
               {/* Stock Status */}
-              {product.stock <= 5 && product.stock > 0 && (
+              {effectiveStock <= 5 && effectiveStock > 0 && (
                 <p className="text-xs text-destructive mt-2">
-                  Зөвхөн {product.stock} ширхэг үлдсэн
+                  Зөвхөн {effectiveStock} ширхэг үлдсэн
                 </p>
               )}
-              {product.stock === 0 && (
+              {effectiveStock === 0 && (
                 <p className="text-xs text-muted-foreground mt-2">
                   Дууссан
                 </p>
