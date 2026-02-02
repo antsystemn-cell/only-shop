@@ -147,19 +147,7 @@ export default function Home() {
 
       {/* Promo Banner */}
       <section className="container py-12">
-        <div className="rounded-2xl gradient-hero p-8 md:p-12 text-white text-center">
-          <h2 className="text-2xl md:text-4xl font-bold mb-4">
-            Үнэгүй хүргэлт
-          </h2>
-          <p className="text-lg text-white/80 mb-6 max-w-2xl mx-auto">
-            100,000₮-с дээш захиалгад Улаанбаатар хотод үнэгүй хүргэлт
-          </p>
-          <Link to="/shop">
-            <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 glow-green">
-              Дэлгүүр үзэх
-            </Button>
-          </Link>
-        </div>
+        
       </section>
 
       {/* All Random Products Section */}
