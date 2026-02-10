@@ -73,17 +73,17 @@ export default function OtProviders() {
   const providerList: ProviderInfo[] = (() => {
     const d = providers.data;
     if (Array.isArray(d)) return d;
-    if (d?.Content) return d.Content;
-    if (d?.ProviderInfoList?.Item) return d.ProviderInfoList.Item;
-    if (d?.Providers) return d.Providers;
-    return d ? [d] : [];
+    if (Array.isArray(d?.Content)) return d.Content;
+    if (Array.isArray(d?.ProviderInfoList?.Item)) return d.ProviderInfoList.Item;
+    if (Array.isArray(d?.Providers)) return d.Providers;
+    return d && typeof d === "object" && !Array.isArray(d) ? [d] : [];
   })();
 
   const priceGroupList: PriceFormationGroup[] = (() => {
     const d = priceGroups.data;
     if (Array.isArray(d)) return d;
-    if (d?.Content) return d.Content;
-    if (d?.PriceFormationGroupInfoList?.Item) return d.PriceFormationGroupInfoList.Item;
+    if (Array.isArray(d?.Content)) return d.Content;
+    if (Array.isArray(d?.PriceFormationGroupInfoList?.Item)) return d.PriceFormationGroupInfoList.Item;
     return [];
   })();
 

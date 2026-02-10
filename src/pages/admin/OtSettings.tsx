@@ -61,9 +61,9 @@ export default function OtSettings() {
   const roleList = (() => {
     const d = roles.data;
     if (Array.isArray(d)) return d;
-    if (d?.Content) return d.Content;
-    if (d?.RoleInfoList?.Item) return d.RoleInfoList.Item;
-    return [];
+    if (Array.isArray(d?.Content)) return d.Content;
+    if (Array.isArray(d?.RoleInfoList?.Item)) return d.RoleInfoList.Item;
+    return d && typeof d === "object" && !Array.isArray(d) ? [d] : [];
   })();
 
   return (
