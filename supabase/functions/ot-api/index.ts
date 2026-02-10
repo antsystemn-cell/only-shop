@@ -8,6 +8,19 @@ const corsHeaders = {
 
 const OT_API_BASE = "https://otapi.net/service-json";
 
+// ─── Default XML helpers ────────────────────────────────────
+function buildRatingListXmlSearchParameters() {
+  return `<BatchRatingListSearchParameters><UseDefaultParameters>true</UseDefaultParameters></BatchRatingListSearchParameters>`;
+}
+
+function buildWarehouseXmlSearchParameters(params: Record<string, any> = {}) {
+  const parts: string[] = [];
+  if (params.categoryId) parts.push(`<CategoryId>${escapeXml(String(params.categoryId))}</CategoryId>`);
+  if (params.vendorId) parts.push(`<VendorId>${escapeXml(String(params.vendorId))}</VendorId>`);
+  if (params.name) parts.push(`<Name>${escapeXml(String(params.name))}</Name>`);
+  return `<SearchParameters>${parts.join("")}</SearchParameters>`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -55,8 +68,10 @@ serve(async (req) => {
 async function routeAction(action: string, apiKey: string, params: Record<string, any>) {
   const lang = params.language || "en";
   const base: Record<string, string> = { instanceKey: apiKey, language: lang };
-  // Include sessionId in base if provided - many OT API methods require it
   if (params.sessionId) base.sessionId = params.sessionId;
+
+  // Helper: base + includeMetaInfo (many OTAPI methods require this)
+  const baseMeta: Record<string, string> = { ...base, includeMetaInfo: "true" };
 
   switch (action) {
     // ── Sessions ──
@@ -165,7 +180,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 
     // ── Discounts ──
     case "getDiscountGroupList":
-      return callOtApi("GetDiscountGroupList", base);
+      return callOtApi("GetDiscountGroupList", baseMeta);
 
     // ── Reviews ──
     case "addItemReview":
@@ -175,25 +190,25 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "approveItemReviews":
       return callOtApi("ApproveItemReviews", { ...base, reviewIds: params.reviewIds });
     case "getItemReviewSettings":
-      return callOtApi("GetItemReviewSettings", { ...base, includeMetaInfo: "true" });
+      return callOtApi("GetItemReviewSettings", baseMeta);
 
     // ── Instance / Settings ──
     case "getCommonInstanceOptionsInfo":
-      return callOtApi("GetCommonInstanceOptionsInfo", base);
+      return callOtApi("GetCommonInstanceOptionsInfo", baseMeta);
     case "getInstanceOptionsInfo":
-      return callOtApi("GetInstanceOptionsInfo", base);
+      return callOtApi("GetInstanceOptionsInfo", baseMeta);
     case "getProviderSettings":
-      return callOtApi("GetProviderSettings", base);
+      return callOtApi("GetProviderSettings", baseMeta);
     case "getGeolocationSettings":
-      return callOtApi("GetGeolocationSettings", base);
+      return callOtApi("GetGeolocationSettings", baseMeta);
 
     // ── Content ──
     case "getContentMenuItemTree":
-      return callOtApi("GetContentMenuItemTree", base);
+      return callOtApi("GetContentMenuItemTree", { ...baseMeta, menuList: params.menuList || "<MenuList></MenuList>" });
     case "getBanners":
-      return callOtApi("GetBanners", base);
+      return callOtApi("GetBanners", baseMeta);
     case "getApplicationUITranslations":
-      return callOtApi("GetApplicationUITranslations", { ...base, ...(params.translationGroupName ? { translationGroupName: params.translationGroupName } : {}) });
+      return callOtApi("GetApplicationUITranslations", { ...baseMeta, ...(params.translationGroupName ? { translationGroupName: params.translationGroupName } : {}) });
 
     // ── Roles & Permissions ──
     case "getAvailableRoleList":
@@ -215,35 +230,48 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 
     // ── Design & Theme ──
     case "getApplicationDesignSettings":
-      return callOtApi("GetApplicationDesignSettings", base);
+      return callOtApi("GetApplicationDesignSettings", baseMeta);
 
     // ── Rating Lists / Element Collections ──
     case "getAutoRatingListsSettings":
-      return callOtApi("GetAutoRatingListsSettings", base);
+      return callOtApi("GetAutoRatingListsSettings", baseMeta);
     case "batchSearchRatingLists":
-      return callOtApi("BatchSearchRatingLists", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20), ...(params.blockList ? { blockList: params.blockList } : {}) });
+      return callOtApi("BatchSearchRatingLists", {
+        ...baseMeta,
+        xmlSearchParameters: params.xmlSearchParameters || buildRatingListXmlSearchParameters(),
+        ...(params.blockList ? { blockList: params.blockList } : {}),
+      });
     case "addItemRatingList":
       return callOtApi("AddItemRatingList", { ...base, xmlParameters: params.xmlParameters });
     case "addElementsSetToRatingList":
       return callOtApi("AddElementsSetToRatingList", { ...base, xmlParameters: params.xmlParameters });
 
     // ── Warehouse ──
-    case "getWarehouseCategories":
-      return callOtApi("GetWarehouseCategories", base);
     case "searchWarehouseItems":
-      return callOtApi("SearchWarehouseItems", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20), ...(params.categoryId ? { categoryId: params.categoryId } : {}) });
+      return callOtApi("SearchWarehouseItems", {
+        ...baseMeta,
+        framePosition: String(params.page || 0),
+        frameSize: String(params.pageSize || 20),
+        xmlSearchParameters: params.xmlSearchParameters || buildWarehouseXmlSearchParameters(params),
+      });
+    case "searchWarehouseCategories":
+      return callOtApi("SearchWarehouseCategories", {
+        ...baseMeta,
+        framePosition: String(params.page || 0),
+        frameSize: String(params.pageSize || 50),
+      });
     case "createWarehouseItem":
       return callOtApi("CreateWarehouseItem", { ...base, xmlParameters: params.xmlParameters });
 
     // ── Price Formation ──
     case "getPriceFormationGroupList":
-      return callOtApi("GetPriceFormationGroupList", base);
+      return callOtApi("GetPriceFormationGroupList", baseMeta);
     case "getPriceFormationSettings":
-      return callOtApi("GetPriceFormationSettings", base);
+      return callOtApi("GetPriceFormationSettings", baseMeta);
 
     // ── User Collections Settings ──
     case "getCollectionsSettings":
-      return callOtApi("GetCollectionsSettings", base);
+      return callOtApi("GetCollectionsSettings", baseMeta);
 
     // ── OT Users (Admin) ──
     case "findBaseUserInfoListFrame":
@@ -251,7 +279,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 
     // ── Banner Settings ──
     case "getBannerSettings":
-      return callOtApi("GetBannerSettings", base);
+      return callOtApi("GetBannerSettings", baseMeta);
 
     default:
       throw new Error(`Unknown action: ${action}`);
