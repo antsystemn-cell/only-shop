@@ -60,6 +60,7 @@ import OtWarehouse from "./pages/admin/OtWarehouse";
 import OtRatingLists from "./pages/admin/OtRatingLists";
 import OtSettings from "./pages/admin/OtSettings";
 import SearchSettings from "./pages/admin/SearchSettings";
+import AdminOtOrders from "./pages/admin/OtOrders";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -111,6 +112,7 @@ const App = () => (
                 <Route path="brands" element={<Brands />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="users" element={<Users />} />
+                <Route path="ot-orders" element={<AdminOtOrders />} />
                 <Route path="delivery" element={<Delivery />} />
                 <Route path="banners" element={<Banners />} />
                 <Route path="pricing" element={<Pricing />} />

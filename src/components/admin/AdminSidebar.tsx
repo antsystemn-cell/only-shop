@@ -71,6 +71,7 @@ const menuGroups: MenuGroup[] = [
     defaultOpen: true,
     items: [
       { title: "Захиалгын жагсаалт", url: "/admin/orders", icon: ShoppingCart },
+      { title: "OT Захиалга", url: "/admin/ot-orders", icon: Globe },
       { title: "Хүргэлтийн тохиргоо", url: "/admin/delivery", icon: Truck },
       { title: "OT Хүргэлт", url: "/admin/ot-delivery", icon: Globe },
     ],

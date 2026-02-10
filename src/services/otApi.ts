@@ -244,6 +244,14 @@ export async function searchOtOrders(params: { sessionId?: string; statusId?: st
   return callProxy("searchOrders", params);
 }
 
+export async function searchAllOtOrders(params: { statusId?: string; userId?: string; orderId?: string; page?: number; pageSize?: number }) {
+  return callProxy("searchAllOrders", params);
+}
+
+export async function getOrderLineStatusHistory(orderLineId: string) {
+  return callProxy("getOrderLineStatusHistory", { orderLineId });
+}
+
 // ─── Create Order ───────────────────────────────────────────
 
 export async function createOtOrder(sessionId: string, params: { deliveryModeId?: string; profileId?: string; comment?: string }) {
