@@ -23,6 +23,7 @@ import {
   Warehouse,
   LayoutList,
   Palette,
+  Search,
 } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
@@ -133,6 +134,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "Ерөнхий тохиргоо", url: "/admin/settings", icon: Settings },
       { title: "Захиалгын тохиргоо", url: "/admin/settings-orders", icon: Settings },
+      { title: "Хайлтын тохиргоо", url: "/admin/search-settings", icon: Search },
       { title: "OT тохиргоо", url: "/admin/ot-settings", icon: Globe },
       { title: "Системийн хэрэгсэл", url: "/admin/system-tools", icon: Activity },
     ],

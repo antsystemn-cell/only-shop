@@ -59,7 +59,7 @@ import OtContent from "./pages/admin/OtContent";
 import OtWarehouse from "./pages/admin/OtWarehouse";
 import OtRatingLists from "./pages/admin/OtRatingLists";
 import OtSettings from "./pages/admin/OtSettings";
-
+import SearchSettings from "./pages/admin/SearchSettings";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -132,6 +132,7 @@ const App = () => (
                 <Route path="ot-warehouse" element={<OtWarehouse />} />
                 <Route path="ot-rating-lists" element={<OtRatingLists />} />
                 <Route path="ot-settings" element={<OtSettings />} />
+                <Route path="search-settings" element={<SearchSettings />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
