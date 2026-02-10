@@ -45,6 +45,10 @@ import Newsletter from "./pages/admin/Newsletter";
 import Permissions from "./pages/admin/Permissions";
 import GeneralSettings from "./pages/admin/GeneralSettings";
 import OrderSettings from "./pages/admin/OrderSettings";
+import SystemTools from "./pages/admin/SystemTools";
+import Reviews from "./pages/admin/Reviews";
+import OtDelivery from "./pages/admin/OtDelivery";
+import OtPricing from "./pages/admin/OtPricing";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +108,10 @@ const App = () => (
                 <Route path="permissions" element={<Permissions />} />
                 <Route path="settings" element={<GeneralSettings />} />
                 <Route path="settings-orders" element={<OrderSettings />} />
+                <Route path="system-tools" element={<SystemTools />} />
+                <Route path="reviews" element={<Reviews />} />
+                <Route path="ot-delivery" element={<OtDelivery />} />
+                <Route path="ot-pricing" element={<OtPricing />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

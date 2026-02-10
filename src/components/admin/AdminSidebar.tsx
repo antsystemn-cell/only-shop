@@ -15,6 +15,10 @@ import {
   Library,
   Settings,
   ChevronDown,
+  Star,
+  Activity,
+  Globe,
+  Percent,
 } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
@@ -63,6 +67,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "Захиалгын жагсаалт", url: "/admin/orders", icon: ShoppingCart },
       { title: "Хүргэлтийн тохиргоо", url: "/admin/delivery", icon: Truck },
+      { title: "OT Хүргэлт", url: "/admin/ot-delivery", icon: Globe },
     ],
   },
   {
@@ -78,6 +83,7 @@ const menuGroups: MenuGroup[] = [
     label: "Үнийн тохиргоо",
     items: [
       { title: "Үнийн удирдлага", url: "/admin/pricing", icon: DollarSign },
+      { title: "OT Валют & Хөнгөлөлт", url: "/admin/ot-pricing", icon: Percent },
     ],
   },
   {
@@ -92,6 +98,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "SEO тохиргоо", url: "/admin/seo", icon: Megaphone },
       { title: "Мэдээллийн товхимол", url: "/admin/newsletter", icon: Megaphone },
+      { title: "Сэтгэгдэл & Үнэлгээ", url: "/admin/reviews", icon: Star },
     ],
   },
   {
@@ -113,6 +120,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "Ерөнхий тохиргоо", url: "/admin/settings", icon: Settings },
       { title: "Захиалгын тохиргоо", url: "/admin/settings-orders", icon: Settings },
+      { title: "Системийн хэрэгсэл", url: "/admin/system-tools", icon: Activity },
     ],
   },
 ];
