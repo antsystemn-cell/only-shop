@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Md5 } from "https://deno.land/std@0.95.0/hash/md5.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,101 +70,73 @@ serve(async (req) => {
   }
 });
 
+// ─── Signature helper ────────────────────────────────────────
+
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function getTimestamp(): string {
+  const now = new Date();
+  return (
+    now.getUTCFullYear().toString() +
+    String(now.getUTCMonth() + 1).padStart(2, "0") +
+    String(now.getUTCDate()).padStart(2, "0") +
+    String(now.getUTCHours()).padStart(2, "0") +
+    String(now.getUTCMinutes()).padStart(2, "0") +
+    String(now.getUTCSeconds()).padStart(2, "0")
+  );
+}
+
 // ─── Core API caller ─────────────────────────────────────────
 
-async function callOtApi(method: string, queryParams: Record<string, string>) {
+async function callOtApi(methodName: string, queryParams: Record<string, string>) {
   const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
+  const timestamp = getTimestamp();
 
-  const now = new Date();
-  const tsUnix = String(Math.floor(now.getTime() / 1000));
-  const ts14 = now.getUTCFullYear().toString() +
-    String(now.getUTCMonth() + 1).padStart(2, '0') +
-    String(now.getUTCDate()).padStart(2, '0') +
-    String(now.getUTCHours()).padStart(2, '0') +
-    String(now.getUTCMinutes()).padStart(2, '0') +
-    String(now.getUTCSeconds()).padStart(2, '0');
+  // Add timestamp to params
+  const allParams: Record<string, string> = { ...queryParams, timestamp };
 
-  if (!OT_API_SECRET) {
-    // No secret - call without signature
-    const result = await tryFetch(method, queryParams);
-    if (result.success) return result.data;
-    throw new Error(`OT API Error [${result.errorCode}]: ${result.errorDesc || "Unknown"}`);
+  if (OT_API_SECRET) {
+    // Sort parameters by name, concatenate values
+    const sortedKeys = Object.keys(allParams).sort();
+    const concatenatedValues = sortedKeys.map((k) => allParams[k]).join("");
+
+    // signature = SHA256( methodName + concatenatedValues + secret )
+    const sigInput = methodName + concatenatedValues + OT_API_SECRET;
+    const signature = await sha256Hex(sigInput);
+    allParams.signature = signature;
   }
 
-  const instanceKey = queryParams.instanceKey;
-  
-  // All combos with ts14 (since unix gives "Invalid time stamp")
-  const combos = [
-    // Plain MD5 patterns
-    { input: OT_API_SECRET + ts14, name: "MD5(secret+ts14)" },
-    { input: ts14 + OT_API_SECRET, name: "MD5(ts14+secret)" },
-    { input: instanceKey + OT_API_SECRET + ts14, name: "MD5(key+secret+ts14)" },
-    { input: OT_API_SECRET + instanceKey + ts14, name: "MD5(secret+key+ts14)" },
-    { input: instanceKey + ts14 + OT_API_SECRET, name: "MD5(key+ts14+secret)" },
-    { input: ts14 + instanceKey + OT_API_SECRET, name: "MD5(ts14+key+secret)" },
-    { input: OT_API_SECRET + ts14 + instanceKey, name: "MD5(secret+ts14+key)" },
-    { input: ts14 + OT_API_SECRET + instanceKey, name: "MD5(ts14+secret+key)" },
-    // Just the secret
-    { input: OT_API_SECRET, name: "MD5(secret)" },
-    // Secret lowercase/uppercase
-    { input: OT_API_SECRET.toLowerCase() + ts14, name: "MD5(secret_lower+ts14)" },
-    { input: OT_API_SECRET.toUpperCase() + ts14, name: "MD5(secret_upper+ts14)" },
-  ];
-
-  for (const combo of combos) {
-    const md5 = new Md5();
-    md5.update(combo.input);
-    const sigParams = { ...queryParams, timestamp: ts14, signature: md5.toString("hex") as string };
-    const result = await tryFetch(method, sigParams);
-    console.log(`[OT API] ${combo.name}: ${result.success ? '✅ OK' : result.errorCode + ' - ' + (result.errorDesc || '').substring(0, 50)}`);
-    if (result.success) return result.data;
-  }
-
-  throw new Error("All signature patterns failed. Check OT_API_SECRET value.");
-
-}
-
-interface FetchResult {
-  success: boolean;
-  data?: unknown;
-  errorCode?: string;
-  errorDesc?: string;
-}
-
-async function tryFetch(method: string, params: Record<string, string>): Promise<FetchResult> {
-  const url = new URL(`${OT_API_BASE}/${method}`);
-  for (const [key, value] of Object.entries(params)) {
+  // Build URL
+  const url = new URL(`${OT_API_BASE}/${methodName}`);
+  for (const [key, value] of Object.entries(allParams)) {
     if (value !== undefined && value !== null && value !== "") {
       url.searchParams.set(key, value);
     }
   }
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    const response = await fetch(url.toString(), { signal: controller.signal });
-    clearTimeout(timeout);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  const response = await fetch(url.toString(), { signal: controller.signal });
+  clearTimeout(timeout);
 
-    if (!response.ok) {
-      const text = await response.text();
-      return { success: false, errorCode: `HTTP_${response.status}`, errorDesc: text };
-    }
-
-    const data = await response.json();
-
-    if (data?.ErrorCode && data.ErrorCode !== "Ok" && data.ErrorCode !== "BatchError") {
-      return { 
-        success: false, 
-        errorCode: data.ErrorCode, 
-        errorDesc: data.ErrorDescription || "",
-        data 
-      };
-    }
-
-    return { success: true, data };
-  } catch (err) {
-    return { success: false, errorCode: "FETCH_ERROR", errorDesc: String(err) };
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`OT API HTTP ${response.status}: ${text}`);
   }
+
+  const data = await response.json();
+
+  if (data?.ErrorCode && data.ErrorCode !== "Ok" && data.ErrorCode !== "BatchError") {
+    throw new Error(`OT API [${data.ErrorCode}]: ${data.ErrorDescription || "Unknown"}`);
+  }
+
+  return data;
 }
 
 // ─── API Methods ──────────────────────────────────────────────
