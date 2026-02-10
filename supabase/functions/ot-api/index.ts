@@ -174,6 +174,10 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       return callOtApi("ConfirmOrderPackaging", { ...base, orderId: params.orderId });
 
     // ── Users ──
+    case "registerUser":
+      return registerUser(apiKey, params);
+    case "authenticateUser":
+      return callOtApi("Authenticate", { ...base, userLogin: params.login, userPassword: params.password });
     case "getUserInfo":
       return callOtApi("GetUserInfo", { ...base, sessionId: params.sessionId });
     case "getUserInfoForOperator":
@@ -320,6 +324,23 @@ function createOrder(apiKey: string, params: Record<string, any>) {
     language: params.language || "en",
     sessionId: params.sessionId,
     xmlParameters: `<OrderParameters>${xmlParts.join("")}</OrderParameters>`,
+  });
+}
+
+// ─── Register User ──────────────────────────────────────────
+
+function registerUser(apiKey: string, params: Record<string, any>) {
+  const xmlParts: string[] = [];
+  if (params.login) xmlParts.push(`<Login>${escapeXml(String(params.login))}</Login>`);
+  if (params.email) xmlParts.push(`<Email>${escapeXml(String(params.email))}</Email>`);
+  if (params.password) xmlParts.push(`<Password>${escapeXml(String(params.password))}</Password>`);
+  if (params.phone) xmlParts.push(`<Phone>${escapeXml(String(params.phone))}</Phone>`);
+
+  return callOtApi("RegisterUser", {
+    instanceKey: apiKey,
+    language: params.language || "en",
+    sessionId: params.sessionId,
+    userParameters: `<UserRegistrationData>${xmlParts.join("")}</UserRegistrationData>`,
   });
 }
 

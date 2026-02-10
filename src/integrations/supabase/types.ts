@@ -674,6 +674,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          ot_user_id: string | null
           phone: string | null
           updated_at: string
           user_id: string
@@ -684,6 +685,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id?: string
+          ot_user_id?: string | null
           phone?: string | null
           updated_at?: string
           user_id: string
@@ -694,6 +696,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          ot_user_id?: string | null
           phone?: string | null
           updated_at?: string
           user_id?: string
