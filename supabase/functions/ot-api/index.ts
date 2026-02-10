@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
-import { encode as hexEncode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
+import { Md5 } from "https://deno.land/std@0.95.0/hash/md5.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,35 +73,100 @@ serve(async (req) => {
 
 // ─── API Methods ──────────────────────────────────────────────
 
-async function generateSignature(instanceKey: string, secret: string): Promise<{ signature: string; timestamp: string }> {
-  // OT API uses yyyyMMddHHmmss format
+async function trySignatures(instanceKey: string, secret: string, method: string, queryParams: Record<string, string>): Promise<Record<string, string>> {
   const now = new Date();
-  const timestamp = now.getUTCFullYear().toString() +
+  const ts14 = now.getUTCFullYear().toString() +
     String(now.getUTCMonth() + 1).padStart(2, '0') +
     String(now.getUTCDate()).padStart(2, '0') +
     String(now.getUTCHours()).padStart(2, '0') +
     String(now.getUTCMinutes()).padStart(2, '0') +
     String(now.getUTCSeconds()).padStart(2, '0');
-  // Pattern: MD5(secret + timestamp) — common OT API pattern
-  const rawStr = secret + timestamp;
-  const encoder = new TextEncoder();
-  const data = encoder.encode(rawStr);
-  const hashBuffer = await crypto.subtle.digest("MD5", data);
-  const hashArray = new Uint8Array(hashBuffer);
-  const signature = new TextDecoder().decode(hexEncode(hashArray));
-  console.log(`[OT API] Signature generated with timestamp: ${timestamp}`);
-  return { signature, timestamp };
+
+  // Try multiple patterns
+  const patterns = [
+    { name: "MD5(secret+ts)", input: secret + ts14, timestamp: ts14 },
+    { name: "MD5(key+secret+ts)", input: instanceKey + secret + ts14, timestamp: ts14 },
+    { name: "MD5(ts+secret)", input: ts14 + secret, timestamp: ts14 },
+    { name: "MD5(key+ts+secret)", input: instanceKey + ts14 + secret, timestamp: ts14 },
+    { name: "MD5(secret+key+ts)", input: secret + instanceKey + ts14, timestamp: ts14 },
+  ];
+
+  for (const pattern of patterns) {
+    const md5 = new Md5();
+    md5.update(pattern.input);
+    const sig = md5.toString("hex");
+
+    const testParams = { ...queryParams, signature: sig, timestamp: pattern.timestamp };
+    const url = new URL(`${OT_API_BASE}/${method}`);
+    for (const [key, value] of Object.entries(testParams)) {
+      if (value !== undefined && value !== null && value !== "") {
+        url.searchParams.set(key, value);
+      }
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      const response = await fetch(url.toString(), { signal: controller.signal });
+      clearTimeout(timeout);
+      const data = await response.json();
+
+      if (data?.ErrorCode === "Ok" || data?.ErrorCode === "BatchError" || (data?.CategoryInfoList)) {
+        console.log(`[OT API] ✅ Working pattern: ${pattern.name}`);
+        return { signature: sig, timestamp: pattern.timestamp, _pattern: pattern.name };
+      }
+      
+      if (data?.ErrorCode === "AccessDenied" && data?.ErrorDescription?.includes("signature")) {
+        console.log(`[OT API] ❌ Pattern ${pattern.name} failed: Invalid signature`);
+        continue;
+      }
+
+      // If error is not about signature, the signature worked but something else failed
+      console.log(`[OT API] ✅ Pattern ${pattern.name} - sig accepted, other error: ${data?.ErrorCode}`);
+      return { signature: sig, timestamp: pattern.timestamp, _pattern: pattern.name };
+    } catch (err) {
+      console.log(`[OT API] ❌ Pattern ${pattern.name} fetch error: ${err}`);
+      continue;
+    }
+  }
+
+  throw new Error("All signature patterns failed. Please verify your OT API key and secret.");
 }
 
 async function callOtApi(method: string, queryParams: Record<string, string>) {
-  // Add signature if secret is available
   const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
+  
   if (OT_API_SECRET && queryParams.instanceKey) {
-    const { signature, timestamp } = await generateSignature(queryParams.instanceKey, OT_API_SECRET);
-    queryParams.signature = signature;
-    queryParams.timestamp = timestamp;
+    // Use auto-discovery of signing pattern
+    const sigResult = await trySignatures(queryParams.instanceKey, OT_API_SECRET, method, queryParams);
+    queryParams.signature = sigResult.signature;
+    queryParams.timestamp = sigResult.timestamp;
+    
+    // Now make the actual call with the working signature
+    const url = new URL(`${OT_API_BASE}/${method}`);
+    for (const [key, value] of Object.entries(queryParams)) {
+      if (value !== undefined && value !== null && value !== "") {
+        url.searchParams.set(key, value);
+      }
+    }
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const response = await fetch(url.toString(), { signal: controller.signal });
+    clearTimeout(timeout);
+    
+    if (!response.ok) {
+      throw new Error(`OT API HTTP ${response.status}: ${await response.text()}`);
+    }
+    
+    const data = await response.json();
+    if (data?.ErrorCode && data.ErrorCode !== "Ok" && data.ErrorCode !== "BatchError") {
+      throw new Error(`OT API Error [${data.ErrorCode}]: ${data.ErrorDescription || "Unknown"}`);
+    }
+    return data;
   }
 
+  // No secret - call without signature
   const url = new URL(`${OT_API_BASE}/${method}`);
   for (const [key, value] of Object.entries(queryParams)) {
     if (value !== undefined && value !== null && value !== "") {
@@ -110,7 +174,7 @@ async function callOtApi(method: string, queryParams: Record<string, string>) {
     }
   }
 
-  console.log(`[OT API] Calling: ${method}`);
+  console.log(`[OT API] Calling: ${method} (no signature)`);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -125,7 +189,6 @@ async function callOtApi(method: string, queryParams: Record<string, string>) {
 
     const data = await response.json();
 
-    // Check for OT API errors
     if (data?.ErrorCode && data.ErrorCode !== "Ok" && data.ErrorCode !== "BatchError") {
       throw new Error(`OT API Error [${data.ErrorCode}]: ${data.ErrorDescription || "Unknown"}`);
     }
