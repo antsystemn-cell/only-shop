@@ -19,6 +19,9 @@ import Checkout from "./pages/storefront/Checkout";
 import OrderConfirmation from "./pages/storefront/OrderConfirmation";
 import CustomerOrders from "./pages/storefront/CustomerOrders";
 import Wishlist from "./pages/storefront/Wishlist";
+import OtShop from "./pages/storefront/OtShop";
+import OtCategory from "./pages/storefront/OtCategory";
+import OtProductDetail from "./pages/storefront/OtProductDetail";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -52,6 +55,9 @@ const App = () => (
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/categories" element={<CategoriesPage />} />
                 <Route path="/wishlist" element={<Wishlist />} />
+                <Route path="/ot" element={<OtShop />} />
+                <Route path="/ot/category/:categoryId" element={<OtCategory />} />
+                <Route path="/ot/product/:itemId" element={<OtProductDetail />} />
               </Route>
               
               {/* Auth and checkout routes - outside layout */}

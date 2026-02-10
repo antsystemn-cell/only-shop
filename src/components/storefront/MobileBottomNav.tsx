@@ -14,7 +14,7 @@ export function MobileBottomNav() {
 
   const navItems = [
     { href: "/", label: "Нүүр", icon: Home },
-    { href: "/shop", label: "Дэлгүүр", icon: Megaphone },
+    { href: "/ot", label: "Маркет", icon: Megaphone },
     { href: "/categories", label: "Ангилал", icon: LayoutGrid, isCenter: true },
     { href: "/wishlist", label: "Таалагдсан", icon: Heart, badge: wishlistCount },
     { href: "/cart", label: "Сагс", icon: ShoppingCart, badge: cartCount },
