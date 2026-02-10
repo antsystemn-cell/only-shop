@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Camera, X, ImagePlus, Link2, Loader2 } from "lucide-react";
+import { Search, Camera, ImagePlus, Link2, Loader2, ChevronDown, Globe, ShoppingBag, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,14 +8,26 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-const PROVIDERS = [
-  { value: "", label: "Бүгд" },
-  { value: "Taobao", label: "Taobao" },
-  { value: "Poizon", label: "Poizon" },
-  { value: "local", label: "Бэлэн бараа" },
-] as const;
+export interface SearchProvider {
+  value: string;
+  label: string;
+  icon: React.ElementType;
+}
+
+const DEFAULT_PROVIDERS: SearchProvider[] = [
+  { value: "", label: "Бүгд", icon: Globe },
+  { value: "Taobao", label: "Taobao", icon: ShoppingBag },
+  { value: "Poizon", label: "Poizon", icon: Package },
+  { value: "local", label: "Бэлэн бараа", icon: Package },
+];
 
 function isProductUrl(text: string): boolean {
   try {
@@ -28,7 +40,6 @@ function isProductUrl(text: string): boolean {
 }
 
 function extractItemIdFromUrl(url: string): string | null {
-  // Try extracting item ID from common patterns
   const idMatch = url.match(/[?&]id=(\d+)/);
   if (idMatch) return idMatch[1];
   const pathMatch = url.match(/\/item\/(\d+)/);
@@ -53,18 +64,20 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const providers = DEFAULT_PROVIDERS;
+  const selectedProvider = providers.find((p) => p.value === provider) || providers[0];
+  const SelectedIcon = selectedProvider.icon;
+
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
     const text = searchInput.trim();
     if (!text) return;
 
-    // Check if it's a product URL
     if (isProductUrl(text)) {
       const itemId = extractItemIdFromUrl(text);
       if (itemId) {
         navigate(`/ot/product/${itemId}`);
       } else {
-        // Fallback: search by URL as text
         navigate(`/ot?q=${encodeURIComponent(text)}`);
       }
     } else if (provider === "local") {
@@ -92,8 +105,7 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
     setUploading(true);
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = reader.result as string;
-      handleImageSearch(dataUrl);
+      handleImageSearch(reader.result as string);
       setUploading(false);
     };
     reader.onerror = () => setUploading(false);
@@ -102,26 +114,41 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
 
   return (
     <div className={cn("w-full", className)}>
-      {/* Provider Tabs */}
-      <div className="flex items-center gap-0.5 mb-1.5">
-        {PROVIDERS.map((p) => (
-          <button
-            key={p.value}
-            onClick={() => setProvider(p.value)}
-            className={cn(
-              "px-2.5 py-1 text-xs rounded-md font-medium transition-colors",
-              provider === p.value
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      <form onSubmit={handleSearch} className="flex items-center gap-0">
+        {/* Provider Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 rounded-r-none border-r-0 h-10 gap-1.5 px-2.5 bg-muted/50"
+            >
+              <SelectedIcon className="h-4 w-4" />
+              <span className="text-xs font-medium hidden sm:inline">{selectedProvider.label}</span>
+              <ChevronDown className="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-44 bg-popover z-50">
+            {providers.map((p) => {
+              const Icon = p.icon;
+              return (
+                <DropdownMenuItem
+                  key={p.value}
+                  onClick={() => setProvider(p.value)}
+                  className={cn(
+                    "gap-2 cursor-pointer",
+                    provider === p.value && "bg-accent"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{p.label}</span>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-      {/* Search Input + Image Button */}
-      <form onSubmit={handleSearch} className="flex gap-1.5">
+        {/* Search Input */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -132,7 +159,7 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
             }
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-10 pr-3 bg-muted/50"
+            className="pl-10 pr-3 rounded-none border-x-0 h-10 bg-muted/50"
             autoFocus={autoFocus}
           />
         </div>
@@ -144,16 +171,15 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
               type="button"
               variant="outline"
               size="icon"
-              className="shrink-0"
+              className="shrink-0 rounded-none border-r-0 h-10 w-10"
               title="Зургаар хайх"
             >
               <Camera className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-72 p-3" align="end">
+          <PopoverContent className="w-72 p-3 bg-popover z-50" align="end">
             <p className="text-sm font-medium mb-2">Зургаар хайх</p>
             <div className="space-y-2">
-              {/* Upload */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -174,8 +200,6 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
                 className="hidden"
                 onChange={handleImageFile}
               />
-
-              {/* URL */}
               <div className="flex gap-1.5">
                 <div className="relative flex-1">
                   <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -206,8 +230,10 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
           </PopoverContent>
         </Popover>
 
-        <Button type="submit" size="sm" className="shrink-0 h-10 px-4">
-          Хайх
+        {/* Submit */}
+        <Button type="submit" className="shrink-0 rounded-l-none h-10 px-4">
+          <Search className="h-4 w-4 sm:mr-1.5" />
+          <span className="hidden sm:inline text-sm">Хайх</span>
         </Button>
       </form>
     </div>
