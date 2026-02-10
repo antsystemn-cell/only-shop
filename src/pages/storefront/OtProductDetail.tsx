@@ -16,12 +16,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchProductDetail, fetchProductDescription } from "@/services/otApi";
-import { useCart } from "@/contexts/CartContext";
+import { useOtCart } from "@/contexts/OtCartContext";
 import { toast } from "sonner";
 
 export default function OtProductDetail() {
   const { itemId } = useParams<{ itemId: string }>();
-  const { addToCart } = useCart();
+  const { addItem, isLoading: isCartLoading } = useOtCart();
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedConfigs, setSelectedConfigs] = useState<Record<string, string>>({});
@@ -53,32 +53,24 @@ export default function OtProductDetail() {
   const effectiveQuantity = matchedConfig?.quantity ?? product?.quantity;
   const effectiveImage = matchedConfig?.imageUrl || product?.images?.[selectedImage] || product?.imageUrl;
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
-    // Create a fake product object compatible with CartContext
-    const cartProduct = {
-      id: product.id + (matchedConfig ? `-${matchedConfig.id}` : ""),
-      name: product.title,
-      name_mn: product.title,
-      price: effectivePrice,
-      stock: effectiveQuantity ?? 999,
-      images: product.images,
-      is_active: true,
-      is_featured: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      brand: product.vendorName || null,
-      category_id: product.categoryId || null,
-      compare_price: product.originalPrice || null,
-      description: null,
-      description_mn: null,
-      rating: null,
-      review_count: null,
-      sku: product.id,
-      specs: null,
-    };
-    addToCart(cartProduct as any, quantity);
-    toast.success("Сагсанд нэмэгдлээ!");
+    // Build configurator string from selected configs
+    let configurators: string | undefined;
+    if (Object.keys(selectedConfigs).length > 0) {
+      const parts = Object.entries(selectedConfigs)
+        .filter(([, vid]) => vid)
+        .map(([pid, vid]) => `<Item><Pid>${pid}</Pid><Vid>${vid}</Vid></Item>`)
+        .join("");
+      if (parts) {
+        configurators = `<ItemConfigurationValues>${parts}</ItemConfigurationValues>`;
+      }
+    }
+    try {
+      await addItem(product.id, quantity, configurators);
+    } catch {
+      // toast already shown in context
+    }
   };
 
   if (isLoading) {
@@ -288,11 +280,11 @@ export default function OtProductDetail() {
             <Button
               size="lg"
               className="flex-1 gap-2"
-              disabled={effectiveQuantity === 0}
+              disabled={effectiveQuantity === 0 || isCartLoading}
               onClick={handleAddToCart}
             >
               <ShoppingCart className="h-5 w-5" />
-              Сагсанд нэмэх
+              {isCartLoading ? "Нэмж байна..." : "Сагсанд нэмэх"}
             </Button>
           </div>
 
