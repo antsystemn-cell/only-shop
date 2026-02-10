@@ -24,6 +24,9 @@ import OtShop from "./pages/storefront/OtShop";
 import OtCategory from "./pages/storefront/OtCategory";
 import OtProductDetail from "./pages/storefront/OtProductDetail";
 import OtCheckout from "./pages/storefront/OtCheckout";
+import Profile from "./pages/storefront/Profile";
+import OtOrders from "./pages/storefront/OtOrders";
+import Wallet from "./pages/storefront/Wallet";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -88,6 +91,9 @@ const App = () => (
               <Route path="/ot/checkout" element={<OtCheckout />} />
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
               <Route path="/orders" element={<CustomerOrders />} />
+              <Route path="/ot/orders" element={<OtOrders />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/wallet" element={<Wallet />} />
               
               {/* Admin routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
