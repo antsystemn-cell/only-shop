@@ -9,6 +9,12 @@ import {
   Image,
   LogOut,
   Tags,
+  DollarSign,
+  Megaphone,
+  FileText,
+  Library,
+  Settings,
+  ChevronDown,
 } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
@@ -25,50 +31,89 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
-const menuItems = [
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: React.ElementType;
+}
+
+interface MenuGroup {
+  label: string;
+  items: MenuItem[];
+  defaultOpen?: boolean;
+}
+
+const menuGroups: MenuGroup[] = [
   {
-    title: "Хянах самбар",
-    url: "/admin",
-    icon: LayoutDashboard,
+    label: "Ерөнхий",
+    defaultOpen: true,
+    items: [
+      { title: "Хянах самбар", url: "/admin", icon: LayoutDashboard },
+    ],
   },
   {
-    title: "Бараа удирдах",
-    url: "/admin/products",
-    icon: Package,
+    label: "Захиалга",
+    defaultOpen: true,
+    items: [
+      { title: "Захиалгын жагсаалт", url: "/admin/orders", icon: ShoppingCart },
+      { title: "Хүргэлтийн тохиргоо", url: "/admin/delivery", icon: Truck },
+    ],
   },
   {
-    title: "Ангилал удирдах",
-    url: "/admin/categories",
-    icon: FolderTree,
+    label: "Каталог",
+    items: [
+      { title: "Ангилал", url: "/admin/categories", icon: FolderTree },
+      { title: "Цуглуулга", url: "/admin/collections", icon: Library },
+      { title: "Хязгаарлалт", url: "/admin/restrictions", icon: Package },
+      { title: "Бараа засах", url: "/admin/catalog-items", icon: Package },
+    ],
   },
   {
-    title: "Брэнд удирдах",
-    url: "/admin/brands",
-    icon: Tags,
+    label: "Үнийн тохиргоо",
+    items: [
+      { title: "Үнийн удирдлага", url: "/admin/pricing", icon: DollarSign },
+    ],
   },
   {
-    title: "Захиалга харах",
-    url: "/admin/orders",
-    icon: ShoppingCart,
+    label: "Бараа & Брэнд",
+    items: [
+      { title: "Бараа удирдах", url: "/admin/products", icon: Package },
+      { title: "Брэнд удирдах", url: "/admin/brands", icon: Tags },
+    ],
   },
   {
-    title: "Хэрэглэгч харах",
-    url: "/admin/users",
-    icon: Users,
+    label: "Сурталчилгаа",
+    items: [
+      { title: "SEO тохиргоо", url: "/admin/seo", icon: Megaphone },
+      { title: "Мэдээллийн товхимол", url: "/admin/newsletter", icon: Megaphone },
+    ],
   },
   {
-    title: "Хүргэлтийн тохиргоо",
-    url: "/admin/delivery",
-    icon: Truck,
+    label: "Контент",
+    items: [
+      { title: "Хуудсууд", url: "/admin/content", icon: FileText },
+      { title: "Баннер удирдах", url: "/admin/banners", icon: Image },
+    ],
   },
   {
-    title: "Баннер удирдах",
-    url: "/admin/banners",
-    icon: Image,
+    label: "Хэрэглэгч",
+    items: [
+      { title: "Хэрэглэгчид", url: "/admin/users", icon: Users },
+      { title: "Админууд & Эрх", url: "/admin/permissions", icon: Users },
+    ],
+  },
+  {
+    label: "Тохиргоо",
+    items: [
+      { title: "Ерөнхий тохиргоо", url: "/admin/settings", icon: Settings },
+      { title: "Захиалгын тохиргоо", url: "/admin/settings-orders", icon: Settings },
+    ],
   },
 ];
 
@@ -84,21 +129,18 @@ export function AdminSidebar() {
   };
 
   const isActive = (path: string) => {
-    if (path === "/admin") {
-      return location.pathname === "/admin";
-    }
+    if (path === "/admin") return location.pathname === "/admin";
     return location.pathname.startsWith(path);
   };
+
+  const isGroupActive = (group: MenuGroup) =>
+    group.items.some((item) => isActive(item.url));
 
   return (
     <Sidebar className="border-r-0" collapsible="icon">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <img 
-            src={onlyLogo} 
-            alt="Only Logo" 
-            className="w-10 h-10 object-contain shrink-0"
-          />
+          <img src={onlyLogo} alt="Only Logo" className="w-10 h-10 object-contain shrink-0" />
           {!collapsed && (
             <div className="flex flex-col">
               <span className="font-bold text-lg text-sidebar-foreground">Only</span>
@@ -108,39 +150,51 @@ export function AdminSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/50">
-            Үндсэн цэс
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    tooltip={item.title}
-                  >
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/admin"}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                        isActive(item.url)
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent"
-                      )}
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="overflow-y-auto">
+        {menuGroups.map((group) => (
+          <Collapsible
+            key={group.label}
+            defaultOpen={group.defaultOpen || isGroupActive(group)}
+          >
+            <SidebarGroup>
+              <CollapsibleTrigger className="w-full">
+                <SidebarGroupLabel className="text-sidebar-foreground/50 flex items-center justify-between cursor-pointer hover:text-sidebar-foreground/80 transition-colors">
+                  {!collapsed && group.label}
+                  {!collapsed && <ChevronDown className="h-3 w-3" />}
+                </SidebarGroupLabel>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.items.map((item) => (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive(item.url)}
+                          tooltip={item.title}
+                        >
+                          <NavLink
+                            to={item.url}
+                            end={item.url === "/admin"}
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
+                              isActive(item.url)
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground hover:bg-sidebar-accent"
+                            )}
+                          >
+                            <item.icon className="h-5 w-5 shrink-0" />
+                            {!collapsed && <span className="text-sm">{item.title}</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="p-4">

@@ -35,6 +35,16 @@ import Orders from "./pages/admin/Orders";
 import Users from "./pages/admin/Users";
 import Delivery from "./pages/admin/Delivery";
 import Banners from "./pages/admin/Banners";
+import Pricing from "./pages/admin/Pricing";
+import Content from "./pages/admin/Content";
+import Collections from "./pages/admin/Collections";
+import Restrictions from "./pages/admin/Restrictions";
+import CatalogItems from "./pages/admin/CatalogItems";
+import Seo from "./pages/admin/Seo";
+import Newsletter from "./pages/admin/Newsletter";
+import Permissions from "./pages/admin/Permissions";
+import GeneralSettings from "./pages/admin/GeneralSettings";
+import OrderSettings from "./pages/admin/OrderSettings";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +94,16 @@ const App = () => (
                 <Route path="users" element={<Users />} />
                 <Route path="delivery" element={<Delivery />} />
                 <Route path="banners" element={<Banners />} />
+                <Route path="pricing" element={<Pricing />} />
+                <Route path="content" element={<Content />} />
+                <Route path="collections" element={<Collections />} />
+                <Route path="restrictions" element={<Restrictions />} />
+                <Route path="catalog-items" element={<CatalogItems />} />
+                <Route path="seo" element={<Seo />} />
+                <Route path="newsletter" element={<Newsletter />} />
+                <Route path="permissions" element={<Permissions />} />
+                <Route path="settings" element={<GeneralSettings />} />
+                <Route path="settings-orders" element={<OrderSettings />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
