@@ -11,9 +11,8 @@ import {
 import {
   getCallStatistics,
   resetInstanceCaches,
-  getBlackListContents,
-  getInstanceOptions,
 } from "@/services/otApi";
+import { callWithOperatorSession } from "@/services/otSession";
 
 export default function SystemTools() {
   const [resetting, setResetting] = useState(false);
@@ -34,26 +33,24 @@ export default function SystemTools() {
     queryKey: ["admin", "ot-instance"],
     queryFn: async () => {
       try {
-        return await getInstanceOptions();
+        return await callWithOperatorSession("getInstanceOptionsInfo");
       } catch (e: any) {
         return { error: e.message };
       }
     },
     retry: false,
-    enabled: false,
   });
 
   const { data: blacklist, isLoading: blacklistLoading } = useQuery<any>({
     queryKey: ["admin", "ot-blacklist"],
     queryFn: async () => {
       try {
-        return await getBlackListContents();
+        return await callWithOperatorSession("getBlackListContents", { page: 0 });
       } catch (e: any) {
         return { error: e.message };
       }
     },
     retry: false,
-    enabled: false,
   });
 
   const handleResetCache = async () => {

@@ -5,36 +5,31 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, DollarSign, TrendingUp, Percent } from "lucide-react";
-import {
-  getCurrencyList,
-  getDiscountGroupList,
-} from "@/services/otApi";
+import { callWithOperatorSession } from "@/services/otSession";
 
 export default function OtPricing() {
-  const { data: currencies, isLoading: currLoading, refetch: refetchCurrencies } = useQuery<any>({
+  const { data: currencies, isLoading: currLoading } = useQuery<any>({
     queryKey: ["admin", "ot-currencies"],
     queryFn: async () => {
       try {
-        return await getCurrencyList();
+        return await callWithOperatorSession("getCurrencyList");
       } catch (e: any) {
         return { error: e.message };
       }
     },
     retry: false,
-    enabled: false,
   });
 
-  const { data: discountGroups, isLoading: discountLoading, refetch: refetchDiscounts } = useQuery<any>({
+  const { data: discountGroups, isLoading: discountLoading } = useQuery<any>({
     queryKey: ["admin", "ot-discounts"],
     queryFn: async () => {
       try {
-        return await getDiscountGroupList();
+        return await callWithOperatorSession("getDiscountGroupList");
       } catch (e: any) {
         return { error: e.message };
       }
     },
     retry: false,
-    enabled: false,
   });
 
   return (
