@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName?: string, phone?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -38,10 +38,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = async (email: string, password: string, fullName?: string, phone?: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -52,7 +52,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     
-    return { error: error as Error | null };
+    if (error) return { error: error as Error };
+
+    // After successful Supabase signup, register with OT API (fire-and-forget)
+    // This runs in the background and doesn't block the signup flow
+    if (data.user) {
+      registerWithOtApi(email, password, fullName, phone, data.session?.access_token).catch((err) => {
+        console.warn("[Auth] OT API registration failed (non-blocking):", err.message);
+      });
+    }
+
+    return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {
@@ -82,6 +92,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+// ─── OT API Registration (background) ───────────────────────
+
+async function registerWithOtApi(
+  email: string,
+  password: string,
+  fullName?: string,
+  phone?: string,
+  accessToken?: string
+) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  const { data, error } = await supabase.functions.invoke("register-ot-user", {
+    body: { email, password, fullName, phone },
+  });
+
+  if (error) {
+    console.warn("[Auth] OT registration edge function error:", error.message);
+  } else {
+    console.log("[Auth] OT registration result:", data?.success ? "success" : "failed");
+  }
 }
 
 export function useAuth() {
