@@ -49,6 +49,11 @@ import SystemTools from "./pages/admin/SystemTools";
 import Reviews from "./pages/admin/Reviews";
 import OtDelivery from "./pages/admin/OtDelivery";
 import OtPricing from "./pages/admin/OtPricing";
+import OtProviders from "./pages/admin/OtProviders";
+import OtContent from "./pages/admin/OtContent";
+import OtWarehouse from "./pages/admin/OtWarehouse";
+import OtRatingLists from "./pages/admin/OtRatingLists";
+import OtSettings from "./pages/admin/OtSettings";
 
 const queryClient = new QueryClient();
 
@@ -112,6 +117,11 @@ const App = () => (
                 <Route path="reviews" element={<Reviews />} />
                 <Route path="ot-delivery" element={<OtDelivery />} />
                 <Route path="ot-pricing" element={<OtPricing />} />
+                <Route path="ot-providers" element={<OtProviders />} />
+                <Route path="ot-content" element={<OtContent />} />
+                <Route path="ot-warehouse" element={<OtWarehouse />} />
+                <Route path="ot-rating-lists" element={<OtRatingLists />} />
+                <Route path="ot-settings" element={<OtSettings />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
