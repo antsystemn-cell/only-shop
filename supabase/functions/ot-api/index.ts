@@ -32,29 +32,7 @@ serve(async (req) => {
       );
     }
 
-    let result;
-    switch (action) {
-      case "getRootCategories":
-        result = await getRootCategories(OT_API_KEY, params);
-        break;
-      case "getSubcategories":
-        result = await getSubcategories(OT_API_KEY, params);
-        break;
-      case "searchItems":
-        result = await searchItems(OT_API_KEY, params);
-        break;
-      case "getItemFullInfo":
-        result = await getItemFullInfo(OT_API_KEY, params);
-        break;
-      case "getItemDescription":
-        result = await getItemDescription(OT_API_KEY, params);
-        break;
-      default:
-        return new Response(
-          JSON.stringify({ error: `Unknown action: ${action}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-    }
+    const result = await routeAction(action, OT_API_KEY, params || {});
 
     return new Response(JSON.stringify(result), {
       status: 200,
@@ -69,6 +47,206 @@ serve(async (req) => {
     );
   }
 });
+
+// ─── Action Router ───────────────────────────────────────────
+
+async function routeAction(action: string, apiKey: string, params: Record<string, any>) {
+  const lang = params.language || "en";
+  const base = { instanceKey: apiKey, language: lang };
+
+  switch (action) {
+    // ── Categories ──
+    case "getRootCategories":
+      return callOtApi("GetRootCategoryInfoList", base);
+    case "getSubcategories":
+      return callOtApi("GetCategorySubcategoryInfoList", { ...base, parentCategoryId: params.parentId });
+    case "getCategoryInfo":
+      return callOtApi("GetCategoryInfo", { ...base, categoryId: params.categoryId });
+    case "getCategoryInfoList":
+      return callOtApi("GetCategoryInfoList", { ...base, parentCategoryId: params.parentId || "" });
+    case "getCategorySearchProperties":
+      return callOtApi("GetCategorySearchProperties", { ...base, categoryId: params.categoryId });
+
+    // ── Search ──
+    case "searchItems":
+      return searchItems(apiKey, params);
+    case "searchItemsFrame":
+      return searchItemsFrame(apiKey, params);
+
+    // ── Product Details ──
+    case "getItemFullInfo":
+      return callOtApi("BatchGetItemFullInfo", { ...base, itemId: params.itemId, blockList: "Vendor,RootPath,Promotions" });
+    case "getItemDescription":
+      return callOtApi("GetItemDescription", { ...base, itemId: params.itemId });
+    case "getItemInfoList":
+      return callOtApi("GetItemInfoList", { ...base, itemId: params.itemId });
+    case "getItemPrice":
+      return callOtApi("GetItemPrice", { ...base, itemId: params.itemId, quantity: params.quantity || "1", ...(params.configurators ? { configurators: params.configurators } : {}) });
+    case "getItemPromotions":
+      return callOtApi("GetItemPromotions", { ...base, itemId: params.itemId });
+    case "getItemTotalCost":
+      return callOtApi("GetItemTotalCost", { ...base, itemId: params.itemId, quantity: params.quantity || "1", ...(params.weight ? { weight: params.weight } : {}) });
+    case "batchGetItemTotalCost":
+      return callOtApi("BatchGetItemTotalCost", { ...base, xmlParameters: params.xmlParameters });
+
+    // ── Brands ──
+    case "getBrandInfoList":
+      return callOtApi("GetBrandInfoList", { ...base, categoryId: params.categoryId || "" });
+
+    // ── Cart / Basket ──
+    case "getBasket":
+      return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
+    case "addItemToBasket":
+      return callOtApi("AddItemToBasket", { ...base, sessionId: params.sessionId, itemId: params.itemId, quantity: String(params.quantity || 1), ...(params.configurators ? { xmlParameters: params.configurators } : {}) });
+    case "editBasketItemQuantity":
+      return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, quantity: String(params.quantity) });
+    case "removeBasketItem":
+      return callOtApi("RemoveItemFromBasket", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId });
+    case "clearBasket":
+      return callOtApi("ClearBasket", { ...base, sessionId: params.sessionId });
+    case "runBasketChecking":
+      return callOtApi("RunBasketChecking", { ...base, sessionId: params.sessionId });
+    case "getBasketCheckingResult":
+      return callOtApi("GetBasketCheckingResult", { ...base, sessionId: params.sessionId });
+
+    // ── Orders ──
+    case "searchOrders":
+      return callOtApi("SearchOrders", { ...base, sessionId: params.sessionId, ...(params.statusId ? { statusId: params.statusId } : {}), framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20) });
+    case "searchOrdersForUser":
+      return callOtApi("SearchOrdersForUser", { ...base, userId: params.userId, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20) });
+    case "getSalesOrderDetails":
+      return callOtApi("GetSalesOrderDetailsForOperator", { ...base, orderId: params.orderId });
+    case "cancelSalesOrder":
+      return callOtApi("CancelSalesOrderForOperator", { ...base, orderId: params.orderId, ...(params.reason ? { reason: params.reason } : {}) });
+    case "cancelLineSalesOrder":
+      return callOtApi("CancelLineSalesOrderForOperator", { ...base, orderLineId: params.orderLineId, ...(params.reason ? { reason: params.reason } : {}) });
+    case "confirmOrderPackaging":
+      return callOtApi("ConfirmOrderPackaging", { ...base, orderId: params.orderId });
+
+    // ── Users ──
+    case "getUserInfo":
+      return callOtApi("GetUserInfo", { ...base, sessionId: params.sessionId });
+    case "getUserInfoForOperator":
+      return callOtApi("GetUserInfoForOperator", { ...base, userId: params.userId });
+    case "getAccountInfo":
+      return callOtApi("GetAccountInfo", { ...base, userId: params.userId });
+    case "getStatementForOperator":
+      return callOtApi("GetStatementForOperator", { ...base, userId: params.userId, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20) });
+
+    // ── Delivery ──
+    case "getDeliveryCountryInfoList":
+      return callOtApi("GetDeliveryCountryInfoList", base);
+    case "searchDeliveryModes":
+      return callOtApi("SearchDeliveryModes", { ...base, sessionId: params.sessionId, ...(params.deliveryCountryCode ? { deliveryCountryCode: params.deliveryCountryCode } : {}) });
+    case "searchDeliveryPickupPoints":
+      return callOtApi("SearchDeliveryPickupPoints", { ...base, ...(params.deliveryModeId ? { deliveryModeId: params.deliveryModeId } : {}) });
+    case "getExternalDeliveryRateList":
+      return callOtApi("GetExternalDeliveryRateList", { ...base, ...(params.weight ? { weight: params.weight } : {}), ...(params.countryCode ? { countryCode: params.countryCode } : {}) });
+
+    // ── Currency ──
+    case "getCurrencyList":
+      return callOtApi("GetCurrencyList", base);
+    case "getCurrencyRateHistory":
+      return callOtApi("GetCurrencyRateHistory", { ...base, currencyCode: params.currencyCode, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 30) });
+
+    // ── Discounts ──
+    case "getDiscountGroupList":
+      return callOtApi("GetDiscountGroupList", base);
+
+    // ── Reviews ──
+    case "addItemReview":
+      return callOtApi("AddItemReview", { ...base, sessionId: params.sessionId, itemId: params.itemId, text: params.text, rate: String(params.rate || 5) });
+    case "addAnswerToItemReview":
+      return callOtApi("AddAnswerToItemReview", { ...base, reviewId: params.reviewId, text: params.text });
+    case "approveItemReviews":
+      return callOtApi("ApproveItemReviews", { ...base, reviewIds: params.reviewIds });
+    case "getItemReviewSettings":
+      return callOtApi("GetItemReviewSettings", base);
+
+    // ── Instance / Settings ──
+    case "getCommonInstanceOptionsInfo":
+      return callOtApi("GetCommonInstanceOptionsInfo", base);
+    case "getInstanceOptionsInfo":
+      return callOtApi("GetInstanceOptionsInfo", base);
+    case "getProviderSettings":
+      return callOtApi("GetProviderSettings", base);
+    case "getGeolocationSettings":
+      return callOtApi("GetGeolocationSettings", base);
+
+    // ── Content ──
+    case "getContentMenuItemTree":
+      return callOtApi("GetContentMenuItemTree", base);
+    case "getBanners":
+      return callOtApi("GetBanners", base);
+    case "getApplicationUITranslations":
+      return callOtApi("GetApplicationUITranslations", { ...base, ...(params.translationGroupName ? { translationGroupName: params.translationGroupName } : {}) });
+
+    // ── Roles & Permissions ──
+    case "getAvailableRoleList":
+      return callOtApi("GetAvailableRoleList", base);
+    case "getOperatorRightTree":
+      return callOtApi("GetOperatorRightTree", base);
+    case "addInstanceUserToRole":
+      return callOtApi("AddInstanceUserToRole", { ...base, userId: params.userId, roleId: params.roleId });
+
+    // ── System Tools ──
+    case "getErrorDescription":
+      return callOtApi("GetErrorDescription", { ...base, errorCode: params.errorCode });
+    case "getCallStatistics":
+      return callOtApi("GetCallStatistics", base);
+    case "resetInstanceCaches":
+      return callOtApi("ResetInstanceCaches", base);
+    case "getBlackListContents":
+      return callOtApi("GetBlackListContents", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 50) });
+
+    default:
+      throw new Error(`Unknown action: ${action}`);
+  }
+}
+
+// ─── Search Items (with XML params) ─────────────────────────
+
+function searchItems(apiKey: string, params: Record<string, any>) {
+  const page = params.page || 0;
+  const pageSize = params.pageSize || 40;
+
+  const xmlParts: string[] = [];
+  if (params.query) xmlParts.push(`<ItemTitle>${escapeXml(params.query)}</ItemTitle>`);
+  if (params.categoryId) xmlParts.push(`<CategoryId>${escapeXml(params.categoryId)}</CategoryId>`);
+  if (params.vendorId) xmlParts.push(`<VendorId>${escapeXml(params.vendorId)}</VendorId>`);
+  if (params.brandId) xmlParts.push(`<BrandId>${escapeXml(params.brandId)}</BrandId>`);
+  if (params.minPrice) xmlParts.push(`<MinPrice>${escapeXml(params.minPrice)}</MinPrice>`);
+  if (params.maxPrice) xmlParts.push(`<MaxPrice>${escapeXml(params.maxPrice)}</MaxPrice>`);
+  if (params.orderBy) xmlParts.push(`<OrderBy>${escapeXml(params.orderBy)}</OrderBy>`);
+  if (params.imageUrl) xmlParts.push(`<ImageUrl>${escapeXml(params.imageUrl)}</ImageUrl>`);
+  if (params.provider) xmlParts.push(`<Provider>${escapeXml(params.provider)}</Provider>`);
+
+  return callOtApi("BatchSearchItemsFrame", {
+    instanceKey: apiKey,
+    language: params.language || "en",
+    framePosition: String(page * pageSize),
+    frameSize: String(pageSize),
+    blockList: "SubCategories,SearchProperties",
+    xmlParameters: `<SearchItemsParameters>${xmlParts.join("")}</SearchItemsParameters>`,
+  });
+}
+
+function searchItemsFrame(apiKey: string, params: Record<string, any>) {
+  const page = params.page || 0;
+  const pageSize = params.pageSize || 40;
+
+  const xmlParts: string[] = [];
+  if (params.query) xmlParts.push(`<ItemTitle>${escapeXml(params.query)}</ItemTitle>`);
+  if (params.categoryId) xmlParts.push(`<CategoryId>${escapeXml(params.categoryId)}</CategoryId>`);
+
+  return callOtApi("SearchItemsFrame", {
+    instanceKey: apiKey,
+    language: params.language || "en",
+    framePosition: String(page * pageSize),
+    frameSize: String(pageSize),
+    xmlParameters: `<SearchItemsParameters>${xmlParts.join("")}</SearchItemsParameters>`,
+  });
+}
 
 // ─── Signature helper ────────────────────────────────────────
 
@@ -98,21 +276,16 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
   const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
   const timestamp = getTimestamp();
 
-  // Add timestamp to params
   const allParams: Record<string, string> = { ...queryParams, timestamp };
 
   if (OT_API_SECRET) {
-    // Sort parameters by name, concatenate values
     const sortedKeys = Object.keys(allParams).sort();
     const concatenatedValues = sortedKeys.map((k) => allParams[k]).join("");
-
-    // signature = SHA256( methodName + concatenatedValues + secret )
     const sigInput = methodName + concatenatedValues + OT_API_SECRET;
     const signature = await sha256Hex(sigInput);
     allParams.signature = signature;
   }
 
-  // Build URL
   const url = new URL(`${OT_API_BASE}/${methodName}`);
   for (const [key, value] of Object.entries(allParams)) {
     if (value !== undefined && value !== null && value !== "") {
@@ -121,7 +294,7 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), 20000);
   const response = await fetch(url.toString(), { signal: controller.signal });
   clearTimeout(timeout);
 
@@ -137,70 +310,6 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
   }
 
   return data;
-}
-
-// ─── API Methods ──────────────────────────────────────────────
-
-async function getRootCategories(apiKey: string, params: { language?: string }) {
-  return await callOtApi("GetRootCategoryInfoList", {
-    instanceKey: apiKey,
-    language: params?.language || "en",
-  });
-}
-
-async function getSubcategories(apiKey: string, params: { parentId: string; language?: string }) {
-  return await callOtApi("GetCategorySubcategoryInfoList", {
-    instanceKey: apiKey,
-    language: params?.language || "en",
-    parentCategoryId: params.parentId,
-  });
-}
-
-async function searchItems(
-  apiKey: string,
-  params: {
-    query?: string; categoryId?: string; brandId?: string; vendorId?: string;
-    minPrice?: string; maxPrice?: string; page?: number; pageSize?: number;
-    orderBy?: string; language?: string; imageUrl?: string;
-  }
-) {
-  const page = params?.page || 0;
-  const pageSize = params?.pageSize || 40;
-
-  let xmlParts: string[] = [];
-  if (params?.query) xmlParts.push(`<ItemTitle>${escapeXml(params.query)}</ItemTitle>`);
-  if (params?.categoryId) xmlParts.push(`<CategoryId>${escapeXml(params.categoryId)}</CategoryId>`);
-  if (params?.vendorId) xmlParts.push(`<VendorId>${escapeXml(params.vendorId)}</VendorId>`);
-  if (params?.minPrice) xmlParts.push(`<MinPrice>${escapeXml(params.minPrice)}</MinPrice>`);
-  if (params?.maxPrice) xmlParts.push(`<MaxPrice>${escapeXml(params.maxPrice)}</MaxPrice>`);
-  if (params?.orderBy) xmlParts.push(`<OrderBy>${escapeXml(params.orderBy)}</OrderBy>`);
-  if (params?.imageUrl) xmlParts.push(`<ImageUrl>${escapeXml(params.imageUrl)}</ImageUrl>`);
-
-  return await callOtApi("BatchSearchItemsFrame", {
-    instanceKey: apiKey,
-    language: params?.language || "en",
-    framePosition: String(page * pageSize),
-    frameSize: String(pageSize),
-    blockList: "SubCategories,SearchProperties",
-    xmlParameters: `<SearchItemsParameters>${xmlParts.join("")}</SearchItemsParameters>`,
-  });
-}
-
-async function getItemFullInfo(apiKey: string, params: { itemId: string; language?: string }) {
-  return await callOtApi("BatchGetItemFullInfo", {
-    instanceKey: apiKey,
-    language: params?.language || "en",
-    itemId: params.itemId,
-    blockList: "Vendor,RootPath,Promotions",
-  });
-}
-
-async function getItemDescription(apiKey: string, params: { itemId: string; language?: string }) {
-  return await callOtApi("GetItemDescription", {
-    instanceKey: apiKey,
-    language: params?.language || "en",
-    itemId: params.itemId,
-  });
 }
 
 function escapeXml(str: string): string {

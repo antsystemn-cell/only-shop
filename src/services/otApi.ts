@@ -34,6 +34,10 @@ export async function fetchSubcategories(parentId: string): Promise<OtCategoryCa
   return list.map(mapCategory);
 }
 
+export async function fetchCategorySearchProperties(categoryId: string) {
+  return callProxy("getCategorySearchProperties", { categoryId });
+}
+
 // ─── Search ──────────────────────────────────────────────────
 
 export interface SearchParams {
@@ -47,6 +51,7 @@ export interface SearchParams {
   pageSize?: number;
   orderBy?: string;
   imageUrl?: string;
+  provider?: string;
 }
 
 export interface SearchResponse {
@@ -175,6 +180,170 @@ export async function fetchProductDescription(itemId: string): Promise<string> {
   } catch {
     return "";
   }
+}
+
+// ─── Cart / Basket ───────────────────────────────────────────
+
+export async function getBasket(sessionId: string) {
+  return callProxy("getBasket", { sessionId });
+}
+
+export async function addItemToBasket(sessionId: string, itemId: string, quantity: number, configurators?: string) {
+  return callProxy("addItemToBasket", { sessionId, itemId, quantity, ...(configurators ? { configurators } : {}) });
+}
+
+export async function editBasketItemQuantity(sessionId: string, orderLineId: string, quantity: number) {
+  return callProxy("editBasketItemQuantity", { sessionId, orderLineId, quantity });
+}
+
+export async function removeBasketItem(sessionId: string, orderLineId: string) {
+  return callProxy("removeBasketItem", { sessionId, orderLineId });
+}
+
+export async function clearBasket(sessionId: string) {
+  return callProxy("clearBasket", { sessionId });
+}
+
+export async function runBasketChecking(sessionId: string) {
+  return callProxy("runBasketChecking", { sessionId });
+}
+
+export async function getBasketCheckingResult(sessionId: string) {
+  return callProxy("getBasketCheckingResult", { sessionId });
+}
+
+// ─── Orders (OTAPI) ─────────────────────────────────────────
+
+export async function searchOtOrders(params: { sessionId?: string; statusId?: string; page?: number; pageSize?: number }) {
+  return callProxy("searchOrders", params);
+}
+
+export async function searchOrdersForUser(userId: string, page = 0, pageSize = 20) {
+  return callProxy("searchOrdersForUser", { userId, page, pageSize });
+}
+
+export async function getSalesOrderDetails(orderId: string) {
+  return callProxy("getSalesOrderDetails", { orderId });
+}
+
+export async function cancelSalesOrder(orderId: string, reason?: string) {
+  return callProxy("cancelSalesOrder", { orderId, reason });
+}
+
+export async function cancelLineSalesOrder(orderLineId: string, reason?: string) {
+  return callProxy("cancelLineSalesOrder", { orderLineId, reason });
+}
+
+// ─── Users (OTAPI) ──────────────────────────────────────────
+
+export async function getUserInfoForOperator(userId: string) {
+  return callProxy("getUserInfoForOperator", { userId });
+}
+
+export async function getAccountInfo(userId: string) {
+  return callProxy("getAccountInfo", { userId });
+}
+
+export async function getStatementForOperator(userId: string, page = 0, pageSize = 20) {
+  return callProxy("getStatementForOperator", { userId, page, pageSize });
+}
+
+// ─── Delivery ───────────────────────────────────────────────
+
+export async function getDeliveryCountryInfoList() {
+  return callProxy("getDeliveryCountryInfoList");
+}
+
+export async function searchDeliveryModes(sessionId: string, deliveryCountryCode?: string) {
+  return callProxy("searchDeliveryModes", { sessionId, deliveryCountryCode });
+}
+
+export async function getExternalDeliveryRateList(weight?: string, countryCode?: string) {
+  return callProxy("getExternalDeliveryRateList", { weight, countryCode });
+}
+
+// ─── Currency & Pricing ─────────────────────────────────────
+
+export async function getCurrencyList() {
+  return callProxy("getCurrencyList");
+}
+
+export async function getCurrencyRateHistory(currencyCode: string, page = 0) {
+  return callProxy("getCurrencyRateHistory", { currencyCode, page });
+}
+
+export async function getDiscountGroupList() {
+  return callProxy("getDiscountGroupList");
+}
+
+export async function getItemTotalCost(itemId: string, quantity = 1, weight?: string) {
+  return callProxy("getItemTotalCost", { itemId, quantity, weight });
+}
+
+// ─── Reviews ────────────────────────────────────────────────
+
+export async function addItemReview(sessionId: string, itemId: string, text: string, rate: number) {
+  return callProxy("addItemReview", { sessionId, itemId, text, rate });
+}
+
+export async function approveItemReviews(reviewIds: string) {
+  return callProxy("approveItemReviews", { reviewIds });
+}
+
+export async function getItemReviewSettings() {
+  return callProxy("getItemReviewSettings");
+}
+
+// ─── Instance / Settings ────────────────────────────────────
+
+export async function getInstanceOptions() {
+  return callProxy("getInstanceOptionsInfo");
+}
+
+export async function getCommonInstanceOptions() {
+  return callProxy("getCommonInstanceOptionsInfo");
+}
+
+export async function getProviderSettings() {
+  return callProxy("getProviderSettings");
+}
+
+// ─── System Tools ───────────────────────────────────────────
+
+export async function getCallStatistics() {
+  return callProxy("getCallStatistics");
+}
+
+export async function resetInstanceCaches() {
+  return callProxy("resetInstanceCaches");
+}
+
+export async function getBlackListContents(page = 0) {
+  return callProxy("getBlackListContents", { page });
+}
+
+export async function getErrorDescription(errorCode: string) {
+  return callProxy("getErrorDescription", { errorCode });
+}
+
+// ─── Roles ──────────────────────────────────────────────────
+
+export async function getAvailableRoleList() {
+  return callProxy("getAvailableRoleList");
+}
+
+export async function getOperatorRightTree() {
+  return callProxy("getOperatorRightTree");
+}
+
+// ─── Content ────────────────────────────────────────────────
+
+export async function getOtBanners() {
+  return callProxy("getBanners");
+}
+
+export async function getContentMenuItemTree() {
+  return callProxy("getContentMenuItemTree");
 }
 
 // ─── Mappers ─────────────────────────────────────────────────
