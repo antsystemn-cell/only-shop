@@ -570,9 +570,12 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Description */}
+          {/* Short Description */}
           {product.description_mn && (
-            <p className="text-muted-foreground">{product.description_mn}</p>
+            <div
+              className="text-muted-foreground prose prose-sm max-w-none line-clamp-3 [&_img]:hidden [&_table]:hidden [&_iframe]:hidden"
+              dangerouslySetInnerHTML={{ __html: product.description_mn.replace(/<[^>]*>/g, ' ').substring(0, 200) + (product.description_mn.length > 200 ? '...' : '') }}
+            />
           )}
 
           {/* Stock Status */}
@@ -694,8 +697,10 @@ export default function ProductDetail() {
             <TabsTrigger value="specs">Техникийн үзүүлэлт</TabsTrigger>
           </TabsList>
           <TabsContent value="description" className="mt-4">
-            <div className="prose prose-sm max-w-none">
-              {product.description_mn || product.description || (
+            <div className="prose prose-sm max-w-none [&_table]:border-collapse [&_table]:w-full [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_th]:font-semibold [&_img]:rounded-lg [&_img]:max-w-full [&_iframe]:rounded-lg [&_iframe]:max-w-full [&_iframe]:aspect-video">
+              {product.description_mn || product.description ? (
+                <div dangerouslySetInnerHTML={{ __html: product.description_mn || product.description || '' }} />
+              ) : (
                 <p className="text-muted-foreground">Тайлбар байхгүй</p>
               )}
             </div>
