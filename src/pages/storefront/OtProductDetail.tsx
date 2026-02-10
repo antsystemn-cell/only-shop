@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
 import {
   Loader2,
@@ -10,6 +10,7 @@ import {
   Store,
   Minus,
   Plus,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +18,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchProductDetail, fetchProductDescription } from "@/services/otApi";
 import { useOtCart } from "@/contexts/OtCartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { ProductReviews } from "@/components/storefront/ProductReviews";
 import { toast } from "sonner";
 
 export default function OtProductDetail() {
   const { itemId } = useParams<{ itemId: string }>();
   const { addItem, isLoading: isCartLoading } = useOtCart();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedConfigs, setSelectedConfigs] = useState<Record<string, string>>({});
@@ -205,16 +211,26 @@ export default function OtProductDetail() {
             ) : null}
           </div>
 
-          {/* Vendor */}
+          {/* Vendor + Favourite */}
           {product.vendor && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Store className="h-4 w-4" />
-              <span>{product.vendor.name}</span>
-              {product.vendor.score && (
-                <span className="flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  {product.vendor.score}
-                </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Store className="h-4 w-4" />
+                <span>{product.vendor.name}</span>
+                {product.vendor.score && (
+                  <span className="flex items-center gap-1">
+                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                    {product.vendor.score}
+                  </span>
+                )}
+              </div>
+              {user && (
+                <FavouriteVendorButton
+                  userId={user.id}
+                  vendorId={product.vendor.id}
+                  vendorName={product.vendor.name}
+                  vendorScore={product.vendor.score}
+                />
               )}
             </div>
           )}
@@ -303,20 +319,83 @@ export default function OtProductDetail() {
         </div>
       </div>
 
-      {/* Tabs: Description */}
-      {description && (
-        <Tabs defaultValue="description" className="mt-8">
-          <TabsList>
-            <TabsTrigger value="description">Тайлбар</TabsTrigger>
-          </TabsList>
-          <TabsContent value="description">
+      {/* Tabs: Description + Reviews */}
+      <Tabs defaultValue="description" className="mt-8">
+        <TabsList>
+          <TabsTrigger value="description">Тайлбар</TabsTrigger>
+          <TabsTrigger value="reviews">Сэтгэгдэл</TabsTrigger>
+        </TabsList>
+        <TabsContent value="description">
+          {description ? (
             <div
               className="prose prose-sm max-w-none dark:prose-invert"
               dangerouslySetInnerHTML={{ __html: description }}
             />
-          </TabsContent>
-        </Tabs>
-      )}
+          ) : (
+            <p className="text-muted-foreground py-4">Тайлбар байхгүй</p>
+          )}
+        </TabsContent>
+        <TabsContent value="reviews">
+          <ProductReviews itemId={itemId!} />
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+// ─── Favourite Vendor Button ─────────────────────────────────
+
+function FavouriteVendorButton({ userId, vendorId, vendorName, vendorScore }: {
+  userId: string;
+  vendorId: string;
+  vendorName?: string;
+  vendorScore?: number;
+}) {
+  const queryClient = useQueryClient();
+
+  const { data: isFav } = useQuery({
+    queryKey: ["fav-vendor", userId, vendorId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("favourite_vendors")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("vendor_id", vendorId)
+        .maybeSingle();
+      return !!data;
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async () => {
+      if (isFav) {
+        await supabase.from("favourite_vendors").delete().eq("user_id", userId).eq("vendor_id", vendorId);
+      } else {
+        await supabase.from("favourite_vendors").insert({
+          user_id: userId,
+          vendor_id: vendorId,
+          vendor_name: vendorName,
+          vendor_score: vendorScore,
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fav-vendor", userId, vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["favourite-vendors"] });
+      toast(isFav ? "Борлуулагч хасагдлаа" : "Борлуулагч нэмэгдлээ");
+    },
+  });
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="gap-1 text-xs"
+      onClick={() => toggleMutation.mutate()}
+      disabled={toggleMutation.isPending}
+    >
+      <Heart className={`h-4 w-4 ${isFav ? "fill-red-500 text-red-500" : ""}`} />
+      {isFav ? "Дуртай" : "Дуртайд нэмэх"}
+    </Button>
   );
 }
