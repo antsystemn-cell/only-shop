@@ -149,6 +149,23 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       return callOtApi("CancelSalesOrderForOperator", { ...base, orderId: params.orderId, ...(params.reason ? { reason: params.reason } : {}) });
     case "cancelLineSalesOrder":
       return callOtApi("CancelLineSalesOrderForOperator", { ...base, orderLineId: params.orderLineId, ...(params.reason ? { reason: params.reason } : {}) });
+    case "createOrder":
+      return createOrder(apiKey, params);
+    case "recreateOrder":
+      return callOtApi("RecreateOrder", { ...base, sessionId: params.sessionId, orderId: params.orderId });
+
+    // ── User Profiles (Delivery Addresses) ──
+    case "getUserProfileInfoList":
+      return callOtApi("GetUserProfileInfoList", { ...base, sessionId: params.sessionId });
+    case "createUserProfile":
+      return callOtApi("CreateUserProfile", { ...base, sessionId: params.sessionId, xmlParameters: params.xmlParameters });
+    case "updateUserProfile":
+      return callOtApi("UpdateUserProfile", { ...base, sessionId: params.sessionId, xmlParameters: params.xmlParameters });
+    case "deleteUserProfile":
+      return callOtApi("DeleteUserProfile", { ...base, sessionId: params.sessionId, profileId: params.profileId });
+    case "searchCities":
+      return callOtApi("SearchCities", { ...base, cityName: params.cityName || "", ...(params.countryCode ? { countryCode: params.countryCode } : {}) });
+
     case "confirmOrderPackaging":
       return callOtApi("ConfirmOrderPackaging", { ...base, orderId: params.orderId });
 
@@ -284,6 +301,22 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     default:
       throw new Error(`Unknown action: ${action}`);
   }
+}
+
+// ─── Create Order (with XML) ────────────────────────────────
+
+function createOrder(apiKey: string, params: Record<string, any>) {
+  const xmlParts: string[] = [];
+  if (params.deliveryModeId) xmlParts.push(`<DeliveryModeId>${escapeXml(String(params.deliveryModeId))}</DeliveryModeId>`);
+  if (params.profileId) xmlParts.push(`<UserProfileId>${escapeXml(String(params.profileId))}</UserProfileId>`);
+  if (params.comment) xmlParts.push(`<Comment>${escapeXml(String(params.comment))}</Comment>`);
+
+  return callOtApi("CreateOrder", {
+    instanceKey: apiKey,
+    language: params.language || "en",
+    sessionId: params.sessionId,
+    xmlParameters: `<OrderParameters>${xmlParts.join("")}</OrderParameters>`,
+  });
 }
 
 // ─── Search Items (with XML params) ─────────────────────────
