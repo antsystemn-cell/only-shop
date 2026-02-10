@@ -16,7 +16,7 @@ serve(async (req) => {
   const OT_API_KEY = Deno.env.get("OT_API_KEY");
   if (!OT_API_KEY) {
     return new Response(
-      JSON.stringify({ error: "OT_API_KEY is not configured" }),
+      JSON.stringify({ success: false, error: "OT_API_KEY is not configured", envCheck: { hasKey: false } }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -27,10 +27,12 @@ serve(async (req) => {
 
     if (!action) {
       return new Response(
-        JSON.stringify({ error: "Missing 'action' parameter" }),
+        JSON.stringify({ success: false, error: "Missing 'action' parameter" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`[ot-api] action=${action}, hasSecrets: key=${!!OT_API_KEY}, secret=${!!Deno.env.get("OT_API_SECRET")}`);
 
     const result = await routeAction(action, OT_API_KEY, params || {});
 
@@ -42,8 +44,8 @@ serve(async (req) => {
     console.error("OT API Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
@@ -52,7 +54,9 @@ serve(async (req) => {
 
 async function routeAction(action: string, apiKey: string, params: Record<string, any>) {
   const lang = params.language || "en";
-  const base = { instanceKey: apiKey, language: lang };
+  const base: Record<string, string> = { instanceKey: apiKey, language: lang };
+  // Include sessionId in base if provided - many OT API methods require it
+  if (params.sessionId) base.sessionId = params.sessionId;
 
   switch (action) {
     // ── Sessions ──
@@ -299,7 +303,7 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
   const url = new URL(`${OT_API_BASE}/${methodName}`);
   for (const [key, value] of Object.entries(allParams)) {
     if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, value);
+      url.searchParams.set(key, String(value));
     }
   }
 

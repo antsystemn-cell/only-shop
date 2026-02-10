@@ -11,7 +11,8 @@ async function callProxy<T = unknown>(action: string, params: Record<string, unk
     body: { action, params },
   });
   if (error) throw new Error(`OT API proxy error: ${error.message}`);
-  if (data?.error) throw new Error(`OT API error: ${data.error}`);
+  if (data?.success === false) throw new Error(data.error || "Unknown OT API error");
+  if (data?.error && typeof data.error === "string") throw new Error(`OT API error: ${data.error}`);
   return data as T;
 }
 
