@@ -11,12 +11,21 @@ import type {
 const LANGUAGE = "en";
 
 async function callProxy<T = unknown>(action: string, params: Record<string, unknown> = {}): Promise<T> {
+  // Filter out undefined/null/empty params before sending
+  const cleanParams: Record<string, unknown> = { language: LANGUAGE };
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== "") {
+      cleanParams[k] = v;
+    }
+  }
+
   const { data, error } = await supabase.functions.invoke("ot-api", {
-    body: { action, params: { ...params, language: LANGUAGE } },
+    body: { action, params: cleanParams },
   });
 
   if (error) throw new Error(`OT API proxy error: ${error.message}`);
-  if (data?.error) throw new Error(`OT API error: ${data.error}`);
+  if (data?.success === false) throw new Error(data.error || "Unknown OT API error");
+  if (data?.error && typeof data.error === "string") throw new Error(`OT API error: ${data.error}`);
   return data as T;
 }
 
