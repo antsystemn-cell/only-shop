@@ -40,6 +40,7 @@ export default function SystemTools() {
       }
     },
     retry: false,
+    enabled: false,
   });
 
   const { data: blacklist, isLoading: blacklistLoading } = useQuery<any>({
@@ -52,6 +53,7 @@ export default function SystemTools() {
       }
     },
     retry: false,
+    enabled: false,
   });
 
   const handleResetCache = async () => {
