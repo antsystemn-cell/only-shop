@@ -61,6 +61,18 @@ export interface SearchParams {
   orderBy?: string;
   imageUrl?: string;
   provider?: string;
+  properties?: Record<string, string>;
+}
+
+export interface SearchPropertyValue {
+  id: string;
+  value: string;
+  itemCount?: number;
+}
+
+export interface SearchProperty {
+  propertyName: string;
+  values: SearchPropertyValue[];
 }
 
 export interface SearchResponse {
@@ -68,6 +80,7 @@ export interface SearchResponse {
   totalCount: number;
   subCategories: OtCategoryCard[];
   breadcrumbs: Array<{ id: string; name: string }>;
+  searchProperties: SearchProperty[];
 }
 
 export async function searchItems(params: SearchParams): Promise<SearchResponse> {
@@ -78,8 +91,12 @@ export async function searchItems(params: SearchParams): Promise<SearchResponse>
   const totalCount = result?.Items?.TotalCount || 0;
   const subCategories = (result?.SubCategories?.Items || []).map(mapCategory);
   const breadcrumbs = (result?.BreadCrumbs || []).map((b) => ({ id: b.Id, name: b.Name }));
+  const searchProperties: SearchProperty[] = (result?.SearchProperties?.Items || []).map((sp) => ({
+    propertyName: sp.PropertyName,
+    values: (sp.PropertyValues || []).map((v) => ({ id: v.Id, value: v.Value, itemCount: v.ItemCount })),
+  }));
 
-  return { items, totalCount, subCategories, breadcrumbs };
+  return { items, totalCount, subCategories, breadcrumbs, searchProperties };
 }
 
 // ─── Product Detail ──────────────────────────────────────────

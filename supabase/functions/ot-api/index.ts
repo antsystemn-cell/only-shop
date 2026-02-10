@@ -336,6 +336,13 @@ function searchItems(apiKey: string, params: Record<string, any>) {
   if (params.imageUrl) xmlParts.push(`<ImageUrl>${escapeXml(params.imageUrl)}</ImageUrl>`);
   if (params.provider) xmlParts.push(`<Provider>${escapeXml(params.provider)}</Provider>`);
 
+  // Search property filters (e.g. color, size) — format: { "propertyId": "valueId" }
+  if (params.properties && typeof params.properties === "object") {
+    for (const [propId, valueId] of Object.entries(params.properties)) {
+      if (valueId) xmlParts.push(`<Property${escapeXml(String(propId))}>${escapeXml(String(valueId))}</Property${escapeXml(String(propId))}>`);
+    }
+  }
+
   return callOtApi("BatchSearchItemsFrame", {
     instanceKey: apiKey,
     language: params.language || "en",
