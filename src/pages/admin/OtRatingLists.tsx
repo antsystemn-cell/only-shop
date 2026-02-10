@@ -59,10 +59,10 @@ export default function OtRatingLists() {
   const ratingList: RatingList[] = (() => {
     const d = ratings.data;
     if (Array.isArray(d)) return d;
-    if (d?.Content) return d.Content;
-    if (d?.RatingLists?.Item) return d.RatingLists.Item;
-    if (d?.Items?.Item) return d.Items.Item;
-    return [];
+    if (Array.isArray(d?.Content)) return d.Content;
+    if (Array.isArray(d?.RatingLists?.Item)) return d.RatingLists.Item;
+    if (Array.isArray(d?.Items?.Item)) return d.Items.Item;
+    return d && typeof d === "object" && !Array.isArray(d) ? [d] : [];
   })();
 
   return (

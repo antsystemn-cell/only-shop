@@ -59,8 +59,8 @@ export default function OtPricing() {
   const currencies = normalizeOtResponse<{ Content?: OtCurrency[] }>(currRaw);
   const discounts = normalizeOtResponse<{ Content?: OtDiscountGroup[] }>(discountRaw);
 
-  const currList = currencies.data?.Content || [];
-  const discList = discounts.data?.Content || [];
+  const currList: OtCurrency[] = Array.isArray(currencies.data?.Content) ? currencies.data.Content : [];
+  const discList: OtDiscountGroup[] = Array.isArray(discounts.data?.Content) ? discounts.data.Content : [];
 
   return (
     <div className="space-y-6 animate-fade-in">

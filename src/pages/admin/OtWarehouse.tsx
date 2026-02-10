@@ -45,9 +45,9 @@ export default function OtWarehouse() {
   const itemList: WarehouseItem[] = (() => {
     const d = items.data;
     if (Array.isArray(d)) return d;
-    if (d?.Content) return d.Content;
-    if (d?.Items?.Content) return d.Items.Content;
-    if (d?.Items?.Item) return d.Items.Item;
+    if (Array.isArray(d?.Content)) return d.Content;
+    if (Array.isArray(d?.Items?.Content)) return d.Items.Content;
+    if (Array.isArray(d?.Items?.Item)) return d.Items.Item;
     return [];
   })();
 
