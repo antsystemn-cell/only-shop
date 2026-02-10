@@ -11,7 +11,7 @@ import {
 } from "@/services/otApi";
 
 export default function OtPricing() {
-  const { data: currencies, isLoading: currLoading } = useQuery<any>({
+  const { data: currencies, isLoading: currLoading, refetch: refetchCurrencies } = useQuery<any>({
     queryKey: ["admin", "ot-currencies"],
     queryFn: async () => {
       try {
@@ -21,9 +21,10 @@ export default function OtPricing() {
       }
     },
     retry: false,
+    enabled: false,
   });
 
-  const { data: discountGroups, isLoading: discountLoading } = useQuery<any>({
+  const { data: discountGroups, isLoading: discountLoading, refetch: refetchDiscounts } = useQuery<any>({
     queryKey: ["admin", "ot-discounts"],
     queryFn: async () => {
       try {
@@ -33,6 +34,7 @@ export default function OtPricing() {
       }
     },
     retry: false,
+    enabled: false,
   });
 
   return (

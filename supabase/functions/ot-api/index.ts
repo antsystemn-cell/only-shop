@@ -161,7 +161,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "approveItemReviews":
       return callOtApi("ApproveItemReviews", { ...base, reviewIds: params.reviewIds });
     case "getItemReviewSettings":
-      return callOtApi("GetItemReviewSettings", base);
+      return callOtApi("GetItemReviewSettings", { ...base, includeMetaInfo: "true" });
 
     // ── Instance / Settings ──
     case "getCommonInstanceOptionsInfo":
