@@ -98,6 +98,15 @@ export function Header() {
                       <Link to="/wallet">Данс / Wallet</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
+                      <Link to="/favourite-vendors">Дуртай борлуулагчид</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/delivery-calculator">Хүргэлтийн тооцоолуур</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/support">Дэмжлэг</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link to="/orders">Дотоод захиалгууд</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -161,6 +170,15 @@ export function Header() {
                 </Link>
                 <Link to="/wallet" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                   Данс / Wallet
+                </Link>
+                <Link to="/favourite-vendors" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                  Дуртай борлуулагчид
+                </Link>
+                <Link to="/delivery-calculator" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                  Хүргэлтийн тооцоолуур
+                </Link>
+                <Link to="/support" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                  Дэмжлэг
                 </Link>
                 <Link to="/orders" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                   Дотоод захиалгууд
