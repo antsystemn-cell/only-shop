@@ -96,7 +96,13 @@ export function Header() {
                       <Link to="/profile">Миний профайл</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link to="/orders">Миний захиалгууд</Link>
+                      <Link to="/ot/orders">OT Захиалгууд</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/wallet">Данс / Wallet</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/orders">Дотоод захиалгууд</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
@@ -157,8 +163,14 @@ export function Header() {
                 <Link to="/profile" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                   Миний профайл
                 </Link>
+                <Link to="/ot/orders" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                  OT Захиалгууд
+                </Link>
+                <Link to="/wallet" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                  Данс / Wallet
+                </Link>
                 <Link to="/orders" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                  Миний захиалгууд
+                  Дотоод захиалгууд
                 </Link>
                 <button className="px-4 py-2 text-sm font-medium text-destructive hover:bg-muted rounded-lg transition-colors text-left" onClick={() => {
             handleSignOut();
