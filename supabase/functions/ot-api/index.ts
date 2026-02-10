@@ -55,6 +55,16 @@ async function routeAction(action: string, apiKey: string, params: Record<string
   const base = { instanceKey: apiKey, language: lang };
 
   switch (action) {
+    // ── Sessions ──
+    case "getAnonymousSession":
+      return callOtApi("GetAnonymousSession", base);
+    case "authenticateOperator": {
+      const login = params.login || Deno.env.get("OT_OPERATOR_LOGIN") || "";
+      const password = params.password || Deno.env.get("OT_OPERATOR_PASSWORD") || "";
+      if (!login || !password) throw new Error("Operator credentials not configured");
+      return callOtApi("AuthenticateInstanceOperator", { ...base, userLogin: login, userPassword: password });
+    }
+
     // ── Categories ──
     case "getRootCategories":
       return callOtApi("GetRootCategoryInfoList", base);
