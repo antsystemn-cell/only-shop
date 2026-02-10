@@ -141,7 +141,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "searchDeliveryPickupPoints":
       return callOtApi("SearchDeliveryPickupPoints", { ...base, ...(params.deliveryModeId ? { deliveryModeId: params.deliveryModeId } : {}) });
     case "getExternalDeliveryRateList":
-      return callOtApi("GetExternalDeliveryRateList", { ...base, ...(params.weight ? { weight: params.weight } : {}), ...(params.countryCode ? { countryCode: params.countryCode } : {}) });
+      return callOtApi("GetExternalDeliveryRateList", { ...base, ...(params.sessionId ? { sessionId: params.sessionId } : {}), ...(params.weight ? { weight: params.weight } : {}), ...(params.countryCode ? { countryCode: params.countryCode } : {}) });
 
     // ── Currency ──
     case "getCurrencyList":

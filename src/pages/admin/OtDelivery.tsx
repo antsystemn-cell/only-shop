@@ -36,6 +36,7 @@ export default function OtDelivery() {
       }
     },
     retry: false,
+    enabled: false, // Requires sessionId — enable manually when needed
   });
 
   return (
