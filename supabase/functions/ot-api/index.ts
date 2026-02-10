@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { encode as hexEncode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,7 +74,35 @@ serve(async (req) => {
 
 // ─── API Methods ──────────────────────────────────────────────
 
+async function generateSignature(instanceKey: string, secret: string): Promise<{ signature: string; timestamp: string }> {
+  // OT API uses yyyyMMddHHmmss format
+  const now = new Date();
+  const timestamp = now.getUTCFullYear().toString() +
+    String(now.getUTCMonth() + 1).padStart(2, '0') +
+    String(now.getUTCDate()).padStart(2, '0') +
+    String(now.getUTCHours()).padStart(2, '0') +
+    String(now.getUTCMinutes()).padStart(2, '0') +
+    String(now.getUTCSeconds()).padStart(2, '0');
+  // Pattern: MD5(secret + timestamp) — common OT API pattern
+  const rawStr = secret + timestamp;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(rawStr);
+  const hashBuffer = await crypto.subtle.digest("MD5", data);
+  const hashArray = new Uint8Array(hashBuffer);
+  const signature = new TextDecoder().decode(hexEncode(hashArray));
+  console.log(`[OT API] Signature generated with timestamp: ${timestamp}`);
+  return { signature, timestamp };
+}
+
 async function callOtApi(method: string, queryParams: Record<string, string>) {
+  // Add signature if secret is available
+  const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
+  if (OT_API_SECRET && queryParams.instanceKey) {
+    const { signature, timestamp } = await generateSignature(queryParams.instanceKey, OT_API_SECRET);
+    queryParams.signature = signature;
+    queryParams.timestamp = timestamp;
+  }
+
   const url = new URL(`${OT_API_BASE}/${method}`);
   for (const [key, value] of Object.entries(queryParams)) {
     if (value !== undefined && value !== null && value !== "") {
@@ -80,7 +110,7 @@ async function callOtApi(method: string, queryParams: Record<string, string>) {
     }
   }
 
-  console.log(`[OT API] Calling: ${method}`, Object.keys(queryParams));
+  console.log(`[OT API] Calling: ${method}`);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
