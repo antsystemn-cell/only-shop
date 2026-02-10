@@ -227,8 +227,63 @@ export async function searchOtOrders(params: { sessionId?: string; statusId?: st
   return callProxy("searchOrders", params);
 }
 
-export async function searchOrdersForUser(userId: string, page = 0, pageSize = 20) {
-  return callProxy("searchOrdersForUser", { userId, page, pageSize });
+// ─── Create Order ───────────────────────────────────────────
+
+export async function createOtOrder(sessionId: string, params: { deliveryModeId?: string; profileId?: string; comment?: string }) {
+  return callProxy("createOrder", { sessionId, ...params });
+}
+
+export async function recreateOrder(sessionId: string, orderId: string) {
+  return callProxy("recreateOrder", { sessionId, orderId });
+}
+
+// ─── User Profiles (Delivery Addresses) ─────────────────────
+
+export interface OtUserProfile {
+  Id: string;
+  FullName?: string;
+  Address?: string;
+  Phone?: string;
+  CityId?: string;
+  CityName?: string;
+  ZipCode?: string;
+  District?: string;
+}
+
+export async function getUserProfileInfoList(sessionId: string) {
+  return callProxy<{ Result?: { Items?: OtUserProfile[] } }>("getUserProfileInfoList", { sessionId });
+}
+
+export async function createUserProfile(sessionId: string, xml: string) {
+  return callProxy("createUserProfile", { sessionId, xmlParameters: xml });
+}
+
+export async function updateUserProfile(sessionId: string, xml: string) {
+  return callProxy("updateUserProfile", { sessionId, xmlParameters: xml });
+}
+
+export async function deleteUserProfile(sessionId: string, profileId: string) {
+  return callProxy("deleteUserProfile", { sessionId, profileId });
+}
+
+export async function searchCities(cityName: string, countryCode?: string) {
+  return callProxy<{ Result?: { Items?: Array<{ Id: string; Name: string; CountryName?: string }> } }>("searchCities", { cityName, countryCode });
+}
+
+// ─── Delivery Modes ─────────────────────────────────────────
+
+export interface OtDeliveryMode {
+  Id: string;
+  Name?: string;
+  Description?: string;
+  Price?: number;
+  Currency?: string;
+  EstimatedDays?: number;
+  IsDefault?: boolean;
+}
+
+export async function searchDeliveryModesForSession(sessionId: string, countryCode?: string) {
+  return callProxy<{ Result?: { Items?: OtDeliveryMode[] } }>("searchDeliveryModes", { sessionId, deliveryCountryCode: countryCode });
 }
 
 export async function getSalesOrderDetails(orderId: string) {

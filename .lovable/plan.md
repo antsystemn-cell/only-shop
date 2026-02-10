@@ -33,7 +33,7 @@
 
 ## Фаз 2: Захиалгын систем (Order) OT API руу шилжүүлэх
 
-**Асуудал:** Одоогийн checkout нь Supabase-ийн `orders` хүснэгтэд бичдэг. Legacy систем нь OT API-н `CreateOrder` ашигладаг.
+**Статус: ✅ ДУУССАН** — OtCheckout.tsx 5-алхамт хуудас, edge function actions, otApi.ts service functions бүрэн хэрэгжсэн.
 
 **Хийх зүйлс:**
 

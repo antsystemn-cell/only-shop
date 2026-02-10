@@ -23,6 +23,7 @@ import Wishlist from "./pages/storefront/Wishlist";
 import OtShop from "./pages/storefront/OtShop";
 import OtCategory from "./pages/storefront/OtCategory";
 import OtProductDetail from "./pages/storefront/OtProductDetail";
+import OtCheckout from "./pages/storefront/OtCheckout";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -84,6 +85,7 @@ const App = () => (
               {/* Auth and checkout routes - outside layout */}
               <Route path="/auth" element={<Auth />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/ot/checkout" element={<OtCheckout />} />
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
               <Route path="/orders" element={<CustomerOrders />} />
               
