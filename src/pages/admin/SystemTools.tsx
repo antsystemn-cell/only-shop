@@ -6,52 +6,88 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
-  Activity, RefreshCw, AlertTriangle, Database, BarChart3, Shield,
+  RefreshCw, AlertTriangle, Database, BarChart3, Shield,
+  Globe, Server, CreditCard, Languages, Zap, CheckCircle2, XCircle,
+  Lock,
 } from "lucide-react";
 import {
   getCallStatistics,
   resetInstanceCaches,
 } from "@/services/otApi";
 import { callWithOperatorSession } from "@/services/otSession";
+import {
+  normalizeOtResponse,
+  type OtInstanceInfo,
+  type OtCallStatistics,
+} from "@/utils/otNormalizer";
+
+// ─── Helpers ─────────────────────────────────────────────────
+
+function formatNumber(n?: number) {
+  if (n === undefined || n === null) return "—";
+  return n.toLocaleString();
+}
+
+function formatDate(d?: string) {
+  if (!d) return "—";
+  try {
+    return new Date(d).toLocaleDateString("mn-MN", { year: "numeric", month: "long", day: "numeric" });
+  } catch {
+    return d;
+  }
+}
+
+function StatItem({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="text-center p-3 rounded-lg bg-muted/50">
+      <p className="text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-xs text-muted-foreground mt-1">{label}</p>
+    </div>
+  );
+}
+
+function ErrorAlert({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-2 text-destructive p-3 rounded-lg bg-destructive/10">
+      <AlertTriangle className="h-4 w-4 shrink-0" />
+      <span className="text-sm">{message}</span>
+    </div>
+  );
+}
+
+// ─── Component ───────────────────────────────────────────────
 
 export default function SystemTools() {
   const [resetting, setResetting] = useState(false);
 
-  const { data: statistics, isLoading: statsLoading, refetch: refetchStats } = useQuery<any>({
+  const { data: statsRaw, isLoading: statsLoading, refetch: refetchStats } = useQuery<any>({
     queryKey: ["admin", "ot-statistics"],
     queryFn: async () => {
-      try {
-        return await getCallStatistics();
-      } catch (e: any) {
-        return { error: e.message };
-      }
+      try { return await getCallStatistics(); } catch (e: any) { return { success: false, error: e.message }; }
     },
     retry: false,
   });
 
-  const { data: instanceInfo, isLoading: instanceLoading } = useQuery<any>({
+  const { data: instanceRaw, isLoading: instanceLoading } = useQuery<any>({
     queryKey: ["admin", "ot-instance"],
     queryFn: async () => {
-      try {
-        return await callWithOperatorSession("getInstanceOptionsInfo");
-      } catch (e: any) {
-        return { error: e.message };
-      }
+      try { return await callWithOperatorSession("getInstanceOptionsInfo"); } catch (e: any) { return { success: false, error: e.message }; }
     },
     retry: false,
   });
 
-  const { data: blacklist, isLoading: blacklistLoading } = useQuery<any>({
+  const { data: blacklistRaw, isLoading: blacklistLoading } = useQuery<any>({
     queryKey: ["admin", "ot-blacklist"],
     queryFn: async () => {
-      try {
-        return await callWithOperatorSession("getBlackListContents", { page: 0 });
-      } catch (e: any) {
-        return { error: e.message };
-      }
+      try { return await callWithOperatorSession("getBlackListContents", { page: 0 }); } catch (e: any) { return { success: false, error: e.message }; }
     },
     retry: false,
   });
+
+  // Normalize responses
+  const stats = normalizeOtResponse<OtCallStatistics>(statsRaw);
+  const instance = normalizeOtResponse<OtInstanceInfo>(instanceRaw);
+  const blacklist = normalizeOtResponse<any[]>(blacklistRaw);
 
   const handleResetCache = async () => {
     setResetting(true);
@@ -66,12 +102,16 @@ export default function SystemTools() {
     }
   };
 
+  const info = instance.data;
+  const st = stats.data;
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Системийн хэрэгслүүд</h1>
-          <p className="text-muted-foreground mt-1">OT API статистик, кэш, хар жагсаалт</p>
+          <p className="text-muted-foreground mt-1">OT API статистик, тохиргоо, кэш</p>
         </div>
         <Button variant="destructive" onClick={handleResetCache} disabled={resetting}>
           <RefreshCw className={`h-4 w-4 mr-2 ${resetting ? "animate-spin" : ""}`} />
@@ -79,31 +119,167 @@ export default function SystemTools() {
         </Button>
       </div>
 
-      {/* Instance Info */}
+      {/* ── Instance Overview ── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-primary" />
-            Инстанс мэдээлэл
+            <Globe className="h-5 w-5 text-primary" />
+            Ерөнхий мэдээлэл
           </CardTitle>
         </CardHeader>
         <CardContent>
           {instanceLoading ? (
             <Skeleton className="h-24 w-full" />
-          ) : instanceInfo?.error ? (
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm">{instanceInfo.error}</span>
-            </div>
+          ) : !instance.success ? (
+            <ErrorAlert message={instance.error || "Мэдээлэл ачаалж чадсангүй"} />
           ) : (
-            <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto max-h-64">
-              {JSON.stringify(instanceInfo, null, 2)}
-            </pre>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Вэб сайт</p>
+                <p className="font-medium">{info?.WebSite || "—"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Үндсэн нийлүүлэгч</p>
+                <p className="font-medium">{info?.DefaultItemProvider || "—"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Админ хэл</p>
+                <p className="font-medium">{info?.AdminPanelLanguage?.toUpperCase() || "—"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Имэйл баталгаажуулалт</p>
+                <Badge variant={info?.IsEmailConfirmationUsed ? "default" : "secondary"}>
+                  {info?.IsEmailConfirmationUsed ? "Идэвхтэй" : "Идэвхгүй"}
+                </Badge>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">IP шалгалт</p>
+                <Badge variant={info?.IsIPCheckUsed ? "default" : "secondary"}>
+                  {info?.IsIPCheckUsed ? "Идэвхтэй" : "Идэвхгүй"}
+                </Badge>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* API Statistics */}
+      {/* ── Hosting & Tariff (side by side) ── */}
+      {instance.success && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Hosting */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Server className="h-4 w-4 text-primary" />
+                Хостинг
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Нэр</span>
+                <span className="text-sm font-medium">{info?.Hosting?.Name || "—"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">SSL</span>
+                <Badge variant={info?.Hosting?.FreeSslEnabled ? "default" : "destructive"}>
+                  {info?.Hosting?.FreeSslEnabled ? (
+                    <><Lock className="h-3 w-3 mr-1" /> Идэвхтэй</>
+                  ) : "Идэвхгүй"}
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Идэвхжсэн</span>
+                <span className="text-sm">{formatDate(info?.Hosting?.ActivationDate)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Дуусах</span>
+                <span className="text-sm">{formatDate(info?.Hosting?.ExpirationDate)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tariff & Account */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CreditCard className="h-4 w-4 text-primary" />
+                Тариф & Данс
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Тариф</span>
+                <span className="text-sm font-medium">{info?.Tariff?.Name || "—"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Дуудлагын үнэ</span>
+                <span className="text-sm">${info?.Tariff?.CallPrice ?? "—"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Сарын доод</span>
+                <span className="text-sm">${info?.Tariff?.MinimumRent ?? "—"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Баланс</span>
+                <span className="text-sm font-bold">${info?.Account?.Balance ?? 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Өр</span>
+                <span className="text-sm">${info?.Account?.Debt ?? 0}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Features ── */}
+      {instance.success && info?.Features && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Идэвхтэй модулиуд
+              <Badge variant="secondary" className="ml-2">{info.Features.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {info.Features.map((f) => (
+                <div key={f.Name} className="flex items-start gap-2 p-3 rounded-lg border bg-card">
+                  <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">{f.Name}</p>
+                    <p className="text-xs text-muted-foreground">{f.Description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Languages ── */}
+      {instance.success && info?.AvailableLanguages && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Languages className="h-5 w-5 text-primary" />
+              Хэлүүд
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {info.AvailableLanguages.map((lang) => (
+                <Badge key={lang.Name} variant="outline" className="px-3 py-1">
+                  {lang.Name.toUpperCase()} — {lang.Description}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── API Statistics ── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -114,20 +290,27 @@ export default function SystemTools() {
         <CardContent>
           {statsLoading ? (
             <Skeleton className="h-24 w-full" />
-          ) : statistics?.error ? (
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm">{statistics.error}</span>
-            </div>
+          ) : !stats.success ? (
+            <ErrorAlert message={stats.error || "Статистик ачаалж чадсангүй"} />
           ) : (
-            <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto max-h-64">
-              {JSON.stringify(statistics, null, 2)}
-            </pre>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatItem label="Нийт дуудлага" value={formatNumber(st?.OtapiAllCallStatistics?.TotalCount)} />
+                <StatItem label="Өнөөдөр" value={formatNumber(st?.OtapiAllCallStatistics?.StatisticsByTimePeriod?.DailyCallCount)} />
+                <StatItem label="Энэ 7 хоног" value={formatNumber(st?.OtapiAllCallStatistics?.StatisticsByTimePeriod?.WeeklyCallCount)} />
+                <StatItem label="Энэ сар" value={formatNumber(st?.OtapiAllCallStatistics?.StatisticsByTimePeriod?.MonthlyCallCount)} />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <StatItem label="Инстанс дуудлага (нийт)" value={formatNumber(st?.OtapiCallStatistics?.TotalCount)} />
+                <StatItem label="Идэвхтэй инстанс" value={formatNumber(st?.ActiveInstances)} />
+                <StatItem label="Тест инстанс" value={formatNumber(st?.ActiveTestInstances)} />
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Blacklist */}
+      {/* ── Blacklist ── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -137,16 +320,23 @@ export default function SystemTools() {
         </CardHeader>
         <CardContent>
           {blacklistLoading ? (
-            <Skeleton className="h-24 w-full" />
-          ) : blacklist?.error ? (
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm">{blacklist.error}</span>
+            <Skeleton className="h-16 w-full" />
+          ) : !blacklist.success ? (
+            <ErrorAlert message={blacklist.error || "Хар жагсаалт ачаалж чадсангүй"} />
+          ) : Array.isArray(blacklist.data) && blacklist.data.length === 0 ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-4">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <span className="text-sm">Хар жагсаалт хоосон байна</span>
             </div>
           ) : (
-            <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto max-h-64">
-              {JSON.stringify(blacklist, null, 2)}
-            </pre>
+            <div className="space-y-2">
+              {(blacklist.data as any[])?.map((item: any, i: number) => (
+                <div key={i} className="flex items-center gap-2 p-2 rounded border bg-muted/30">
+                  <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                  <span className="text-sm">{item.Id || item.Name || JSON.stringify(item)}</span>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
