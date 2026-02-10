@@ -69,18 +69,18 @@ export default function OtContent() {
   const menuItems: MenuTreeItem[] = (() => {
     const d = menu.data;
     if (Array.isArray(d)) return d;
-    if (d?.Content) return d.Content;
-    if (d?.ContentMenuItemTree?.Item) return d.ContentMenuItemTree.Item;
-    if (d?.Items) return d.Items;
-    return d ? [d] : [];
+    if (Array.isArray(d?.Content)) return d.Content;
+    if (Array.isArray(d?.ContentMenuItemTree?.Item)) return d.ContentMenuItemTree.Item;
+    if (Array.isArray(d?.Items)) return d.Items;
+    return d && typeof d === "object" && !Array.isArray(d) ? [d] : [];
   })();
 
   const bannerList: OtBanner[] = (() => {
     const d = banners.data;
     if (Array.isArray(d)) return d;
-    if (d?.Content) return d.Content;
-    if (d?.BannerList?.Item) return d.BannerList.Item;
-    if (d?.Banners) return d.Banners;
+    if (Array.isArray(d?.Content)) return d.Content;
+    if (Array.isArray(d?.BannerList?.Item)) return d.BannerList.Item;
+    if (Array.isArray(d?.Banners)) return d.Banners;
     return [];
   })();
 
