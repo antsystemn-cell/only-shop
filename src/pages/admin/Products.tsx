@@ -36,6 +36,7 @@ import { ProductImageUpload } from "@/components/admin/ProductImageUpload";
 import { ProductVariantsManager } from "@/components/admin/ProductVariantsManager";
 import { MultiVariantCreator } from "@/components/admin/MultiVariantCreator";
 import { VariantFormData } from "@/components/admin/VariantFormFields";
+import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import {
   Plus,
   Search,
@@ -386,15 +387,13 @@ export default function Products() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description_mn">Тайлбар</Label>
-                <Textarea
-                  id="description_mn"
-                  value={formData.description_mn}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description_mn: e.target.value })
+                <Label>Дэлгэрэнгүй танилцуулга</Label>
+                <RichTextEditor
+                  content={formData.description_mn}
+                  onChange={(html) =>
+                    setFormData({ ...formData, description_mn: html })
                   }
-                  placeholder="Барааны тайлбар..."
-                  rows={3}
+                  placeholder="Барааны дэлгэрэнгүй танилцуулга бичих..."
                 />
               </div>
 
