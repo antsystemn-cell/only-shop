@@ -4,28 +4,23 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
+import { useOtCart } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CartDrawer } from "./CartDrawer";
+import { OtCartDrawer } from "./OtCartDrawer";
 import onlyLogo from "@/assets/only-logo.png";
 import { toast } from "sonner";
 export function Header() {
-  const {
-    getItemCount
-  } = useCart();
-  const {
-    user,
-    signOut,
-    isLoading
-  } = useAuth();
-  const {
-    wishlistIds
-  } = useWishlist();
+  const { getItemCount } = useCart();
+  const { itemCount: otItemCount } = useOtCart();
+  const { user, signOut, isLoading } = useAuth();
+  const { wishlistIds } = useWishlist();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const itemCount = getItemCount();
+  const itemCount = getItemCount() + otItemCount;
   const wishlistCount = wishlistIds.length;
   const handleSignOut = async () => {
     await signOut();
@@ -125,7 +120,7 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent className="w-full sm:max-w-lg">
-              <CartDrawer />
+              <OtCartDrawer />
             </SheetContent>
           </Sheet>
 
