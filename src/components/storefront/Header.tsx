@@ -2,15 +2,14 @@ import { Link } from "react-router-dom";
 import { ShoppingCart, Search, Menu, X, User, LogOut, Heart } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
 import { useOtCart } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CartDrawer } from "./CartDrawer";
 import { OtCartDrawer } from "./OtCartDrawer";
+import HeaderSearch from "./HeaderSearch";
 import onlyLogo from "@/assets/only-logo.png";
 import { toast } from "sonner";
 export function Header() {
@@ -55,11 +54,8 @@ export function Header() {
         </nav>
 
         {/* Search - Desktop */}
-        <div className="hidden md:flex flex-1 max-w-md">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Бараа хайх..." className="pl-10 bg-muted/50" />
-          </div>
+        <div className="hidden md:flex flex-1 max-w-lg">
+          <HeaderSearch />
         </div>
 
         {/* Actions */}
@@ -139,10 +135,7 @@ export function Header() {
 
       {/* Mobile Search */}
       {isSearchOpen && <div className="border-t p-4 md:hidden animate-fade-in">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Бараа хайх..." className="pl-10" autoFocus />
-          </div>
+          <HeaderSearch autoFocus onSearchComplete={() => setIsSearchOpen(false)} />
         </div>}
 
       {/* Mobile Navigation */}
