@@ -19,6 +19,10 @@ import {
   Activity,
   Globe,
   Percent,
+  Store,
+  Warehouse,
+  LayoutList,
+  Palette,
 } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
@@ -84,6 +88,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "Үнийн удирдлага", url: "/admin/pricing", icon: DollarSign },
       { title: "OT Валют & Хөнгөлөлт", url: "/admin/ot-pricing", icon: Percent },
+      { title: "Нийлүүлэгч & Markup", url: "/admin/ot-providers", icon: Store },
     ],
   },
   {
@@ -106,6 +111,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "Хуудсууд", url: "/admin/content", icon: FileText },
       { title: "Баннер удирдах", url: "/admin/banners", icon: Image },
+      { title: "OT Контент", url: "/admin/ot-content", icon: Palette },
     ],
   },
   {
@@ -116,10 +122,18 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: "Агуулах & Рэйтинг",
+    items: [
+      { title: "Агуулах", url: "/admin/ot-warehouse", icon: Warehouse },
+      { title: "Рэйтинг жагсаалт", url: "/admin/ot-rating-lists", icon: LayoutList },
+    ],
+  },
+  {
     label: "Тохиргоо",
     items: [
       { title: "Ерөнхий тохиргоо", url: "/admin/settings", icon: Settings },
       { title: "Захиалгын тохиргоо", url: "/admin/settings-orders", icon: Settings },
+      { title: "OT тохиргоо", url: "/admin/ot-settings", icon: Globe },
       { title: "Системийн хэрэгсэл", url: "/admin/system-tools", icon: Activity },
     ],
   },

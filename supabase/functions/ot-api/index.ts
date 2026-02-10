@@ -213,6 +213,46 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getBlackListContents":
       return callOtApi("GetBlackListContents", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 50) });
 
+    // ── Design & Theme ──
+    case "getApplicationDesignSettings":
+      return callOtApi("GetApplicationDesignSettings", base);
+
+    // ── Rating Lists / Element Collections ──
+    case "getAutoRatingListsSettings":
+      return callOtApi("GetAutoRatingListsSettings", base);
+    case "batchSearchRatingLists":
+      return callOtApi("BatchSearchRatingLists", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20), ...(params.blockList ? { blockList: params.blockList } : {}) });
+    case "addItemRatingList":
+      return callOtApi("AddItemRatingList", { ...base, xmlParameters: params.xmlParameters });
+    case "addElementsSetToRatingList":
+      return callOtApi("AddElementsSetToRatingList", { ...base, xmlParameters: params.xmlParameters });
+
+    // ── Warehouse ──
+    case "getWarehouseCategories":
+      return callOtApi("GetWarehouseCategories", base);
+    case "searchWarehouseItems":
+      return callOtApi("SearchWarehouseItems", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20), ...(params.categoryId ? { categoryId: params.categoryId } : {}) });
+    case "createWarehouseItem":
+      return callOtApi("CreateWarehouseItem", { ...base, xmlParameters: params.xmlParameters });
+
+    // ── Price Formation ──
+    case "getPriceFormationGroupList":
+      return callOtApi("GetPriceFormationGroupList", base);
+    case "getPriceFormationSettings":
+      return callOtApi("GetPriceFormationSettings", base);
+
+    // ── User Collections Settings ──
+    case "getCollectionsSettings":
+      return callOtApi("GetCollectionsSettings", base);
+
+    // ── OT Users (Admin) ──
+    case "findBaseUserInfoListFrame":
+      return callOtApi("FindBaseUserInfoListFrame", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20), ...(params.searchText ? { searchText: params.searchText } : {}) });
+
+    // ── Banner Settings ──
+    case "getBannerSettings":
+      return callOtApi("GetBannerSettings", base);
+
     default:
       throw new Error(`Unknown action: ${action}`);
   }
