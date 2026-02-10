@@ -9,10 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Star, MessageSquare, Search, CheckCircle } from "lucide-react";
-import {
-  getItemReviewSettings,
-  approveItemReviews,
-} from "@/services/otApi";
+import { approveItemReviews } from "@/services/otApi";
+import { callWithOperatorSession } from "@/services/otSession";
 
 export default function Reviews() {
   const [reviewIds, setReviewIds] = useState("");
@@ -22,13 +20,12 @@ export default function Reviews() {
     queryKey: ["admin", "review-settings"],
     queryFn: async () => {
       try {
-        return await getItemReviewSettings();
+        return await callWithOperatorSession("getItemReviewSettings");
       } catch (e: any) {
         return { error: e.message };
       }
     },
     retry: false,
-    enabled: false,
   });
 
   const handleApprove = async () => {

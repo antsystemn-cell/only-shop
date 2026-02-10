@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import {
   getDeliveryCountryInfoList,
-  getExternalDeliveryRateList,
 } from "@/services/otApi";
+import { callWithOperatorSession } from "@/services/otSession";
 
 export default function OtDelivery() {
   const { data: countries, isLoading: countriesLoading } = useQuery<any>({
@@ -30,13 +30,12 @@ export default function OtDelivery() {
     queryKey: ["admin", "ot-delivery-rates"],
     queryFn: async () => {
       try {
-        return await getExternalDeliveryRateList("1000", "MN");
+        return await callWithOperatorSession("getExternalDeliveryRateList", { weight: "1000", countryCode: "MN" });
       } catch (e: any) {
         return { error: e.message };
       }
     },
     retry: false,
-    enabled: false, // Requires sessionId — enable manually when needed
   });
 
   return (
