@@ -142,7 +142,11 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "searchOrders":
       return callOtApi("SearchOrders", { ...base, sessionId: params.sessionId, ...(params.statusId ? { statusId: params.statusId } : {}), framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20) });
     case "searchOrdersForUser":
-      return callOtApi("SearchOrdersForUser", { ...base, userId: params.userId, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20) });
+      return callOtApi("SearchOrdersForUser", { ...base, userId: params.userId, ...(params.statusId ? { statusId: params.statusId } : {}), framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20) });
+    case "searchAllOrders":
+      return searchAllOrders(apiKey, params);
+    case "getOrderLineStatusHistory":
+      return callOtApi("GetOrderLineStatusHistory", { ...base, orderLineId: params.orderLineId });
     case "getSalesOrderDetails":
       return callOtApi("GetSalesOrderDetailsForOperator", { ...base, orderId: params.orderId });
     case "cancelSalesOrder":
@@ -350,6 +354,21 @@ function searchItems(apiKey: string, params: Record<string, any>) {
     frameSize: String(pageSize),
     blockList: "SubCategories,SearchProperties",
     xmlParameters: `<SearchItemsParameters>${xmlParts.join("")}</SearchItemsParameters>`,
+  });
+}
+
+function searchAllOrders(apiKey: string, params: Record<string, any>) {
+  const xmlParts: string[] = [];
+  if (params.statusId) xmlParts.push(`<StatusId>${escapeXml(String(params.statusId))}</StatusId>`);
+  if (params.userId) xmlParts.push(`<UserId>${escapeXml(String(params.userId))}</UserId>`);
+  if (params.orderId) xmlParts.push(`<OrderId>${escapeXml(String(params.orderId))}</OrderId>`);
+
+  return callOtApi("SearchSalesOrdersForOperator", {
+    instanceKey: apiKey,
+    language: params.language || "en",
+    framePosition: String(params.page || 0),
+    frameSize: String(params.pageSize || 20),
+    xmlSearchParameters: `<SalesOrderSearchParameters>${xmlParts.join("")}</SalesOrderSearchParameters>`,
   });
 }
 
