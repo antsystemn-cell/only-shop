@@ -35,6 +35,9 @@ export function Header() {
     href: "/",
     label: "Нүүр"
   }, {
+    href: "/ot",
+    label: "Маркетплэйс"
+  }, {
     href: "/shop",
     label: "Дэлгүүр"
   }, {
