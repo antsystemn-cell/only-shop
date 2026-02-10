@@ -28,6 +28,7 @@ export default function Reviews() {
       }
     },
     retry: false,
+    enabled: false,
   });
 
   const handleApprove = async () => {
