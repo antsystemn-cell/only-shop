@@ -71,10 +71,13 @@ serve(async (req) => {
   }
 });
 
-// ─── API Methods ──────────────────────────────────────────────
+// ─── Core API caller ─────────────────────────────────────────
 
-async function trySignatures(instanceKey: string, secret: string, method: string, queryParams: Record<string, string>): Promise<Record<string, string>> {
+async function callOtApi(method: string, queryParams: Record<string, string>) {
+  const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
+
   const now = new Date();
+  const tsUnix = String(Math.floor(now.getTime() / 1000));
   const ts14 = now.getUTCFullYear().toString() +
     String(now.getUTCMonth() + 1).padStart(2, '0') +
     String(now.getUTCDate()).padStart(2, '0') +
@@ -82,140 +85,102 @@ async function trySignatures(instanceKey: string, secret: string, method: string
     String(now.getUTCMinutes()).padStart(2, '0') +
     String(now.getUTCSeconds()).padStart(2, '0');
 
-  // Try multiple patterns
-  const patterns = [
-    { name: "MD5(secret+ts)", input: secret + ts14, timestamp: ts14 },
-    { name: "MD5(key+secret+ts)", input: instanceKey + secret + ts14, timestamp: ts14 },
-    { name: "MD5(ts+secret)", input: ts14 + secret, timestamp: ts14 },
-    { name: "MD5(key+ts+secret)", input: instanceKey + ts14 + secret, timestamp: ts14 },
-    { name: "MD5(secret+key+ts)", input: secret + instanceKey + ts14, timestamp: ts14 },
+  if (!OT_API_SECRET) {
+    // No secret - call without signature
+    const result = await tryFetch(method, queryParams);
+    if (result.success) return result.data;
+    throw new Error(`OT API Error [${result.errorCode}]: ${result.errorDesc || "Unknown"}`);
+  }
+
+  const instanceKey = queryParams.instanceKey;
+  
+  // All combos with ts14 (since unix gives "Invalid time stamp")
+  const combos = [
+    // Plain MD5 patterns
+    { input: OT_API_SECRET + ts14, name: "MD5(secret+ts14)" },
+    { input: ts14 + OT_API_SECRET, name: "MD5(ts14+secret)" },
+    { input: instanceKey + OT_API_SECRET + ts14, name: "MD5(key+secret+ts14)" },
+    { input: OT_API_SECRET + instanceKey + ts14, name: "MD5(secret+key+ts14)" },
+    { input: instanceKey + ts14 + OT_API_SECRET, name: "MD5(key+ts14+secret)" },
+    { input: ts14 + instanceKey + OT_API_SECRET, name: "MD5(ts14+key+secret)" },
+    { input: OT_API_SECRET + ts14 + instanceKey, name: "MD5(secret+ts14+key)" },
+    { input: ts14 + OT_API_SECRET + instanceKey, name: "MD5(ts14+secret+key)" },
+    // Just the secret
+    { input: OT_API_SECRET, name: "MD5(secret)" },
+    // Secret lowercase/uppercase
+    { input: OT_API_SECRET.toLowerCase() + ts14, name: "MD5(secret_lower+ts14)" },
+    { input: OT_API_SECRET.toUpperCase() + ts14, name: "MD5(secret_upper+ts14)" },
   ];
 
-  for (const pattern of patterns) {
+  for (const combo of combos) {
     const md5 = new Md5();
-    md5.update(pattern.input);
-    const sig = md5.toString("hex");
-
-    const testParams = { ...queryParams, signature: sig, timestamp: pattern.timestamp };
-    const url = new URL(`${OT_API_BASE}/${method}`);
-    for (const [key, value] of Object.entries(testParams)) {
-      if (value !== undefined && value !== null && value !== "") {
-        url.searchParams.set(key, value);
-      }
-    }
-
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      const response = await fetch(url.toString(), { signal: controller.signal });
-      clearTimeout(timeout);
-      const data = await response.json();
-
-      if (data?.ErrorCode === "Ok" || data?.ErrorCode === "BatchError" || (data?.CategoryInfoList)) {
-        console.log(`[OT API] ✅ Working pattern: ${pattern.name}`);
-        return { signature: sig, timestamp: pattern.timestamp, _pattern: pattern.name };
-      }
-      
-      if (data?.ErrorCode === "AccessDenied" && data?.ErrorDescription?.includes("signature")) {
-        console.log(`[OT API] ❌ Pattern ${pattern.name} failed: Invalid signature`);
-        continue;
-      }
-
-      // If error is not about signature, the signature worked but something else failed
-      console.log(`[OT API] ✅ Pattern ${pattern.name} - sig accepted, other error: ${data?.ErrorCode}`);
-      return { signature: sig, timestamp: pattern.timestamp, _pattern: pattern.name };
-    } catch (err) {
-      console.log(`[OT API] ❌ Pattern ${pattern.name} fetch error: ${err}`);
-      continue;
-    }
+    md5.update(combo.input);
+    const sigParams = { ...queryParams, timestamp: ts14, signature: md5.toString("hex") as string };
+    const result = await tryFetch(method, sigParams);
+    console.log(`[OT API] ${combo.name}: ${result.success ? '✅ OK' : result.errorCode + ' - ' + (result.errorDesc || '').substring(0, 50)}`);
+    if (result.success) return result.data;
   }
 
-  throw new Error("All signature patterns failed. Please verify your OT API key and secret.");
+  throw new Error("All signature patterns failed. Check OT_API_SECRET value.");
+
 }
 
-async function callOtApi(method: string, queryParams: Record<string, string>) {
-  const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
-  
-  if (OT_API_SECRET && queryParams.instanceKey) {
-    // Use auto-discovery of signing pattern
-    const sigResult = await trySignatures(queryParams.instanceKey, OT_API_SECRET, method, queryParams);
-    queryParams.signature = sigResult.signature;
-    queryParams.timestamp = sigResult.timestamp;
-    
-    // Now make the actual call with the working signature
-    const url = new URL(`${OT_API_BASE}/${method}`);
-    for (const [key, value] of Object.entries(queryParams)) {
-      if (value !== undefined && value !== null && value !== "") {
-        url.searchParams.set(key, value);
-      }
-    }
-    
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    const response = await fetch(url.toString(), { signal: controller.signal });
-    clearTimeout(timeout);
-    
-    if (!response.ok) {
-      throw new Error(`OT API HTTP ${response.status}: ${await response.text()}`);
-    }
-    
-    const data = await response.json();
-    if (data?.ErrorCode && data.ErrorCode !== "Ok" && data.ErrorCode !== "BatchError") {
-      throw new Error(`OT API Error [${data.ErrorCode}]: ${data.ErrorDescription || "Unknown"}`);
-    }
-    return data;
-  }
+interface FetchResult {
+  success: boolean;
+  data?: unknown;
+  errorCode?: string;
+  errorDesc?: string;
+}
 
-  // No secret - call without signature
+async function tryFetch(method: string, params: Record<string, string>): Promise<FetchResult> {
   const url = new URL(`${OT_API_BASE}/${method}`);
-  for (const [key, value] of Object.entries(queryParams)) {
+  for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== "") {
       url.searchParams.set(key, value);
     }
   }
 
-  console.log(`[OT API] Calling: ${method} (no signature)`);
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(url.toString(), { signal: controller.signal });
     clearTimeout(timeout);
 
     if (!response.ok) {
-      throw new Error(`OT API HTTP ${response.status}: ${await response.text()}`);
+      const text = await response.text();
+      return { success: false, errorCode: `HTTP_${response.status}`, errorDesc: text };
     }
 
     const data = await response.json();
 
     if (data?.ErrorCode && data.ErrorCode !== "Ok" && data.ErrorCode !== "BatchError") {
-      throw new Error(`OT API Error [${data.ErrorCode}]: ${data.ErrorDescription || "Unknown"}`);
+      return { 
+        success: false, 
+        errorCode: data.ErrorCode, 
+        errorDesc: data.ErrorDescription || "",
+        data 
+      };
     }
 
-    return data;
+    return { success: true, data };
   } catch (err) {
-    clearTimeout(timeout);
-    throw err;
+    return { success: false, errorCode: "FETCH_ERROR", errorDesc: String(err) };
   }
 }
 
+// ─── API Methods ──────────────────────────────────────────────
+
 async function getRootCategories(apiKey: string, params: { language?: string }) {
-  const language = params?.language || "en";
   return await callOtApi("GetRootCategoryInfoList", {
     instanceKey: apiKey,
-    language,
+    language: params?.language || "en",
   });
 }
 
-async function getSubcategories(
-  apiKey: string,
-  params: { parentId: string; language?: string }
-) {
-  const language = params?.language || "en";
+async function getSubcategories(apiKey: string, params: { parentId: string; language?: string }) {
   return await callOtApi("GetCategorySubcategoryInfoList", {
     instanceKey: apiKey,
-    language,
+    language: params?.language || "en",
     parentCategoryId: params.parentId,
   });
 }
@@ -223,92 +188,50 @@ async function getSubcategories(
 async function searchItems(
   apiKey: string,
   params: {
-    query?: string;
-    categoryId?: string;
-    brandId?: string;
-    vendorId?: string;
-    minPrice?: string;
-    maxPrice?: string;
-    page?: number;
-    pageSize?: number;
-    orderBy?: string;
-    language?: string;
-    imageUrl?: string;
+    query?: string; categoryId?: string; brandId?: string; vendorId?: string;
+    minPrice?: string; maxPrice?: string; page?: number; pageSize?: number;
+    orderBy?: string; language?: string; imageUrl?: string;
   }
 ) {
-  const language = params?.language || "en";
   const page = params?.page || 0;
   const pageSize = params?.pageSize || 40;
-  const framePosition = page * pageSize;
 
-  // Build XML parameters
   let xmlParts: string[] = [];
-  if (params?.query) {
-    xmlParts.push(`<ItemTitle>${escapeXml(params.query)}</ItemTitle>`);
-  }
-  if (params?.categoryId) {
-    xmlParts.push(`<CategoryId>${escapeXml(params.categoryId)}</CategoryId>`);
-  }
-  if (params?.vendorId) {
-    xmlParts.push(`<VendorId>${escapeXml(params.vendorId)}</VendorId>`);
-  }
-  if (params?.minPrice) {
-    xmlParts.push(`<MinPrice>${escapeXml(params.minPrice)}</MinPrice>`);
-  }
-  if (params?.maxPrice) {
-    xmlParts.push(`<MaxPrice>${escapeXml(params.maxPrice)}</MaxPrice>`);
-  }
-  if (params?.orderBy) {
-    xmlParts.push(`<OrderBy>${escapeXml(params.orderBy)}</OrderBy>`);
-  }
-  if (params?.imageUrl) {
-    xmlParts.push(`<ImageUrl>${escapeXml(params.imageUrl)}</ImageUrl>`);
-  }
-
-  const xmlParameters = `<SearchItemsParameters>${xmlParts.join("")}</SearchItemsParameters>`;
+  if (params?.query) xmlParts.push(`<ItemTitle>${escapeXml(params.query)}</ItemTitle>`);
+  if (params?.categoryId) xmlParts.push(`<CategoryId>${escapeXml(params.categoryId)}</CategoryId>`);
+  if (params?.vendorId) xmlParts.push(`<VendorId>${escapeXml(params.vendorId)}</VendorId>`);
+  if (params?.minPrice) xmlParts.push(`<MinPrice>${escapeXml(params.minPrice)}</MinPrice>`);
+  if (params?.maxPrice) xmlParts.push(`<MaxPrice>${escapeXml(params.maxPrice)}</MaxPrice>`);
+  if (params?.orderBy) xmlParts.push(`<OrderBy>${escapeXml(params.orderBy)}</OrderBy>`);
+  if (params?.imageUrl) xmlParts.push(`<ImageUrl>${escapeXml(params.imageUrl)}</ImageUrl>`);
 
   return await callOtApi("BatchSearchItemsFrame", {
     instanceKey: apiKey,
-    language,
-    framePosition: String(framePosition),
+    language: params?.language || "en",
+    framePosition: String(page * pageSize),
     frameSize: String(pageSize),
     blockList: "SubCategories,SearchProperties",
-    xmlParameters,
+    xmlParameters: `<SearchItemsParameters>${xmlParts.join("")}</SearchItemsParameters>`,
   });
 }
 
-async function getItemFullInfo(
-  apiKey: string,
-  params: { itemId: string; language?: string }
-) {
-  const language = params?.language || "en";
+async function getItemFullInfo(apiKey: string, params: { itemId: string; language?: string }) {
   return await callOtApi("BatchGetItemFullInfo", {
     instanceKey: apiKey,
-    language,
+    language: params?.language || "en",
     itemId: params.itemId,
     blockList: "Vendor,RootPath,Promotions",
   });
 }
 
-async function getItemDescription(
-  apiKey: string,
-  params: { itemId: string; language?: string }
-) {
-  const language = params?.language || "en";
+async function getItemDescription(apiKey: string, params: { itemId: string; language?: string }) {
   return await callOtApi("GetItemDescription", {
     instanceKey: apiKey,
-    language,
+    language: params?.language || "en",
     itemId: params.itemId,
   });
 }
 
-// ─── Helpers ──────────────────────────────────────────────────
-
 function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
