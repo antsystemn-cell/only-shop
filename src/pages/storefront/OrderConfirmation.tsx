@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import QPayPayment from "@/components/storefront/QPayPayment";
 import { 
   CheckCircle2, 
   Package, 
@@ -74,7 +75,7 @@ const paymentStatusLabels: Record<string, { label: string; variant: "default" | 
 export default function OrderConfirmation() {
   const { orderId } = useParams<{ orderId: string }>();
 
-  const { data: order, isLoading, error } = useQuery({
+  const { data: order, isLoading, error, refetch } = useQuery({
     queryKey: ["order", orderId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -89,7 +90,6 @@ export default function OrderConfirmation() {
       
       if (error) throw error;
       
-      // Parse JSON fields and map to typed interface
       const orderItems: OrderItem[] = (data.order_items || []).map((item: any) => ({
         id: item.id,
         quantity: item.quantity,
@@ -139,6 +139,7 @@ export default function OrderConfirmation() {
 
   const orderStatus = statusLabels[order.status] || statusLabels.pending;
   const paymentStatus = paymentStatusLabels[order.payment_status || "pending"] || paymentStatusLabels.pending;
+  const showPayment = order.payment_status === "pending" || order.payment_status === "failed";
 
   return (
     <div className="container py-8 max-w-4xl">
@@ -147,11 +148,25 @@ export default function OrderConfirmation() {
         <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-4">
           <CheckCircle2 className="h-10 w-10 text-primary" />
         </div>
-        <h1 className="text-3xl font-bold mb-2">Захиалга амжилттай!</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          {order.payment_status === "paid" ? "Төлбөр амжилттай!" : "Захиалга амжилттай!"}
+        </h1>
         <p className="text-muted-foreground">
           Таны захиалгыг хүлээн авлаа. Захиалгын дугаар: <strong>{order.order_number}</strong>
         </p>
       </div>
+
+      {/* QPay Payment Section - shown for unpaid orders */}
+      {showPayment && (
+        <div className="mb-8">
+          <QPayPayment
+            orderId={order.id}
+            orderNumber={order.order_number}
+            amount={order.total}
+            onPaymentSuccess={() => refetch()}
+          />
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Order Status */}
@@ -216,28 +231,30 @@ export default function OrderConfirmation() {
         </Card>
 
         {/* Delivery Address */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <MapPin className="h-5 w-5 text-primary" />
-              Хүргэлтийн хаяг
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-muted/50 rounded-lg p-4">
-              <p className="font-medium">
-                {order.delivery_address.city}, {order.delivery_address.district}
-              </p>
-              <p className="text-muted-foreground">
-                {order.delivery_address.street_address}
-                {order.delivery_address.apartment && `, ${order.delivery_address.apartment}`}
-              </p>
-              <p className="text-sm mt-2">
-                Утас: <strong>{order.delivery_address.phone}</strong>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        {order.delivery_address && (
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <MapPin className="h-5 w-5 text-primary" />
+                Хүргэлтийн хаяг
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="font-medium">
+                  {order.delivery_address.city}, {order.delivery_address.district}
+                </p>
+                <p className="text-muted-foreground">
+                  {order.delivery_address.street_address}
+                  {order.delivery_address.apartment && `, ${order.delivery_address.apartment}`}
+                </p>
+                <p className="text-sm mt-2">
+                  Утас: <strong>{order.delivery_address.phone}</strong>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Order Items */}
         <Card className="md:col-span-2">
@@ -279,7 +296,6 @@ export default function OrderConfirmation() {
 
             <Separator className="my-4" />
 
-            {/* Totals */}
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Барааны дүн</span>
