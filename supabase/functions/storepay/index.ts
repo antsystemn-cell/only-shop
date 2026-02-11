@@ -39,11 +39,17 @@ async function getStorepayToken(): Promise<string> {
   const basicAuth = btoa(`${appUsername}:${appPassword}`);
   const url = `${STOREPAY_AUTH_URL}?grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
 
+  console.log("Storepay auth attempt:", {
+    url,
+    appUsername: appUsername?.substring(0, 3) + "***",
+    username: username?.substring(0, 3) + "***",
+  });
+
   const res = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Basic ${basicAuth}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
     },
   });
 
