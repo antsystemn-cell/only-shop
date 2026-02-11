@@ -202,7 +202,8 @@ Deno.serve(async (req) => {
         throw new Error(`Cannot create loan: status is ${pi.status}`);
       }
 
-      const storeId = Deno.env.get("STOREPAY_STORE_ID");
+      const rawStoreId = Deno.env.get("STOREPAY_STORE_ID");
+      const storeId = rawStoreId?.replace(/\D/g, ""); // strip non-digits like "#"
       if (!storeId) throw new Error("STOREPAY_STORE_ID not configured");
 
       // Build loan request
