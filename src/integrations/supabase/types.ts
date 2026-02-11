@@ -474,6 +474,10 @@ export type Database = {
           payment_method: string | null
           payment_reference: string | null
           payment_status: string | null
+          qpay_invoice_id: string | null
+          qpay_payment_id: string | null
+          qpay_qr_image: string | null
+          qpay_urls: Json | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
           total: number
@@ -493,6 +497,10 @@ export type Database = {
           payment_method?: string | null
           payment_reference?: string | null
           payment_status?: string | null
+          qpay_invoice_id?: string | null
+          qpay_payment_id?: string | null
+          qpay_qr_image?: string | null
+          qpay_urls?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           total?: number
@@ -512,6 +520,10 @@ export type Database = {
           payment_method?: string | null
           payment_reference?: string | null
           payment_status?: string | null
+          qpay_invoice_id?: string | null
+          qpay_payment_id?: string | null
+          qpay_qr_image?: string | null
+          qpay_urls?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           total?: number
