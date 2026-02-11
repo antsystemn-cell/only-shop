@@ -295,3 +295,28 @@ export function useOtCart() {
   }
   return context;
 }
+
+/** Safe version that returns defaults when outside OtCartProvider */
+export function useOtCartSafe() {
+  const context = useContext(OtCartContext);
+  if (!context) {
+    return {
+      items: [] as OtBasketItem[],
+      groups: [] as OtBasketGroup[],
+      isLoading: false,
+      itemCount: 0,
+      subtotal: 0,
+      addItem: async () => {},
+      batchAddItems: async () => {},
+      updateItemQuantity: async () => {},
+      removeItem: async () => {},
+      moveToNote: async () => {},
+      moveToBasket: async () => {},
+      clearCart: async () => {},
+      refreshBasket: async () => {},
+      checkBasket: async () => ({}),
+      checkingStatus: { isRunning: false, isComplete: false, result: null },
+    } as OtCartContextType;
+  }
+  return context;
+}
