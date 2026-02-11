@@ -3,7 +3,7 @@ import { ShoppingCart, Search, Menu, X, User, LogOut, Heart } from "lucide-react
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
-import { useOtCart } from "@/contexts/OtCartContext";
+import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -14,7 +14,7 @@ import onlyLogo from "@/assets/only-logo.png";
 import { toast } from "sonner";
 export function Header() {
   const { getItemCount } = useCart();
-  const { itemCount: otItemCount } = useOtCart();
+  const { itemCount: otItemCount } = useOtCartSafe();
   const { user, signOut, isLoading } = useAuth();
   const { wishlistIds } = useWishlist();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
