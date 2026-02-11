@@ -540,6 +540,60 @@ export type Database = {
           },
         ]
       }
+      payment_intents: {
+        Row: {
+          amount: number
+          created_at: string
+          error_message: string | null
+          expires_at: string | null
+          id: string
+          invoice_id: string | null
+          payment_id: string | null
+          provider: Database["public"]["Enums"]["payment_provider"]
+          qr_image: string | null
+          reference_id: string
+          status: Database["public"]["Enums"]["payment_intent_status"]
+          type: Database["public"]["Enums"]["payment_intent_type"]
+          updated_at: string
+          urls: Json | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          invoice_id?: string | null
+          payment_id?: string | null
+          provider?: Database["public"]["Enums"]["payment_provider"]
+          qr_image?: string | null
+          reference_id: string
+          status?: Database["public"]["Enums"]["payment_intent_status"]
+          type: Database["public"]["Enums"]["payment_intent_type"]
+          updated_at?: string
+          urls?: Json | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          invoice_id?: string | null
+          payment_id?: string | null
+          provider?: Database["public"]["Enums"]["payment_provider"]
+          qr_image?: string | null
+          reference_id?: string
+          status?: Database["public"]["Enums"]["payment_intent_status"]
+          type?: Database["public"]["Enums"]["payment_intent_type"]
+          updated_at?: string
+          urls?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       price_config: {
         Row: {
           config_key: string
@@ -893,6 +947,60 @@ export type Database = {
         }
         Relationships: []
       }
+      user_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_topups: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wishlists: {
         Row: {
           created_at: string
@@ -927,6 +1035,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      credit_wallet: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -945,6 +1057,14 @@ export type Database = {
         | "shipped"
         | "delivered"
         | "cancelled"
+      payment_intent_status:
+        | "initiated"
+        | "processing"
+        | "paid"
+        | "failed"
+        | "expired"
+      payment_intent_type: "order" | "wallet_topup"
+      payment_provider: "qpay"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1081,6 +1201,15 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      payment_intent_status: [
+        "initiated",
+        "processing",
+        "paid",
+        "failed",
+        "expired",
+      ],
+      payment_intent_type: ["order", "wallet_topup"],
+      payment_provider: ["qpay"],
     },
   },
 } as const

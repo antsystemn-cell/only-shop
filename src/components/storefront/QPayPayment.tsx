@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -17,31 +16,33 @@ import {
 } from "lucide-react";
 
 interface QPayPaymentProps {
-  orderId: string;
-  orderNumber: string;
+  /** New unified flow: pass paymentIntentId */
+  paymentIntentId?: string;
+  /** Legacy flow: orderId-based */
+  orderId?: string;
+  orderNumber?: string;
   amount: number;
   onPaymentSuccess?: () => void;
 }
 
-interface QPayInvoice {
+interface InvoiceData {
   invoice_id: string;
   qr_image: string;
   urls: any;
   amount: number;
-  order_number: string;
 }
 
-type PaymentStatus = "idle" | "creating" | "pending" | "polling" | "paid" | "failed";
+type PaymentStatus = "idle" | "creating" | "pending" | "paid" | "failed";
 
 export default function QPayPayment({
+  paymentIntentId,
   orderId,
   orderNumber,
   amount,
   onPaymentSuccess,
 }: QPayPaymentProps) {
-  const navigate = useNavigate();
   const [status, setStatus] = useState<PaymentStatus>("idle");
-  const [invoice, setInvoice] = useState<QPayInvoice | null>(null);
+  const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollingCountRef = useRef(0);
@@ -54,17 +55,17 @@ export default function QPayPayment({
     pollingCountRef.current = 0;
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => stopPolling();
   }, [stopPolling]);
 
   const checkPaymentStatus = useCallback(async () => {
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("qpay", {
-        body: { action: "checkPayment", params: { orderId } },
-      });
+      const body = paymentIntentId
+        ? { action: "checkPayment", params: { paymentIntentId } }
+        : { action: "checkPayment", params: { orderId } };
 
+      const { data, error: fnError } = await supabase.functions.invoke("qpay", { body });
       if (fnError) throw fnError;
 
       if (data?.status === "PAID") {
@@ -72,15 +73,10 @@ export default function QPayPayment({
         setStatus("paid");
         toast.success("Төлбөр амжилттай төлөгдлөө!");
         onPaymentSuccess?.();
-        // Navigate to confirmation after short delay
-        setTimeout(() => {
-          navigate(`/order-confirmation/${orderId}`);
-        }, 2000);
         return;
       }
 
       pollingCountRef.current += 1;
-      // Stop polling after 120 attempts (10 min at 5s interval)
       if (pollingCountRef.current >= 120) {
         stopPolling();
         setStatus("failed");
@@ -89,24 +85,24 @@ export default function QPayPayment({
     } catch (err) {
       console.error("Payment check error:", err);
     }
-  }, [orderId, stopPolling, onPaymentSuccess, navigate]);
+  }, [paymentIntentId, orderId, stopPolling, onPaymentSuccess]);
 
   const createInvoice = useCallback(async () => {
     setStatus("creating");
     setError(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("qpay", {
-        body: { action: "createInvoice", params: { orderId } },
-      });
+      const body = paymentIntentId
+        ? { action: "createInvoice", params: { paymentIntentId } }
+        : { action: "createInvoiceByOrder", params: { orderId } };
 
+      const { data, error: fnError } = await supabase.functions.invoke("qpay", { body });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
 
       setInvoice(data);
       setStatus("pending");
 
-      // Start polling for payment status every 5 seconds
       stopPolling();
       pollingRef.current = setInterval(checkPaymentStatus, 5000);
     } catch (err: any) {
@@ -115,34 +111,25 @@ export default function QPayPayment({
       setError(err.message || "Нэхэмжлэл үүсгэхэд алдаа гарлаа");
       toast.error("QPay нэхэмжлэл үүсгэхэд алдаа гарлаа");
     }
-  }, [orderId, stopPolling, checkPaymentStatus]);
+  }, [paymentIntentId, orderId, stopPolling, checkPaymentStatus]);
 
   const retryPayment = () => {
     setInvoice(null);
     createInvoice();
   };
 
-  // Extract bank app links from urls
-  const bankApps: Array<{
-    name: string;
-    description: string;
-    logo: string;
-    link: string;
-  }> = [];
-
+  // Extract bank app links
+  const bankApps: Array<{ name: string; description: string; logo: string; link: string }> = [];
   if (invoice?.urls) {
-    // QPay v2 returns urls as array or object with app_links
-    const urlsList = Array.isArray(invoice.urls) ? invoice.urls : invoice.urls;
-    if (Array.isArray(urlsList)) {
-      urlsList.forEach((app: any) => {
-        bankApps.push({
-          name: app.name || app.description || "Bank",
-          description: app.description || "",
-          logo: app.logo || "",
-          link: app.link || "",
-        });
+    const urlsList = Array.isArray(invoice.urls) ? invoice.urls : [];
+    urlsList.forEach((app: any) => {
+      bankApps.push({
+        name: app.name || app.description || "Bank",
+        description: app.description || "",
+        logo: app.logo || "",
+        link: app.link || "",
       });
-    }
+    });
   }
 
   if (status === "paid") {
@@ -150,12 +137,7 @@ export default function QPayPayment({
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="flex flex-col items-center py-8">
           <CheckCircle2 className="h-16 w-16 text-primary mb-4" />
-          <h3 className="text-xl font-bold text-primary mb-2">
-            Төлбөр амжилттай!
-          </h3>
-          <p className="text-muted-foreground text-center">
-            Захиалга #{orderNumber} төлбөр төлөгдлөө
-          </p>
+          <h3 className="text-xl font-bold text-primary mb-2">Төлбөр амжилттай!</h3>
           <p className="text-2xl font-bold text-primary mt-2">
             {amount.toLocaleString()}₮
           </p>
@@ -176,20 +158,14 @@ export default function QPayPayment({
         {/* Amount Display */}
         <div className="text-center p-4 bg-muted/50 rounded-lg">
           <p className="text-sm text-muted-foreground">Төлөх дүн</p>
-          <p className="text-3xl font-bold text-primary">
-            {amount.toLocaleString()}₮
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Захиалга: {orderNumber}
-          </p>
+          <p className="text-3xl font-bold text-primary">{amount.toLocaleString()}₮</p>
+          {orderNumber && (
+            <p className="text-xs text-muted-foreground mt-1">Захиалга: {orderNumber}</p>
+          )}
         </div>
 
         {status === "idle" && (
-          <Button
-            onClick={createInvoice}
-            size="lg"
-            className="w-full"
-          >
+          <Button onClick={createInvoice} size="lg" className="w-full">
             <QrCode className="h-4 w-4 mr-2" />
             QPay-ээр төлөх
           </Button>
@@ -215,7 +191,7 @@ export default function QPayPayment({
           </div>
         )}
 
-        {(status === "pending" || status === "polling") && invoice && (
+        {status === "pending" && invoice && (
           <>
             {/* QR Code */}
             {invoice.qr_image && (
@@ -236,7 +212,7 @@ export default function QPayPayment({
 
             <Separator />
 
-            {/* Bank Apps */}
+            {/* Bank Apps - dynamic from QPay */}
             {bankApps.length > 0 && (
               <div>
                 <h4 className="font-medium mb-3 flex items-center gap-2">
@@ -278,17 +254,10 @@ export default function QPayPayment({
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-4 w-4 animate-pulse" />
               <span>Төлбөр хүлээж байна...</span>
-              <Badge variant="outline" className="text-xs">
-                Автомат шалгалт
-              </Badge>
+              <Badge variant="outline" className="text-xs">Автомат шалгалт</Badge>
             </div>
 
-            <Button
-              onClick={checkPaymentStatus}
-              variant="outline"
-              size="sm"
-              className="w-full"
-            >
+            <Button onClick={checkPaymentStatus} variant="outline" size="sm" className="w-full">
               <RefreshCw className="h-4 w-4 mr-2" />
               Төлбөр шалгах
             </Button>
