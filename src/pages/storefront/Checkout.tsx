@@ -195,7 +195,7 @@ export default function Checkout() {
           type: "order" as const,
           reference_id: order.id,
           amount: total,
-          provider: paymentMethod === "omniway" ? ("omniway" as const) : ("qpay" as const),
+          provider: paymentMethod === "omniway" ? ("omniway" as const) : paymentMethod === "storepay" ? ("storepay" as const) : ("qpay" as const),
           status: "initiated" as const,
         })
         .select()

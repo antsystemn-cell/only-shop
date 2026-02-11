@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
 import QPayPayment from "@/components/storefront/QPayPayment";
 import OmniWayPayment from "@/components/storefront/OmniWayPayment";
+import StorepayPayment from "@/components/storefront/StorepayPayment";
 import {
   ArrowLeft,
   Wallet as WalletIcon,
@@ -85,7 +86,7 @@ export default function Wallet() {
           type: "wallet_topup",
           reference_id: topup.id,
           amount,
-          provider: paymentMethod === "omniway" ? "omniway" : "qpay",
+          provider: paymentMethod === "omniway" ? "omniway" : paymentMethod === "storepay" ? "storepay" : "qpay",
           status: "initiated",
         })
         .select()
@@ -194,7 +195,7 @@ export default function Wallet() {
               onClick={handleStartTopUp}
               size="lg"
               className="w-full"
-              disabled={!topUpAmount || creatingTopUp || (paymentMethod !== "qpay" && paymentMethod !== "omniway")}
+              disabled={!topUpAmount || creatingTopUp || (paymentMethod !== "qpay" && paymentMethod !== "omniway" && paymentMethod !== "storepay")}
             >
               {creatingTopUp ? (
                 <>
@@ -232,6 +233,13 @@ export default function Wallet() {
           )}
           {paymentIntentId && paymentMethod === "omniway" && (
             <OmniWayPayment
+              paymentIntentId={paymentIntentId}
+              amount={parseFloat(topUpAmount)}
+              onPaymentSuccess={handlePaymentSuccess}
+            />
+          )}
+          {paymentIntentId && paymentMethod === "storepay" && (
+            <StorepayPayment
               paymentIntentId={paymentIntentId}
               amount={parseFloat(topUpAmount)}
               onPaymentSuccess={handlePaymentSuccess}

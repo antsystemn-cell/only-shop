@@ -2,3 +2,6 @@ project_id = "pczjwunwitxnhhtxltph"
 
 [functions.omniway]
 verify_jwt = false
+
+[functions.storepay]
+verify_jwt = false
