@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Minus, Plus, Trash2, ShoppingBag, Loader2 } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, Loader2, BookmarkMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
@@ -11,7 +11,7 @@ function formatPrice(price: number, currency = "¥") {
 }
 
 export function OtCartDrawer() {
-  const { items, groups, isLoading, subtotal, clearCart, updateItemQuantity, removeItem } = useOtCart();
+  const { items, groups, isLoading, subtotal, clearCart, updateItemQuantity, removeItem, moveToNote } = useOtCart();
   const navigate = useNavigate();
 
   const handleCheckout = () => {
@@ -117,6 +117,15 @@ export function OtCartDrawer() {
                         onClick={() => updateItemQuantity(item.orderLineId, item.quantity + 1)}
                       >
                         <Plus className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        onClick={() => moveToNote(item.orderLineId)}
+                        title="Тэмдэглэл рүү зөөх"
+                      >
+                        <BookmarkMinus className="h-3.5 w-3.5" />
                       </Button>
                       <Button
                         variant="ghost"

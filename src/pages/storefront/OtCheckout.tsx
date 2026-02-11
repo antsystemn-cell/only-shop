@@ -10,6 +10,8 @@ import {
   ArrowLeft,
   ArrowRight,
   Plus,
+  Package,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,9 +35,11 @@ import {
   getUserProfileInfoList,
   createUserProfile,
   createOtOrder,
+  salesPaymentReserve,
   type OtDeliveryMode,
   type OtUserProfile,
 } from "@/services/otApi";
+import { PickupPointSelector } from "@/components/storefront/PickupPointSelector";
 
 type CheckoutStep = 1 | 2 | 3 | 4 | 5;
 
@@ -60,6 +64,7 @@ export default function OtCheckout() {
   // Step 2 — delivery modes
   const [deliveryModes, setDeliveryModes] = useState<OtDeliveryMode[]>([]);
   const [selectedDelivery, setSelectedDelivery] = useState<string>("");
+  const [selectedPickupPoint, setSelectedPickupPoint] = useState<string>("");
   const [loadingDelivery, setLoadingDelivery] = useState(false);
 
   // Step 3 — profiles
@@ -77,8 +82,9 @@ export default function OtCheckout() {
   // Step 4 — comment
   const [comment, setComment] = useState("");
 
-  // Step 5 — result
   const [orderResult, setOrderResult] = useState<any>(null);
+  const [paymentReserveLoading, setPaymentReserveLoading] = useState(false);
+  const [paymentReserved, setPaymentReserved] = useState(false);
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -380,6 +386,22 @@ export default function OtCheckout() {
                     ))}
                   </div>
                 )}
+
+                {/* Pickup Points */}
+                {selectedDelivery && (
+                  <div className="mt-4">
+                    <Separator className="mb-4" />
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                      <Package className="h-4 w-4 text-primary" />
+                      Авах цэг сонгох (заавал биш)
+                    </h3>
+                    <PickupPointSelector
+                      deliveryModeId={selectedDelivery}
+                      selectedPointId={selectedPickupPoint}
+                      onSelect={setSelectedPickupPoint}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -592,7 +614,50 @@ export default function OtCheckout() {
                     Захиалгын дугаар: {orderResult.Result.OrderId}
                   </Badge>
                 )}
+
+                {/* Payment Reserve */}
+                {orderResult?.Result?.OrderId && !paymentReserved && (
+                  <div className="pt-2">
+                    <Separator className="mb-4" />
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Захиалгын төлбөрийг дансны үлдэгдлээс хасах бол:
+                    </p>
+                    <Button
+                      onClick={async () => {
+                        setPaymentReserveLoading(true);
+                        try {
+                          await salesPaymentReserve(orderResult.Result.OrderId, subtotal);
+                          setPaymentReserved(true);
+                          toast.success("Төлбөр амжилттай хасагдлаа!");
+                        } catch (err: any) {
+                          toast.error(err.message || "Төлбөр хасахад алдаа гарлаа");
+                        } finally {
+                          setPaymentReserveLoading(false);
+                        }
+                      }}
+                      disabled={paymentReserveLoading}
+                      variant="secondary"
+                    >
+                      {paymentReserveLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <CreditCard className="h-4 w-4 mr-2" />
+                      )}
+                      Дансаар төлөх
+                    </Button>
+                  </div>
+                )}
+                {paymentReserved && (
+                  <div className="flex items-center gap-2 text-primary text-sm pt-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>Төлбөр амжилттай хасагдсан</span>
+                  </div>
+                )}
+
                 <div className="flex gap-3 justify-center pt-4">
+                  <Link to="/ot/orders">
+                    <Button>Захиалгууд харах</Button>
+                  </Link>
                   <Link to="/ot">
                     <Button variant="outline">Маркетплэйс руу буцах</Button>
                   </Link>
