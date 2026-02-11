@@ -83,8 +83,19 @@ export default function OtProductDetail() {
 
   const handleAddToCart = async () => {
     if (!product) return;
+
+    // If there are configurators but none selected, prompt user
+    if (product.configurators.length > 0 && !matchedConfig && Object.values(selectedConfigs).filter(Boolean).length === 0) {
+      toast.error("Хувилбараа сонгоно уу");
+      return;
+    }
+
+    // Build configurationId from matched configured item
+    const configurationId = matchedConfig?.id;
+
+    // Build XML configurators as fallback
     let configurators: string | undefined;
-    if (Object.keys(selectedConfigs).length > 0) {
+    if (!configurationId && Object.keys(selectedConfigs).length > 0) {
       const parts = Object.entries(selectedConfigs)
         .filter(([, vid]) => vid)
         .map(([pid, vid]) => `<Item><Pid>${pid}</Pid><Vid>${vid}</Vid></Item>`)
@@ -93,8 +104,9 @@ export default function OtProductDetail() {
         configurators = `<ItemConfigurationValues>${parts}</ItemConfigurationValues>`;
       }
     }
+
     try {
-      await addItem(product.id, quantity, configurators);
+      await addItem(product.id, quantity, configurators, configurationId);
     } catch {
       // toast already shown in context
     }
@@ -178,12 +190,12 @@ export default function OtProductDetail() {
 
       <div className="grid md:grid-cols-2 gap-6 md:gap-10">
         {/* ─── Image Gallery ─── */}
-        <div>
-          <div className="relative aspect-square rounded-xl overflow-hidden bg-muted border">
+        <div className="overflow-hidden min-w-0">
+          <div className="relative aspect-square rounded-xl overflow-hidden bg-muted border max-w-full">
             <img
               src={effectiveImage}
               alt={product.title}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain max-w-full max-h-full"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/placeholder.svg";
               }}

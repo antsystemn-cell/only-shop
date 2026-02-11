@@ -271,8 +271,8 @@ export async function getBasket(sessionId: string) {
   return callProxy("getBasket", { sessionId });
 }
 
-export async function addItemToBasket(sessionId: string, itemId: string, quantity: number, configurators?: string) {
-  return callProxy("addItemToBasket", { sessionId, itemId, quantity, ...(configurators ? { configurators } : {}) });
+export async function addItemToBasket(sessionId: string, itemId: string, quantity: number, configurators?: string, configurationId?: string) {
+  return callProxy("addItemToBasket", { sessionId, itemId, quantity, ...(configurators ? { configurators } : {}), ...(configurationId ? { configurationId } : {}) });
 }
 
 export async function editBasketItemQuantity(sessionId: string, orderLineId: string, quantity: number) {

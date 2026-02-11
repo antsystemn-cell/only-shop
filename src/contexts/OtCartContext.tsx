@@ -49,7 +49,7 @@ interface OtCartContextType {
   isLoading: boolean;
   itemCount: number;
   subtotal: number;
-  addItem: (itemId: string, quantity: number, configurators?: string) => Promise<void>;
+  addItem: (itemId: string, quantity: number, configurators?: string, configurationId?: string) => Promise<void>;
   batchAddItems: (xmlParameters: string) => Promise<void>;
   updateItemQuantity: (orderLineId: string, quantity: number) => Promise<void>;
   removeItem: (orderLineId: string) => Promise<void>;
@@ -131,11 +131,11 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchBasket]);
 
-  const addItem = useCallback(async (itemId: string, quantity: number, configurators?: string) => {
+  const addItem = useCallback(async (itemId: string, quantity: number, configurators?: string, configurationId?: string) => {
     try {
       setIsLoading(true);
       const sessionId = await getAnonymousSession();
-      await addItemToBasket(sessionId, itemId, quantity, configurators);
+      await addItemToBasket(sessionId, itemId, quantity, configurators, configurationId);
       await fetchBasket();
       toast.success("Сагсанд нэмэгдлээ!");
     } catch (err: any) {

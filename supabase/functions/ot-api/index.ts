@@ -126,7 +126,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getBasket":
       return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
     case "addItemToBasket":
-      return callOtApi("AddItemToBasket", { ...base, sessionId: params.sessionId, itemId: params.itemId, quantity: String(params.quantity || 1), ...(params.configurators ? { xmlParameters: params.configurators } : {}) });
+      return callOtApi("AddItemToBasket", { ...base, sessionId: params.sessionId, itemId: params.itemId, quantity: String(params.quantity || 1), ...(params.configurationId ? { configurationId: params.configurationId } : {}), ...(params.configurators ? { xmlParameters: params.configurators } : {}) });
     case "editBasketItemQuantity":
       return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, quantity: String(params.quantity) });
     case "removeBasketItem":
