@@ -1,11 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, FileText, Image, FolderTree, ExternalLink } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { AlertTriangle, FileText, Image, FolderTree, ExternalLink, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { callWithOperatorSession } from "@/services/otSession";
 import { normalizeOtResponse } from "@/utils/otNormalizer";
+import { toast } from "sonner";
 
 function ErrorAlert({ message }: { message: string }) {
   return (
@@ -23,6 +31,8 @@ interface MenuTreeItem {
   IsVisible?: boolean;
   Children?: { Item?: MenuTreeItem[] };
   SubItems?: MenuTreeItem[];
+  Content?: string;
+  DisplayOrder?: number;
 }
 
 interface OtBanner {
@@ -35,6 +45,10 @@ interface OtBanner {
 }
 
 export default function OtContent() {
+  const queryClient = useQueryClient();
+  const [editItem, setEditItem] = useState<MenuTreeItem | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+
   const { data: menuRaw, isLoading: menuLoading } = useQuery<any>({
     queryKey: ["admin", "ot-menu-tree"],
     queryFn: async () => {
@@ -84,11 +98,26 @@ export default function OtContent() {
     return [];
   })();
 
+  // Delete menu item
+  const deleteMut = useMutation({
+    mutationFn: async (menuItemId: string) => {
+      await callWithOperatorSession("deleteContentMenuItem", { menuItemId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "ot-menu-tree"] });
+      toast.success("Цэсний зүйл устгагдлаа");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold">OT Контент</h1>
-        <p className="text-muted-foreground mt-1">Мэдээ, баннер, цэсний бүтэц, загвар</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">OT Контент</h1>
+          <p className="text-muted-foreground mt-1">Мэдээ, баннер, цэсний бүтэц, загвар</p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 mr-2" />Цэсний зүйл нэмэх</Button>
       </div>
 
       <Tabs defaultValue="menu">
@@ -116,7 +145,7 @@ export default function OtContent() {
               ) : (
                 <div className="space-y-1">
                   {menuItems.map((item, i) => (
-                    <MenuItemRow key={item.Id || i} item={item} depth={0} />
+                    <MenuItemRow key={item.Id || i} item={item} depth={0} onEdit={setEditItem} onDelete={(id) => { if (confirm("Устгах уу?")) deleteMut.mutate(id); }} />
                   ))}
                 </div>
               )}
@@ -144,14 +173,10 @@ export default function OtContent() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {bannerList.map((b, i) => (
                     <div key={b.Id || i} className="p-4 rounded-lg border bg-card space-y-2">
-                      {b.ImageUrl && (
-                        <img src={b.ImageUrl} alt={b.Name || "Banner"} className="w-full h-32 object-cover rounded" />
-                      )}
+                      {b.ImageUrl && <img src={b.ImageUrl} alt={b.Name || "Banner"} className="w-full h-32 object-cover rounded" />}
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{b.Name || "Баннер"}</span>
-                        <Badge variant={b.IsEnabled !== false ? "default" : "secondary"}>
-                          {b.IsEnabled !== false ? "Идэвхтэй" : "Идэвхгүй"}
-                        </Badge>
+                        <Badge variant={b.IsEnabled !== false ? "default" : "secondary"}>{b.IsEnabled !== false ? "Идэвхтэй" : "Идэвхгүй"}</Badge>
                       </div>
                       {b.Url && (
                         <a href={b.Url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 hover:underline">
@@ -187,30 +212,113 @@ export default function OtContent() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Create / Edit Dialog */}
+      <ContentMenuItemDialog
+        open={createOpen || !!editItem}
+        item={editItem}
+        onClose={() => { setCreateOpen(false); setEditItem(null); }}
+        onSaved={() => { queryClient.invalidateQueries({ queryKey: ["admin", "ot-menu-tree"] }); setCreateOpen(false); setEditItem(null); }}
+      />
     </div>
   );
 }
 
-function MenuItemRow({ item, depth }: { item: MenuTreeItem; depth: number }) {
+// ─── Menu Item Row ──────────────────────────────────────────
+
+function MenuItemRow({ item, depth, onEdit, onDelete }: { item: MenuTreeItem; depth: number; onEdit: (item: MenuTreeItem) => void; onDelete: (id: string) => void }) {
   const children = item.Children?.Item || item.SubItems || [];
   return (
     <div>
-      <div className={`flex items-center gap-2 p-2 rounded hover:bg-muted/50`} style={{ paddingLeft: `${depth * 20 + 8}px` }}>
+      <div className="flex items-center gap-2 p-2 rounded hover:bg-muted/50 group" style={{ paddingLeft: `${depth * 20 + 8}px` }}>
         <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="text-sm font-medium">{item.Title || "—"}</span>
+        <span className="text-sm font-medium flex-1">{item.Title || "—"}</span>
         {item.IsVisible === false && <Badge variant="secondary" className="text-xs">Нууцлагдсан</Badge>}
         {item.Url && (
-          <a href={item.Url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary ml-auto hover:underline">
+          <a href={item.Url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
             <ExternalLink className="h-3 w-3" />
           </a>
         )}
+        <div className="hidden group-hover:flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(item)}><Pencil className="h-3 w-3" /></Button>
+          {item.Id && <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(item.Id!)}><Trash2 className="h-3 w-3" /></Button>}
+        </div>
       </div>
       {children.map((child, i) => (
-        <MenuItemRow key={child.Id || i} item={child} depth={depth + 1} />
+        <MenuItemRow key={child.Id || i} item={child} depth={depth + 1} onEdit={onEdit} onDelete={onDelete} />
       ))}
     </div>
   );
 }
+
+// ─── Create/Edit Content Menu Item Dialog ───────────────────
+
+function ContentMenuItemDialog({ open, item, onClose, onSaved }: { open: boolean; item: MenuTreeItem | null; onClose: () => void; onSaved: () => void }) {
+  const isEditing = !!item;
+  const [title, setTitle] = useState(item?.Title || "");
+  const [url, setUrl] = useState(item?.Url || "");
+  const [content, setContent] = useState(item?.Content || "");
+  const [saving, setSaving] = useState(false);
+
+  // Reset form when item changes
+  useState(() => {
+    setTitle(item?.Title || "");
+    setUrl(item?.Url || "");
+    setContent(item?.Content || "");
+  });
+
+  const handleSave = async () => {
+    if (!title.trim()) { toast.error("Гарчиг оруулна уу"); return; }
+    setSaving(true);
+    try {
+      const xml = isEditing
+        ? `<ContentMenuItem><Id>${item!.Id}</Id><Title>${title}</Title><Url>${url}</Url><Content><![CDATA[${content}]]></Content></ContentMenuItem>`
+        : `<ContentMenuItem><Title>${title}</Title><Url>${url}</Url><Content><![CDATA[${content}]]></Content><IsVisible>true</IsVisible></ContentMenuItem>`;
+
+      const action = isEditing ? "updateContentMenuItem" : "createContentMenuItem";
+      await callWithOperatorSession(action, { xmlParameters: xml });
+      toast.success(isEditing ? "Шинэчлэгдлээ" : "Нэмэгдлээ");
+      onSaved();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Цэсний зүйл засах" : "Шинэ цэсний зүйл"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Гарчиг *</label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Цэсний гарчиг" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">URL</label>
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="/page-slug" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Контент (HTML)</label>
+            <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="<p>Контент</p>" rows={6} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Болих</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {isEditing ? "Хадгалах" : "Нэмэх"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Render Object as Cards ─────────────────────────────────
 
 function RenderObjAsCards({ data }: { data: any }) {
   if (!data || typeof data !== "object") return <p className="text-sm text-muted-foreground">Мэдээлэл байхгүй</p>;
