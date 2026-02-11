@@ -134,6 +134,7 @@ const menuGroups: MenuGroup[] = [
   {
     label: "Тохиргоо",
     items: [
+      { title: "OT Роль & Эрх", url: "/admin/ot-roles", icon: Globe },
       { title: "Ерөнхий тохиргоо", url: "/admin/settings", icon: Settings },
       { title: "Захиалгын тохиргоо", url: "/admin/settings-orders", icon: Settings },
       { title: "Хайлтын тохиргоо", url: "/admin/search-settings", icon: Search },

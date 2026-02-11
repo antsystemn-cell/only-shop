@@ -65,6 +65,7 @@ import OtSettings from "./pages/admin/OtSettings";
 import SearchSettings from "./pages/admin/SearchSettings";
 import AdminOtOrders from "./pages/admin/OtOrders";
 import OtCategories from "./pages/admin/OtCategories";
+import OtRoles from "./pages/admin/OtRoles";
 import OtCategoryBrowse from "./pages/storefront/OtCategoryBrowse";
 const queryClient = new QueryClient();
 
@@ -145,6 +146,7 @@ const App = () => (
                 <Route path="ot-settings" element={<OtSettings />} />
                 <Route path="search-settings" element={<SearchSettings />} />
                 <Route path="ot-categories" element={<OtCategories />} />
+                <Route path="ot-roles" element={<OtRoles />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
