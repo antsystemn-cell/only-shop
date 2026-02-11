@@ -87,13 +87,23 @@ export async function searchItems(params: SearchParams): Promise<SearchResponse>
   const data = await callProxy<OtSearchResult>("searchItems", { ...params } as Record<string, unknown>);
   const result = data?.Result;
 
-  const items = (result?.Items?.Items || []).map((item) => mapSearchItem(item));
-  const totalCount = result?.Items?.TotalCount || 0;
-  const subCategories = (result?.SubCategories?.Items || []).map(mapCategory);
+  // Handle both array and { Content: [] } response formats
+  const rawItems = result?.Items?.Items;
+  const itemsArray = Array.isArray(rawItems) ? rawItems : (rawItems as any)?.Content || [];
+  const items = itemsArray.map((item: OtSearchItem) => mapSearchItem(item));
+  const totalCount = result?.Items?.TotalCount || (rawItems as any)?.TotalCount || 0;
+
+  const rawSubCats = result?.SubCategories?.Items;
+  const subCatsArray = Array.isArray(rawSubCats) ? rawSubCats : (rawSubCats as any)?.Content || [];
+  const subCategories = subCatsArray.map(mapCategory);
+
   const breadcrumbs = (result?.BreadCrumbs || []).map((b) => ({ id: b.Id, name: b.Name }));
-  const searchProperties: SearchProperty[] = (result?.SearchProperties?.Items || []).map((sp) => ({
+
+  const rawProps = result?.SearchProperties?.Items;
+  const propsArray = Array.isArray(rawProps) ? rawProps : (rawProps as any)?.Content || [];
+  const searchProperties: SearchProperty[] = propsArray.map((sp: any) => ({
     propertyName: sp.PropertyName,
-    values: (sp.PropertyValues || []).map((v) => ({ id: v.Id, value: v.Value, itemCount: v.ItemCount })),
+    values: (sp.PropertyValues || []).map((v: any) => ({ id: v.Id, value: v.Value, itemCount: v.ItemCount })),
   }));
 
   return { items, totalCount, subCategories, breadcrumbs, searchProperties };
@@ -157,9 +167,9 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
     externalTitle: item.ExternalTitle,
     imageUrl: item.MainPictureUrl || images[0] || "",
     images,
-    price: item.Price?.ConvertedPrice ?? item.Price?.OriginalPrice ?? 0,
-    originalPrice: item.OriginalPrice?.ConvertedPrice ?? item.OriginalPrice?.OriginalPrice,
-    currency: item.Price?.CurrencySign || "¥",
+    price: item.Price?.ConvertedPriceList?.Internal?.Price ?? (typeof item.Price?.ConvertedPrice === "number" ? item.Price.ConvertedPrice : undefined) ?? item.Price?.OriginalPrice ?? 0,
+    originalPrice: item.OriginalPrice?.ConvertedPriceList?.Internal?.Price ?? (typeof item.OriginalPrice?.ConvertedPrice === "number" ? item.OriginalPrice.ConvertedPrice : undefined) ?? item.OriginalPrice?.OriginalPrice,
+    currency: item.Price?.ConvertedPriceList?.Internal?.Sign || item.Price?.CurrencySign || "₮",
     quantity: item.Quantity,
     vendorName: item.VendorName,
     vendorScore: item.VendorScore,
@@ -181,7 +191,7 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
     configuredItems: (item.ConfiguredItems || []).map((ci) => ({
       id: ci.Id,
       quantity: ci.Quantity,
-      price: ci.Price?.ConvertedPrice ?? ci.Price?.OriginalPrice,
+      price: ci.Price?.ConvertedPriceList?.Internal?.Price ?? (typeof ci.Price?.ConvertedPrice === "number" ? ci.Price.ConvertedPrice : undefined) ?? ci.Price?.OriginalPrice,
       imageUrl: ci.ImageUrl,
       configuratorIds: (ci.Configurators || []).map((c) => c.Vid),
     })),
@@ -615,13 +625,23 @@ function mapCategory(cat: OtCategory): OtCategoryCard {
 }
 
 function mapSearchItem(item: OtSearchItem): OtProductCard {
+  // Extract price: prefer ConvertedPriceList.Internal.Price, fallback to OriginalPrice
+  const price = item.Price?.ConvertedPriceList?.Internal?.Price
+    ?? (typeof item.Price?.ConvertedPrice === "number" ? item.Price.ConvertedPrice : undefined)
+    ?? item.Price?.OriginalPrice
+    ?? 0;
+  const originalPrice = item.OriginalPrice?.ConvertedPriceList?.Internal?.Price
+    ?? (typeof item.OriginalPrice?.ConvertedPrice === "number" ? item.OriginalPrice.ConvertedPrice : undefined)
+    ?? item.OriginalPrice?.OriginalPrice;
+  const currency = item.Price?.ConvertedPriceList?.Internal?.Sign || item.Price?.CurrencySign || "₮";
+
   return {
     id: item.Id || "",
     title: item.Title || item.ExternalTitle || "",
     imageUrl: item.MainPictureUrl || "",
-    price: item.Price?.ConvertedPrice ?? item.Price?.OriginalPrice ?? 0,
-    originalPrice: item.OriginalPrice?.ConvertedPrice ?? item.OriginalPrice?.OriginalPrice,
-    currency: item.Price?.CurrencySign || "¥",
+    price,
+    originalPrice,
+    currency,
     vendorName: item.VendorName,
     quantity: item.Quantity,
   };
