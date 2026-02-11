@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { fetchProductDetail, fetchProductDescription } from "@/services/otApi";
-import { useOtCart } from "@/contexts/OtCartContext";
+import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductReviews } from "@/components/storefront/ProductReviews";
@@ -45,7 +45,7 @@ function formatPrice(price: number, currency: string) {
 
 export default function OtProductDetail() {
   const { itemId } = useParams<{ itemId: string }>();
-  const { addItem, isLoading: isCartLoading } = useOtCart();
+  const { addItem, isLoading: isCartLoading } = useOtCartSafe();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedImage, setSelectedImage] = useState(0);
