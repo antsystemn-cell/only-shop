@@ -1,15 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
 import { Home, Megaphone, LayoutGrid, Heart, ShoppingCart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useOtCart } from "@/contexts/OtCartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { cn } from "@/lib/utils";
 
 export function MobileBottomNav() {
   const location = useLocation();
   const { getItemCount } = useCart();
+  const { itemCount: otItemCount } = useOtCart();
   const { wishlistIds } = useWishlist();
   
-  const cartCount = getItemCount();
+  const cartCount = getItemCount() + otItemCount;
   const wishlistCount = wishlistIds.length;
 
   const navItems = [
