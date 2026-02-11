@@ -5,6 +5,13 @@ interface OtProductCardComponentProps {
   product: OtProductCard;
 }
 
+function formatMntPrice(price: number, currency: string) {
+  if (currency === "₮" || currency === "MNT") {
+    return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
+  }
+  return `${currency}${price.toFixed(2)}`;
+}
+
 export function OtProductCardComponent({ product }: OtProductCardComponentProps) {
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
   const discountPercent = hasDiscount
@@ -27,7 +34,7 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
             (e.target as HTMLImageElement).src = "/placeholder.svg";
           }}
         />
-        {hasDiscount && (
+        {hasDiscount && discountPercent > 0 && (
           <span className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-xs font-bold px-2 py-1 rounded-md">
             -{discountPercent}%
           </span>
@@ -42,11 +49,11 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
 
         <div className="mt-2 flex items-baseline gap-2">
           <span className="text-base font-bold text-primary">
-            {product.currency}{product.price.toFixed(2)}
+            {formatMntPrice(product.price, product.currency)}
           </span>
           {hasDiscount && (
             <span className="text-xs text-muted-foreground line-through">
-              {product.currency}{product.originalPrice!.toFixed(2)}
+              {formatMntPrice(product.originalPrice!, product.currency)}
             </span>
           )}
         </div>

@@ -5,6 +5,12 @@ export interface OtCategory {
   Name: string;
   IconUrl?: string;
   IsLeaf?: boolean;
+  IsHidden?: boolean;
+  IsParent?: boolean;
+  IsVirtual?: boolean;
+  IsInternal?: boolean;
+  ExternalId?: string;
+  ProviderType?: string;
   ParentId?: string;
   ChildCategories?: OtCategory[];
 }
@@ -138,10 +144,11 @@ export interface OtItemFullInfo {
       Title: string;
       ExternalTitle?: string;
       MainPictureUrl?: string;
-      Pictures?: { ItemPicture?: OtItemImage[] };
+      Pictures?: OtItemImage[] | { ItemPicture?: OtItemImage[] };
       Price?: OtPrice;
       OriginalPrice?: OtPrice;
       Quantity?: number;
+      MasterQuantity?: number;
       VendorId?: string;
       VendorName?: string;
       VendorScore?: number;
@@ -154,6 +161,12 @@ export interface OtItemFullInfo {
       }>;
       ConfiguredItems?: OtConfiguredItem[];
       Configurators?: OtConfigurator[];
+      Attributes?: Array<{
+        Pid: string;
+        PropertyName?: string;
+        Value?: string;
+        IsConfigurator?: boolean;
+      }>;
     };
     Vendor?: OtVendor;
     RootPath?: Array<{ Id: string; Name: string }>;

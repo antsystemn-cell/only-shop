@@ -32,15 +32,17 @@ async function callProxy<T = unknown>(action: string, params: Record<string, unk
 // ─── Categories ──────────────────────────────────────────────
 
 export async function fetchRootCategories(): Promise<OtCategoryCard[]> {
-  const data = await callProxy<{ CategoryInfoList?: OtCategory[] }>("getRootCategories");
-  const list = data?.CategoryInfoList || [];
-  return list.map(mapCategory);
+  const data = await callProxy<any>("getRootCategories");
+  const raw = data?.CategoryInfoList;
+  const list: OtCategory[] = Array.isArray(raw) ? raw : (raw?.Content || []);
+  return list.filter((c) => !c.IsHidden).map(mapCategory);
 }
 
 export async function fetchSubcategories(parentId: string): Promise<OtCategoryCard[]> {
-  const data = await callProxy<{ CategoryInfoList?: OtCategory[] }>("getSubcategories", { parentId });
-  const list = data?.CategoryInfoList || [];
-  return list.map(mapCategory);
+  const data = await callProxy<any>("getSubcategories", { parentId });
+  const raw = data?.CategoryInfoList;
+  const list: OtCategory[] = Array.isArray(raw) ? raw : (raw?.Content || []);
+  return list.filter((c) => !c.IsHidden).map(mapCategory);
 }
 
 export async function fetchCategorySearchProperties(categoryId: string) {
@@ -156,7 +158,10 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
 
   if (!item) throw new Error("Product not found");
 
-  const images = (item.Pictures?.ItemPicture || []).map((p) => p.Url).filter(Boolean);
+  // Handle Pictures as array or {ItemPicture: [...]}
+  const rawPics = item.Pictures;
+  const picsArray = Array.isArray(rawPics) ? rawPics : (rawPics?.ItemPicture || []);
+  const images = picsArray.map((p: any) => p.Url).filter(Boolean);
   if (item.MainPictureUrl && !images.includes(item.MainPictureUrl)) {
     images.unshift(item.MainPictureUrl);
   }
@@ -170,7 +175,7 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
     price: item.Price?.ConvertedPriceList?.Internal?.Price ?? (typeof item.Price?.ConvertedPrice === "number" ? item.Price.ConvertedPrice : undefined) ?? item.Price?.OriginalPrice ?? 0,
     originalPrice: item.OriginalPrice?.ConvertedPriceList?.Internal?.Price ?? (typeof item.OriginalPrice?.ConvertedPrice === "number" ? item.OriginalPrice.ConvertedPrice : undefined) ?? item.OriginalPrice?.OriginalPrice,
     currency: item.Price?.ConvertedPriceList?.Internal?.Sign || item.Price?.CurrencySign || "₮",
-    quantity: item.Quantity,
+    quantity: item.Quantity ?? item.MasterQuantity,
     vendorName: item.VendorName,
     vendorScore: item.VendorScore,
     brandName: item.BrandName,
