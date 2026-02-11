@@ -163,6 +163,7 @@ Deno.serve(async (req) => {
       const invoicePayload = {
         invoice_code: invoiceCode,
         sender_invoice_no: senderInvoiceNo,
+        invoice_receiver_code: "terminal",
         invoice_description: description || `Only.mn төлбөр - ${pi.amount}₮`,
         amount: Number(pi.amount),
         callback_url: callbackUrl,
@@ -326,6 +327,7 @@ Deno.serve(async (req) => {
       const invoicePayload = {
         invoice_code: invoiceCode,
         sender_invoice_no: order.order_number,
+        invoice_receiver_code: "terminal",
         invoice_description: `Only.mn захиалга ${order.order_number} - ${order.total}₮`,
         amount: Number(order.total),
         callback_url: callbackUrl,
