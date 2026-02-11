@@ -23,6 +23,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { ProductReviews } from "@/components/storefront/ProductReviews";
 import { toast } from "sonner";
 
+// Helper to safely handle array/object inconsistencies from OTAPI
+function ensureArray<T>(value: T | T[] | undefined | null): T[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  return [value];
+}
+
 function formatMntPrice(price: number, currency: string) {
   if (currency === "₮" || currency === "MNT") {
     return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
@@ -46,8 +53,6 @@ export default function OtProductDetail() {
     staleTime: 1000 * 60 * 10,
     retry: false,
   });
-
-  console.log("[OtProductDetail] itemId:", itemId, "product:", product, "error:", error);
 
   const { data: description } = useQuery({
     queryKey: ["ot-product-desc", itemId],
@@ -119,10 +124,10 @@ export default function OtProductDetail() {
   return (
     <div className="container py-6 md:py-8 animate-fade-in">
       {/* Breadcrumbs */}
-      {product.breadcrumbs.length > 0 && (
+      {ensureArray(product.breadcrumbs).length > 0 && (
         <div className="flex items-center gap-1 text-sm text-muted-foreground mb-4 flex-wrap">
           <Link to="/ot" className="hover:text-foreground">Маркетплэйс</Link>
-          {product.breadcrumbs.map((bc) => (
+          {ensureArray(product.breadcrumbs).map((bc) => (
             <span key={bc.id} className="flex items-center gap-1">
               <span>/</span>
               <Link to={`/ot?category=${bc.id}`} className="hover:text-foreground">
@@ -171,22 +176,22 @@ export default function OtProductDetail() {
             )}
           </div>
 
-          {/* Thumbnails */}
-          {product.images.length > 1 && (
-            <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
-              {product.images.slice(0, 8).map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedImage(i)}
-                  className={`w-16 h-16 rounded-lg border-2 overflow-hidden shrink-0 transition-colors ${
-                    selectedImage === i ? "border-primary" : "border-transparent"
-                  }`}
-                >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
+           {/* Thumbnails */}
+           {product.images.length > 1 && (
+             <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
+               {ensureArray(product.images).slice(0, 8).map((img, i) => (
+                 <button
+                   key={i}
+                   onClick={() => setSelectedImage(i)}
+                   className={`w-16 h-16 rounded-lg border-2 overflow-hidden shrink-0 transition-colors ${
+                     selectedImage === i ? "border-primary" : "border-transparent"
+                   }`}
+                 >
+                   <img src={img} alt="" className="w-full h-full object-cover" />
+                 </button>
+               ))}
+             </div>
+           )}
         </div>
 
         {/* Product Info */}
@@ -246,41 +251,41 @@ export default function OtProductDetail() {
           )}
 
           {/* Configurators (variants) */}
-          {product.configurators.map((config) => (
-            <div key={config.pid} className="space-y-2">
-              <h3 className="text-sm font-semibold">{config.propertyName}</h3>
-              <div className="flex flex-wrap gap-2">
-                {config.values.map((val) => {
-                  const isSelected = selectedConfigs[config.pid] === val.id;
-                  return (
-                    <button
-                      key={val.id}
-                      onClick={() =>
-                        setSelectedConfigs((prev) => ({
-                          ...prev,
-                          [config.pid]: isSelected ? "" : val.id,
-                        }))
-                      }
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      {val.imageUrl && (
-                        <img
-                          src={val.imageUrl}
-                          alt={val.value}
-                          className="w-6 h-6 rounded object-cover"
-                        />
-                      )}
-                      <span className="line-clamp-1">{val.value}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+           {ensureArray(product.configurators).map((config) => (
+             <div key={config.pid} className="space-y-2">
+               <h3 className="text-sm font-semibold">{config.propertyName}</h3>
+               <div className="flex flex-wrap gap-2">
+                 {ensureArray(config.values).map((val) => {
+                   const isSelected = selectedConfigs[config.pid] === val.id;
+                   return (
+                     <button
+                       key={val.id}
+                       onClick={() =>
+                         setSelectedConfigs((prev) => ({
+                           ...prev,
+                           [config.pid]: isSelected ? "" : val.id,
+                         }))
+                       }
+                       className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
+                         isSelected
+                           ? "border-primary bg-primary/10 text-primary"
+                           : "border-border hover:border-primary/50"
+                       }`}
+                     >
+                       {val.imageUrl && (
+                         <img
+                           src={val.imageUrl}
+                           alt={val.value}
+                           className="w-6 h-6 rounded object-cover"
+                         />
+                       )}
+                       <span className="line-clamp-1">{val.value}</span>
+                     </button>
+                   );
+                 })}
+               </div>
+             </div>
+           ))}
 
           {/* Quantity + Add to Cart */}
           <div className="flex items-center gap-4 pt-2">
@@ -315,17 +320,17 @@ export default function OtProductDetail() {
           </div>
 
           {/* Features */}
-          {product.features.length > 0 && (
-            <div className="border rounded-lg p-4 space-y-2 mt-4">
-              <h3 className="font-semibold text-sm">Үзүүлэлтүүд</h3>
-              {product.features.map((f, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{f.name}</span>
-                  <span className="font-medium">{f.value}</span>
-                </div>
-              ))}
-            </div>
-          )}
+           {ensureArray(product.features).length > 0 && (
+             <div className="border rounded-lg p-4 space-y-2 mt-4">
+               <h3 className="font-semibold text-sm">Үзүүлэлтүүд</h3>
+               {ensureArray(product.features).map((f, i) => (
+                 <div key={i} className="flex justify-between text-sm">
+                   <span className="text-muted-foreground">{f.name}</span>
+                   <span className="font-medium">{f.value}</span>
+                 </div>
+               ))}
+             </div>
+           )}
         </div>
       </div>
 
