@@ -112,11 +112,45 @@ Deno.serve(async (req) => {
     const supabase = getSupabaseAdmin();
 
     // ===========================
+    // CHECK CREDIT ELIGIBILITY
+    // ===========================
+    if (action === "checkCredit") {
+      const { mobileNumber } = params;
+      if (!mobileNumber) throw new Error("mobileNumber is required");
+
+      const phone = String(mobileNumber).replace(/\D/g, "");
+      if (phone.length !== 8) throw new Error("Утасны дугаар 8 оронтой байх ёстой");
+
+      const result = await storepayRequest("/user/possibleAmount", "POST", {
+        mobileNumber: phone,
+      });
+
+      console.log("Storepay credit check result:", JSON.stringify(result));
+
+      if (result.status === "Success") {
+        const possibleAmount = Number(result.value) || 0;
+        return jsonResponse({
+          eligible: possibleAmount > 0,
+          possibleAmount,
+        });
+      }
+
+      // If API returns Failed, user is not registered or not eligible
+      const msg = result.msgList?.[0]?.code || "Storepay зээлийн эрх шалгахад алдаа гарлаа";
+      return jsonResponse({
+        eligible: false,
+        possibleAmount: 0,
+        message: msg,
+      });
+    }
+
+    // ===========================
     // CREATE LOAN (INVOICE) via PaymentIntent
     // ===========================
     if (action === "createLoan") {
-      const { paymentIntentId } = params;
+      const { paymentIntentId, mobileNumber } = params;
       if (!paymentIntentId) throw new Error("paymentIntentId is required");
+      if (!mobileNumber) throw new Error("Утасны дугаар шаардлагатай");
 
       const { data: pi, error: piErr } = await supabase
         .from("payment_intents")
@@ -151,8 +185,11 @@ Deno.serve(async (req) => {
 
       // Build loan request
       let description = "";
-      let phone = "";
-      const requestId = crypto.randomUUID();
+      const phone = String(mobileNumber).replace(/\D/g, "");
+
+      if (!phone || phone.length !== 8) {
+        throw new Error("Утасны дугаар 8 оронтой байх ёстой");
+      }
 
       if (pi.type === "order") {
         const { data: order } = await supabase
@@ -162,25 +199,9 @@ Deno.serve(async (req) => {
           .single();
         if (order) {
           description = `Only.mn захиалга ${order.order_number}`;
-          const addr = order.delivery_address as any;
-          if (addr?.phone) phone = addr.phone;
         }
       } else if (pi.type === "wallet_topup") {
         description = `Only.mn данс цэнэглэх - ${pi.amount}₮`;
-      }
-
-      if (!phone) {
-        // Try to get phone from profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("phone")
-          .eq("user_id", pi.user_id)
-          .single();
-        if (profile?.phone) phone = profile.phone;
-      }
-
-      if (!phone) {
-        throw new Error("Утасны дугаар шаардлагатай. Профайл хэсэгт утасны дугаараа оруулна уу.");
       }
 
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
