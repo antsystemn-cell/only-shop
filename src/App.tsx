@@ -64,6 +64,8 @@ import OtRatingLists from "./pages/admin/OtRatingLists";
 import OtSettings from "./pages/admin/OtSettings";
 import SearchSettings from "./pages/admin/SearchSettings";
 import AdminOtOrders from "./pages/admin/OtOrders";
+import OtCategories from "./pages/admin/OtCategories";
+import OtCategoryBrowse from "./pages/storefront/OtCategoryBrowse";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -86,6 +88,7 @@ const App = () => (
                 <Route path="/wishlist" element={<Wishlist />} />
                 <Route path="/ot" element={<OtShop />} />
                 <Route path="/ot/category/:categoryId" element={<OtCategory />} />
+                <Route path="/ot/browse/:internalId" element={<OtCategoryBrowse />} />
                 <Route path="/ot/product/:itemId" element={<OtProductDetail />} />
               </Route>
               
@@ -141,6 +144,7 @@ const App = () => (
                 <Route path="ot-rating-lists" element={<OtRatingLists />} />
                 <Route path="ot-settings" element={<OtSettings />} />
                 <Route path="search-settings" element={<SearchSettings />} />
+                <Route path="ot-categories" element={<OtCategories />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
