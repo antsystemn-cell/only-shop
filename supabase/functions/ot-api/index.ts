@@ -125,19 +125,18 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     // ── Cart / Basket ──
     case "getBasket":
       return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
-    case "addItemToBasket":
-      return callOtApi("AddItemToBasket", {
+    case "addItemToBasket": {
+      const addParams: Record<string, string> = {
         ...base,
         sessionId: params.sessionId,
         itemId: params.itemId,
         quantity: String(params.quantity || 1),
-        // OTAPI contract: parameter must exist and must be a non-empty XML string
-        fieldParameters:
-          params.fieldParameters ??
-          "<ArrayOfString xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/Arrays\"><string>Id</string></ArrayOfString>",
-        ...(params.configurationId ? { configurationId: params.configurationId } : {}),
-        ...(params.configurators ? { xmlParameters: params.configurators } : {}),
-      });
+        fieldParameters: params.fieldParameters || "<BasketItemFieldParameterList/>",
+      };
+      if (params.configurationId) addParams.configurationId = params.configurationId;
+      if (params.configurators) addParams.xmlParameters = params.configurators;
+      return callOtApiPost("AddItemToBasket", addParams);
+    }
     case "editBasketItemQuantity":
       return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, quantity: String(params.quantity) });
     case "removeBasketItem":
@@ -533,7 +532,7 @@ function getTimestamp(): string {
 
 // ─── Core API caller ─────────────────────────────────────────
 
-async function callOtApi(methodName: string, queryParams: Record<string, string>) {
+async function callOtApi(methodName: string, queryParams: Record<string, string>, postSignatureParams?: Record<string, string>) {
   const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
   const timestamp = getTimestamp();
 
@@ -547,12 +546,37 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
     allParams.signature = signature;
   }
 
+  // Add post-signature params (excluded from signature computation)
+  if (postSignatureParams) {
+    Object.assign(allParams, postSignatureParams);
+  }
+
   const url = new URL(`${OT_API_BASE}/${methodName}`);
   for (const [key, value] of Object.entries(allParams)) {
-    // fieldParameters is required by some OTAPI methods even when empty
-    if (value !== undefined && value !== null && (value !== "" || key === "fieldParameters")) {
+    if (value !== undefined && value !== null && value !== "") {
       url.searchParams.set(key, String(value));
     }
+  }
+
+  // For fieldParameters: append manually with encodeURIComponent to avoid searchParams encoding quirks
+  if (postSignatureParams?.fieldParameters !== undefined) {
+    const fp = postSignatureParams.fieldParameters;
+    const separator = url.search ? "&" : "?";
+    const finalUrl = url.toString() + separator + "fieldParameters=" + encodeURIComponent(fp);
+    console.log("[ot-api] AddItemToBasket URL fieldParameters value:", fp);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    const response = await fetch(finalUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`OT API HTTP ${response.status}: ${text}`);
+    }
+    const data = await response.json();
+    if (data?.ErrorCode && data.ErrorCode !== "Ok" && data.ErrorCode !== "BatchError") {
+      throw new Error(`OT API [${data.ErrorCode}]: ${data.ErrorDescription || "Unknown"}`);
+    }
+    return data;
   }
 
   const controller = new AbortController();
