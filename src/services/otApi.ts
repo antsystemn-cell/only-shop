@@ -553,6 +553,18 @@ export async function searchInstanceUserLogEntries(params: { userId?: string; ac
   return callProxy("searchInstanceUserLogEntries", params);
 }
 
+export async function getInstanceLogEntryList(page = 0, pageSize = 50) {
+  return callProxy("getInstanceLogEntryList", { page, pageSize });
+}
+
+export async function addInstanceLogEntry(message: string, logLevel = "Info") {
+  return callProxy("addInstanceLogEntry", { message, logLevel });
+}
+
+export async function getMethodNamesForStatistics() {
+  return callProxy("getMethodNamesForStatistics");
+}
+
 // ─── Roles Extended ─────────────────────────────────────────
 
 export async function createInstanceRole(roleName: string, roleDescription?: string) {

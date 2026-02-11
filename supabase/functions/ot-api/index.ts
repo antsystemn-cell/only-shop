@@ -322,6 +322,12 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     // ── Reporting ──
     case "searchInstanceUserLogEntries":
       return callOtApi("SearchInstanceUserLogEntries", { ...baseMeta, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 50), ...(params.userId ? { userId: params.userId } : {}), ...(params.actionType ? { actionType: params.actionType } : {}) });
+    case "getInstanceLogEntryList":
+      return callOtApi("GetInstanceLogEntryList", { ...baseMeta, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 50) });
+    case "addInstanceLogEntry":
+      return callOtApi("AddInstanceLogEntry", { ...base, message: params.message, logLevel: params.logLevel || "Info" });
+    case "getMethodNamesForStatistics":
+      return callOtApi("GetMethodNamesForStatistics", { ...base });
 
     // ── Roles Extended ──
     case "createInstanceRole":
