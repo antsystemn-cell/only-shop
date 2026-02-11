@@ -20,11 +20,16 @@ export interface OtCategoryListResponse {
 export interface OtPrice {
   OriginalPrice?: number;
   MarginPrice?: number;
-  ConvertedPrice?: number;
+  ConvertedPrice?: number | string;
   ConvertedPriceWithoutSign?: string;
   CurrencySign?: string;
   CurrencyName?: string;
   OriginalCurrencySign?: string;
+  OriginalCurrencyCode?: string;
+  ConvertedPriceList?: {
+    Internal?: { Price?: number; Sign?: string; Code?: string };
+    DisplayedMoneys?: Array<{ Price?: number; Sign?: string; Code?: string }>;
+  };
 }
 
 export interface OtItemImage {
@@ -66,16 +71,21 @@ export interface OtVendor {
 export interface OtSearchItem {
   Id: string;
   Title: string;
+  OriginalTitle?: string;
   ExternalTitle?: string;
   MainPictureUrl?: string;
   Pictures?: OtItemImage[];
   Price?: OtPrice;
   OriginalPrice?: OtPrice;
   Quantity?: number;
+  MasterQuantity?: number;
   VendorId?: string;
   VendorName?: string;
   VendorScore?: number;
   BrandName?: string;
+  BrandId?: string;
+  ProviderType?: string;
+  Volume?: number;
   FeaturedValues?: Array<{
     Name: string;
     Value: string;
@@ -83,13 +93,14 @@ export interface OtSearchItem {
   CategoryId?: string;
   PromotionPrice?: OtPrice;
   TaobaoItemUrl?: string;
+  ExternalItemUrl?: string;
 }
 
 export interface OtSearchResult {
   ErrorCode: string;
   Result?: {
     Items?: {
-      Items?: OtSearchItem[];
+      Items?: OtSearchItem[] | { Content?: OtSearchItem[]; TotalCount?: number };
       TotalCount?: number;
     };
     SearchProperties?: {
@@ -100,10 +111,17 @@ export interface OtSearchResult {
           Value: string;
           ItemCount?: number;
         }>;
-      }>;
+      }> | { Content?: Array<{
+        PropertyName: string;
+        PropertyValues: Array<{
+          Id: string;
+          Value: string;
+          ItemCount?: number;
+        }>;
+      }> };
     };
     SubCategories?: {
-      Items?: OtCategory[];
+      Items?: OtCategory[] | { Content?: OtCategory[] };
     };
     BreadCrumbs?: Array<{
       Id: string;
