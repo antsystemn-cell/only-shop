@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,8 @@ const paymentStatusLabels: Record<string, { label: string; variant: "default" | 
 
 export default function OrderConfirmation() {
   const { orderId } = useParams<{ orderId: string }>();
+  const [searchParams] = useSearchParams();
+  const paymentIntentId = searchParams.get("pi");
 
   const { data: order, isLoading, error, refetch } = useQuery({
     queryKey: ["order", orderId],
@@ -160,7 +162,8 @@ export default function OrderConfirmation() {
       {showPayment && (
         <div className="mb-8">
           <QPayPayment
-            orderId={order.id}
+            paymentIntentId={paymentIntentId || undefined}
+            orderId={!paymentIntentId ? order.id : undefined}
             orderNumber={order.order_number}
             amount={order.total}
             onPaymentSuccess={() => refetch()}

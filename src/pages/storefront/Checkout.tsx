@@ -19,8 +19,9 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, MapPin, Truck, CreditCard, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, Truck, ShoppingBag } from "lucide-react";
 import { z } from "zod";
+import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
 
 interface DeliveryZone {
   id: string;
@@ -51,6 +52,7 @@ export default function Checkout() {
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("standard");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("qpay");
   
   // Address form state
   const [addressForm, setAddressForm] = useState({
@@ -185,12 +187,31 @@ export default function Checkout() {
 
       if (itemsError) throw itemsError;
 
-      return order;
+      // Create payment intent for the order
+      const { data: pi, error: piErr } = await supabase
+        .from("payment_intents")
+        .insert({
+          user_id: user.id,
+          type: "order" as const,
+          reference_id: order.id,
+          amount: total,
+          provider: "qpay" as const,
+          status: "initiated" as const,
+        })
+        .select()
+        .single();
+
+      if (piErr) console.error("Payment intent creation error:", piErr);
+
+      return { order, paymentIntentId: pi?.id };
     },
-    onSuccess: (order) => {
+    onSuccess: ({ order, paymentIntentId }) => {
       clearCart();
       toast.success("Захиалга амжилттай үүсгэгдлээ!");
-      navigate(`/order-confirmation/${order.id}`);
+      const url = paymentIntentId 
+        ? `/order-confirmation/${order.id}?pi=${paymentIntentId}`
+        : `/order-confirmation/${order.id}`;
+      navigate(url);
     },
     onError: (error: Error) => {
       toast.error(error.message || "Захиалга үүсгэхэд алдаа гарлаа");
@@ -400,30 +421,10 @@ export default function Checkout() {
             </Card>
 
             {/* Payment Method */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-primary" />
-                  Төлбөрийн хэлбэр
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-3 p-4 border rounded-lg bg-muted/30">
-                  <div className="h-10 w-16 bg-primary/10 rounded flex items-center justify-center">
-                    <span className="font-bold text-primary text-sm">QPay</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">QPay</p>
-                    <p className="text-sm text-muted-foreground">
-                      Банкны аппликейшнээр төлөх
-                    </p>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mt-3">
-                  * Захиалга үүсгэсний дараа QPay-ээр төлбөр төлөх боломжтой
-                </p>
-              </CardContent>
-            </Card>
+            <PaymentMethodSelector
+              selected={paymentMethod}
+              onSelect={setPaymentMethod}
+            />
 
             {/* Notes */}
             <Card>
