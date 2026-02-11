@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
 import QPayPayment from "@/components/storefront/QPayPayment";
+import OmniWayPayment from "@/components/storefront/OmniWayPayment";
 import {
   ArrowLeft,
   Wallet as WalletIcon,
@@ -84,7 +85,7 @@ export default function Wallet() {
           type: "wallet_topup",
           reference_id: topup.id,
           amount,
-          provider: "qpay",
+          provider: paymentMethod === "omniway" ? "omniway" : "qpay",
           status: "initiated",
         })
         .select()
@@ -193,7 +194,7 @@ export default function Wallet() {
               onClick={handleStartTopUp}
               size="lg"
               className="w-full"
-              disabled={!topUpAmount || creatingTopUp || paymentMethod !== "qpay"}
+              disabled={!topUpAmount || creatingTopUp || (paymentMethod !== "qpay" && paymentMethod !== "omniway")}
             >
               {creatingTopUp ? (
                 <>
@@ -222,8 +223,15 @@ export default function Wallet() {
             Буцах
           </Button>
 
-          {paymentIntentId && (
+          {paymentIntentId && paymentMethod === "qpay" && (
             <QPayPayment
+              paymentIntentId={paymentIntentId}
+              amount={parseFloat(topUpAmount)}
+              onPaymentSuccess={handlePaymentSuccess}
+            />
+          )}
+          {paymentIntentId && paymentMethod === "omniway" && (
+            <OmniWayPayment
               paymentIntentId={paymentIntentId}
               amount={parseFloat(topUpAmount)}
               onPaymentSuccess={handlePaymentSuccess}

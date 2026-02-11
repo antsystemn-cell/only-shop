@@ -1064,7 +1064,7 @@ export type Database = {
         | "failed"
         | "expired"
       payment_intent_type: "order" | "wallet_topup"
-      payment_provider: "qpay"
+      payment_provider: "qpay" | "omniway"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1209,7 +1209,7 @@ export const Constants = {
         "expired",
       ],
       payment_intent_type: ["order", "wallet_topup"],
-      payment_provider: ["qpay"],
+      payment_provider: ["qpay", "omniway"],
     },
   },
 } as const

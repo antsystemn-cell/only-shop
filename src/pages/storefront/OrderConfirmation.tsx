@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import QPayPayment from "@/components/storefront/QPayPayment";
+import OmniWayPayment from "@/components/storefront/OmniWayPayment";
 import { 
   CheckCircle2, 
   Package, 
@@ -44,6 +45,7 @@ interface Order {
   order_number: string;
   status: string;
   payment_status: string | null;
+  payment_method: string | null;
   subtotal: number;
   delivery_fee: number;
   total: number;
@@ -105,6 +107,7 @@ export default function OrderConfirmation() {
         order_number: data.order_number,
         status: data.status,
         payment_status: data.payment_status,
+        payment_method: data.payment_method,
         subtotal: data.subtotal,
         delivery_fee: data.delivery_fee,
         total: data.total,
@@ -158,8 +161,18 @@ export default function OrderConfirmation() {
         </p>
       </div>
 
-      {/* QPay Payment Section - shown for unpaid orders */}
-      {showPayment && (
+      {/* Payment Section - shown for unpaid orders */}
+      {showPayment && order.payment_method === "omniway" && paymentIntentId && (
+        <div className="mb-8">
+          <OmniWayPayment
+            paymentIntentId={paymentIntentId}
+            orderNumber={order.order_number}
+            amount={order.total}
+            onPaymentSuccess={() => refetch()}
+          />
+        </div>
+      )}
+      {showPayment && order.payment_method !== "omniway" && (
         <div className="mb-8">
           <QPayPayment
             paymentIntentId={paymentIntentId || undefined}
