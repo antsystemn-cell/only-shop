@@ -125,18 +125,14 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     // ── Cart / Basket ──
     case "getBasket":
       return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
-    case "addItemToBasket": {
-      const addParams: Record<string, string> = {
+    case "addItemToBasket":
+      // Redirect to batchSimplifiedAddItemsToBasket to avoid fieldParameters contract issue
+      // Frontend builds the xmlParameters
+      return callOtApi("BatchSimplifiedAddItemsToBasket", {
         ...base,
         sessionId: params.sessionId,
-        itemId: params.itemId,
-        quantity: String(params.quantity || 1),
-        fieldParameters: params.fieldParameters || "<BasketItemFieldParameterList/>",
-      };
-      if (params.configurationId) addParams.configurationId = params.configurationId;
-      if (params.configurators) addParams.xmlParameters = params.configurators;
-      return callOtApiPost("AddItemToBasket", addParams);
-    }
+        xmlParameters: params.xmlParameters,
+      });
     case "editBasketItemQuantity":
       return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, quantity: String(params.quantity) });
     case "removeBasketItem":
@@ -546,42 +542,81 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
     allParams.signature = signature;
   }
 
-  // Add post-signature params (excluded from signature computation)
-  if (postSignatureParams) {
-    Object.assign(allParams, postSignatureParams);
-  }
-
   const url = new URL(`${OT_API_BASE}/${methodName}`);
+  // These params must always be present in URL even when empty (OTAPI contract requirement)
+  const alwaysInclude = new Set(["configurationId", "fieldParameters"]);
   for (const [key, value] of Object.entries(allParams)) {
-    if (value !== undefined && value !== null && value !== "") {
+    if (value !== undefined && value !== null && (value !== "" || alwaysInclude.has(key))) {
       url.searchParams.set(key, String(value));
     }
   }
 
-  // For fieldParameters: append manually with encodeURIComponent to avoid searchParams encoding quirks
-  if (postSignatureParams?.fieldParameters !== undefined) {
-    const fp = postSignatureParams.fieldParameters;
-    const separator = url.search ? "&" : "?";
-    const finalUrl = url.toString() + separator + "fieldParameters=" + encodeURIComponent(fp);
-    console.log("[ot-api] AddItemToBasket URL fieldParameters value:", fp);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-    const response = await fetch(finalUrl, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`OT API HTTP ${response.status}: ${text}`);
+  // postSignatureParams: params that must appear in URL but were excluded from signature
+  // (e.g. fieldParameters, configurationId which OTAPI requires even when empty)
+  if (postSignatureParams) {
+    for (const [key, value] of Object.entries(postSignatureParams)) {
+      url.searchParams.set(key, value ?? "");
     }
-    const data = await response.json();
-    if (data?.ErrorCode && data.ErrorCode !== "Ok" && data.ErrorCode !== "BatchError") {
-      throw new Error(`OT API [${data.ErrorCode}]: ${data.ErrorDescription || "Unknown"}`);
-    }
-    return data;
+  }
+
+  // Log full URL for debugging AddItemToBasket
+  if (methodName === "AddItemToBasket") {
+    console.log("[ot-api] AddItemToBasket full URL:", url.toString());
+    console.log("[ot-api] postSignatureParams:", JSON.stringify(postSignatureParams));
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   const response = await fetch(url.toString(), { signal: controller.signal });
+  clearTimeout(timeout);
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`OT API HTTP ${response.status}: ${text}`);
+  }
+
+  const data = await response.json();
+
+  if (data?.ErrorCode && data.ErrorCode !== "Ok" && data.ErrorCode !== "BatchError") {
+    throw new Error(`OT API [${data.ErrorCode}]: ${data.ErrorDescription || "Unknown"}`);
+  }
+
+  return data;
+}
+
+// ─── Form POST caller (for methods with XML params like fieldParameters) ────
+
+async function callOtApiFormPost(methodName: string, allInputParams: Record<string, string>) {
+  const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
+  const timestamp = getTimestamp();
+
+  const allParams: Record<string, string> = { ...allInputParams, timestamp };
+
+  if (OT_API_SECRET) {
+    const sortedKeys = Object.keys(allParams).sort();
+    const concatenatedValues = sortedKeys.map((k) => allParams[k]).join("");
+    const sigInput = methodName + concatenatedValues + OT_API_SECRET;
+    const signature = await sha256Hex(sigInput);
+    allParams.signature = signature;
+  }
+
+  // Build form body (application/x-www-form-urlencoded)
+  const formBody = new URLSearchParams();
+  for (const [key, value] of Object.entries(allParams)) {
+    formBody.set(key, value ?? "");
+  }
+
+  const url = `${OT_API_BASE}/${methodName}`;
+  console.log(`[ot-api] POST ${url}, params:`, Object.keys(allParams).join(","));
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: formBody.toString(),
+    signal: controller.signal,
+  });
   clearTimeout(timeout);
 
   if (!response.ok) {
