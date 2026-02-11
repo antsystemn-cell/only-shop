@@ -273,10 +273,10 @@ export async function getBasket(sessionId: string) {
 }
 
 export async function addItemToBasket(sessionId: string, itemId: string, quantity: number, configurators?: string, configurationId?: string) {
-  // Build XML for BatchSimplifiedAddItemsToBasket (avoids fieldParameters contract issue)
-  let xml = `<BatchSimplifiedBasketItemParameterList><BatchSimplifiedBasketItemParameter><ItemId>${itemId}</ItemId><Quantity>${quantity}</Quantity>`;
+  // Build XML for BatchSimplifiedAddItemsToBasket - format: <Request><Item>...</Item></Request>
+  let xml = `<Request><Item><ItemId>${itemId}</ItemId><Quantity>${quantity}</Quantity>`;
   if (configurationId) xml += `<ConfigurationId>${configurationId}</ConfigurationId>`;
-  xml += `</BatchSimplifiedBasketItemParameter></BatchSimplifiedBasketItemParameterList>`;
+  xml += `</Item></Request>`;
   return callProxy("addItemToBasket", { sessionId, xmlParameters: xml });
 }
 
