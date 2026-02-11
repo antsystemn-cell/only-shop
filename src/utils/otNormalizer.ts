@@ -84,6 +84,15 @@ export interface OtCallStatistics {
       WeeklyCallCount?: number;
       MonthlyCallCount?: number;
     };
+    CallStatisticsByMethodList?: Array<{
+      MethodName?: string;
+      TotalCount?: number;
+      StatisticsByTimePeriod?: {
+        DailyCallCount?: number;
+        WeeklyCallCount?: number;
+        MonthlyCallCount?: number;
+      };
+    }>;
   };
   OtapiCallStatistics?: {
     TotalCount?: number;

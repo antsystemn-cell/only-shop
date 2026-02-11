@@ -125,6 +125,13 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: "Мониторинг & Лог",
+    items: [
+      { title: "Хэрэглэгчийн лог", url: "/admin/user-activity-log", icon: Users },
+      { title: "Инстанс логууд", url: "/admin/instance-logs", icon: Activity },
+    ],
+  },
+  {
     label: "Агуулах & Рэйтинг",
     items: [
       { title: "Агуулах", url: "/admin/ot-warehouse", icon: Warehouse },
