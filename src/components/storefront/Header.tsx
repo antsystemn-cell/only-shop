@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { OtCartDrawer } from "./OtCartDrawer";
+import { UnifiedCartDrawer } from "./UnifiedCartDrawer";
 import HeaderSearch from "./HeaderSearch";
 import onlyLogo from "@/assets/only-logo.png";
 import { toast } from "sonner";
@@ -131,7 +131,7 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent className="w-full sm:max-w-lg">
-              <OtCartDrawer />
+              <UnifiedCartDrawer />
             </SheetContent>
           </Sheet>
 
