@@ -28,7 +28,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useOtCart } from "@/contexts/OtCartContext";
+import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { getAnonymousSession } from "@/services/otSession";
 import {
   searchDeliveryModesForSession,
@@ -53,7 +53,7 @@ const STEP_LABELS = [
 
 export default function OtCheckout() {
   const navigate = useNavigate();
-  const { items, groups, subtotal, checkBasket, checkingStatus, refreshBasket, itemCount } = useOtCart();
+  const { items, groups, subtotal, checkBasket, checkingStatus, refreshBasket, itemCount } = useOtCartSafe();
   const [step, setStep] = useState<CheckoutStep>(1);
   const [isProcessing, setIsProcessing] = useState(false);
 

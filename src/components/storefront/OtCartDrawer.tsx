@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button";
 import { SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { useOtCart } from "@/contexts/OtCartContext";
+import { useOtCartSafe } from "@/contexts/OtCartContext";
 
 function formatPrice(price: number, currency = "¥") {
   return `${currency}${price.toFixed(2)}`;
 }
 
 export function OtCartDrawer() {
-  const { items, groups, isLoading, subtotal, clearCart, updateItemQuantity, removeItem, moveToNote } = useOtCart();
+  const { items, groups, isLoading, subtotal, clearCart, updateItemQuantity, removeItem, moveToNote } = useOtCartSafe();
   const navigate = useNavigate();
 
   const handleCheckout = () => {

@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
-import { useOtCart } from "@/contexts/OtCartContext";
+import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +56,7 @@ function formatOtPrice(price: number, currency = "¥") {
 export default function Checkout() {
   const navigate = useNavigate();
   const { items: localItems, getSubtotal, clearCart: clearLocalCart } = useCart();
-  const { items: otItems, subtotal: otSubtotal, clearCart: clearOtCart, groups: otGroups } = useOtCart();
+  const { items: otItems, subtotal: otSubtotal, clearCart: clearOtCart, groups: otGroups } = useOtCartSafe();
   const { user, isLoading: authLoading } = useAuth();
 
   const [selectedZone, setSelectedZone] = useState<DeliveryZone | null>(null);

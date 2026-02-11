@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { useOtCart } from "@/contexts/OtCartContext";
+import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useCart } from "@/contexts/CartContext";
 
 function formatMntPrice(price: number) {
@@ -25,7 +25,7 @@ export function UnifiedCartDrawer() {
     updateItemQuantity: updateOtQuantity,
     removeItem: removeOtItem,
     moveToNote,
-  } = useOtCart();
+  } = useOtCartSafe();
 
   const {
     items: localItems,
