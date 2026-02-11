@@ -66,10 +66,11 @@ const OtCartContext = createContext<OtCartContextType | undefined>(undefined);
 // ─── Parse basket response ──────────────────────────────────
 
 function parseBasketResponse(data: any): OtBasketItem[] {
-  const orderLines = data?.Result?.OrderLines;
-  if (!orderLines) return [];
+  // GetBasket returns CollectionInfo.Elements, not Result.OrderLines
+  const elements = data?.CollectionInfo?.Elements || data?.Result?.OrderLines;
+  if (!elements) return [];
 
-  const lines = Array.isArray(orderLines) ? orderLines : [orderLines];
+  const lines = Array.isArray(elements) ? elements : [elements];
 
   return lines.map((line: any) => ({
     orderLineId: line.Id || "",

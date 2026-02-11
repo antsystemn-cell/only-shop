@@ -1,14 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
 import { Home, Megaphone, LayoutGrid, Heart, ShoppingCart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { useOtCart } from "@/contexts/OtCartContext";
+import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { UnifiedCartDrawer } from "@/components/storefront/UnifiedCartDrawer";
 
 export function MobileBottomNav() {
   const location = useLocation();
   const { getItemCount } = useCart();
-  const { itemCount: otItemCount } = useOtCart();
+  const { itemCount: otItemCount } = useOtCartSafe();
   const { wishlistIds } = useWishlist();
   
   const cartCount = getItemCount() + otItemCount;
@@ -19,7 +21,7 @@ export function MobileBottomNav() {
     { href: "/ot", label: "Маркет", icon: Megaphone },
     { href: "/categories", label: "Ангилал", icon: LayoutGrid, isCenter: true },
     { href: "/wishlist", label: "Таалагдсан", icon: Heart, badge: wishlistCount },
-    { href: "/cart", label: "Сагс", icon: ShoppingCart, badge: cartCount },
+    { href: "cart-drawer", label: "Сагс", icon: ShoppingCart, badge: cartCount, isCartDrawer: true },
   ];
 
   const isActive = (href: string) => {
@@ -57,6 +59,32 @@ export function MobileBottomNav() {
                   {item.label}
                 </span>
               </Link>
+            );
+          }
+
+          // Cart drawer item
+          if ((item as any).isCartDrawer) {
+            return (
+              <Sheet key="cart-drawer">
+                <SheetTrigger asChild>
+                  <button className="flex flex-col items-center justify-center gap-1 py-1 w-16 relative">
+                    <div className="relative h-6 w-6 flex items-center justify-center">
+                      <Icon className={cn("h-6 w-6 transition-colors text-muted-foreground")} />
+                      {item.badge && item.badge > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                          {item.badge > 99 ? "99+" : item.badge}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-medium text-muted-foreground">
+                      {item.label}
+                    </span>
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col">
+                  <UnifiedCartDrawer />
+                </SheetContent>
+              </Sheet>
             );
           }
 

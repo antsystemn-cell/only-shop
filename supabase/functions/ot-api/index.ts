@@ -126,15 +126,16 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getBasket":
       return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
     case "addItemToBasket": {
-      // Use BatchSimplifiedAddItemsToBasket via xmlRequest parameter
-      if (!params.xmlParameters) {
-        throw new Error("xmlParameters required for addItemToBasket");
-      }
-      return callOtApi("BatchSimplifiedAddItemsToBasket", {
+      const addParams: Record<string, string> = {
         ...base,
         sessionId: params.sessionId,
-        xmlRequest: params.xmlParameters,
-      });
+        itemId: params.itemId,
+        quantity: String(params.quantity || 1),
+      };
+      if (params.configurationId) addParams.configurationId = params.configurationId;
+      // fieldParameters required by OTAPI - use empty list XML if not provided
+      addParams.fieldParameters = params.fieldParameters || '<?xml version="1.0"?><ArrayOfBasketItemFieldParameter/>';
+      return callOtApiFormPost("AddItemToBasket", addParams);
     }
     case "editBasketItemQuantity":
       return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, quantity: String(params.quantity) });

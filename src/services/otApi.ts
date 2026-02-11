@@ -273,11 +273,14 @@ export async function getBasket(sessionId: string) {
 }
 
 export async function addItemToBasket(sessionId: string, itemId: string, quantity: number, configurators?: string, configurationId?: string) {
-  // Build XML for BatchSimplifiedAddItemsToBasket - format: <Request><Item>...</Item></Request>
-  let xml = `<Request><Item><ItemId>${itemId}</ItemId><Quantity>${quantity}</Quantity>`;
-  if (configurationId) xml += `<ConfigurationId>${configurationId}</ConfigurationId>`;
-  xml += `</Item></Request>`;
-  return callProxy("addItemToBasket", { sessionId, xmlParameters: xml });
+  // Use individual params - edge function handles fieldParameters via form POST
+  return callProxy("addItemToBasket", {
+    sessionId,
+    itemId,
+    quantity,
+    ...(configurators ? { configurators } : {}),
+    ...(configurationId ? { configurationId } : {}),
+  });
 }
 
 export async function editBasketItemQuantity(sessionId: string, orderLineId: string, quantity: number) {
