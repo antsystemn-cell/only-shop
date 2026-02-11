@@ -147,7 +147,7 @@ export default function Checkout() {
           total,
           status: "pending",
           payment_status: "pending",
-          payment_method: "qpay",
+          payment_method: paymentMethod,
           delivery_type: deliveryType,
           delivery_zone_id: selectedZone.id,
           estimated_delivery_date: estimatedDate.toISOString().split("T")[0],
@@ -195,7 +195,7 @@ export default function Checkout() {
           type: "order" as const,
           reference_id: order.id,
           amount: total,
-          provider: "qpay" as const,
+          provider: paymentMethod === "omniway" ? ("omniway" as const) : ("qpay" as const),
           status: "initiated" as const,
         })
         .select()
