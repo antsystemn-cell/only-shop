@@ -90,7 +90,6 @@ export default function OtProductDetail() {
       return;
     }
 
-    // Build configurationId from matched configured item
     const configurationId = matchedConfig?.id;
 
     // Build XML configurators as fallback

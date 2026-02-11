@@ -11,10 +11,11 @@ import type {
 const LANGUAGE = "en";
 
 async function callProxy<T = unknown>(action: string, params: Record<string, unknown> = {}): Promise<T> {
-  // Filter out undefined/null/empty params before sending
+  // Filter out undefined/null params before sending
+  // Note: empty strings are kept for params like configurationId, fieldParameters that OTAPI requires
   const cleanParams: Record<string, unknown> = { language: LANGUAGE };
   for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") {
+    if (v !== undefined && v !== null) {
       cleanParams[k] = v;
     }
   }
@@ -272,7 +273,11 @@ export async function getBasket(sessionId: string) {
 }
 
 export async function addItemToBasket(sessionId: string, itemId: string, quantity: number, configurators?: string, configurationId?: string) {
-  return callProxy("addItemToBasket", { sessionId, itemId, quantity, ...(configurators ? { configurators } : {}), ...(configurationId ? { configurationId } : {}) });
+  // Build XML for BatchSimplifiedAddItemsToBasket (avoids fieldParameters contract issue)
+  let xml = `<BatchSimplifiedBasketItemParameterList><BatchSimplifiedBasketItemParameter><ItemId>${itemId}</ItemId><Quantity>${quantity}</Quantity>`;
+  if (configurationId) xml += `<ConfigurationId>${configurationId}</ConfigurationId>`;
+  xml += `</BatchSimplifiedBasketItemParameter></BatchSimplifiedBasketItemParameterList>`;
+  return callProxy("addItemToBasket", { sessionId, xmlParameters: xml });
 }
 
 export async function editBasketItemQuantity(sessionId: string, orderLineId: string, quantity: number) {
