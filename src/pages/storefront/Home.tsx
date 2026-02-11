@@ -1,86 +1,67 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowRight, Loader2, Percent } from "lucide-react";
+import { ArrowRight, Loader2, Percent, TrendingUp, Sparkles, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { HeroCarousel } from "@/components/storefront/HeroCarousel";
-import { ProductCard } from "@/components/storefront/ProductCard";
-import { DiscountProductCard } from "@/components/storefront/DiscountProductCard";
-import { CategoryStrip } from "@/components/storefront/CategoryStrip";
 import { OtCategoryStrip } from "@/components/storefront/OtCategoryStrip";
 import { BrandCarousel } from "@/components/storefront/BrandCarousel";
+import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
+import { searchItems } from "@/services/otApi";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function ProductGridSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="rounded-xl border bg-card overflow-hidden">
+          <Skeleton className="aspect-square" />
+          <div className="p-3 space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-5 w-1/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Home() {
-  // Fetch random products (100 items)
-  const {
-    data: randomProducts,
-    isLoading: loadingRandom
-  } = useQuery({
-    queryKey: ["random-products"],
-    queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("products").select("*").eq("is_active", true).limit(100);
-      if (error) throw error;
-      // Shuffle the array randomly
-      return data?.sort(() => Math.random() - 0.5) || [];
-    }
+  // Fetch trending OT products (popular items)
+  const { data: trendingResult, isLoading: loadingTrending } = useQuery({
+    queryKey: ["ot-home-trending"],
+    queryFn: () =>
+      searchItems({
+        query: "trending",
+        pageSize: 20,
+        orderBy: "Volume:Desc",
+      }),
+    staleTime: 1000 * 60 * 15,
   });
 
-  // Fetch discounted products (products with compare_price) - get more for carousel
-  const {
-    data: discountedProducts,
-    isLoading: loadingDiscounted
-  } = useQuery({
-    queryKey: ["discounted-products"],
-    queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("products").select("*").eq("is_active", true).not("compare_price", "is", null).order("created_at", {
-        ascending: false
-      }).limit(50);
-      if (error) throw error;
-      return data?.filter(p => p.compare_price && p.compare_price > p.price) || [];
-    }
+  // Fetch new arrivals
+  const { data: newResult, isLoading: loadingNew } = useQuery({
+    queryKey: ["ot-home-new"],
+    queryFn: () =>
+      searchItems({
+        query: "fashion",
+        pageSize: 20,
+      }),
+    staleTime: 1000 * 60 * 15,
   });
 
-  // Fetch featured products
-  const {
-    data: featuredProducts,
-    isLoading: loadingProducts
-  } = useQuery({
-    queryKey: ["featured-products"],
-    queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("products").select("*").eq("is_active", true).eq("is_featured", true).order("created_at", {
-        ascending: false
-      }).limit(8);
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  // Fetch all categories for strip
-  const {
-    data: categories,
-    isLoading: loadingCategories
-  } = useQuery({
-    queryKey: ["categories-all"],
-    queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("categories").select("*").eq("is_active", true).order("display_order", {
-        ascending: true
-      });
-      if (error) throw error;
-      return data;
-    }
+  // Fetch electronics / tech products
+  const { data: techResult, isLoading: loadingTech } = useQuery({
+    queryKey: ["ot-home-tech"],
+    queryFn: () =>
+      searchItems({
+        query: "electronics",
+        pageSize: 20,
+        orderBy: "Volume:Desc",
+      }),
+    staleTime: 1000 * 60 * 15,
   });
 
   // Fetch brands from brands table
@@ -94,81 +75,90 @@ export default function Home() {
         .order("display_order", { ascending: true });
 
       if (error) throw error;
-      return data?.map(b => ({ name: b.name, logo_url: b.logo_url })) || [];
+      return data?.map((b) => ({ name: b.name, logo_url: b.logo_url })) || [];
     },
   });
-  return <div className="animate-fade-in">
+
+  const trendingProducts = trendingResult?.items || [];
+  const newProducts = newResult?.items || [];
+  const techProducts = techResult?.items || [];
+
+  return (
+    <div className="animate-fade-in">
       {/* Hero Carousel */}
       <HeroCarousel />
 
-      {/* Category Strip - Right below hero */}
-      {!loadingCategories && categories && categories.length > 0 && <CategoryStrip categories={categories} />}
-      
       {/* OT API Categories */}
       <OtCategoryStrip />
 
-      {/* Discounted Products Section - Carousel */}
-      {discountedProducts && discountedProducts.length > 0 && <section className="py-12">
-          <div className="container flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-destructive/10">
-                <Percent className="h-6 w-6 text-destructive" />
-              </div>
-              <div>
-                <h2 className="md:text-3xl font-bold text-sm">Хямдралтай бараа</h2>
-                
-              </div>
+      {/* Trending Products - Carousel */}
+      <section className="py-8 md:py-12">
+        <div className="container flex items-center justify-between mb-6 md:mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-primary" />
             </div>
-            <Link to="/shop?discount=true">
-              <Button variant="ghost" className="gap-2">
-                Бүгдийг үзэх
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            <h2 className="text-sm md:text-3xl font-bold">Эрэлттэй бараа</h2>
           </div>
+          <Link to="/ot?q=trending&sort=Volume:Desc">
+            <Button variant="ghost" className="gap-2">
+              Бүгдийг үзэх
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
 
-          {loadingDiscounted ? <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div> : <Carousel opts={{
-        align: "start",
-        loop: true
-      }} className="w-full px-2 md:px-8 lg:container">
-              <CarouselContent className="-ml-2 md:-ml-4">
-                {discountedProducts.map(product => <CarouselItem key={product.id} className="pl-2 md:pl-4 basis-[45%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
-                    <DiscountProductCard product={product} />
-                  </CarouselItem>)}
-              </CarouselContent>
-              <CarouselPrevious className="left-0 md:left-2 -translate-x-1/2 hidden md:flex" />
-              <CarouselNext className="right-0 md:right-2 translate-x-1/2 hidden md:flex" />
-            </Carousel>}
-        </section>}
+        {loadingTrending ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : trendingProducts.length > 0 ? (
+          <Carousel
+            opts={{ align: "start", loop: true }}
+            className="w-full px-2 md:px-8 lg:container"
+          >
+            <CarouselContent className="-ml-2 md:-ml-4">
+              {trendingProducts.map((product) => (
+                <CarouselItem
+                  key={product.id}
+                  className="pl-2 md:pl-4 basis-[45%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6"
+                >
+                  <OtProductCardComponent product={product} />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="left-0 md:left-2 -translate-x-1/2 hidden md:flex" />
+            <CarouselNext className="right-0 md:right-2 translate-x-1/2 hidden md:flex" />
+          </Carousel>
+        ) : null}
+      </section>
 
-      {/* Featured Products Section */}
-      {featuredProducts && featuredProducts.length > 0 && <section className="py-12">
-          <div className="px-2 md:container flex items-center justify-between mb-8">
-            <div>
-              <h2 className="md:text-3xl font-bold text-base">Онцлох бараа</h2>
-              
+      {/* New Arrivals - Grid */}
+      <section className="py-8 md:py-12">
+        <div className="px-2 md:container flex items-center justify-between mb-6 md:mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-accent">
+              <Sparkles className="h-5 w-5 md:h-6 md:w-6 text-accent-foreground" />
             </div>
-            <Link to="/shop?featured=true">
-              <Button variant="ghost" className="gap-2">
-                Бүгдийг үзэх
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            <h2 className="text-sm md:text-3xl font-bold">Шинэ бараа</h2>
           </div>
+          <Link to="/ot?q=fashion">
+            <Button variant="ghost" className="gap-2">
+              Бүгдийг үзэх
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
 
-          {loadingProducts ? <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div> : <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-6">
-              {featuredProducts.map(product => <ProductCard key={product.id} product={product} variant="featured" />)}
-            </div>}
-        </section>}
-
-
-      {/* Promo Banner */}
-      <section className="container py-12">
-        
+        {loadingNew ? (
+          <ProductGridSkeleton count={10} />
+        ) : newProducts.length > 0 ? (
+          <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
+            {newProducts.map((product) => (
+              <OtProductCardComponent key={product.id} product={product} />
+            ))}
+          </div>
+        ) : null}
       </section>
 
       {/* Featured Brands Section */}
@@ -183,28 +173,45 @@ export default function Home() {
         </section>
       )}
 
-      {/* All Random Products Section */}
-      <section className="py-12">
-        <div className="px-2 md:container mb-6">
-          <h2 className="md:text-3xl font-bold text-base">Бүх төрлийн бараа</h2>
+      {/* Tech / Electronics - Grid */}
+      <section className="py-8 md:py-12">
+        <div className="px-2 md:container flex items-center justify-between mb-6 md:mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-secondary">
+              <ShoppingBag className="h-5 w-5 md:h-6 md:w-6 text-secondary-foreground" />
+            </div>
+            <h2 className="text-sm md:text-3xl font-bold">Электроник бараа</h2>
+          </div>
+          <Link to="/ot?q=electronics&sort=Volume:Desc">
+            <Button variant="ghost" className="gap-2">
+              Бүгдийг үзэх
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
         </div>
 
-        {loadingRandom ? <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div> : randomProducts && randomProducts.length > 0 ? <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-6">
-            {randomProducts.map(product => <ProductCard key={product.id} product={product} />)}
-          </div> : <div className="text-center py-12 text-muted-foreground">
-            Бараа олдсонгүй
-          </div>}
+        {loadingTech ? (
+          <ProductGridSkeleton count={10} />
+        ) : techProducts.length > 0 ? (
+          <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
+            {techProducts.map((product) => (
+              <OtProductCardComponent key={product.id} product={product} />
+            ))}
+          </div>
+        ) : null}
+      </section>
 
-        <div className="flex justify-center mt-8">
-          <Link to="/shop">
+      {/* CTA to marketplace */}
+      <section className="py-8 md:py-12">
+        <div className="flex justify-center">
+          <Link to="/ot">
             <Button size="lg" className="gap-2">
-              Бүх бараа үзэх
+              Маркетплэйс руу очих
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
       </section>
-    </div>;
+    </div>
+  );
 }
