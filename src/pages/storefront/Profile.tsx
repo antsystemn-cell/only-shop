@@ -50,6 +50,7 @@ import {
   Phone,
   Save,
 } from "lucide-react";
+import { ChangeContactInfo } from "@/components/storefront/ChangeContactInfo";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -380,7 +381,6 @@ function AddressesTab() {
 // ─── Security Tab ──────────────────────────────────────────────
 
 function SecurityTab() {
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -399,7 +399,6 @@ function SecurityTab() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       toast.success("Нууц үг амжилттай солигдлоо");
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
@@ -410,28 +409,32 @@ function SecurityTab() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lock className="h-5 w-5 text-primary" />
-          Нууц үг солих
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>Шинэ нууц үг</Label>
-          <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label>Нууц үг давтах</Label>
-          <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-        </div>
-        <Separator />
-        <Button onClick={handleChangePassword} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
-          Нууц үг солих
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5 text-primary" />
+            Нууц үг солих
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Шинэ нууц үг</Label>
+            <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Нууц үг давтах</Label>
+            <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+          </div>
+          <Separator />
+          <Button onClick={handleChangePassword} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+            Нууц үг солих
+          </Button>
+        </CardContent>
+      </Card>
+
+      <ChangeContactInfo />
+    </div>
   );
 }

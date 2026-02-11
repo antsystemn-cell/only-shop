@@ -8,6 +8,8 @@ import {
   clearBasket as clearBasketApi,
   runBasketChecking,
   getBasketCheckingResult,
+  batchSimplifiedAddItemsToBasket,
+  moveItemsBetweenBasketAndNote,
 } from "@/services/otApi";
 import { toast } from "sonner";
 
@@ -48,8 +50,11 @@ interface OtCartContextType {
   itemCount: number;
   subtotal: number;
   addItem: (itemId: string, quantity: number, configurators?: string) => Promise<void>;
+  batchAddItems: (xmlParameters: string) => Promise<void>;
   updateItemQuantity: (orderLineId: string, quantity: number) => Promise<void>;
   removeItem: (orderLineId: string) => Promise<void>;
+  moveToNote: (orderLineId: string) => Promise<void>;
+  moveToBasket: (orderLineId: string) => Promise<void>;
   clearCart: () => Promise<void>;
   refreshBasket: () => Promise<void>;
   checkBasket: () => Promise<any>;
@@ -181,6 +186,45 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchBasket]);
 
+  const batchAddItemsFn = useCallback(async (xmlParameters: string) => {
+    try {
+      setIsLoading(true);
+      const sessionId = await getAnonymousSession();
+      await batchSimplifiedAddItemsToBasket(sessionId, xmlParameters);
+      await fetchBasket();
+      toast.success("Бараанууд сагсанд нэмэгдлээ!");
+    } catch (err: any) {
+      toast.error(err.message || "Бараа нэмэхэд алдаа гарлаа");
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchBasket]);
+
+  const moveToNote = useCallback(async (orderLineId: string) => {
+    try {
+      const sessionId = await getAnonymousSession();
+      await moveItemsBetweenBasketAndNote(sessionId, orderLineId, "ToNote");
+      setItems((prev) => prev.filter((i) => i.orderLineId !== orderLineId));
+      toast.success("Тэмдэглэл рүү зөөгдлөө");
+    } catch (err: any) {
+      toast.error("Зөөхөд алдаа гарлаа");
+      await fetchBasket();
+    }
+  }, [fetchBasket]);
+
+  const moveToBasket = useCallback(async (orderLineId: string) => {
+    try {
+      const sessionId = await getAnonymousSession();
+      await moveItemsBetweenBasketAndNote(sessionId, orderLineId, "ToBasket");
+      await fetchBasket();
+      toast.success("Сагс руу зөөгдлөө");
+    } catch (err: any) {
+      toast.error("Зөөхөд алдаа гарлаа");
+      await fetchBasket();
+    }
+  }, [fetchBasket]);
+
   // ─── Basket checking (for checkout) ────────────────────────
 
   const [checkingStatus, setCheckingStatus] = useState<BasketCheckingStatus>({
@@ -228,8 +272,11 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
         itemCount,
         subtotal,
         addItem,
+        batchAddItems: batchAddItemsFn,
         updateItemQuantity,
         removeItem,
+        moveToNote,
+        moveToBasket,
         clearCart: clearCartFn,
         refreshBasket: fetchBasket,
         checkBasket,
