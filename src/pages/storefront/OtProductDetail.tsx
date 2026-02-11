@@ -23,6 +23,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { ProductReviews } from "@/components/storefront/ProductReviews";
 import { toast } from "sonner";
 
+function formatMntPrice(price: number, currency: string) {
+  if (currency === "₮" || currency === "MNT") {
+    return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
+  }
+  return `${currency}${price.toFixed(2)}`;
+}
+
 export default function OtProductDetail() {
   const { itemId } = useParams<{ itemId: string }>();
   const { addItem, isLoading: isCartLoading } = useOtCart();
@@ -32,12 +39,15 @@ export default function OtProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [selectedConfigs, setSelectedConfigs] = useState<Record<string, string>>({});
 
-  const { data: product, isLoading } = useQuery({
+  const { data: product, isLoading, error } = useQuery({
     queryKey: ["ot-product", itemId],
     queryFn: () => fetchProductDetail(itemId!),
     enabled: !!itemId,
     staleTime: 1000 * 60 * 10,
+    retry: false,
   });
+
+  console.log("[OtProductDetail] itemId:", itemId, "product:", product, "error:", error);
 
   const { data: description } = useQuery({
     queryKey: ["ot-product-desc", itemId],
@@ -191,11 +201,11 @@ export default function OtProductDetail() {
           {/* Price */}
           <div className="flex items-baseline gap-3">
             <span className="text-3xl font-bold text-primary">
-              {product.currency}{effectivePrice.toFixed(2)}
+              {formatMntPrice(effectivePrice, product.currency)}
             </span>
             {product.originalPrice && product.originalPrice > effectivePrice && (
               <span className="text-lg text-muted-foreground line-through">
-                {product.currency}{product.originalPrice.toFixed(2)}
+                {formatMntPrice(product.originalPrice, product.currency)}
               </span>
             )}
           </div>
