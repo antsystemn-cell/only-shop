@@ -256,6 +256,88 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     // ── Design & Theme ──
     case "getApplicationDesignSettings":
       return callOtApi("GetApplicationDesignSettings", baseMeta);
+    case "updateApplicationDesignSettings":
+      return callOtApi("UpdateApplicationDesignSettings", { ...base, xmlParameters: params.xmlParameters });
+
+    // ── Auth Extended ──
+    case "changeEmail":
+      return callOtApi("ChangeEmail", { ...base, sessionId: params.sessionId, newEmail: params.newEmail });
+    case "changePhone":
+      return callOtApi("ChangePhone", { ...base, sessionId: params.sessionId, newPhone: params.newPhone });
+    case "confirmEmail":
+      return callOtApi("ConfirmEmail", { ...base, sessionId: params.sessionId, confirmationCode: params.confirmationCode });
+    case "confirmPhone":
+      return callOtApi("ConfirmPhone", { ...base, sessionId: params.sessionId, confirmationCode: params.confirmationCode });
+    case "externalAuthentication":
+      return callOtApi("ExternalAuthentication", { ...base, providerName: params.providerName, externalUserId: params.externalUserId, ...(params.userLogin ? { userLogin: params.userLogin } : {}), ...(params.userEmail ? { userEmail: params.userEmail } : {}) });
+
+    // ── User Extended ──
+    case "getUserPreferences":
+      return callOtApi("GetUserPreferences", { ...base, sessionId: params.sessionId });
+    case "searchUsers":
+      return callOtApi("FindBaseUserInfoListFrame", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20), ...(params.searchText ? { searchText: params.searchText } : {}) });
+
+    // ── Basket Extended ──
+    case "batchSimplifiedAddItemsToBasket":
+      return callOtApi("BatchSimplifiedAddItemsToBasket", { ...base, sessionId: params.sessionId, xmlParameters: params.xmlParameters });
+    case "moveItemsBetweenBasketAndNote":
+      return callOtApi("MoveItemsBetweenBasketAndNote", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, direction: params.direction || "ToNote" });
+
+    // ── Orders Extended ──
+    case "updateOrderLineInfo":
+      return callOtApi("UpdateOrderLineInfo", { ...base, orderLineId: params.orderLineId, xmlParameters: params.xmlParameters });
+    case "getOrderStatusList":
+      return callOtApi("GetOrderStatusList", { ...baseMeta, ...(params.sessionId ? { sessionId: params.sessionId } : {}) });
+
+    // ── Payment ──
+    case "createBalanceChargingBill":
+      return callOtApi("CreateBalanceChargingBill", { ...base, sessionId: params.sessionId, amount: String(params.amount), ...(params.currencyCode ? { currencyCode: params.currencyCode } : {}) });
+    case "salesPaymentReserve":
+      return callOtApi("SalesPaymentReserve", { ...base, orderId: params.orderId, amount: String(params.amount), ...(params.currencyCode ? { currencyCode: params.currencyCode } : {}) });
+
+    // ── Discounts Extended ──
+    case "getUserDiscountGroups":
+      return callOtApi("GetUserDiscountGroups", { ...base, userId: params.userId });
+    case "addUserToDiscountGroup":
+      return callOtApi("AddUserToDiscountGroup", { ...base, userId: params.userId, discountGroupId: params.discountGroupId });
+    case "removeUserFromDiscountGroup":
+      return callOtApi("RemoveUserFromDiscountGroup", { ...base, userId: params.userId, discountGroupId: params.discountGroupId });
+
+    // ── Content CRUD ──
+    case "createContentMenuItem":
+      return callOtApi("CreateContentMenuItem", { ...base, xmlParameters: params.xmlParameters });
+    case "updateContentMenuItem":
+      return callOtApi("UpdateContentMenuItem", { ...base, xmlParameters: params.xmlParameters });
+    case "deleteContentMenuItem":
+      return callOtApi("DeleteContentMenuItem", { ...base, menuItemId: params.menuItemId });
+    case "searchContentMenuItems":
+      return callOtApi("SearchContentMenuItems", { ...baseMeta, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 50), ...(params.parentMenuItemId ? { parentMenuItemId: params.parentMenuItemId } : {}) });
+
+    // ── Reviews Extended ──
+    case "rewardItemReview":
+      return callOtApi("RewardItemReview", { ...base, reviewId: params.reviewId, amount: String(params.amount || 0) });
+    case "searchItemReviews":
+      return callOtApi("SearchItemReviews", { ...baseMeta, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20), ...(params.itemId ? { itemId: params.itemId } : {}), ...(params.isApproved ? { isApproved: params.isApproved } : {}) });
+
+    // ── Reporting ──
+    case "searchInstanceUserLogEntries":
+      return callOtApi("SearchInstanceUserLogEntries", { ...baseMeta, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 50), ...(params.userId ? { userId: params.userId } : {}), ...(params.actionType ? { actionType: params.actionType } : {}) });
+
+    // ── Roles Extended ──
+    case "createInstanceRole":
+      return callOtApi("CreateInstanceRole", { ...base, roleName: params.roleName, ...(params.roleDescription ? { roleDescription: params.roleDescription } : {}) });
+    case "attachRightsToRole":
+      return callOtApi("AttachRightsToRole", { ...base, roleId: params.roleId, xmlParameters: params.xmlParameters });
+    case "deleteInstanceRole":
+      return callOtApi("DeleteInstanceRole", { ...base, roleId: params.roleId });
+    case "removeUserFromRole":
+      return callOtApi("RemoveInstanceUserFromRole", { ...base, userId: params.userId, roleId: params.roleId });
+
+    // ── Providers Extended ──
+    case "getProviderInfoList":
+      return callOtApi("GetProviderInfoList", baseMeta);
+    case "getProviderCommonSettings":
+      return callOtApi("GetProviderCommonSettings", { ...baseMeta, providerType: params.providerType });
 
     // ── Rating Lists / Element Collections ──
     case "getAutoRatingListsSettings":

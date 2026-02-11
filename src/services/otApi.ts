@@ -435,6 +435,162 @@ export async function getContentMenuItemTree() {
   return callProxy("getContentMenuItemTree");
 }
 
+// ─── Auth Extended ──────────────────────────────────────────
+
+export async function changeEmail(sessionId: string, newEmail: string) {
+  return callProxy("changeEmail", { sessionId, newEmail });
+}
+
+export async function changePhone(sessionId: string, newPhone: string) {
+  return callProxy("changePhone", { sessionId, newPhone });
+}
+
+export async function confirmEmail(sessionId: string, confirmationCode: string) {
+  return callProxy("confirmEmail", { sessionId, confirmationCode });
+}
+
+export async function confirmPhone(sessionId: string, confirmationCode: string) {
+  return callProxy("confirmPhone", { sessionId, confirmationCode });
+}
+
+export async function externalAuthentication(providerName: string, externalUserId: string, userLogin?: string, userEmail?: string) {
+  return callProxy("externalAuthentication", { providerName, externalUserId, ...(userLogin ? { userLogin } : {}), ...(userEmail ? { userEmail } : {}) });
+}
+
+// ─── User Extended ──────────────────────────────────────────
+
+export async function getUserPreferences(sessionId: string) {
+  return callProxy("getUserPreferences", { sessionId });
+}
+
+export async function searchUsers(searchText?: string, page = 0, pageSize = 20) {
+  return callProxy("searchUsers", { searchText, page, pageSize });
+}
+
+// ─── Basket Extended ────────────────────────────────────────
+
+export async function batchSimplifiedAddItemsToBasket(sessionId: string, xmlParameters: string) {
+  return callProxy("batchSimplifiedAddItemsToBasket", { sessionId, xmlParameters });
+}
+
+export async function moveItemsBetweenBasketAndNote(sessionId: string, orderLineId: string, direction: "ToNote" | "ToBasket" = "ToNote") {
+  return callProxy("moveItemsBetweenBasketAndNote", { sessionId, orderLineId, direction });
+}
+
+// ─── Orders Extended ────────────────────────────────────────
+
+export async function updateOrderLineInfo(orderLineId: string, xmlParameters: string) {
+  return callProxy("updateOrderLineInfo", { orderLineId, xmlParameters });
+}
+
+export async function getOrderStatusList() {
+  return callProxy("getOrderStatusList");
+}
+
+export async function confirmOrderPackaging(orderId: string) {
+  return callProxy("confirmOrderPackaging", { orderId });
+}
+
+// ─── Payment (OT) ──────────────────────────────────────────
+
+export async function createBalanceChargingBill(sessionId: string, amount: number, currencyCode?: string) {
+  return callProxy("createBalanceChargingBill", { sessionId, amount, ...(currencyCode ? { currencyCode } : {}) });
+}
+
+export async function salesPaymentReserve(orderId: string, amount: number, currencyCode?: string) {
+  return callProxy("salesPaymentReserve", { orderId, amount, ...(currencyCode ? { currencyCode } : {}) });
+}
+
+// ─── Discounts Extended ─────────────────────────────────────
+
+export async function getUserDiscountGroups(userId: string) {
+  return callProxy("getUserDiscountGroups", { userId });
+}
+
+export async function addUserToDiscountGroup(userId: string, discountGroupId: string) {
+  return callProxy("addUserToDiscountGroup", { userId, discountGroupId });
+}
+
+export async function removeUserFromDiscountGroup(userId: string, discountGroupId: string) {
+  return callProxy("removeUserFromDiscountGroup", { userId, discountGroupId });
+}
+
+// ─── Content CRUD ───────────────────────────────────────────
+
+export async function createContentMenuItem(xmlParameters: string) {
+  return callProxy("createContentMenuItem", { xmlParameters });
+}
+
+export async function updateContentMenuItem(xmlParameters: string) {
+  return callProxy("updateContentMenuItem", { xmlParameters });
+}
+
+export async function deleteContentMenuItem(menuItemId: string) {
+  return callProxy("deleteContentMenuItem", { menuItemId });
+}
+
+export async function searchContentMenuItems(parentMenuItemId?: string, page = 0, pageSize = 50) {
+  return callProxy("searchContentMenuItems", { parentMenuItemId, page, pageSize });
+}
+
+export async function updateApplicationDesignSettings(xmlParameters: string) {
+  return callProxy("updateApplicationDesignSettings", { xmlParameters });
+}
+
+// ─── Reviews Extended ───────────────────────────────────────
+
+export async function rewardItemReview(reviewId: string, amount: number) {
+  return callProxy("rewardItemReview", { reviewId, amount });
+}
+
+export async function searchItemReviews(params: { itemId?: string; isApproved?: string; page?: number; pageSize?: number } = {}) {
+  return callProxy("searchItemReviews", params);
+}
+
+// ─── Reporting ──────────────────────────────────────────────
+
+export async function searchInstanceUserLogEntries(params: { userId?: string; actionType?: string; page?: number; pageSize?: number } = {}) {
+  return callProxy("searchInstanceUserLogEntries", params);
+}
+
+// ─── Roles Extended ─────────────────────────────────────────
+
+export async function createInstanceRole(roleName: string, roleDescription?: string) {
+  return callProxy("createInstanceRole", { roleName, ...(roleDescription ? { roleDescription } : {}) });
+}
+
+export async function attachRightsToRole(roleId: string, xmlParameters: string) {
+  return callProxy("attachRightsToRole", { roleId, xmlParameters });
+}
+
+export async function deleteInstanceRole(roleId: string) {
+  return callProxy("deleteInstanceRole", { roleId });
+}
+
+export async function addInstanceUserToRole(userId: string, roleId: string) {
+  return callProxy("addInstanceUserToRole", { userId, roleId });
+}
+
+export async function removeUserFromRole(userId: string, roleId: string) {
+  return callProxy("removeUserFromRole", { userId, roleId });
+}
+
+// ─── Providers Extended ─────────────────────────────────────
+
+export async function getProviderInfoList() {
+  return callProxy("getProviderInfoList");
+}
+
+export async function getProviderCommonSettings(providerType: string) {
+  return callProxy("getProviderCommonSettings", { providerType });
+}
+
+// ─── Delivery Extended ──────────────────────────────────────
+
+export async function searchDeliveryPickupPoints(deliveryModeId?: string) {
+  return callProxy("searchDeliveryPickupPoints", { deliveryModeId });
+}
+
 // ─── Mappers ─────────────────────────────────────────────────
 
 function mapCategory(cat: OtCategory): OtCategoryCard {
