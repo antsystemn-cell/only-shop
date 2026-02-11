@@ -114,7 +114,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { action, params } = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonResponse({ error: "JSON өгөгдөл буруу байна" }, 400);
+    }
+
+    const { action, params } = body || {};
+    if (!action) {
+      return jsonResponse({ error: "action шаардлагатай" }, 400);
+    }
+
     const supabase = getSupabaseAdmin();
 
     // ===========================
@@ -154,9 +165,14 @@ Deno.serve(async (req) => {
     // CREATE LOAN (INVOICE) via PaymentIntent
     // ===========================
     if (action === "createLoan") {
-      const { paymentIntentId, mobileNumber } = params;
+      const { paymentIntentId, mobileNumber } = params || {};
       if (!paymentIntentId) throw new Error("paymentIntentId is required");
       if (!mobileNumber) throw new Error("Утасны дугаар шаардлагатай");
+
+      const phone = String(mobileNumber).replace(/\D/g, "");
+      if (!phone || phone.length !== 8) {
+        throw new Error("Утасны дугаар 8 оронтой байх ёстой");
+      }
 
       const { data: pi, error: piErr } = await supabase
         .from("payment_intents")
@@ -191,11 +207,7 @@ Deno.serve(async (req) => {
 
       // Build loan request
       let description = "";
-      const phone = String(mobileNumber).replace(/\D/g, "");
-
-      if (!phone || phone.length !== 8) {
-        throw new Error("Утасны дугаар 8 оронтой байх ёстой");
-      }
+      const requestId = crypto.randomUUID();
 
       if (pi.type === "order") {
         const { data: order } = await supabase
@@ -239,7 +251,7 @@ Deno.serve(async (req) => {
         .from("payment_intents")
         .update({
           invoice_id: loanId,
-          payment_id: requestId, // store requestId for later checking
+          payment_id: requestId,
           status: "processing",
         })
         .eq("id", pi.id);
