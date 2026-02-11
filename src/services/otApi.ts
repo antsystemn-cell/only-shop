@@ -153,7 +153,7 @@ export interface ProductDetail {
 }
 
 export async function fetchProductDetail(itemId: string): Promise<ProductDetail> {
-  const data = await callProxy<OtItemFullInfo>("getItemFullInfo", { itemId });
+  const data = await callProxy<any>("getItemFullInfo", { itemId });
   const item = data?.Result?.Item;
 
   if (!item) throw new Error("Product not found");
@@ -161,10 +161,57 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
   // Handle Pictures as array or {ItemPicture: [...]}
   const rawPics = item.Pictures;
   const picsArray = Array.isArray(rawPics) ? rawPics : (rawPics?.ItemPicture || []);
-  const images = picsArray.map((p: any) => p.Url).filter(Boolean);
+  const images = (Array.isArray(picsArray) ? picsArray : [picsArray]).filter(Boolean).map((p: any) => p.Url).filter(Boolean);
   if (item.MainPictureUrl && !images.includes(item.MainPictureUrl)) {
     images.unshift(item.MainPictureUrl);
   }
+
+  // Build configurators: prefer item.Configurators, fallback to Attributes with IsConfigurator
+  let configurators: ProductDetail["configurators"] = [];
+  if (item.Configurators && (Array.isArray(item.Configurators) ? item.Configurators.length : true)) {
+    const rawConfigs = Array.isArray(item.Configurators) ? item.Configurators : [item.Configurators];
+    configurators = rawConfigs.map((c: any) => ({
+      pid: c.Pid,
+      propertyName: c.PropertyName || "",
+      values: (Array.isArray(c.Values) ? c.Values : c.Values ? [c.Values] : []).map((v: any) => ({
+        id: v.Id,
+        value: v.PropertyValueDisplayName || v.Value || "",
+        imageUrl: v.ImageUrl,
+      })),
+    }));
+  } else if (item.Attributes) {
+    // Build from Attributes where IsConfigurator is true
+    const attrs = Array.isArray(item.Attributes) ? item.Attributes : [item.Attributes];
+    const configAttrs = attrs.filter((a: any) => a.IsConfigurator);
+    const grouped: Record<string, { pid: string; propertyName: string; values: any[] }> = {};
+    for (const attr of configAttrs) {
+      if (!grouped[attr.Pid]) {
+        grouped[attr.Pid] = {
+          pid: attr.Pid,
+          propertyName: attr.PropertyName || attr.OriginalPropertyName || "",
+          values: [],
+        };
+      }
+      grouped[attr.Pid].values.push({
+        id: attr.Vid,
+        value: attr.Value || attr.OriginalValue || "",
+        imageUrl: attr.ImageUrl || attr.MiniImageUrl,
+      });
+    }
+    configurators = Object.values(grouped);
+  }
+
+  // Parse ConfiguredItems
+  const rawConfiguredItems = item.ConfiguredItems;
+  const configuredItemsArray = Array.isArray(rawConfiguredItems) ? rawConfiguredItems : rawConfiguredItems ? [rawConfiguredItems] : [];
+
+  // Parse FeaturedValues
+  const rawFeatures = item.FeaturedValues;
+  const featuresArray = Array.isArray(rawFeatures) ? rawFeatures : rawFeatures ? [rawFeatures] : [];
+
+  // Parse RootPath
+  const rawPath = data?.Result?.RootPath;
+  const rootPath = Array.isArray(rawPath) ? rawPath : rawPath ? [rawPath] : [];
 
   return {
     id: item.Id,
@@ -176,36 +223,34 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
     originalPrice: item.OriginalPrice?.ConvertedPriceList?.Internal?.Price ?? (typeof item.OriginalPrice?.ConvertedPrice === "number" ? item.OriginalPrice.ConvertedPrice : undefined) ?? item.OriginalPrice?.OriginalPrice,
     currency: item.Price?.ConvertedPriceList?.Internal?.Sign || item.Price?.CurrencySign || "₮",
     quantity: item.Quantity ?? item.MasterQuantity,
-    vendorName: item.VendorName,
+    vendorName: item.VendorName || item.VendorDisplayName,
     vendorScore: item.VendorScore,
     brandName: item.BrandName,
     categoryId: item.CategoryId,
-    features: (item.FeaturedValues || []).map((f) => ({
+    features: featuresArray.map((f: any) => ({
       name: f.Name,
       value: f.Value,
     })),
-    configurators: (item.Configurators || []).map((c) => ({
-      pid: c.Pid,
-      propertyName: c.PropertyName || "",
-      values: (c.Values || []).map((v) => ({
-        id: v.Id,
-        value: v.PropertyValueDisplayName || v.Value || "",
-        imageUrl: v.ImageUrl,
-      })),
-    })),
-    configuredItems: (item.ConfiguredItems || []).map((ci) => ({
+    configurators,
+    configuredItems: configuredItemsArray.map((ci: any) => ({
       id: ci.Id,
       quantity: ci.Quantity,
       price: ci.Price?.ConvertedPriceList?.Internal?.Price ?? (typeof ci.Price?.ConvertedPrice === "number" ? ci.Price.ConvertedPrice : undefined) ?? ci.Price?.OriginalPrice,
       imageUrl: ci.ImageUrl,
-      configuratorIds: (ci.Configurators || []).map((c) => c.Vid),
+      configuratorIds: (Array.isArray(ci.Configurators) ? ci.Configurators : ci.Configurators ? [ci.Configurators] : []).map((c: any) => c.Vid),
     })),
-    breadcrumbs: (data?.Result?.RootPath || []).map((b) => ({ id: b.Id, name: b.Name })),
+    breadcrumbs: rootPath.map((b: any) => ({ id: b.Id, name: b.Name })),
     vendor: data?.Result?.Vendor
       ? {
           id: data.Result.Vendor.Id,
-          name: data.Result.Vendor.Name,
+          name: data.Result.Vendor.Name || data.Result.Vendor.DisplayName,
           score: data.Result.Vendor.Score,
+        }
+      : item.VendorId
+      ? {
+          id: item.VendorId,
+          name: item.VendorName || item.VendorDisplayName,
+          score: item.VendorScore,
         }
       : undefined,
   };
@@ -213,11 +258,8 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
 
 export async function fetchProductDescription(itemId: string): Promise<string> {
   try {
-    const data = await callProxy<{ Result?: { ItemDescription?: string } }>(
-      "getItemDescription",
-      { itemId }
-    );
-    return data?.Result?.ItemDescription || "";
+    const data = await callProxy<any>("getItemDescription", { itemId });
+    return data?.OtapiItemDescription?.ItemDescription || data?.Result?.ItemDescription || "";
   } catch {
     return "";
   }
