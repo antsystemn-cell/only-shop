@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
+import { useOtCart } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, MapPin, Truck, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, Truck, ShoppingBag, Globe, Package, Clock, AlertTriangle } from "lucide-react";
 import { z } from "zod";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
 
@@ -43,18 +45,26 @@ const addressSchema = z.object({
 
 type DeliveryType = "standard" | "express";
 
+function formatMntPrice(price: number) {
+  return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
+}
+
+function formatOtPrice(price: number, currency = "¥") {
+  return `${currency}${price.toFixed(2)}`;
+}
+
 export default function Checkout() {
   const navigate = useNavigate();
-  const { items, getSubtotal, clearCart } = useCart();
+  const { items: localItems, getSubtotal, clearCart: clearLocalCart } = useCart();
+  const { items: otItems, subtotal: otSubtotal, clearCart: clearOtCart, groups: otGroups } = useOtCart();
   const { user, isLoading: authLoading } = useAuth();
-  
+
   const [selectedZone, setSelectedZone] = useState<DeliveryZone | null>(null);
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("standard");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("qpay");
-  
-  // Address form state
+
   const [addressForm, setAddressForm] = useState({
     city: "Улаанбаатар",
     district: "",
@@ -62,6 +72,10 @@ export default function Checkout() {
     apartment: "",
     phone: "",
   });
+
+  const hasLocalItems = localItems.length > 0;
+  const hasOtItems = otItems.length > 0;
+  const totalItemCount = localItems.length + otItems.length;
 
   // Redirect if not logged in
   useEffect(() => {
@@ -73,10 +87,10 @@ export default function Checkout() {
 
   // Redirect if cart is empty
   useEffect(() => {
-    if (items.length === 0 && !authLoading) {
+    if (totalItemCount === 0 && !authLoading) {
       navigate("/shop");
     }
-  }, [items, navigate, authLoading]);
+  }, [totalItemCount, navigate, authLoading]);
 
   // Fetch delivery zones
   const { data: deliveryZones } = useQuery({
@@ -93,20 +107,17 @@ export default function Checkout() {
     },
   });
 
-  // Group zones by type
   const ubDistricts = deliveryZones?.filter(z => z.zone_type === "ub_district") || [];
   const aimags = deliveryZones?.filter(z => z.zone_type === "aimag") || [];
 
-  // Calculate totals
-  const subtotal = getSubtotal();
-  const deliveryFee = selectedZone 
-    ? (deliveryType === "express" && selectedZone.express_price 
-        ? selectedZone.express_price 
+  const localSubtotal = getSubtotal();
+  const deliveryFee = selectedZone
+    ? (deliveryType === "express" && selectedZone.express_price
+        ? selectedZone.express_price
         : selectedZone.standard_price)
     : 0;
-  const total = subtotal + deliveryFee;
+  const localTotal = localSubtotal + deliveryFee;
 
-  // Get delivery days
   const deliveryDays = selectedZone
     ? (deliveryType === "express" && selectedZone.express_days
         ? selectedZone.express_days
@@ -119,7 +130,6 @@ export default function Checkout() {
       if (!user) throw new Error("Нэвтрэх шаардлагатай");
       if (!selectedZone) throw new Error("Хүргэлтийн бүс сонгоно уу");
 
-      // Validate address
       const validation = addressSchema.safeParse(addressForm);
       if (!validation.success) {
         const fieldErrors: Record<string, string> = {};
@@ -132,19 +142,29 @@ export default function Checkout() {
         throw new Error("Хаягийн мэдээлэл дутуу байна");
       }
 
-      // Calculate estimated delivery date
       const estimatedDate = new Date();
       estimatedDate.setDate(estimatedDate.getDate() + (deliveryDays || 3));
+
+      // Build order items from both sources
+      const allOrderItems: any[] = [];
+      const orderSourceTypes: string[] = [];
+
+      if (hasLocalItems) {
+        orderSourceTypes.push("local");
+      }
+      if (hasOtItems) {
+        orderSourceTypes.push("otapi");
+      }
 
       // Create order
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
           user_id: user.id,
-          order_number: "", // Will be generated by trigger
-          subtotal,
+          order_number: "",
+          subtotal: localSubtotal,
           delivery_fee: deliveryFee,
-          total,
+          total: localTotal,
           status: "pending",
           payment_status: "pending",
           payment_method: paymentMethod,
@@ -165,36 +185,64 @@ export default function Checkout() {
 
       if (orderError) throw orderError;
 
-      // Create order items
-      const orderItems = items.map((item) => ({
-        order_id: order.id,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        unit_price: item.product.price,
-        total_price: item.product.price * item.quantity,
-        product_snapshot: {
-          id: item.product.id,
-          name: item.product.name,
-          name_mn: item.product.name_mn,
-          price: item.product.price,
-          images: item.product.images,
-        },
-      }));
+      // Create local order items
+      if (hasLocalItems) {
+        const localOrderItems = localItems.map((item) => ({
+          order_id: order.id,
+          product_id: item.product.id,
+          quantity: item.quantity,
+          unit_price: item.product.price,
+          total_price: item.product.price * item.quantity,
+          product_snapshot: {
+            id: item.product.id,
+            name: item.product.name,
+            name_mn: item.product.name_mn,
+            price: item.product.price,
+            images: item.product.images,
+            sourceType: "local",
+          },
+        }));
 
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(orderItems);
+        const { error: itemsError } = await supabase
+          .from("order_items")
+          .insert(localOrderItems);
+        if (itemsError) throw itemsError;
+      }
 
-      if (itemsError) throw itemsError;
+      // Create OT order items (store as snapshots for reference)
+      if (hasOtItems) {
+        const otOrderItems = otItems.map((item) => ({
+          order_id: order.id,
+          product_id: null,
+          quantity: item.quantity,
+          unit_price: 0, // OT prices tracked separately
+          total_price: 0,
+          product_snapshot: {
+            itemId: item.itemId,
+            title: item.title,
+            imageUrl: item.imageUrl,
+            price: item.price,
+            currency: item.currency,
+            providerType: item.providerType,
+            sourceType: "otapi",
+            orderLineId: item.orderLineId,
+          },
+        }));
 
-      // Create payment intent for the order
+        const { error: otItemsError } = await supabase
+          .from("order_items")
+          .insert(otOrderItems);
+        if (otItemsError) throw otItemsError;
+      }
+
+      // Create payment intent
       const { data: pi, error: piErr } = await supabase
         .from("payment_intents")
         .insert({
           user_id: user.id,
           type: "order" as const,
           reference_id: order.id,
-          amount: total,
+          amount: localTotal,
           provider: paymentMethod === "omniway" ? ("omniway" as const) : paymentMethod === "storepay" ? ("storepay" as const) : ("qpay" as const),
           status: "initiated" as const,
         })
@@ -206,9 +254,10 @@ export default function Checkout() {
       return { order, paymentIntentId: pi?.id };
     },
     onSuccess: ({ order, paymentIntentId }) => {
-      clearCart();
+      clearLocalCart();
+      if (hasOtItems) clearOtCart();
       toast.success("Захиалга амжилттай үүсгэгдлээ!");
-      const url = paymentIntentId 
+      const url = paymentIntentId
         ? `/order-confirmation/${order.id}?pi=${paymentIntentId}`
         : `/order-confirmation/${order.id}`;
       navigate(url);
@@ -227,8 +276,10 @@ export default function Checkout() {
   const handleZoneChange = (zoneId: string) => {
     const zone = deliveryZones?.find(z => z.id === zoneId);
     setSelectedZone(zone || null);
-    
-    // Reset to standard if express not available
+    // FIX: Set district name from zone
+    if (zone) {
+      setAddressForm(prev => ({ ...prev, district: zone.name }));
+    }
     if (zone && !zone.express_price) {
       setDeliveryType("standard");
     }
@@ -255,6 +306,46 @@ export default function Checkout() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Forms */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Delivery Time Warnings */}
+            {(hasOtItems || hasLocalItems) && (
+              <div className="space-y-3">
+                {hasOtItems && (
+                  <div className="flex items-start gap-3 p-4 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
+                    <Globe className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm text-blue-700 dark:text-blue-300">
+                        Гадаадаас захиалга ({otItems.length} бараа)
+                      </p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Захиалга баталгаажсанаас хойш <strong>10-14 хоногт</strong> хүргэгдэнэ
+                      </p>
+                    </div>
+                    <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs shrink-0">
+                      OTAPI
+                    </Badge>
+                  </div>
+                )}
+                {hasLocalItems && (
+                  <div className="flex items-start gap-3 p-4 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800">
+                    <Package className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm text-green-700 dark:text-green-300">
+                        Бэлэн бараа ({localItems.length} бараа)
+                      </p>
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Төлбөр төлөгдсөнөөс хойш <strong>24 цагийн дотор</strong> хүргэгдэнэ
+                      </p>
+                    </div>
+                    <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs shrink-0">
+                      Бэлэн
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Delivery Address */}
             <Card>
               <CardHeader>
@@ -452,63 +543,122 @@ export default function Checkout() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Cart Items */}
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {items.map((item) => (
-                    <div key={item.product.id} className="flex gap-3">
-                      <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden shrink-0">
-                        {item.product.images?.[0] ? (
-                          <img
-                            src={item.product.images[0]}
-                            alt={item.product.name_mn}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                            <ShoppingBag className="h-6 w-6" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">
-                          {item.product.name_mn}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.quantity} ширхэг
-                        </p>
-                        <p className="text-sm font-semibold text-primary">
-                          {(item.product.price * item.quantity).toLocaleString()}₮
-                        </p>
-                      </div>
+                {/* OT Items */}
+                {hasOtItems && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Globe className="h-3.5 w-3.5 text-blue-500" />
+                      <span className="text-xs font-semibold text-blue-600">Гадаадаас захиалга</span>
                     </div>
-                  ))}
-                </div>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {otItems.map((item) => (
+                        <div key={item.orderLineId} className="flex gap-2">
+                          <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden shrink-0">
+                            {item.imageUrl ? (
+                              <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                <ShoppingBag className="h-4 w-4" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-xs truncate">{item.title}</p>
+                            <p className="text-xs text-muted-foreground">{item.quantity} ширхэг</p>
+                            <p className="text-xs font-semibold text-blue-600">
+                              {formatOtPrice(item.totalPrice, item.currency)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-xs mt-2 text-muted-foreground">
+                      <span>Гадаад бараа дүн:</span>
+                      <span className="font-medium text-blue-600">{formatOtPrice(otSubtotal)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {hasOtItems && hasLocalItems && <Separator />}
+
+                {/* Local Items */}
+                {hasLocalItems && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Package className="h-3.5 w-3.5 text-green-500" />
+                      <span className="text-xs font-semibold text-green-600">Бэлэн бараа</span>
+                    </div>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {localItems.map((item) => (
+                        <div key={item.product.id} className="flex gap-2">
+                          <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden shrink-0">
+                            {item.product.images?.[0] ? (
+                              <img src={item.product.images[0]} alt={item.product.name_mn} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                <ShoppingBag className="h-4 w-4" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-xs truncate">{item.product.name_mn}</p>
+                            <p className="text-xs text-muted-foreground">{item.quantity} ширхэг</p>
+                            <p className="text-xs font-semibold text-green-600">
+                              {formatMntPrice(item.product.price * item.quantity)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <Separator />
 
                 {/* Totals */}
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Барааны дүн</span>
-                    <span>{subtotal.toLocaleString()}₮</span>
-                  </div>
+                  {hasLocalItems && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Бэлэн барааны дүн</span>
+                      <span>{formatMntPrice(localSubtotal)}</span>
+                    </div>
+                  )}
+                  {hasOtItems && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Гадаад барааны дүн</span>
+                      <span className="text-blue-600">{formatOtPrice(otSubtotal)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Хүргэлт</span>
                     <span>
-                      {selectedZone ? `${deliveryFee.toLocaleString()}₮` : "-"}
+                      {selectedZone ? formatMntPrice(deliveryFee) : "-"}
                     </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
-                    <span>Нийт</span>
-                    <span className="text-primary">{total.toLocaleString()}₮</span>
+                    <span>Нийт (бэлэн)</span>
+                    <span className="text-primary">{formatMntPrice(localTotal)}</span>
                   </div>
+                  {hasOtItems && (
+                    <div className="flex justify-between text-sm font-medium">
+                      <span>+ Гадаад бараа</span>
+                      <span className="text-blue-600">{formatOtPrice(otSubtotal)}</span>
+                    </div>
+                  )}
                 </div>
 
-                {deliveryDays && (
-                  <div className="bg-primary/10 rounded-lg p-3 text-sm text-center">
-                    <Truck className="h-4 w-4 inline mr-2" />
-                    Таны захиалга <strong>{deliveryDays} хоногт</strong> хүргэгдэнэ
+                {/* Delivery info */}
+                {hasOtItems && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-xs text-blue-700 dark:text-blue-300">
+                    <AlertTriangle className="h-3.5 w-3.5 inline mr-1.5" />
+                    Гадаад бараа <strong>10-14 хоногт</strong> хүргэгдэнэ
+                  </div>
+                )}
+                {hasLocalItems && (
+                  <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 text-xs text-green-700 dark:text-green-300">
+                    <Clock className="h-3.5 w-3.5 inline mr-1.5" />
+                    Бэлэн бараа төлбөрөөс хойш <strong>24 цагийн дотор</strong> хүргэгдэнэ
                   </div>
                 )}
 
