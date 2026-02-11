@@ -540,6 +540,72 @@ export type Database = {
           },
         ]
       }
+      ot_categories: {
+        Row: {
+          created_at: string
+          depth: number | null
+          display_order: number | null
+          external_id: string | null
+          icon_class: string | null
+          icon_url: string | null
+          id: string
+          internal_id: string
+          is_active: boolean | null
+          is_parent_on_provider: boolean | null
+          item_ids: string[] | null
+          name_en: string | null
+          name_mn: string | null
+          name_ru: string | null
+          name_zh: string | null
+          parent_internal_id: string | null
+          provider_type: string | null
+          seo_alias: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          depth?: number | null
+          display_order?: number | null
+          external_id?: string | null
+          icon_class?: string | null
+          icon_url?: string | null
+          id?: string
+          internal_id: string
+          is_active?: boolean | null
+          is_parent_on_provider?: boolean | null
+          item_ids?: string[] | null
+          name_en?: string | null
+          name_mn?: string | null
+          name_ru?: string | null
+          name_zh?: string | null
+          parent_internal_id?: string | null
+          provider_type?: string | null
+          seo_alias?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          depth?: number | null
+          display_order?: number | null
+          external_id?: string | null
+          icon_class?: string | null
+          icon_url?: string | null
+          id?: string
+          internal_id?: string
+          is_active?: boolean | null
+          is_parent_on_provider?: boolean | null
+          item_ids?: string[] | null
+          name_en?: string | null
+          name_mn?: string | null
+          name_ru?: string | null
+          name_zh?: string | null
+          parent_internal_id?: string | null
+          provider_type?: string | null
+          seo_alias?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_intents: {
         Row: {
           amount: number

@@ -7,6 +7,7 @@ import { HeroCarousel } from "@/components/storefront/HeroCarousel";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { DiscountProductCard } from "@/components/storefront/DiscountProductCard";
 import { CategoryStrip } from "@/components/storefront/CategoryStrip";
+import { OtCategoryStrip } from "@/components/storefront/OtCategoryStrip";
 import { BrandCarousel } from "@/components/storefront/BrandCarousel";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
@@ -102,6 +103,9 @@ export default function Home() {
 
       {/* Category Strip - Right below hero */}
       {!loadingCategories && categories && categories.length > 0 && <CategoryStrip categories={categories} />}
+      
+      {/* OT API Categories */}
+      <OtCategoryStrip />
 
       {/* Discounted Products Section - Carousel */}
       {discountedProducts && discountedProducts.length > 0 && <section className="py-12">
