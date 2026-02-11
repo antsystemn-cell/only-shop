@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import QPayPayment from "@/components/storefront/QPayPayment";
 import OmniWayPayment from "@/components/storefront/OmniWayPayment";
+import StorepayPayment from "@/components/storefront/StorepayPayment";
 import { 
   CheckCircle2, 
   Package, 
@@ -172,7 +173,17 @@ export default function OrderConfirmation() {
           />
         </div>
       )}
-      {showPayment && order.payment_method !== "omniway" && (
+      {showPayment && order.payment_method === "storepay" && paymentIntentId && (
+        <div className="mb-8">
+          <StorepayPayment
+            paymentIntentId={paymentIntentId}
+            orderNumber={order.order_number}
+            amount={order.total}
+            onPaymentSuccess={() => refetch()}
+          />
+        </div>
+      )}
+      {showPayment && order.payment_method !== "omniway" && order.payment_method !== "storepay" && (
         <div className="mb-8">
           <QPayPayment
             paymentIntentId={paymentIntentId || undefined}

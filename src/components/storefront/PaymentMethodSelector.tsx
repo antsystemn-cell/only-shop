@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, Smartphone, Building2 } from "lucide-react";
 
-export type PaymentMethod = "qpay" | "omniway" | "card" | "bank_transfer";
+export type PaymentMethod = "qpay" | "omniway" | "storepay" | "card" | "bank_transfer";
 
 interface PaymentMethodOption {
   id: PaymentMethod;
@@ -30,6 +30,14 @@ const paymentMethods: PaymentMethodOption[] = [
     description: "OmniWay аппликейшнээр хялбар төлөх",
     icon: <Smartphone className="h-5 w-5" />,
     enabled: true,
+  },
+  {
+    id: "storepay",
+    name: "Storepay",
+    description: "Storepay зээлээр хялбар төлөх",
+    icon: <Smartphone className="h-5 w-5" />,
+    enabled: true,
+    badge: "Зээл",
   },
   {
     id: "card",
