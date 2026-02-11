@@ -126,7 +126,18 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getBasket":
       return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
     case "addItemToBasket":
-      return callOtApi("AddItemToBasket", { ...base, sessionId: params.sessionId, itemId: params.itemId, quantity: String(params.quantity || 1), ...(params.configurationId ? { configurationId: params.configurationId } : {}), ...(params.configurators ? { xmlParameters: params.configurators } : {}) });
+      return callOtApi("AddItemToBasket", {
+        ...base,
+        sessionId: params.sessionId,
+        itemId: params.itemId,
+        quantity: String(params.quantity || 1),
+        // OTAPI contract: parameter must exist and must be a non-empty XML string
+        fieldParameters:
+          params.fieldParameters ??
+          "<ArrayOfString xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/Arrays\"><string>Id</string></ArrayOfString>",
+        ...(params.configurationId ? { configurationId: params.configurationId } : {}),
+        ...(params.configurators ? { xmlParameters: params.configurators } : {}),
+      });
     case "editBasketItemQuantity":
       return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, quantity: String(params.quantity) });
     case "removeBasketItem":
@@ -538,7 +549,8 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
 
   const url = new URL(`${OT_API_BASE}/${methodName}`);
   for (const [key, value] of Object.entries(allParams)) {
-    if (value !== undefined && value !== null && value !== "") {
+    // fieldParameters is required by some OTAPI methods even when empty
+    if (value !== undefined && value !== null && (value !== "" || key === "fieldParameters")) {
       url.searchParams.set(key, String(value));
     }
   }
