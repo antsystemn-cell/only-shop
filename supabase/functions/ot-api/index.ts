@@ -126,15 +126,14 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getBasket":
       return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
     case "addItemToBasket": {
-      // Use AddItemToBasket directly with fieldParameters=<Fields/> per OTAPI docs
-      // The docs show fieldParameters must be <Fields/> (not empty string) to avoid ContractViolation
+      // Use AddItemToBasket with fieldParameters=<Fields/> per OTAPI docs
+      // fieldParameters MUST be included in signature calculation
       return callOtApi("AddItemToBasket", {
         ...base,
         sessionId: params.sessionId,
         itemId: params.itemId,
-        quantity: String(params.quantity || 1),
         configurationId: params.configurationId || "",
-      }, {
+        quantity: String(params.quantity || 1),
         fieldParameters: "<Fields/>",
       });
     }
