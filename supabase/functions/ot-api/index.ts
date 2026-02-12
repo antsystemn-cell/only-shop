@@ -293,7 +293,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 
     // ── Basket Extended ──
     case "batchSimplifiedAddItemsToBasket":
-      return callOtApi("BatchSimplifiedAddItemsToBasket", { ...base, sessionId: params.sessionId, xmlParameters: params.xmlParameters });
+      return callOtApi("BatchSimplifiedAddItemsToBasket", { ...base, sessionId: params.sessionId, xmlRequest: params.xmlParameters || params.xmlRequest });
     case "moveItemsBetweenBasketAndNote":
       return callOtApi("MoveItemsBetweenBasketAndNote", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, direction: params.direction || "ToNote" });
 
