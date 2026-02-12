@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
@@ -462,7 +463,7 @@ export default function OtProductDetail() {
           {description ? (
             <div
               className="prose prose-sm max-w-none dark:prose-invert [&_img]:rounded-lg [&_img]:max-w-full"
-              dangerouslySetInnerHTML={{ __html: description }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description, { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'b', 'i', 'u', 'sub', 'sup', 'dl', 'dt', 'dd'], ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'width', 'height', 'target', 'rel'] }) }}
             />
           ) : (
             <div className="text-center py-8 text-muted-foreground">

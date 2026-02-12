@@ -128,6 +128,24 @@ Deno.serve(async (req) => {
 
     const supabase = getSupabaseAdmin();
 
+    // Callback from Storepay does not require user auth
+    const publicActions = ["callback"];
+    if (!publicActions.includes(action)) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+      const userClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
+      if (claimsErr || !claimsData?.claims?.sub) {
+        return jsonResponse({ error: "Invalid authentication" }, 401);
+      }
+    }
+
     // ===========================
     // CHECK CREDIT ELIGIBILITY
     // ===========================
