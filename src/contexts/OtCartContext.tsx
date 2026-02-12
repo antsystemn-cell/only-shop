@@ -66,27 +66,43 @@ const OtCartContext = createContext<OtCartContextType | undefined>(undefined);
 // ─── Parse basket response ──────────────────────────────────
 
 function parseBasketResponse(data: any): OtBasketItem[] {
-  // GetBasket returns CollectionInfo.Elements, not Result.OrderLines
-  const elements = data?.CollectionInfo?.Elements || data?.Result?.OrderLines;
+  const elements = data?.Result?.CollectionInfo?.Elements
+    || data?.CollectionInfo?.Elements
+    || data?.Result?.OrderLines
+    || data?.OrderLines;
   if (!elements) return [];
 
   const lines = Array.isArray(elements) ? elements : [elements];
 
-  return lines.map((line: any) => ({
-    orderLineId: line.Id || "",
-    itemId: line.ItemId || "",
-    title: line.Title || line.ItemTitle || "",
-    imageUrl: line.ImageUrl || line.MainPictureUrl || "",
-    quantity: line.Quantity || 1,
-    price: line.Price?.ConvertedPrice ?? line.Price?.OriginalPrice ?? 0,
-    originalPrice: line.OriginalPrice?.ConvertedPrice ?? line.OriginalPrice?.OriginalPrice,
-    currency: line.Price?.CurrencySign || "¥",
-    providerType: line.ProviderType || "Unknown",
-    vendorName: line.VendorName || "",
-    configurators: line.Configurators || "",
-    weight: line.Weight,
-    totalPrice: (line.Price?.ConvertedPrice ?? line.Price?.OriginalPrice ?? 0) * (line.Quantity || 1),
-  }));
+  return lines.map((line: any) => {
+    // OTAPI GetBasket returns: Id, ItemId, Price (number), Quantity, TotalCost, FullTotalCost, Configuration, etc.
+    const price = line.Price ?? line.FullTotalCost?.ConvertedPriceList?.Internal?.Price ?? 0;
+    const currency = line.FullTotalCost?.CurrencySign || "₮";
+    const quantity = line.Quantity || 1;
+    const title = line.Title || line.ItemTitle || "";
+    const imageUrl = line.ImageUrl || line.MainPictureUrl || "";
+    // Extract configurator display text
+    const configs = line.Configuration?.Configurator;
+    const configText = Array.isArray(configs)
+      ? configs.map((c: any) => c.Value).join(", ")
+      : configs?.Value || "";
+
+    return {
+      orderLineId: String(line.Id || ""),
+      itemId: line.ItemId || "",
+      title: title || configText || line.ItemId || "",
+      imageUrl,
+      quantity,
+      price: price / quantity, // per-unit price
+      originalPrice: line.OriginalPrice?.ConvertedPrice ?? line.OriginalPrice?.OriginalPrice,
+      currency,
+      providerType: line.ProviderType || "Taobao",
+      vendorName: line.VendorName || "",
+      configurators: line.Configurators || configText || "",
+      weight: line.Weight,
+      totalPrice: line.TotalCost ?? price,
+    };
+  });
 }
 
 function groupByProvider(items: OtBasketItem[]): OtBasketGroup[] {
