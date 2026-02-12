@@ -49,8 +49,8 @@ function formatMntPrice(price: number) {
   return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
 }
 
-function formatOtPrice(price: number, currency = "¥") {
-  return `${currency}${price.toFixed(2)}`;
+function formatOtPrice(price: number) {
+  return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
 }
 
 export default function Checkout() {
@@ -111,12 +111,14 @@ export default function Checkout() {
   const aimags = deliveryZones?.filter(z => z.zone_type === "aimag") || [];
 
   const localSubtotal = getSubtotal();
+  const otSubtotalMnt = otSubtotal; // Already in MNT from ConvertedPriceList.Internal
   const deliveryFee = selectedZone
     ? (deliveryType === "express" && selectedZone.express_price
         ? selectedZone.express_price
         : selectedZone.standard_price)
     : 0;
-  const localTotal = localSubtotal + deliveryFee;
+  const combinedSubtotal = localSubtotal + otSubtotalMnt;
+  const localTotal = combinedSubtotal + deliveryFee;
 
   const deliveryDays = selectedZone
     ? (deliveryType === "express" && selectedZone.express_days
@@ -162,7 +164,7 @@ export default function Checkout() {
         .insert({
           user_id: user.id,
           order_number: "",
-          subtotal: localSubtotal,
+          subtotal: combinedSubtotal,
           delivery_fee: deliveryFee,
           total: localTotal,
           status: "pending",
@@ -215,8 +217,8 @@ export default function Checkout() {
           order_id: order.id,
           product_id: null,
           quantity: item.quantity,
-          unit_price: 0, // OT prices tracked separately
-          total_price: 0,
+          unit_price: item.price,
+          total_price: item.totalPrice,
           product_snapshot: {
             itemId: item.itemId,
             title: item.title,
@@ -566,7 +568,7 @@ export default function Checkout() {
                             <p className="font-medium text-xs truncate">{item.title}</p>
                             <p className="text-xs text-muted-foreground">{item.quantity} ширхэг</p>
                             <p className="text-xs font-semibold text-blue-600">
-                              {formatOtPrice(item.totalPrice, item.currency)}
+                              {formatOtPrice(item.totalPrice)}
                             </p>
                           </div>
                         </div>
@@ -574,7 +576,7 @@ export default function Checkout() {
                     </div>
                     <div className="flex justify-between text-xs mt-2 text-muted-foreground">
                       <span>Гадаад бараа дүн:</span>
-                      <span className="font-medium text-blue-600">{formatOtPrice(otSubtotal)}</span>
+                       <span className="font-medium text-blue-600">{formatOtPrice(otSubtotal)}</span>
                     </div>
                   </div>
                 )}
@@ -626,7 +628,7 @@ export default function Checkout() {
                   {hasOtItems && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Гадаад барааны дүн</span>
-                      <span className="text-blue-600">{formatOtPrice(otSubtotal)}</span>
+                       <span className="text-blue-600">{formatOtPrice(otSubtotal)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm">
@@ -637,15 +639,9 @@ export default function Checkout() {
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
-                    <span>Нийт (бэлэн)</span>
+                    <span>Нийт дүн</span>
                     <span className="text-primary">{formatMntPrice(localTotal)}</span>
                   </div>
-                  {hasOtItems && (
-                    <div className="flex justify-between text-sm font-medium">
-                      <span>+ Гадаад бараа</span>
-                      <span className="text-blue-600">{formatOtPrice(otSubtotal)}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Delivery info */}

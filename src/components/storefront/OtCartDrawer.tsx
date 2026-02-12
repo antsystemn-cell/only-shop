@@ -6,8 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useOtCartSafe } from "@/contexts/OtCartContext";
 
-function formatPrice(price: number, currency = "¥") {
-  return `${currency}${price.toFixed(2)}`;
+function formatPrice(price: number) {
+  return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
 }
 
 export function OtCartDrawer() {
@@ -94,7 +94,7 @@ export function OtCartDrawer() {
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-sm line-clamp-2">{item.title}</h4>
                     <p className="text-primary font-semibold text-sm mt-0.5">
-                      {formatPrice(item.price, item.currency)}
+                      {formatPrice(item.price)}
                     </p>
 
                     <div className="flex items-center gap-2 mt-1.5">
