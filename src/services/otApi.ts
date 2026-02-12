@@ -11,6 +11,27 @@ import type {
 const LANGUAGE = "en";
 
 async function callProxy<T = unknown>(action: string, params: Record<string, unknown> = {}): Promise<T> {
+  // Validate required parameters for critical actions
+  const requiredParams: Record<string, string[]> = {
+    addItemToBasket: ["sessionId", "itemId", "quantity"],
+    editBasketItemQuantity: ["sessionId", "orderLineId", "quantity"],
+    removeBasketItem: ["sessionId", "orderLineId"],
+    clearBasket: ["sessionId"],
+    getBasket: ["sessionId"],
+    runBasketChecking: ["sessionId"],
+    getBasketCheckingResult: ["sessionId"],
+  };
+
+  const required = requiredParams[action];
+  if (required) {
+    for (const param of required) {
+      const value = params[param];
+      if (value === undefined || value === null || value === "") {
+        throw new Error(`Missing required parameter: ${param}`);
+      }
+    }
+  }
+
   // Filter out undefined/null params before sending
   // Note: empty strings are kept for params like configurationId, fieldParameters that OTAPI requires
   const cleanParams: Record<string, unknown> = { language: LANGUAGE };
