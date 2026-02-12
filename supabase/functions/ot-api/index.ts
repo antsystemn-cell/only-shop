@@ -126,10 +126,16 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getBasket":
       return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
     case "addItemToBasket": {
-      // Use BatchSimplified via XML endpoint to avoid fieldParameters requirement
-      const batchXml = buildAddItemXml(params.itemId, params.quantity || 1, params.configurationId);
-      return callOtApiViaXmlEndpoint("BatchSimplifiedAddItemsToBasket", {
-        instanceKey: apiKey, language: lang, sessionId: params.sessionId, xmlRequest: batchXml,
+      // Use AddItemToBasket directly with fieldParameters=<Fields/> per OTAPI docs
+      // The docs show fieldParameters must be <Fields/> (not empty string) to avoid ContractViolation
+      return callOtApi("AddItemToBasket", {
+        ...base,
+        sessionId: params.sessionId,
+        itemId: params.itemId,
+        quantity: String(params.quantity || 1),
+        configurationId: params.configurationId || "",
+      }, {
+        fieldParameters: "<Fields/>",
       });
     }
     case "editBasketItemQuantity":
