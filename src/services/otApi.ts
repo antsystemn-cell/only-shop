@@ -294,18 +294,12 @@ export async function getBasket(sessionId: string) {
 }
 
 export async function addItemToBasket(sessionId: string, itemId: string, quantity: number, configurators?: string, configurationId?: string) {
-  // Use BatchSimplifiedAddItemsToBasket to avoid fieldParameters XML contract issues.
-  // This method accepts a simple XML request and doesn't require fieldParameters at all.
-  const xmlParts: string[] = [];
-  xmlParts.push(`<ItemId>${itemId}</ItemId>`);
-  xmlParts.push(`<Quantity>${quantity}</Quantity>`);
-  if (configurationId) {
-    xmlParts.push(`<ConfigurationId>${configurationId}</ConfigurationId>`);
-  }
-  const xmlRequest = `<Request><Element>${xmlParts.join("")}</Element></Request>`;
-  return callProxy("batchSimplifiedAddItemsToBasket", {
+  // Use AddItemToBasket directly with fieldParameters=<Fields/> per OTAPI docs
+  return callProxy("addItemToBasket", {
     sessionId,
-    xmlParameters: xmlRequest,
+    itemId,
+    quantity,
+    configurationId: configurationId || "",
   });
 }
 
