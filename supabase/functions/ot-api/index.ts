@@ -134,11 +134,12 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       };
       if (params.configurationId) addParams.configurationId = params.configurationId;
       if (params.configurators) addParams.configurators = params.configurators;
-      // fieldParameters - send empty string when not provided (OTAPI accepts empty)
-      addParams.fieldParameters = params.fieldParameters || "";
-      // priceType - optional, default empty
-      addParams.priceType = params.priceType || "";
-      return callOtApiFormPost("AddItemToBasket", addParams);
+      // fieldParameters and priceType excluded from signature, passed via postSignatureParams
+      const postSigParams: Record<string, string> = {
+        fieldParameters: params.fieldParameters || "",
+        priceType: params.priceType || "",
+      };
+      return callOtApi("AddItemToBasket", addParams, postSigParams);
     }
     case "editBasketItemQuantity":
       return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, quantity: String(params.quantity) });
