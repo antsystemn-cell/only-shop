@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -574,7 +575,7 @@ export default function ProductDetail() {
           {product.description_mn && (
             <div
               className="text-muted-foreground prose prose-sm max-w-none line-clamp-3 [&_img]:hidden [&_table]:hidden [&_iframe]:hidden"
-              dangerouslySetInnerHTML={{ __html: product.description_mn.replace(/<[^>]*>/g, ' ').substring(0, 200) + (product.description_mn.length > 200 ? '...' : '') }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description_mn.replace(/<[^>]*>/g, ' ').substring(0, 200) + (product.description_mn.length > 200 ? '...' : '')) }}
             />
           )}
 
@@ -699,7 +700,7 @@ export default function ProductDetail() {
           <TabsContent value="description" className="mt-4">
             <div className="prose prose-sm max-w-none [&_table]:border-collapse [&_table]:w-full [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_th]:font-semibold [&_img]:rounded-lg [&_img]:max-w-full [&_iframe]:rounded-lg [&_iframe]:max-w-full [&_iframe]:aspect-video">
               {product.description_mn || product.description ? (
-                <div dangerouslySetInnerHTML={{ __html: product.description_mn || product.description || '' }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description_mn || product.description || '', { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'b', 'i', 'u'], ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'width', 'height'] }) }} />
               ) : (
                 <p className="text-muted-foreground">Тайлбар байхгүй</p>
               )}
