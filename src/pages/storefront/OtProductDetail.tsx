@@ -85,28 +85,21 @@ export default function OtProductDetail() {
   const handleAddToCart = async () => {
     if (!product) return;
 
-    // If there are configurators but none selected, prompt user
-    if (product.configurators.length > 0 && !matchedConfig && Object.values(selectedConfigs).filter(Boolean).length === 0) {
-      toast.error("Хувилбараа сонгоно уу");
-      return;
+    // If there are configurators, ALL must be selected
+    if (product.configurators.length > 0) {
+      const allSelected = product.configurators.every(
+        (c) => selectedConfigs[c.pid] && selectedConfigs[c.pid] !== ""
+      );
+      if (!allSelected) {
+        toast.error("Бүх хувилбараа сонгоно уу (өнгө, хэмжээ гэх мэт)");
+        return;
+      }
     }
 
     const configurationId = matchedConfig?.id;
 
-    // Build XML configurators as fallback
-    let configurators: string | undefined;
-    if (!configurationId && Object.keys(selectedConfigs).length > 0) {
-      const parts = Object.entries(selectedConfigs)
-        .filter(([, vid]) => vid)
-        .map(([pid, vid]) => `<Item><Pid>${pid}</Pid><Vid>${vid}</Vid></Item>`)
-        .join("");
-      if (parts) {
-        configurators = `<ItemConfigurationValues>${parts}</ItemConfigurationValues>`;
-      }
-    }
-
     try {
-      await addItem(product.id, quantity, configurators, configurationId);
+      await addItem(product.id, quantity, undefined, configurationId);
     } catch {
       // toast already shown in context
     }
