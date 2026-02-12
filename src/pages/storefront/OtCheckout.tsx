@@ -318,7 +318,7 @@ export default function OtCheckout() {
                             <p className="text-sm line-clamp-1">{item.title}</p>
                           </div>
                           <span className="text-sm font-medium">
-                            {item.quantity} × ¥{item.price.toFixed(2)}
+                            {item.quantity} × {new Intl.NumberFormat("mn-MN").format(Math.round(item.price))}₮
                           </span>
                         </div>
                       ))}
@@ -326,7 +326,7 @@ export default function OtCheckout() {
                     <Separator />
                     <div className="flex justify-between font-semibold">
                       <span>Нийт ({itemCount} ширхэг):</span>
-                      <span className="text-primary">¥{subtotal.toFixed(2)}</span>
+                       <span className="text-primary">{new Intl.NumberFormat("mn-MN").format(Math.round(subtotal))}₮</span>
                     </div>
                   </div>
                 ) : null}

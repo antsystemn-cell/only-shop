@@ -70,17 +70,41 @@ function parseBasketResponse(data: any): OtBasketItem[] {
     || data?.CollectionInfo?.Elements
     || data?.Result?.OrderLines
     || data?.OrderLines;
-  if (!elements) return [];
+  if (!elements) {
+    console.warn("[OtCart] No basket elements found. Keys:", Object.keys(data?.Result || data || {}));
+    return [];
+  }
 
   const lines = Array.isArray(elements) ? elements : [elements];
+  console.log("[OtCart] Parsing", lines.length, "basket lines. First line keys:", Object.keys(lines[0] || {}));
 
   return lines.map((line: any) => {
-    // OTAPI GetBasket returns: Id, ItemId, Price (number), Quantity, TotalCost, FullTotalCost, Configuration, etc.
-    const price = line.Price ?? line.FullTotalCost?.ConvertedPriceList?.Internal?.Price ?? 0;
-    const currency = line.FullTotalCost?.CurrencySign || "₮";
+    // Price: prefer ConvertedPriceList.Internal (MNT converted) over raw Price
+    const internalPrice = line.FullTotalCost?.ConvertedPriceList?.Internal?.Price
+      ?? line.TotalCost?.ConvertedPriceList?.Internal?.Price;
+    const rawPrice = line.Price?.ConvertedPriceList?.Internal?.Price
+      ?? (typeof line.Price === "number" ? line.Price : 0);
     const quantity = line.Quantity || 1;
+
+    // Use internal (MNT) total if available, else raw price
+    const totalPrice = internalPrice ?? (rawPrice * quantity);
+    const unitPrice = internalPrice ? internalPrice / quantity : rawPrice;
+
+    // Currency: prefer Internal sign (₮)
+    const currency = line.FullTotalCost?.ConvertedPriceList?.Internal?.Sign
+      ?? line.Price?.ConvertedPriceList?.Internal?.Sign
+      ?? "₮";
+
     const title = line.Title || line.ItemTitle || "";
-    const imageUrl = line.ImageUrl || line.MainPictureUrl || "";
+
+    // Image: try multiple paths
+    const imageUrl = line.ImageUrl
+      || line.MainPictureUrl
+      || line.ItemPicture?.Url
+      || line.Pictures?.ItemPicture?.Url
+      || line.Picture?.Url
+      || "";
+
     // Extract configurator display text
     const configs = line.Configuration?.Configurator;
     const configText = Array.isArray(configs)
@@ -93,14 +117,14 @@ function parseBasketResponse(data: any): OtBasketItem[] {
       title: title || configText || line.ItemId || "",
       imageUrl,
       quantity,
-      price: price / quantity, // per-unit price
+      price: unitPrice,
       originalPrice: line.OriginalPrice?.ConvertedPrice ?? line.OriginalPrice?.OriginalPrice,
       currency,
       providerType: line.ProviderType || "Taobao",
       vendorName: line.VendorName || "",
       configurators: line.Configurators || configText || "",
       weight: line.Weight,
-      totalPrice: line.TotalCost ?? price,
+      totalPrice,
     };
   });
 }

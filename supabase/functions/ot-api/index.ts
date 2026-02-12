@@ -123,9 +123,22 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       return callOtApi("GetBrandInfoList", { ...base, categoryId: params.categoryId || "" });
 
     // ── Cart / Basket ──
-    case "getBasket":
+    case "getBasket": {
       console.log("[ot-api] GetBasket sessionId:", params.sessionId);
-      return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
+      const basketResult = await callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
+      // Log first element for debugging structure
+      try {
+        const elements = basketResult?.Result?.CollectionInfo?.Elements;
+        if (elements) {
+          const first = Array.isArray(elements) ? elements[0] : elements;
+          console.log("[ot-api] GetBasket first element keys:", Object.keys(first || {}));
+          console.log("[ot-api] GetBasket first element sample:", JSON.stringify(first).substring(0, 1500));
+        } else {
+          console.log("[ot-api] GetBasket raw keys:", Object.keys(basketResult?.Result || basketResult || {}));
+        }
+      } catch(e) { console.log("[ot-api] GetBasket log error:", e); }
+      return basketResult;
+    }
     case "addItemToBasket": {
       // Use AddItemToBasket with fieldParameters=<Fields/> per OTAPI docs
       // fieldParameters MUST be included in signature calculation

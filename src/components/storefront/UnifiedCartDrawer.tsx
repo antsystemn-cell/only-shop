@@ -11,8 +11,8 @@ function formatMntPrice(price: number) {
   return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
 }
 
-function formatOtPrice(price: number, currency = "¥") {
-  return `${currency}${price.toFixed(2)}`;
+function formatOtPrice(price: number) {
+  return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
 }
 
 export function UnifiedCartDrawer() {
@@ -146,7 +146,7 @@ export function UnifiedCartDrawer() {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-sm line-clamp-2">{item.title}</h4>
                       <p className="text-primary font-semibold text-sm mt-0.5">
-                        {formatOtPrice(item.price, item.currency)}
+                        {formatOtPrice(item.price)}
                       </p>
                       <div className="flex items-center gap-1.5 mt-1">
                         <Button variant="outline" size="icon" className="h-6 w-6"
@@ -177,6 +177,7 @@ export function UnifiedCartDrawer() {
             <div className="flex justify-between text-sm px-1 text-muted-foreground">
               <span>Гадаад бараа дүн:</span>
               <span className="font-medium text-foreground">{formatOtPrice(otSubtotal)}</span>
+
             </div>
           </div>
         )}
@@ -258,6 +259,7 @@ export function UnifiedCartDrawer() {
             <div className="flex justify-between text-muted-foreground">
               <span>🔵 Гадаад бараа:</span>
               <span>{formatOtPrice(otSubtotal)}</span>
+
             </div>
             <div className="flex justify-between text-muted-foreground">
               <span>🟢 Бэлэн бараа:</span>
