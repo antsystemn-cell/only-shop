@@ -133,8 +133,11 @@ async function routeAction(action: string, apiKey: string, params: Record<string
         quantity: String(params.quantity || 1),
       };
       if (params.configurationId) addParams.configurationId = params.configurationId;
-      // fieldParameters required by OTAPI - .NET deserializer needs xmlns declarations
-      addParams.fieldParameters = params.fieldParameters || '<ArrayOfBasketItemFieldParameter xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />';
+      if (params.configurators) addParams.configurators = params.configurators;
+      // fieldParameters - send empty string when not provided (OTAPI accepts empty)
+      addParams.fieldParameters = params.fieldParameters || "";
+      // priceType - optional, default empty
+      addParams.priceType = params.priceType || "";
       return callOtApiFormPost("AddItemToBasket", addParams);
     }
     case "editBasketItemQuantity":
