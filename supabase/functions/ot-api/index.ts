@@ -126,20 +126,11 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getBasket":
       return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
     case "addItemToBasket": {
-      const addParams: Record<string, string> = {
-        ...base,
-        sessionId: params.sessionId,
-        itemId: params.itemId,
-        quantity: String(params.quantity || 1),
-      };
-      if (params.configurationId) addParams.configurationId = params.configurationId;
-      if (params.configurators) addParams.configurators = params.configurators;
-      // fieldParameters and priceType excluded from signature, passed via postSignatureParams
-      const postSigParams: Record<string, string> = {
-        fieldParameters: params.fieldParameters || "",
-        priceType: params.priceType || "",
-      };
-      return callOtApi("AddItemToBasket", addParams, postSigParams);
+      // Use BatchSimplified via XML endpoint to avoid fieldParameters requirement
+      const batchXml = buildAddItemXml(params.itemId, params.quantity || 1, params.configurationId);
+      return callOtApiViaXmlEndpoint("BatchSimplifiedAddItemsToBasket", {
+        instanceKey: apiKey, language: lang, sessionId: params.sessionId, xmlRequest: batchXml,
+      });
     }
     case "editBasketItemQuantity":
       return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, quantity: String(params.quantity) });
@@ -292,8 +283,12 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       return callOtApi("FindBaseUserInfoListFrame", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20), ...(params.searchText ? { searchText: params.searchText } : {}) });
 
     // ── Basket Extended ──
-    case "batchSimplifiedAddItemsToBasket":
-      return callOtApi("BatchSimplifiedAddItemsToBasket", { ...base, sessionId: params.sessionId, xmlRequest: params.xmlParameters || params.xmlRequest });
+    case "batchSimplifiedAddItemsToBasket": {
+      const batchXml = params.xmlParameters || params.xmlRequest || "";
+      return callBatchSimplifiedAdd({
+        instanceKey: apiKey, language: lang, sessionId: params.sessionId, xmlRequest: batchXml,
+      });
+    }
     case "moveItemsBetweenBasketAndNote":
       return callOtApi("MoveItemsBetweenBasketAndNote", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, direction: params.direction || "ToNote" });
 
@@ -643,4 +638,60 @@ async function callOtApiFormPost(methodName: string, allInputParams: Record<stri
 
 function escapeXml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+
+// ─── Call OTAPI via XML service endpoint (handles fieldParameters better) ────
+async function callOtApiViaXmlEndpoint(methodName: string, allInputParams: Record<string, string>) {
+  const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
+  const timestamp = getTimestamp();
+  const allParams: Record<string, string> = { ...allInputParams, timestamp };
+
+  if (OT_API_SECRET) {
+    const sortedKeys = Object.keys(allParams).sort();
+    const concatenatedValues = sortedKeys.map((k) => allParams[k]).join("");
+    const sigInput = methodName + concatenatedValues + OT_API_SECRET;
+    allParams.signature = await sha256Hex(sigInput);
+  }
+
+  // Use XML service endpoint (handles empty params better than JSON endpoint)
+  const paramParts: string[] = [];
+  for (const [key, value] of Object.entries(allParams)) {
+    paramParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value ?? ""))}`);
+  }
+  const fullUrl = `https://otapi.net/service/${methodName}?${paramParts.join("&")}`;
+  console.log(`[ot-api] XML endpoint call: ${methodName}`);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  const response = await fetch(fullUrl, { signal: controller.signal });
+  clearTimeout(timeout);
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`OT API HTTP ${response.status}: ${text}`);
+  }
+
+  const xmlText = await response.text();
+  const errorMatch = xmlText.match(/<ErrorCode>(\w+)<\/ErrorCode>/);
+  const errorCode = errorMatch?.[1] || "Ok";
+  
+  if (errorCode !== "Ok" && errorCode !== "BatchError") {
+    const descMatch = xmlText.match(/<ErrorDescription>([^<]*)<\/ErrorDescription>/);
+    throw new Error(`OT API [${errorCode}]: ${descMatch?.[1] || "Unknown"}`);
+  }
+
+  // Parse Value from XML response
+  const valueMatch = xmlText.match(/<Value>([^<]+)<\/Value>/);
+  return { ErrorCode: errorCode, Result: valueMatch ? { Value: valueMatch[1] } : {} };
+}
+
+// ─── Dedicated caller for BatchSimplifiedAddItemsToBasket ────
+async function callBatchSimplifiedAdd(allInputParams: Record<string, string>) {
+  return callOtApiViaXmlEndpoint("BatchSimplifiedAddItemsToBasket", allInputParams);
+}
+
+function buildAddItemXml(itemId: string, quantity: number, configurationId?: string): string {
+  const parts = [`<ItemId>${itemId}</ItemId>`, `<Quantity>${quantity}</Quantity>`];
+  if (configurationId) parts.push(`<ConfigurationId>${configurationId}</ConfigurationId>`);
+  return `<Request><Element>${parts.join("")}</Element></Request>`;
 }
