@@ -3,8 +3,27 @@ import { supabase } from "@/integrations/supabase/client";
 // ─── OT API Session Manager ─────────────────────────────────
 // Handles operator and anonymous sessions with caching
 
-const SESSION_CACHE: Record<string, { id: string; expiresAt: number }> = {};
 const SESSION_TTL = 30 * 60 * 1000; // 30 minutes
+
+// Use localStorage to persist sessions across HMR reloads
+function getSessionCache(): Record<string, { id: string; expiresAt: number }> {
+  try {
+    const raw = localStorage.getItem("ot_session_cache");
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function setSessionCache(key: string, value: { id: string; expiresAt: number }) {
+  try {
+    const cache = getSessionCache();
+    cache[key] = value;
+    localStorage.setItem("ot_session_cache", JSON.stringify(cache));
+  } catch {
+    // ignore
+  }
+}
 
 async function callProxy<T = unknown>(action: string, params: Record<string, unknown> = {}): Promise<T> {
   const { data, error } = await supabase.functions.invoke("ot-api", {
@@ -24,7 +43,7 @@ interface SessionResponse {
 }
 
 export async function getOperatorSession(): Promise<string> {
-  const cached = SESSION_CACHE["operator"];
+  const cached = getSessionCache()["operator"];
   if (cached && cached.expiresAt > Date.now()) {
     return cached.id;
   }
@@ -36,10 +55,10 @@ export async function getOperatorSession(): Promise<string> {
     throw new Error("Оператор session авч чадсангүй. Нэвтрэх мэдээлэл буруу байж болзошгүй.");
   }
 
-  SESSION_CACHE["operator"] = {
+  setSessionCache("operator", {
     id: sessionId,
     expiresAt: Date.now() + SESSION_TTL,
-  };
+  });
 
   return sessionId;
 }
@@ -47,7 +66,7 @@ export async function getOperatorSession(): Promise<string> {
 // ─── Anonymous Session (for storefront users) ────────────────
 
 export async function getAnonymousSession(): Promise<string> {
-  const cached = SESSION_CACHE["anonymous"];
+  const cached = getSessionCache()["anonymous"];
   if (cached && cached.expiresAt > Date.now()) {
     return cached.id;
   }
@@ -59,16 +78,15 @@ export async function getAnonymousSession(): Promise<string> {
     throw new Error("Anonymous session авч чадсангүй");
   }
 
-  SESSION_CACHE["anonymous"] = {
+  setSessionCache("anonymous", {
     id: sessionId,
     expiresAt: Date.now() + SESSION_TTL,
-  };
+  });
 
   return sessionId;
 }
 
 // ─── Session-aware API caller ────────────────────────────────
-// Wraps any OT API call that requires sessionId
 
 export async function callWithOperatorSession<T = unknown>(
   action: string,
@@ -89,6 +107,9 @@ export async function callWithAnonymousSession<T = unknown>(
 // ─── Clear cached sessions ──────────────────────────────────
 
 export function clearSessionCache() {
-  delete SESSION_CACHE["operator"];
-  delete SESSION_CACHE["anonymous"];
+  try {
+    localStorage.removeItem("ot_session_cache");
+  } catch {
+    // ignore
+  }
 }

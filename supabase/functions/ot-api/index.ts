@@ -124,6 +124,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 
     // ── Cart / Basket ──
     case "getBasket":
+      console.log("[ot-api] GetBasket sessionId:", params.sessionId);
       return callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
     case "addItemToBasket": {
       // Use AddItemToBasket with fieldParameters=<Fields/> per OTAPI docs
