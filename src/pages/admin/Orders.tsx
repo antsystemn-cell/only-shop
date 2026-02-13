@@ -314,17 +314,23 @@ export default function Orders() {
                       {/* Expanded items */}
                       {expandedOrders.has(order.id) && order.order_items?.map((item: any) => {
                         const snapshot = item.product_snapshot || {};
+                        const imgSrc = snapshot.imageUrl || snapshot.image_url || snapshot.images?.[0];
                         return (
                           <TableRow key={item.id} className="bg-muted/30">
                             <TableCell></TableCell>
                             <TableCell colSpan={2}>
                               <div className="flex items-center gap-3">
-                                {snapshot.image_url && (
-                                  <img src={snapshot.image_url} alt="" className="w-10 h-10 rounded object-cover border" />
+                                {imgSrc && (
+                                  <img src={imgSrc} alt="" className="w-10 h-10 rounded object-contain border bg-muted" />
                                 )}
                                 <div>
-                                  <div className="text-sm font-medium">{snapshot.name || snapshot.name_mn || "Бараа"}</div>
+                                  <div className="text-sm font-medium">{snapshot.title || snapshot.name || snapshot.name_mn || "Бараа"}</div>
                                   <div className="text-xs text-muted-foreground">x{item.quantity}</div>
+                                  {snapshot.sourceType === "otapi" && snapshot.originalCnyPrice && (
+                                    <div className="text-xs text-muted-foreground">
+                                      Эх үнэ: {snapshot.originalCnyCurrency || "¥"}{Number(snapshot.originalCnyPrice).toFixed(2)}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </TableCell>
@@ -488,24 +494,52 @@ function OrderDetailSheet({
               <div className="space-y-3">
                 {order.order_items?.map((item: any) => {
                   const snapshot = item.product_snapshot || {};
+                  const isOtapi = snapshot.sourceType === "otapi";
                   return (
-                    <div key={item.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                      {(snapshot.image_url || snapshot.images?.[0]) && (
+                    <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                      {(snapshot.imageUrl || snapshot.image_url || snapshot.images?.[0]) && (
                         <img
-                          src={snapshot.image_url || snapshot.images?.[0]}
+                          src={snapshot.imageUrl || snapshot.image_url || snapshot.images?.[0]}
                           alt=""
-                          className="w-14 h-14 rounded object-cover border"
+                          className="w-14 h-14 rounded object-contain border bg-muted"
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{snapshot.name || snapshot.name_mn || "Бараа"}</div>
+                        <div className="text-sm font-medium truncate">
+                          {snapshot.title || snapshot.name || snapshot.name_mn || "Бараа"}
+                        </div>
+                        {isOtapi && (
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                              {snapshot.providerType || "OTAPI"}
+                            </Badge>
+                            {snapshot.originalCnyPrice && (
+                              <span className="text-xs text-muted-foreground">
+                                Эх үнэ: {snapshot.originalCnyCurrency || "¥"}{Number(snapshot.originalCnyPrice).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {isOtapi && snapshot.externalUrl && (
+                          <a
+                            href={snapshot.externalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-500 hover:underline mt-1 block truncate"
+                          >
+                            🔗 Эх сурвалж линк
+                          </a>
+                        )}
                         {snapshot.brand && <div className="text-xs text-muted-foreground">{snapshot.brand}</div>}
                         <div className="text-xs text-muted-foreground mt-1">
                           {formatCurrency(Number(item.unit_price))} × {item.quantity}
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <div className="font-medium text-sm">{formatCurrency(Number(item.total_price))}</div>
+                        {isOtapi && (
+                          <div className="text-xs text-muted-foreground">MNT</div>
+                        )}
                       </div>
                     </div>
                   );

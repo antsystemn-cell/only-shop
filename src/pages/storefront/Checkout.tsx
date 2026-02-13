@@ -213,23 +213,33 @@ export default function Checkout() {
 
       // Create OT order items (store as snapshots for reference)
       if (hasOtItems) {
-        const otOrderItems = otItems.map((item) => ({
-          order_id: order.id,
-          product_id: null,
-          quantity: item.quantity,
-          unit_price: item.price,
-          total_price: item.totalPrice,
-          product_snapshot: {
-            itemId: item.itemId,
-            title: item.title,
-            imageUrl: item.imageUrl,
-            price: item.price,
-            currency: item.currency,
-            providerType: item.providerType,
-            sourceType: "otapi",
-            orderLineId: item.orderLineId,
-          },
-        }));
+        const otOrderItems = otItems.map((item) => {
+          const unitPriceMnt = item.price > 0 ? item.price : (item.totalPrice / (item.quantity || 1));
+          const totalPriceMnt = item.totalPrice > 0 ? item.totalPrice : (unitPriceMnt * item.quantity);
+          return {
+            order_id: order.id,
+            product_id: null,
+            quantity: item.quantity,
+            unit_price: unitPriceMnt,
+            total_price: totalPriceMnt,
+            product_snapshot: {
+              itemId: item.itemId,
+              title: item.title,
+              imageUrl: item.imageUrl,
+              price: unitPriceMnt,
+              totalPrice: totalPriceMnt,
+              currency: item.currency,
+              providerType: item.providerType,
+              sourceType: "otapi",
+              orderLineId: item.orderLineId,
+              originalCnyPrice: item.originalCnyPrice,
+              originalCnyCurrency: item.originalCnyCurrency || "¥",
+              externalUrl: item.providerType === "Poizon" 
+                ? `https://www.poizon.com/product/${item.itemId}`
+                : `https://item.taobao.com/item.htm?id=${item.itemId}`,
+            },
+          };
+        });
 
         const { error: otItemsError } = await supabase
           .from("order_items")

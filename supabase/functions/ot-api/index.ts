@@ -126,15 +126,22 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getBasket": {
       console.log("[ot-api] GetBasket sessionId:", params.sessionId);
       const basketResult = await callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
-      // Log first element for debugging structure
+      // Log basket structure for debugging
       try {
-        const elements = basketResult?.Result?.CollectionInfo?.Elements;
-        if (elements) {
-          const first = Array.isArray(elements) ? elements[0] : elements;
+        const ci = basketResult?.CollectionInfo || basketResult?.Result?.CollectionInfo;
+        console.log("[ot-api] GetBasket TotalCount:", ci?.TotalCount, "hasElements:", !!ci?.Elements);
+        if (ci?.Elements) {
+          const elems = Array.isArray(ci.Elements) ? ci.Elements : [ci.Elements];
+          const first = elems[0];
           console.log("[ot-api] GetBasket first element keys:", Object.keys(first || {}));
-          console.log("[ot-api] GetBasket first element sample:", JSON.stringify(first).substring(0, 1500));
+          // Log price-related fields
+          console.log("[ot-api] GetBasket first Price:", JSON.stringify(first?.Price)?.substring(0, 500));
+          console.log("[ot-api] GetBasket first FullTotalCost:", JSON.stringify(first?.FullTotalCost)?.substring(0, 500));
+          console.log("[ot-api] GetBasket first TotalCost:", JSON.stringify(first?.TotalCost)?.substring(0, 500));
+          console.log("[ot-api] GetBasket first ImageUrl:", first?.ImageUrl, "MainPictureUrl:", first?.MainPictureUrl);
+          console.log("[ot-api] GetBasket first sample:", JSON.stringify(first).substring(0, 2000));
         } else {
-          console.log("[ot-api] GetBasket raw keys:", Object.keys(basketResult?.Result || basketResult || {}));
+          console.log("[ot-api] GetBasket raw top keys:", Object.keys(basketResult || {}));
         }
       } catch(e) { console.log("[ot-api] GetBasket log error:", e); }
       return basketResult;

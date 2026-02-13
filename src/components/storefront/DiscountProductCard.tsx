@@ -36,7 +36,7 @@ export function DiscountProductCard({ product }: DiscountProductCardProps) {
             <img
               src={product.images[0]}
               alt={product.name_mn}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              className="w-full h-full object-contain p-1 group-hover:scale-110 transition-transform duration-700"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
