@@ -28,7 +28,7 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
         <img
           src={product.imageUrl}
           alt={product.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/placeholder.svg";

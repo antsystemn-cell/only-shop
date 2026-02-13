@@ -29,6 +29,8 @@ export interface OtBasketItem {
   configurators?: string;
   weight?: number;
   totalPrice: number;
+  originalCnyPrice?: number;
+  originalCnyCurrency?: string;
 }
 
 export interface OtBasketGroup {
@@ -66,8 +68,8 @@ const OtCartContext = createContext<OtCartContextType | undefined>(undefined);
 // ─── Parse basket response ──────────────────────────────────
 
 function parseBasketResponse(data: any): OtBasketItem[] {
-  const elements = data?.Result?.CollectionInfo?.Elements
-    || data?.CollectionInfo?.Elements
+  const elements = data?.CollectionInfo?.Elements
+    || data?.Result?.CollectionInfo?.Elements
     || data?.Result?.OrderLines
     || data?.OrderLines;
   if (!elements) {
@@ -76,19 +78,31 @@ function parseBasketResponse(data: any): OtBasketItem[] {
   }
 
   const lines = Array.isArray(elements) ? elements : [elements];
-  console.log("[OtCart] Parsing", lines.length, "basket lines. First line keys:", Object.keys(lines[0] || {}));
+  console.log("[OtCart] Parsing", lines.length, "basket lines");
 
   return lines.map((line: any) => {
-    // Price: prefer ConvertedPriceList.Internal (MNT converted) over raw Price
-    const internalPrice = line.FullTotalCost?.ConvertedPriceList?.Internal?.Price
-      ?? line.TotalCost?.ConvertedPriceList?.Internal?.Price;
-    const rawPrice = line.Price?.ConvertedPriceList?.Internal?.Price
-      ?? (typeof line.Price === "number" ? line.Price : 0);
     const quantity = line.Quantity || 1;
 
-    // Use internal (MNT) total if available, else raw price
-    const totalPrice = internalPrice ?? (rawPrice * quantity);
-    const unitPrice = internalPrice ? internalPrice / quantity : rawPrice;
+    // ── Price extraction (MNT) ──
+    // Try multiple paths for internal MNT price
+    const fullTotalInternal = line.FullTotalCost?.ConvertedPriceList?.Internal?.Price;
+    const totalCostInternal = line.TotalCost?.ConvertedPriceList?.Internal?.Price;
+    const priceInternal = line.Price?.ConvertedPriceList?.Internal?.Price;
+    // Raw numeric price fallback
+    const rawNumericPrice = typeof line.Price === "number" ? line.Price : 
+                            typeof line.Price?.OriginalPrice === "number" ? line.Price.OriginalPrice : 0;
+    
+    // Best total price in MNT
+    const totalPrice = fullTotalInternal ?? totalCostInternal ?? (priceInternal ? priceInternal * quantity : rawNumericPrice * quantity);
+    const unitPrice = totalPrice / (quantity || 1);
+
+    // Original price in foreign currency (CNY/USD) for admin reference
+    const originalCnyPrice = line.Price?.OriginalPrice 
+      ?? line.Price?.ConvertedPriceList?.Original?.Price
+      ?? (typeof line.Price === "number" ? line.Price : undefined);
+    const originalCnyCurrency = line.Price?.ConvertedPriceList?.Original?.Sign || "¥";
+
+    console.log("[OtCart] Item", line.ItemId, "totalPrice:", totalPrice, "unitPrice:", unitPrice, "originalCny:", originalCnyPrice);
 
     // Currency: prefer Internal sign (₮)
     const currency = line.FullTotalCost?.ConvertedPriceList?.Internal?.Sign
@@ -125,7 +139,9 @@ function parseBasketResponse(data: any): OtBasketItem[] {
       configurators: line.Configurators || configText || "",
       weight: line.Weight,
       totalPrice,
-    };
+      originalCnyPrice,
+      originalCnyCurrency,
+    } as OtBasketItem;
   });
 }
 
