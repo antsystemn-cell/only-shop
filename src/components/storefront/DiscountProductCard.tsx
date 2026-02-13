@@ -31,7 +31,7 @@ export function DiscountProductCard({ product }: DiscountProductCardProps) {
     <Link to={`/product/${product.id}`}>
       <Card className="group overflow-hidden hover-lift hover:shadow-xl transition-all duration-300 border-0 bg-transparent">
         {/* Large Image */}
-        <div className="relative aspect-[3/4] bg-muted rounded-2xl overflow-hidden">
+        <div className="relative aspect-[3/4] bg-card rounded-2xl overflow-hidden">
           {product.images && product.images[0] ? (
             <img
               src={product.images[0]}

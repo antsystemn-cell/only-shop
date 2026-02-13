@@ -24,7 +24,7 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
       className="group block rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all duration-300"
     >
       {/* Image */}
-      <div className="relative aspect-square overflow-hidden bg-muted">
+      <div className="relative aspect-square overflow-hidden bg-card">
         <img
           src={product.imageUrl}
           alt={product.title}
