@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Minus, Plus, Trash2, ShoppingBag, Loader2, BookmarkMinus, Globe, Package } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, Loader2, BookmarkMinus, Globe, Package, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
@@ -127,12 +127,15 @@ export function UnifiedCartDrawer() {
                 </Badge>
                 {group.items.map((item) => (
                   <div key={item.orderLineId} className="flex gap-3 animate-fade-in">
-                    <div className="w-14 h-14 rounded-lg bg-muted overflow-hidden shrink-0 border">
+                    <button
+                      onClick={() => window.open(`/ot/product/${item.itemId}`, '_blank')}
+                      className="w-14 h-14 rounded-lg bg-card overflow-hidden shrink-0 border cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all relative group/img"
+                    >
                       {item.imageUrl ? (
                         <img
                           src={item.imageUrl}
                           alt={item.title}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain p-0.5"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = "/placeholder.svg";
                           }}
@@ -142,9 +145,22 @@ export function UnifiedCartDrawer() {
                           <ShoppingBag className="h-4 w-4" />
                         </div>
                       )}
-                    </div>
+                      <div className="absolute inset-0 bg-foreground/0 group-hover/img:bg-foreground/10 transition-colors flex items-center justify-center">
+                        <Eye className="h-3 w-3 text-background opacity-0 group-hover/img:opacity-100 transition-opacity" />
+                      </div>
+                    </button>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm line-clamp-2">{item.title}</h4>
+                      <button
+                        onClick={() => window.open(`/ot/product/${item.itemId}`, '_blank')}
+                        className="text-left hover:text-primary transition-colors"
+                      >
+                        <h4 className="font-medium text-sm line-clamp-2">{item.title}</h4>
+                      </button>
+                      {item.configurators && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                          Таны сонголт: {item.configurators}
+                        </p>
+                      )}
                       <p className="text-primary font-semibold text-sm mt-0.5">
                         {formatOtPrice(item.price)}
                       </p>
