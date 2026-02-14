@@ -235,7 +235,7 @@ export default function Checkout() {
               originalCnyPrice: item.originalCnyPrice,
               originalCnyCurrency: item.originalCnyCurrency || "¥",
               externalUrl: item.providerType === "Poizon" 
-                ? `https://www.poizon.com/product/${item.itemId}`
+                ? `https://www.dewu.com/product-detail.html?productId=${item.itemId}`
                 : `https://item.taobao.com/item.htm?id=${item.itemId}`,
             },
           };
