@@ -198,21 +198,21 @@ function HomeSection({ title, icon, iconBg, queryKey, searchParams, initialPageS
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
+        <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-1.5 md:gap-4">
+          {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="rounded-xl border bg-card overflow-hidden">
               <Skeleton className="aspect-square" />
-              <div className="p-3 space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-5 w-1/3" />
+              <div className="p-2 md:p-3 space-y-2">
+                <Skeleton className="h-3 md:h-4 w-full" />
+                <Skeleton className="h-3 md:h-4 w-2/3" />
+                <Skeleton className="h-4 md:h-5 w-1/3" />
               </div>
             </div>
           ))}
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
+          <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-1.5 md:gap-4">
             {allItems.map((product) => (
               <OtProductCardComponent key={product.id} product={product} />
             ))}
@@ -396,21 +396,21 @@ function SearchResultsSection({
 
         {/* Products */}
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-3 md:grid-cols-3 gap-1.5 md:gap-4">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="rounded-xl border bg-card overflow-hidden">
                 <Skeleton className="aspect-square" />
-                <div className="p-3 space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-5 w-1/3" />
+                <div className="p-2 md:p-3 space-y-2">
+                  <Skeleton className="h-3 md:h-4 w-full" />
+                  <Skeleton className="h-3 md:h-4 w-2/3" />
+                  <Skeleton className="h-4 md:h-5 w-1/3" />
                 </div>
               </div>
             ))}
           </div>
         ) : allItems.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-1.5 md:gap-4">
               {allItems.map((product) => (
                 <OtProductCardComponent key={product.id} product={product} />
               ))}
@@ -434,6 +434,57 @@ function SearchResultsSection({
             <p className="text-lg text-muted-foreground">Бараа олдсонгүй</p>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Mobile Category Strip ──────────────────────────────────
+
+function MobileCategoryStrip({ onSelect, selectedId }: { onSelect: (id: string) => void; selectedId?: string }) {
+  const { data: dbCategories } = useQuery({
+    queryKey: ["ot-sidebar-categories"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ot_categories")
+        .select("id, internal_id, name_mn, name_en, icon_url, parent_internal_id, depth")
+        .eq("is_active", true)
+        .is("parent_internal_id", null)
+        .order("display_order");
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const { data: apiCategories } = useQuery({
+    queryKey: ["ot-root-categories"],
+    queryFn: fetchRootCategories,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const cats = dbCategories && dbCategories.length > 0
+    ? dbCategories.map(c => ({ id: c.internal_id, name: c.name_mn || c.name_en || c.internal_id, iconUrl: c.icon_url }))
+    : (apiCategories || []).map(c => ({ id: c.id, name: c.name, iconUrl: c.iconUrl }));
+
+  if (cats.length === 0) return null;
+
+  return (
+    <div className="mb-3 -mx-2 px-2 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-2 pb-1">
+        {cats.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => onSelect(cat.id)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
+              selectedId === cat.id
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card border-border hover:bg-muted"
+            }`}
+          >
+            {cat.iconUrl && <img src={cat.iconUrl} className="w-4 h-4 object-contain" alt="" />}
+            {cat.name}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -491,11 +542,11 @@ export default function OtShop() {
   });
 
   return (
-    <div className="container py-6 md:py-8 animate-fade-in">
+    <div className="container px-2 md:px-4 py-4 md:py-8 animate-fade-in">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold">Маркетплэйс</h1>
-        <p className="text-muted-foreground mt-1">Олон мянган бараанаас хайж олоорой</p>
+      <div className="mb-4 md:mb-6">
+        <h1 className="text-xl md:text-3xl font-bold">Маркетплэйс</h1>
+        <p className="text-muted-foreground text-sm mt-1">Олон мянган бараанаас хайж олоорой</p>
       </div>
 
       {/* Search Bar */}
@@ -548,6 +599,11 @@ export default function OtShop() {
         </div>
       )}
 
+      {/* Mobile horizontal category strip */}
+      {isMobile && !isSearchMode && (
+        <MobileCategoryStrip onSelect={handleCategorySelect} selectedId={categoryId} />
+      )}
+
       <div className="flex gap-6">
         {/* Sidebar - always visible on desktop */}
         {!isMobile && (
@@ -556,24 +612,6 @@ export default function OtShop() {
               <CategorySidebar onSelect={handleCategorySelect} selectedId={categoryId} />
             </div>
           </aside>
-        )}
-
-        {/* Mobile category sheet */}
-        {isMobile && !isSearchMode && (
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1 mb-4">
-                <Folder className="h-4 w-4" />
-                Ангилалууд
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-4 pt-10">
-              <SheetHeader><SheetTitle>Ангилалууд</SheetTitle></SheetHeader>
-              <div className="mt-4">
-                <CategorySidebar onSelect={(id) => { handleCategorySelect(id); }} selectedId={categoryId} />
-              </div>
-            </SheetContent>
-          </Sheet>
         )}
 
         {/* Main content */}

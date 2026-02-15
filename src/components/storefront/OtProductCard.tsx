@@ -42,24 +42,24 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
       </div>
 
       {/* Info */}
-      <div className="p-3">
-        <h3 className="text-sm font-medium line-clamp-2 min-h-[2.5rem] text-foreground group-hover:text-primary transition-colors">
+      <div className="p-1.5 md:p-3">
+        <h3 className="text-[11px] md:text-sm font-medium line-clamp-2 min-h-[2rem] md:min-h-[2.5rem] text-foreground group-hover:text-primary transition-colors">
           {product.title}
         </h3>
 
-        <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-base font-bold text-primary">
+        <div className="mt-1 md:mt-2 flex items-baseline gap-1 md:gap-2">
+          <span className="text-xs md:text-base font-bold text-primary">
             {formatMntPrice(product.price, product.currency)}
           </span>
           {hasDiscount && (
-            <span className="text-xs text-muted-foreground line-through">
+            <span className="text-[9px] md:text-xs text-muted-foreground line-through hidden md:inline">
               {formatMntPrice(product.originalPrice!, product.currency)}
             </span>
           )}
         </div>
 
         {product.vendorName && (
-          <p className="text-xs text-muted-foreground mt-1 truncate">
+          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1 truncate hidden md:block">
             {product.vendorName}
           </p>
         )}

@@ -346,30 +346,52 @@ export default function OtProductDetail() {
               <div className="flex flex-wrap gap-2">
                 {ensureArray(config.values).map((val) => {
                   const isSelected = selectedConfigs[config.pid] === val.id;
+                  // Check if this variant combination is out of stock
+                  const isOutOfStock = (() => {
+                    if (!product.configuredItems?.length) return false;
+                    // Find all configured items that include this value
+                    const matchingConfigs = product.configuredItems.filter((ci) =>
+                      ci.configuratorIds.includes(val.id)
+                    );
+                    // If all matching configs have 0 quantity, it's out of stock
+                    if (matchingConfigs.length > 0 && matchingConfigs.every((ci) => ci.quantity === 0)) {
+                      return true;
+                    }
+                    return false;
+                  })();
+
                   return (
                     <button
                       key={val.id}
-                      onClick={() =>
+                      disabled={isOutOfStock}
+                      onClick={() => {
+                        if (isOutOfStock) return;
                         setSelectedConfigs((prev) => ({
                           ...prev,
                           [config.pid]: isSelected ? "" : val.id,
-                        }))
-                      }
+                        }));
+                      }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
-                        isSelected
+                        isOutOfStock
+                          ? "border-border opacity-40 cursor-not-allowed line-through"
+                          : isSelected
                           ? "border-primary bg-primary/10 text-primary shadow-sm"
                           : "border-border hover:border-primary/50"
                       }`}
+                      title={isOutOfStock ? "Дууссан" : ""}
                     >
                       {val.imageUrl && (
                         <img
                           src={val.imageUrl}
                           alt={val.value}
-                          className="w-8 h-8 rounded object-cover"
+                          className={`w-8 h-8 rounded object-cover ${isOutOfStock ? "grayscale" : ""}`}
                           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                         />
                       )}
                       <span className="line-clamp-1">{val.value}</span>
+                      {isOutOfStock && (
+                        <span className="text-[10px] text-destructive font-medium">Дууссан</span>
+                      )}
                     </button>
                   );
                 })}
