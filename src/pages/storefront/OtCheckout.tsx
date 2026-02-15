@@ -98,12 +98,23 @@ export default function OtCheckout() {
   const runCheck = useCallback(async () => {
     try {
       setCheckError(null);
+      // Pre-validate: ensure basket has items
+      if (items.length === 0) {
+        setCheckError("Сагс хоосон байна. Бараа нэмнэ үү.");
+        return;
+      }
       const result = await checkBasket();
       setCheckResult(result);
     } catch (err: any) {
-      setCheckError(err.message || "Сагс шалгахад алдаа гарлаа");
+      const msg = err.message || "Сагс шалгахад алдаа гарлаа";
+      // Handle ContractViolation specifically
+      if (msg.includes("ContractViolation") || msg.includes("Missing parameter")) {
+        setCheckError("Сагсанд боломжгүй бараа байна. Дууссан эсвэл устгагдсан барааг сагснаасаа хасаад дахин оролдоно уу.");
+      } else {
+        setCheckError(msg);
+      }
     }
-  }, [checkBasket]);
+  }, [checkBasket, items.length]);
 
   useEffect(() => {
     if (step === 1 && !checkResult && !checkingStatus.isRunning) {
