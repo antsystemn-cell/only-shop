@@ -7,6 +7,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { OtCartProvider } from "@/contexts/OtCartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WishlistProvider } from "@/contexts/WishlistContext";
+import { ProviderProvider } from "@/contexts/ProviderContext";
 import NotFound from "./pages/NotFound";
 
 // Storefront imports
@@ -77,6 +78,7 @@ const App = () => (
       <WishlistProvider>
         <CartProvider>
           <OtCartProvider>
+          <ProviderProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -158,6 +160,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+          </ProviderProvider>
           </OtCartProvider>
       </CartProvider>
     </WishlistProvider>
