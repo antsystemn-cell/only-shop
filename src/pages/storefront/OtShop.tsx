@@ -35,6 +35,7 @@ import { searchItems, fetchRootCategories, fetchSubcategories } from "@/services
 import { Skeleton } from "@/components/ui/skeleton";
 import SearchFilters from "@/components/storefront/SearchFilters";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useProviderSafe } from "@/contexts/ProviderContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { OtProductCard } from "@/types/otApi";
 
@@ -158,10 +159,18 @@ interface HomeSectionProps {
   queryKey: string;
   searchParams: Record<string, any>;
   initialPageSize?: number;
+  providerOverride?: string;
 }
 
-function HomeSection({ title, icon, iconBg, queryKey, searchParams, initialPageSize = 10 }: HomeSectionProps) {
+function HomeSection({ title, icon, iconBg, queryKey, searchParams, initialPageSize = 10, providerOverride }: HomeSectionProps) {
   const observerRef = useRef<HTMLDivElement>(null);
+  const { apiProvider } = useProviderSafe();
+
+  // Merge provider: section-specific provider takes precedence, then global filter
+  const effectiveParams = {
+    ...searchParams,
+    ...(providerOverride ? { provider: providerOverride } : apiProvider ? { provider: apiProvider } : {}),
+  };
 
   const {
     data,
@@ -170,10 +179,10 @@ function HomeSection({ title, icon, iconBg, queryKey, searchParams, initialPageS
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["ot-home-section", queryKey],
+    queryKey: ["ot-home-section", queryKey, apiProvider],
     queryFn: ({ pageParam = 0 }) =>
       searchItems({
-        ...searchParams,
+        ...effectiveParams,
         page: pageParam,
         pageSize: initialPageSize,
       }),
@@ -252,14 +261,18 @@ function SearchResultsSection({
   updateMultipleParams: (updates: Record<string, string | null>) => void;
 }) {
   const isMobile = useIsMobile();
+  const { apiProvider } = useProviderSafe();
   const query = sp.get("q") || "";
   const categoryId = sp.get("category") || "";
   const orderBy = sp.get("sort") || "";
   const minPrice = sp.get("minPrice") || "";
   const maxPrice = sp.get("maxPrice") || "";
-  const provider = sp.get("provider") || "";
+  const urlProvider = sp.get("provider") || "";
   const imageUrl = sp.get("imageUrl") || "";
   const pageSize = 40;
+
+  // Use URL provider if set, otherwise global provider context
+  const effectiveProvider = urlProvider || apiProvider || "";
 
   const selectedProperties: Record<string, string> = {};
   sp.forEach((value, key) => {
@@ -275,7 +288,7 @@ function SearchResultsSection({
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["ot-search", query, categoryId, orderBy, minPrice, maxPrice, provider, imageUrl, JSON.stringify(selectedProperties)],
+    queryKey: ["ot-search", query, categoryId, orderBy, minPrice, maxPrice, effectiveProvider, imageUrl, JSON.stringify(selectedProperties)],
     queryFn: ({ pageParam = 0 }) =>
       searchItems({
         query: query || undefined,
@@ -285,7 +298,7 @@ function SearchResultsSection({
         orderBy: orderBy || undefined,
         minPrice: minPrice || undefined,
         maxPrice: maxPrice || undefined,
-        provider: provider || undefined,
+        provider: effectiveProvider || undefined,
         imageUrl: imageUrl || undefined,
         properties: propertiesForApi,
       }),
@@ -303,7 +316,7 @@ function SearchResultsSection({
   const allItems = data?.pages.flatMap(p => p.items) || [];
   const totalCount = firstPage?.totalCount || 0;
 
-  const activeFilterCount = [minPrice, maxPrice, provider, imageUrl].filter(Boolean).length + Object.keys(selectedProperties).length;
+  const activeFilterCount = [minPrice, maxPrice, effectiveProvider, imageUrl].filter(Boolean).length + Object.keys(selectedProperties).length;
 
   const handleClearAllFilters = () => {
     const newParams = new URLSearchParams();
@@ -315,7 +328,7 @@ function SearchResultsSection({
     <SearchFilters
       minPrice={minPrice}
       maxPrice={maxPrice}
-      provider={provider}
+      provider={effectiveProvider}
       imageUrl={imageUrl}
       searchProperties={firstPage?.searchProperties || []}
       selectedProperties={selectedProperties}
@@ -630,7 +643,8 @@ export default function OtShop() {
                 icon={<Shield className="h-5 w-5 text-primary" />}
                 iconBg="bg-primary/10"
                 queryKey="poizon-original"
-                searchParams={{ query: "shoes", provider: "Poizon", orderBy: "Volume:Desc" }}
+                searchParams={{ query: "shoes", orderBy: "Volume:Desc" }}
+                providerOverride="Poizon"
                 initialPageSize={12}
               />
 
@@ -660,7 +674,8 @@ export default function OtShop() {
                 icon={<ShoppingBag className="h-5 w-5 text-orange-500" />}
                 iconBg="bg-orange-500/10"
                 queryKey="taobao-tmall"
-                searchParams={{ query: "clothing accessories electronics home", provider: "Taobao", orderBy: "Volume:Desc" }}
+                searchParams={{ query: "clothing accessories electronics home", orderBy: "Volume:Desc" }}
+                providerOverride="Taobao"
                 initialPageSize={20}
               />
             </>
