@@ -1,33 +1,84 @@
-import { useProvider, type ProviderFilter } from "@/contexts/ProviderContext";
-import { Shield, ShoppingBag, Globe } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import onlyLogo from "@/assets/only-logo.png";
 
-const PROVIDERS: { value: ProviderFilter; label: string; icon: React.ReactNode }[] = [
-  { value: "all", label: "Бүгд", icon: <Globe className="h-3.5 w-3.5" /> },
-  { value: "Poizon", label: "Poizon China", icon: <Shield className="h-3.5 w-3.5" /> },
-  { value: "Taobao", label: "Taobao & Tmall", icon: <ShoppingBag className="h-3.5 w-3.5" /> },
-];
+interface StripItem {
+  id: string;
+  name: string;
+  slug: string;
+  provider_type: string;
+  logo_url: string | null;
+  bg_color: string | null;
+  text_color: string | null;
+}
 
 export function ProviderStrip() {
-  const { selectedProvider, setSelectedProvider } = useProvider();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const { data: items } = useQuery({
+    queryKey: ["provider-strip-items"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("provider_strip_items")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order");
+      return (data || []) as StripItem[];
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  // Determine active slug from current path
+  const getActiveSlug = () => {
+    const path = location.pathname;
+    if (path.startsWith("/ot/provider/")) {
+      return path.split("/ot/provider/")[1]?.split("/")[0] || "home";
+    }
+    return "home";
+  };
+
+  const activeSlug = getActiveSlug();
+
+  const handleClick = (item: StripItem) => {
+    if (item.slug === "home") {
+      navigate("/");
+    } else {
+      navigate(`/ot/provider/${item.slug}`);
+    }
+  };
+
+  if (!items || items.length === 0) return null;
 
   return (
-    <div className="w-full bg-muted/50 border-b">
-      <div className="container flex items-center gap-1 py-1.5 overflow-x-auto scrollbar-hide">
-        <span className="text-xs text-muted-foreground mr-1 shrink-0">Нийлүүлэгч:</span>
-        {PROVIDERS.map((p) => (
-          <button
-            key={p.value}
-            onClick={() => setSelectedProvider(p.value)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
-              selectedProvider === p.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-card hover:bg-accent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {p.icon}
-            {p.label}
-          </button>
-        ))}
+    <div className="w-full bg-secondary overflow-hidden">
+      <div className="container flex items-center gap-2 py-1.5 overflow-x-auto scrollbar-hide">
+        {items.map((item) => {
+          const isActive = activeSlug === item.slug;
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleClick(item)}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0 border ${
+                isActive
+                  ? "bg-card text-foreground border-border shadow-sm"
+                  : "bg-secondary-foreground/10 text-secondary-foreground border-transparent hover:bg-secondary-foreground/20"
+              }`}
+            >
+              {item.logo_url ? (
+                <img src={item.logo_url} alt="" className="w-5 h-5 object-contain rounded-full" />
+              ) : item.slug === "home" ? (
+                <img src={onlyLogo} alt="" className="w-5 h-5 object-contain" />
+              ) : (
+                <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
+                  {item.name.charAt(0)}
+                </span>
+              )}
+              {item.name}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

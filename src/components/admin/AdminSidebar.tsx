@@ -84,6 +84,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Цуглуулга", url: "/admin/collections", icon: Library },
       { title: "Хязгаарлалт", url: "/admin/restrictions", icon: Package },
       { title: "Бараа засах", url: "/admin/catalog-items", icon: Package },
+      { title: "Провайдер тохиргоо", url: "/admin/provider-sections", icon: LayoutList },
     ],
   },
   {
