@@ -70,6 +70,8 @@ import OtRoles from "./pages/admin/OtRoles";
 import UserActivityLog from "./pages/admin/UserActivityLog";
 import InstanceLogs from "./pages/admin/InstanceLogs";
 import OtCategoryBrowse from "./pages/storefront/OtCategoryBrowse";
+import ProviderPage from "./pages/storefront/ProviderPage";
+import ProviderSectionsAdmin from "./pages/admin/ProviderSections";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -94,6 +96,7 @@ const App = () => (
                 <Route path="/ot" element={<OtShop />} />
                 <Route path="/ot/category/:categoryId" element={<OtCategory />} />
                 <Route path="/ot/browse/:internalId" element={<OtCategoryBrowse />} />
+                <Route path="/ot/provider/:slug" element={<ProviderPage />} />
                 <Route path="/ot/product/:itemId" element={<OtProductDetail />} />
               </Route>
               
@@ -153,6 +156,7 @@ const App = () => (
                 <Route path="ot-roles" element={<OtRoles />} />
                 <Route path="user-activity-log" element={<UserActivityLog />} />
                 <Route path="instance-logs" element={<InstanceLogs />} />
+                <Route path="provider-sections" element={<ProviderSectionsAdmin />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

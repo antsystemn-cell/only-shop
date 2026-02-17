@@ -1,0 +1,396 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Pencil, Trash2, GripVertical, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+interface Section {
+  id: string;
+  provider_type: string;
+  title: string;
+  icon_name: string | null;
+  search_query: string | null;
+  category_id: string | null;
+  order_by: string | null;
+  page_size: number | null;
+  display_order: number;
+  is_active: boolean;
+}
+
+interface StripItem {
+  id: string;
+  name: string;
+  slug: string;
+  provider_type: string;
+  logo_url: string | null;
+  bg_color: string | null;
+  text_color: string | null;
+  display_order: number;
+  is_active: boolean;
+}
+
+const ICON_OPTIONS = [
+  "sparkles", "star", "footprints", "droplets", "shirt", "home", "baby",
+  "smartphone", "heart", "dumbbell", "shopping-bag", "trending-up", "package",
+];
+
+function SectionsManager({ providerType }: { providerType: string }) {
+  const queryClient = useQueryClient();
+  const [editingSection, setEditingSection] = useState<Section | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const { data: sections, isLoading } = useQuery({
+    queryKey: ["admin-provider-sections", providerType],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("provider_sections")
+        .select("*")
+        .eq("provider_type", providerType)
+        .order("display_order");
+      return (data || []) as Section[];
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (section: Partial<Section>) => {
+      if (section.id) {
+        const { error } = await supabase
+          .from("provider_sections")
+          .update(section)
+          .eq("id", section.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("provider_sections")
+          .insert([{ ...section, provider_type: providerType } as any]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-provider-sections", providerType] });
+      setIsDialogOpen(false);
+      setEditingSection(null);
+      toast.success("Хадгалагдлаа");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("provider_sections").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-provider-sections", providerType] });
+      toast.success("Устгагдлаа");
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await supabase.from("provider_sections").update({ is_active }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-provider-sections", providerType] });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    saveMutation.mutate({
+      id: editingSection?.id,
+      title: fd.get("title") as string,
+      icon_name: fd.get("icon_name") as string || null,
+      search_query: fd.get("search_query") as string || null,
+      category_id: fd.get("category_id") as string || null,
+      order_by: fd.get("order_by") as string || "Volume:Desc",
+      page_size: Number(fd.get("page_size")) || 12,
+      display_order: Number(fd.get("display_order")) || 0,
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold">{providerType} секцүүд</h3>
+        <Dialog open={isDialogOpen} onOpenChange={(o) => { setIsDialogOpen(o); if (!o) setEditingSection(null); }}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-1">
+              <Plus className="h-4 w-4" /> Секц нэмэх
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingSection ? "Секц засах" : "Шинэ секц"}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="title">Нэр</Label>
+                <Input id="title" name="title" defaultValue={editingSection?.title || ""} required />
+              </div>
+              <div>
+                <Label htmlFor="search_query">Хайлтын түлхүүр үг</Label>
+                <Input id="search_query" name="search_query" defaultValue={editingSection?.search_query || ""} placeholder="shoes sneakers" />
+              </div>
+              <div>
+                <Label htmlFor="category_id">Ангилалын ID (OT)</Label>
+                <Input id="category_id" name="category_id" defaultValue={editingSection?.category_id || ""} placeholder="Хоосон байж болно" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="icon_name">Icon</Label>
+                  <Select name="icon_name" defaultValue={editingSection?.icon_name || "package"}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ICON_OPTIONS.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="order_by">Эрэмбэ</Label>
+                  <Select name="order_by" defaultValue={editingSection?.order_by || "Volume:Desc"}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Volume:Desc">Борлуулалт</SelectItem>
+                      <SelectItem value="Price:Asc">Үнэ: Багаас</SelectItem>
+                      <SelectItem value="Price:Desc">Үнэ: Ихээс</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="page_size">Бараа тоо</Label>
+                  <Input id="page_size" name="page_size" type="number" defaultValue={editingSection?.page_size || 12} />
+                </div>
+                <div>
+                  <Label htmlFor="display_order">Дараалал</Label>
+                  <Input id="display_order" name="display_order" type="number" defaultValue={editingSection?.display_order || 0} />
+                </div>
+              </div>
+              <Button type="submit" disabled={saveMutation.isPending} className="w-full">
+                {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Хадгалах
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">#</TableHead>
+              <TableHead>Нэр</TableHead>
+              <TableHead>Хайлт</TableHead>
+              <TableHead>Icon</TableHead>
+              <TableHead>Идэвхтэй</TableHead>
+              <TableHead className="text-right">Үйлдэл</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sections?.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell>{s.display_order}</TableCell>
+                <TableCell className="font-medium">{s.title}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{s.search_query || s.category_id || "-"}</TableCell>
+                <TableCell>{s.icon_name || "-"}</TableCell>
+                <TableCell>
+                  <Switch checked={s.is_active} onCheckedChange={(v) => toggleMutation.mutate({ id: s.id, is_active: v })} />
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => { setEditingSection(s); setIsDialogOpen(true); }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive"
+                    onClick={() => { if (confirm("Устгах уу?")) deleteMutation.mutate(s.id); }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+
+function StripItemsManager() {
+  const queryClient = useQueryClient();
+  const [editingItem, setEditingItem] = useState<StripItem | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const { data: items, isLoading } = useQuery({
+    queryKey: ["admin-strip-items"],
+    queryFn: async () => {
+      const { data } = await supabase.from("provider_strip_items").select("*").order("display_order");
+      return (data || []) as StripItem[];
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (item: Partial<StripItem>) => {
+      if (item.id) {
+        const { error } = await supabase.from("provider_strip_items").update(item).eq("id", item.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("provider_strip_items").insert([item as any]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-strip-items"] });
+      setIsDialogOpen(false);
+      setEditingItem(null);
+      toast.success("Хадгалагдлаа");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("provider_strip_items").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-strip-items"] });
+      toast.success("Устгагдлаа");
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    saveMutation.mutate({
+      id: editingItem?.id,
+      name: fd.get("name") as string,
+      slug: fd.get("slug") as string,
+      provider_type: fd.get("provider_type") as string,
+      logo_url: fd.get("logo_url") as string || null,
+      display_order: Number(fd.get("display_order")) || 0,
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold">Провайдер товчлуурууд</h3>
+        <Dialog open={isDialogOpen} onOpenChange={(o) => { setIsDialogOpen(o); if (!o) setEditingItem(null); }}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Нэмэх</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{editingItem ? "Засах" : "Шинэ провайдер"}</DialogTitle></DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label>Нэр</Label>
+                <Input name="name" defaultValue={editingItem?.name || ""} required />
+              </div>
+              <div>
+                <Label>Slug (URL)</Label>
+                <Input name="slug" defaultValue={editingItem?.slug || ""} required placeholder="poizon" />
+              </div>
+              <div>
+                <Label>Provider Type (OTAPI)</Label>
+                <Input name="provider_type" defaultValue={editingItem?.provider_type || ""} required placeholder="Poizon" />
+              </div>
+              <div>
+                <Label>Лого URL</Label>
+                <Input name="logo_url" defaultValue={editingItem?.logo_url || ""} placeholder="https://..." />
+              </div>
+              <div>
+                <Label>Дараалал</Label>
+                <Input name="display_order" type="number" defaultValue={editingItem?.display_order || 0} />
+              </div>
+              <Button type="submit" disabled={saveMutation.isPending} className="w-full">Хадгалах</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">#</TableHead>
+              <TableHead>Нэр</TableHead>
+              <TableHead>Slug</TableHead>
+              <TableHead>Provider</TableHead>
+              <TableHead className="text-right">Үйлдэл</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items?.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{item.display_order}</TableCell>
+                <TableCell className="font-medium">{item.name}</TableCell>
+                <TableCell>{item.slug}</TableCell>
+                <TableCell>{item.provider_type}</TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" onClick={() => { setEditingItem(item); setIsDialogOpen(true); }}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="text-destructive" onClick={() => { if (confirm("Устгах уу?")) deleteMutation.mutate(item.id); }}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+
+export default function ProviderSectionsAdmin() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold">Провайдер тохиргоо</h1>
+        <p className="text-muted-foreground">Провайдер товчлуурууд болон секцүүдийг удирдах</p>
+      </div>
+
+      <Tabs defaultValue="strip">
+        <TabsList>
+          <TabsTrigger value="strip">Провайдер товчлуурууд</TabsTrigger>
+          <TabsTrigger value="poizon">Poizon секцүүд</TabsTrigger>
+          <TabsTrigger value="taobao">Taobao секцүүд</TabsTrigger>
+        </TabsList>
+        <TabsContent value="strip" className="mt-4">
+          <StripItemsManager />
+        </TabsContent>
+        <TabsContent value="poizon" className="mt-4">
+          <SectionsManager providerType="Poizon" />
+        </TabsContent>
+        <TabsContent value="taobao" className="mt-4">
+          <SectionsManager providerType="Taobao" />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

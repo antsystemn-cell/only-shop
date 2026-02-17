@@ -865,6 +865,93 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_sections: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          display_order: number | null
+          icon_name: string | null
+          id: string
+          is_active: boolean | null
+          order_by: string | null
+          page_size: number | null
+          provider_type: string
+          search_query: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          display_order?: number | null
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          order_by?: string | null
+          page_size?: number | null
+          provider_type: string
+          search_query?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          display_order?: number | null
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          order_by?: string | null
+          page_size?: number | null
+          provider_type?: string
+          search_query?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      provider_strip_items: {
+        Row: {
+          bg_color: string | null
+          created_at: string
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          provider_type: string
+          slug: string
+          text_color: string | null
+          updated_at: string
+        }
+        Insert: {
+          bg_color?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          provider_type: string
+          slug: string
+          text_color?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bg_color?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          provider_type?: string
+          slug?: string
+          text_color?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       support_messages: {
         Row: {
           created_at: string
