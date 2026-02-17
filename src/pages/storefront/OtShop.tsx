@@ -555,26 +555,39 @@ export default function OtShop() {
   });
 
   return (
-    <div className="container px-2 md:px-4 py-4 md:py-8 animate-fade-in">
-      {/* Header */}
-      <div className="mb-4 md:mb-6">
-        <h1 className="text-xl md:text-3xl font-bold">Маркетплэйс</h1>
-        <p className="text-muted-foreground text-sm mt-1">Олон мянган бараанаас хайж олоорой</p>
+    <div className="animate-fade-in">
+      {/* Search bar - mobile only (desktop has header search) */}
+      <div className="px-3 pt-3 pb-2 md:hidden">
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Бараа хайх..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button type="submit" size="sm">Хайх</Button>
+        </form>
       </div>
 
-      {/* Search Bar */}
-      <form onSubmit={handleSearch} className="flex gap-2 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Бараа хайх... (англиар бичнэ үү)"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Button type="submit">Хайх</Button>
-      </form>
+      <div className="container px-2 md:px-4 py-4 md:py-8">
+      {/* Desktop search */}
+      <div className="hidden md:block mb-6">
+        <form onSubmit={handleSearch} className="flex gap-2 max-w-2xl">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Бараа хайх... (англиар бичнэ үү)"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button type="submit">Хайх</Button>
+        </form>
+      </div>
 
       {/* Active filter chips */}
       {(query || categoryId || provider || minPrice || maxPrice || imageUrl || Object.keys(selectedProperties).length > 0) && (
@@ -681,6 +694,7 @@ export default function OtShop() {
             </>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

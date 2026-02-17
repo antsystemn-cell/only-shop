@@ -23,6 +23,7 @@ interface Section {
   page_size: number | null;
   display_order: number;
   is_active: boolean;
+  show_on_home: boolean;
 }
 
 interface StripItem {
@@ -35,6 +36,7 @@ interface StripItem {
   text_color: string | null;
   display_order: number;
   is_active: boolean;
+  show_categories: boolean;
 }
 
 const ICON_OPTIONS = [
@@ -116,6 +118,7 @@ function SectionsManager({ providerType }: { providerType: string }) {
       order_by: fd.get("order_by") as string || "Volume:Desc",
       page_size: Number(fd.get("page_size")) || 12,
       display_order: Number(fd.get("display_order")) || 0,
+      show_on_home: fd.get("show_on_home") === "on",
     });
   };
 
@@ -177,6 +180,10 @@ function SectionsManager({ providerType }: { providerType: string }) {
                   <Label htmlFor="display_order">Дараалал</Label>
                   <Input id="display_order" name="display_order" type="number" defaultValue={editingSection?.display_order || 0} />
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="show_on_home" name="show_on_home" defaultChecked={editingSection?.show_on_home ?? false} />
+                <Label htmlFor="show_on_home">Нүүр хуудаст харуулах</Label>
               </div>
               <Button type="submit" disabled={saveMutation.isPending} className="w-full">
                 {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
@@ -290,6 +297,7 @@ function StripItemsManager() {
       provider_type: fd.get("provider_type") as string,
       logo_url: fd.get("logo_url") as string || null,
       display_order: Number(fd.get("display_order")) || 0,
+      show_categories: fd.get("show_categories") === "on",
     });
   };
 
@@ -323,6 +331,10 @@ function StripItemsManager() {
               <div>
                 <Label>Дараалал</Label>
                 <Input name="display_order" type="number" defaultValue={editingItem?.display_order || 0} />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="show_categories" name="show_categories" defaultChecked={editingItem?.show_categories !== false} />
+                <Label htmlFor="show_categories">Ангилалууд харуулах</Label>
               </div>
               <Button type="submit" disabled={saveMutation.isPending} className="w-full">Хадгалах</Button>
             </form>
