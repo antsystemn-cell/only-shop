@@ -1,231 +1,230 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowRight, Loader2, TrendingUp, Sparkles, ShoppingBag, Zap } from "lucide-react";
+import { ChevronDown, Loader2, Sparkles, Star, Footprints, Droplets, Shirt, Home as HomeIcon, Baby, Smartphone, Heart, Dumbbell, ShoppingBag, TrendingUp, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { HeroCarousel } from "@/components/storefront/HeroCarousel";
-import { OtCategoryStrip } from "@/components/storefront/OtCategoryStrip";
-import { BrandCarousel } from "@/components/storefront/BrandCarousel";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { searchItems } from "@/services/otApi";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
+import HeaderSearch from "@/components/storefront/HeaderSearch";
 import type { OtProductCard } from "@/types/otApi";
 
-function ProductGridSkeleton({ count = 10 }: { count?: number }) {
+// Icon map for admin-configured sections
+const ICON_MAP: Record<string, React.ReactNode> = {
+  sparkles: <Sparkles className="h-4 w-4" />,
+  star: <Star className="h-4 w-4" />,
+  footprints: <Footprints className="h-4 w-4" />,
+  droplets: <Droplets className="h-4 w-4" />,
+  shirt: <Shirt className="h-4 w-4" />,
+  home: <HomeIcon className="h-4 w-4" />,
+  baby: <Baby className="h-4 w-4" />,
+  smartphone: <Smartphone className="h-4 w-4" />,
+  heart: <Heart className="h-4 w-4" />,
+  dumbbell: <Dumbbell className="h-4 w-4" />,
+  "shopping-bag": <ShoppingBag className="h-4 w-4" />,
+  "trending-up": <TrendingUp className="h-4 w-4" />,
+  package: <Package className="h-4 w-4" />,
+};
+
+interface ProviderSection {
+  id: string;
+  title: string;
+  icon_name: string | null;
+  search_query: string | null;
+  category_id: string | null;
+  order_by: string | null;
+  page_size: number | null;
+  provider_type: string;
+  show_on_home: boolean | null;
+}
+
+// ─── Category Tabs (horizontal scrollable thin text) ────────
+function CategoryTabs() {
+  const { data: categories } = useQuery({
+    queryKey: ["ot-root-categories-strip"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ot_categories")
+        .select("id, internal_id, name_mn, name_en, icon_url, parent_internal_id")
+        .is("parent_internal_id", null)
+        .eq("is_active", true)
+        .order("display_order");
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 30,
+  });
+
+  if (!categories || categories.length === 0) return null;
+
   return (
-    <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="rounded-xl border bg-card overflow-hidden">
-          <Skeleton className="aspect-square" />
-          <div className="p-3 space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-5 w-1/3" />
-          </div>
-        </div>
-      ))}
+    <div className="overflow-x-auto scrollbar-hide">
+      <div className="flex items-center gap-1 pb-1">
+        <Link
+          to="/ot"
+          className="shrink-0 px-3 py-1.5 text-xs font-semibold text-primary border-b-2 border-primary whitespace-nowrap"
+        >
+          Бүгд
+        </Link>
+        {categories.slice(0, 12).map((cat) => (
+          <Link
+            key={cat.internal_id}
+            to={`/ot/browse/${cat.internal_id}`}
+            className="shrink-0 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground whitespace-nowrap transition-colors"
+          >
+            {cat.name_mn || cat.name_en || cat.internal_id}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
 
-interface ProductSectionProps {
-  title: string;
-  icon: React.ReactNode;
-  iconBg: string;
-  products: OtProductCard[];
-  isLoading: boolean;
-  linkTo: string;
-  variant?: "carousel" | "grid";
-}
+// ─── Home Section Block ─────────────────────────────────────
+function HomeSectionBlock({ section }: { section: ProviderSection }) {
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: ["home-section", section.id],
+    queryFn: ({ pageParam = 0 }) =>
+      searchItems({
+        query: section.search_query || undefined,
+        categoryId: section.category_id || undefined,
+        provider: section.provider_type,
+        page: pageParam,
+        pageSize: section.page_size || 12,
+        orderBy: section.order_by || "Volume:Desc",
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
+      if (loaded < lastPage.totalCount) return allPages.length;
+      return undefined;
+    },
+    initialPageParam: 0,
+    staleTime: 1000 * 60 * 15,
+  });
 
-function ProductSection({ title, icon, iconBg, products, isLoading, linkTo, variant = "grid" }: ProductSectionProps) {
-  if (!isLoading && products.length === 0) return null;
+  const allItems = data?.pages.flatMap((p) => p.items) || [];
+  if (!isLoading && allItems.length === 0) return null;
+
+  const icon = section.icon_name ? ICON_MAP[section.icon_name] || <Package className="h-4 w-4" /> : <Package className="h-4 w-4" />;
+  const providerLabel = section.provider_type === "Poizon" ? "Poizon" : section.provider_type === "Taobao" ? "Taobao" : "";
 
   return (
-    <section className="py-8 md:py-12">
-      <div className={`${variant === "carousel" ? "container" : "px-2 md:container"} flex items-center justify-between mb-6 md:mb-8`}>
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${iconBg}`}>
-            {icon}
-          </div>
-          <h2 className="text-sm md:text-3xl font-bold">{title}</h2>
+    <section className="mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-md bg-primary/10 text-primary">{icon}</div>
+          <h2 className="text-sm md:text-lg font-bold">
+            {section.title}
+            {providerLabel && (
+              <span className="text-xs font-normal text-muted-foreground ml-1.5">({providerLabel})</span>
+            )}
+          </h2>
         </div>
-        <Link to={linkTo}>
-          <Button variant="ghost" className="gap-2">
+        <Link to={`/ot?q=${encodeURIComponent(section.search_query || "")}&provider=${section.provider_type}`}>
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7">
             Бүгдийг үзэх
-            <ArrowRight className="h-4 w-4" />
           </Button>
         </Link>
       </div>
 
       {isLoading ? (
-        variant === "carousel" ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <ProductGridSkeleton />
-        )
-      ) : variant === "carousel" ? (
-        <Carousel opts={{ align: "start", loop: true }} className="w-full px-2 md:px-8 lg:container">
-          <CarouselContent className="-ml-2 md:-ml-4">
-            {products.map((product) => (
-              <CarouselItem key={product.id} className="pl-2 md:pl-4 basis-[45%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
-                <OtProductCardComponent product={product} />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="left-0 md:left-2 -translate-x-1/2 hidden md:flex" />
-          <CarouselNext className="right-0 md:right-2 translate-x-1/2 hidden md:flex" />
-        </Carousel>
-      ) : (
-        <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
-          {products.map((product) => (
-            <OtProductCardComponent key={product.id} product={product} />
+        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 md:gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl border bg-card overflow-hidden">
+              <Skeleton className="aspect-square" />
+              <div className="p-2 space-y-1.5">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+            </div>
           ))}
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 md:gap-3">
+            {allItems.map((product) => (
+              <OtProductCardComponent key={product.id} product={product} />
+            ))}
+          </div>
+          {hasNextPage && (
+            <div className="flex justify-center mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+              >
+                {isFetchingNextPage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                Илүү ихийг харах
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </section>
   );
 }
 
 export default function Home() {
-  // Taobao trending products
-  const { data: taobaoResult, isLoading: loadingTaobao } = useQuery({
-    queryKey: ["ot-home-taobao"],
-    queryFn: () =>
-      searchItems({
-        query: "bag",
-        provider: "Taobao",
-        pageSize: 20,
-        orderBy: "Volume:Desc",
-      }),
-    staleTime: 1000 * 60 * 15,
-  });
-
-  // Poizon products
-  const { data: poizonResult, isLoading: loadingPoizon } = useQuery({
-    queryKey: ["ot-home-poizon"],
-    queryFn: () =>
-      searchItems({
-        query: "shoes",
-        provider: "Poizon",
-        pageSize: 20,
-        orderBy: "Volume:Desc",
-      }),
-    staleTime: 1000 * 60 * 15,
-  });
-
-  // General popular products (all providers)
-  const { data: popularResult, isLoading: loadingPopular } = useQuery({
-    queryKey: ["ot-home-popular"],
-    queryFn: () =>
-      searchItems({
-        query: "phone case",
-        pageSize: 20,
-        orderBy: "Volume:Desc",
-      }),
-    staleTime: 1000 * 60 * 15,
-  });
-
-  // Fashion / clothing
-  const { data: fashionResult, isLoading: loadingFashion } = useQuery({
-    queryKey: ["ot-home-fashion"],
-    queryFn: () =>
-      searchItems({
-        query: "jacket",
-        pageSize: 20,
-      }),
-    staleTime: 1000 * 60 * 15,
-  });
-
-  // Brands
-  const { data: brands } = useQuery({
-    queryKey: ["all-brands-home"],
+  // Fetch all sections marked show_on_home from both providers
+  const { data: sections, isLoading: loadingSections } = useQuery({
+    queryKey: ["home-sections"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("brands")
+      const { data } = await supabase
+        .from("provider_sections")
         .select("*")
         .eq("is_active", true)
-        .order("display_order", { ascending: true });
-      if (error) throw error;
-      return data?.map((b) => ({ name: b.name, logo_url: b.logo_url })) || [];
+        .eq("show_on_home", true)
+        .order("display_order");
+      return (data || []) as ProviderSection[];
     },
+    staleTime: 1000 * 60 * 30,
   });
 
   return (
     <div className="animate-fade-in">
-      <HeroCarousel />
-      <OtCategoryStrip />
+      {/* Search bar - visible on mobile, hidden on desktop (header has it) */}
+      <div className="px-3 pt-3 pb-2 md:hidden">
+        <HeaderSearch />
+      </div>
 
-      {/* Taobao - Trending */}
-      <ProductSection
-        title="Taobao шилдэг"
-        icon={<TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-primary" />}
-        iconBg="bg-primary/10"
-        products={taobaoResult?.items || []}
-        isLoading={loadingTaobao}
-        linkTo="/ot?provider=Taobao&sort=Volume:Desc"
-        variant="carousel"
-      />
+      {/* Category tabs - horizontal scroll */}
+      <div className="px-3 md:container border-b">
+        <CategoryTabs />
+      </div>
 
-      {/* Poizon - Shoes & Fashion */}
-      <ProductSection
-        title="Poizon бараа"
-        icon={<Zap className="h-5 w-5 md:h-6 md:w-6 text-accent-foreground" />}
-        iconBg="bg-accent"
-        products={poizonResult?.items || []}
-        isLoading={loadingPoizon}
-        linkTo="/ot?provider=Poizon&sort=Volume:Desc"
-        variant="grid"
-      />
-
-      {/* Brands */}
-      {brands && brands.length > 0 && (
-        <section className="py-8">
-          <div className="px-2 md:container mb-6">
-            <h2 className="md:text-3xl font-bold text-base">Онцлох брэндүүд</h2>
+      {/* Sections */}
+      <div className="px-2 md:container py-4 md:py-6">
+        {loadingSections ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-          <div className="px-2 md:container">
-            <BrandCarousel brands={brands} />
-          </div>
-        </section>
-      )}
+        ) : sections && sections.length > 0 ? (
+          sections.map((section) => (
+            <HomeSectionBlock key={section.id} section={section} />
+          ))
+        ) : (
+          <>
+            {/* Fallback static sections if no admin sections configured */}
+            <p className="text-center text-muted-foreground py-10">Секц тохируулагдаагүй байна</p>
+          </>
+        )}
 
-      {/* Popular - All providers */}
-      <ProductSection
-        title="Эрэлттэй бараа"
-        icon={<Sparkles className="h-5 w-5 md:h-6 md:w-6 text-secondary-foreground" />}
-        iconBg="bg-secondary"
-        products={popularResult?.items || []}
-        isLoading={loadingPopular}
-        linkTo="/ot?q=phone+case&sort=Volume:Desc"
-        variant="carousel"
-      />
-
-      {/* Fashion */}
-      <ProductSection
-        title="Хувцас & Загвар"
-        icon={<ShoppingBag className="h-5 w-5 md:h-6 md:w-6 text-primary" />}
-        iconBg="bg-primary/10"
-        products={fashionResult?.items || []}
-        isLoading={loadingFashion}
-        linkTo="/ot?q=jacket"
-        variant="grid"
-      />
-
-      {/* CTA */}
-      <section className="py-8 md:py-12">
-        <div className="flex justify-center">
+        {/* CTA */}
+        <div className="flex justify-center py-4">
           <Link to="/ot">
-            <Button size="lg" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5">
               Маркетплэйс руу очих
-              <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
-      </section>
+      </div>
     </div>
   );
 }

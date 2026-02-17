@@ -877,6 +877,7 @@ export type Database = {
           page_size: number | null
           provider_type: string
           search_query: string | null
+          show_on_home: boolean | null
           title: string
           updated_at: string
         }
@@ -891,6 +892,7 @@ export type Database = {
           page_size?: number | null
           provider_type: string
           search_query?: string | null
+          show_on_home?: boolean | null
           title: string
           updated_at?: string
         }
@@ -905,6 +907,7 @@ export type Database = {
           page_size?: number | null
           provider_type?: string
           search_query?: string | null
+          show_on_home?: boolean | null
           title?: string
           updated_at?: string
         }
@@ -920,6 +923,7 @@ export type Database = {
           logo_url: string | null
           name: string
           provider_type: string
+          show_categories: boolean | null
           slug: string
           text_color: string | null
           updated_at: string
@@ -933,6 +937,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           provider_type: string
+          show_categories?: boolean | null
           slug: string
           text_color?: string | null
           updated_at?: string
@@ -946,6 +951,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           provider_type?: string
+          show_categories?: boolean | null
           slug?: string
           text_color?: string | null
           updated_at?: string
