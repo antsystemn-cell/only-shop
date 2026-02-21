@@ -390,15 +390,16 @@ export default function Home() {
     <div className="animate-fade-in">
       {/* Sticky header area on mobile: search + category tabs */}
       <div className={isMobile ? "sticky top-0 z-30 bg-background" : ""}>
-        {/* Search bar - visible on mobile (no header on mobile), hidden on desktop (header has it) */}
         <div className="px-3 pt-3 pb-2 md:hidden">
           <HeaderSearch />
         </div>
 
-        {/* Category tabs */}
-        <div className="px-3 md:container border-b">
-          <CategoryTabs activeId={activeCategoryId} onSelect={handleCategorySelect} categories={categoryList} />
-        </div>
+        {/* Category tabs - hide when "Бүгд" is active on mobile for clean feed */}
+        {(activeCategoryId !== null || !isMobile) && (
+          <div className="px-3 md:container border-b">
+            <CategoryTabs activeId={activeCategoryId} onSelect={handleCategorySelect} categories={categoryList} />
+          </div>
+        )}
       </div>
 
       {/* Content area - swipeable on mobile */}
@@ -408,12 +409,11 @@ export default function Home() {
         onTouchStart={isMobile ? handleTouchStart : undefined}
         onTouchEnd={isMobile ? handleTouchEnd : undefined}
       >
-        {/* Show featured subcategories when a category is selected */}
+        {/* Show featured subcategories only when a category is selected */}
         {activeCategoryId && (
           <FeaturedSubcategories parentId={activeCategoryId} />
         )}
 
-        {/* Infinite scroll product feed - no headers for "Бүгд" */}
         <InfiniteProductFeed categoryId={activeCategoryId} />
       </div>
     </div>
