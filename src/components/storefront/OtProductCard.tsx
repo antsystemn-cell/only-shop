@@ -21,7 +21,7 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
   return (
     <Link
       to={`/ot/product/${product.id}`}
-      className="group block rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all duration-300"
+      className="group block overflow-hidden transition-all duration-300"
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-card">
