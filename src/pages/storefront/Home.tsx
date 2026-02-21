@@ -1,6 +1,6 @@
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ChevronDown, Loader2, Sparkles, Star, Footprints, Droplets, Shirt, Home as HomeIcon, Baby, Smartphone, Heart, Dumbbell, ShoppingBag, TrendingUp, Package } from "lucide-react";
+import { ChevronDown, Loader2, Sparkles, Star, Footprints, Droplets, Shirt, Home as HomeIcon, Baby, Smartphone, Heart, Dumbbell, ShoppingBag, TrendingUp, Package, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
@@ -8,6 +8,7 @@ import { searchItems } from "@/services/otApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
 import type { OtProductCard } from "@/types/otApi";
+import { useRef, useCallback, useEffect, useState } from "react";
 
 // Icon map for admin-configured sections
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -39,7 +40,7 @@ interface ProviderSection {
 }
 
 // ─── Category Tabs (horizontal scrollable thin text) ────────
-function CategoryTabs() {
+function CategoryTabs({ activeId, onSelect }: { activeId: string | null; onSelect: (id: string | null) => void }) {
   const { data: categories } = useQuery({
     queryKey: ["ot-root-categories-strip"],
     queryFn: async () => {
@@ -59,23 +60,164 @@ function CategoryTabs() {
   return (
     <div className="overflow-x-auto scrollbar-hide">
       <div className="flex items-center gap-1 pb-1">
-        <Link
-          to="/ot"
-          className="shrink-0 px-3 py-1.5 text-xs font-semibold text-primary border-b-2 border-primary whitespace-nowrap"
+        <button
+          onClick={() => onSelect(null)}
+          className={`shrink-0 px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
+            activeId === null
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
         >
           Бүгд
-        </Link>
+        </button>
         {categories.slice(0, 12).map((cat) => (
-          <Link
+          <button
             key={cat.internal_id}
-            to={`/ot/browse/${cat.internal_id}`}
-            className="shrink-0 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground whitespace-nowrap transition-colors"
+            onClick={() => onSelect(cat.internal_id)}
+            className={`shrink-0 px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
+              activeId === cat.internal_id
+                ? "text-primary border-b-2 border-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
             {cat.name_mn || cat.name_en || cat.internal_id}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Featured Subcategories with Images ─────────────────────
+function FeaturedSubcategories({ parentId }: { parentId: string }) {
+  const { data: subcategories } = useQuery({
+    queryKey: ["ot-subcategories-featured", parentId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ot_categories")
+        .select("id, internal_id, name_mn, name_en, icon_url")
+        .eq("parent_internal_id", parentId)
+        .eq("is_active", true)
+        .order("display_order")
+        .limit(8);
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 30,
+    enabled: !!parentId,
+  });
+
+  if (!subcategories || subcategories.length === 0) return null;
+
+  return (
+    <div className="mt-4 mb-2">
+      <h3 className="text-xs font-semibold text-muted-foreground mb-2 px-1">Онцлох дэд ангилалууд</h3>
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+        {subcategories.map((sub) => (
+          <Link
+            key={sub.internal_id}
+            to={`/ot/browse/${sub.internal_id}`}
+            className="flex flex-col items-center gap-1.5 group"
+          >
+            <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-muted/50 border flex items-center justify-center overflow-hidden group-hover:border-primary/30 transition-colors">
+              {sub.icon_url ? (
+                <img src={sub.icon_url} alt="" className="w-10 h-10 md:w-12 md:h-12 object-contain" />
+              ) : (
+                <Folder className="h-5 w-5 text-muted-foreground" />
+              )}
+            </div>
+            <span className="text-[10px] md:text-xs text-center text-muted-foreground group-hover:text-foreground line-clamp-2 leading-tight max-w-[70px]">
+              {sub.name_mn || sub.name_en || sub.internal_id}
+            </span>
           </Link>
         ))}
       </div>
     </div>
+  );
+}
+
+// ─── Infinite Scroll Feed (random from all providers) ───────
+function InfiniteProductFeed({ categoryId }: { categoryId: string | null }) {
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  // Random order keywords to get variety
+  const orderOptions = ["Volume:Desc", "Price:Asc", "Price:Desc"];
+  const [randomOrder] = useState(() => orderOptions[Math.floor(Math.random() * orderOptions.length)]);
+  const [randomSeed] = useState(() => Math.floor(Math.random() * 100));
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: ["home-infinite-feed", categoryId, randomSeed],
+    queryFn: ({ pageParam = 0 }) =>
+      searchItems({
+        categoryId: categoryId || undefined,
+        page: pageParam,
+        pageSize: 20,
+        orderBy: randomOrder,
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
+      if (loaded < lastPage.totalCount && loaded < 200) return allPages.length;
+      return undefined;
+    },
+    initialPageParam: 0,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Intersection Observer for infinite scroll
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [entry] = entries;
+      if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
+
+  useEffect(() => {
+    const el = observerTarget.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(handleObserver, { threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  const allItems = data?.pages.flatMap((p) => p.items) || [];
+
+  return (
+    <>
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-xl border bg-card overflow-hidden">
+              <Skeleton className="aspect-square" />
+              <div className="p-2 space-y-1.5">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
+          {allItems.map((product) => (
+            <OtProductCardComponent key={product.id} product={product} />
+          ))}
+        </div>
+      )}
+
+      {/* Infinite scroll trigger */}
+      <div ref={observerTarget} className="h-10 flex items-center justify-center">
+        {isFetchingNextPage && (
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        )}
+      </div>
+    </>
   );
 }
 
@@ -133,7 +275,7 @@ function HomeSectionBlock({ section }: { section: ProviderSection }) {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 md:gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="rounded-xl border bg-card overflow-hidden">
               <Skeleton className="aspect-square" />
@@ -146,7 +288,7 @@ function HomeSectionBlock({ section }: { section: ProviderSection }) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 md:gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
             {allItems.map((product) => (
               <OtProductCardComponent key={product.id} product={product} />
             ))}
@@ -172,6 +314,8 @@ function HomeSectionBlock({ section }: { section: ProviderSection }) {
 }
 
 export default function Home() {
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+
   // Fetch all sections marked show_on_home from both providers
   const { data: sections, isLoading: loadingSections } = useQuery({
     queryKey: ["home-sections"],
@@ -189,40 +333,49 @@ export default function Home() {
 
   return (
     <div className="animate-fade-in">
-      {/* Search bar - visible on mobile, hidden on desktop (header has it) */}
+      {/* Search bar - visible on mobile (no header on mobile), hidden on desktop (header has it) */}
       <div className="px-3 pt-3 pb-2 md:hidden">
         <HeaderSearch />
       </div>
 
-      {/* Category tabs - horizontal scroll */}
+      {/* Category tabs - horizontal scroll with swipe to switch */}
       <div className="px-3 md:container border-b">
-        <CategoryTabs />
+        <CategoryTabs activeId={activeCategoryId} onSelect={setActiveCategoryId} />
       </div>
 
-      {/* Sections */}
+      {/* Content area */}
       <div className="px-2 md:container py-4 md:py-6">
-        {loadingSections ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : sections && sections.length > 0 ? (
-          sections.map((section) => (
-            <HomeSectionBlock key={section.id} section={section} />
-          ))
-        ) : (
+        {/* Show featured subcategories when a category is selected */}
+        {activeCategoryId && (
+          <FeaturedSubcategories parentId={activeCategoryId} />
+        )}
+
+        {/* Admin-configured sections (only when "Бүгд" tab is active) */}
+        {activeCategoryId === null && (
           <>
-            {/* Fallback static sections if no admin sections configured */}
-            <p className="text-center text-muted-foreground py-10">Секц тохируулагдаагүй байна</p>
+            {loadingSections ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : sections && sections.length > 0 ? (
+              sections.map((section) => (
+                <HomeSectionBlock key={section.id} section={section} />
+              ))
+            ) : null}
           </>
         )}
 
-        {/* CTA */}
-        <div className="flex justify-center py-4">
-          <Link to="/ot">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              Маркетплэйс руу очих
-            </Button>
-          </Link>
+        {/* Infinite scroll product feed */}
+        <div className="mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+            <h2 className="text-sm md:text-lg font-bold">
+              {activeCategoryId ? "Бараанууд" : "Танд санал болгох"}
+            </h2>
+          </div>
+          <InfiniteProductFeed categoryId={activeCategoryId} />
         </div>
       </div>
     </div>
