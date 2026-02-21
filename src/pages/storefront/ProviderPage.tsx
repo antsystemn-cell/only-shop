@@ -129,9 +129,9 @@ function SectionBlock({ section }: { section: ProviderSection }) {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
           {Array.from({ length: section.page_size || 12 }).map((_, i) => (
-            <div key={i} className="rounded-xl border bg-card overflow-hidden">
+            <div key={i} className="overflow-hidden">
               <Skeleton className="aspect-square" />
               <div className="p-2 space-y-1.5">
                 <Skeleton className="h-3 w-full" />
@@ -142,7 +142,7 @@ function SectionBlock({ section }: { section: ProviderSection }) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
             {allItems.map((product) => (
               <OtProductCardComponent key={product.id} product={product} />
             ))}
