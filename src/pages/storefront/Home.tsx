@@ -189,9 +189,9 @@ function InfiniteProductFeed({ categoryId }: { categoryId: string | null }) {
   return (
     <>
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rounded-xl border bg-card overflow-hidden">
+            <div key={i} className="overflow-hidden">
               <Skeleton className="aspect-square" />
               <div className="p-2 space-y-1.5">
                 <Skeleton className="h-3 w-full" />
@@ -201,7 +201,7 @@ function InfiniteProductFeed({ categoryId }: { categoryId: string | null }) {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
           {allItems.map((product) => (
             <OtProductCardComponent key={product.id} product={product} />
           ))}
@@ -313,6 +313,16 @@ function HomeSectionBlock({ section }: { section: ProviderSection }) {
 export default function Home() {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top when category changes
+  const handleCategorySelect = useCallback((id: string | null) => {
+    setActiveCategoryId(id);
+    if (contentRef.current) {
+      contentRef.current.scrollTo({ top: 0 });
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, []);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
@@ -338,12 +348,12 @@ export default function Home() {
   const activeIndex = orderedIds.indexOf(activeCategoryId);
 
   const swipeToPrev = useCallback(() => {
-    if (activeIndex > 0) setActiveCategoryId(orderedIds[activeIndex - 1]);
-  }, [activeIndex, orderedIds]);
+    if (activeIndex > 0) handleCategorySelect(orderedIds[activeIndex - 1]);
+  }, [activeIndex, orderedIds, handleCategorySelect]);
 
   const swipeToNext = useCallback(() => {
-    if (activeIndex < orderedIds.length - 1) setActiveCategoryId(orderedIds[activeIndex + 1]);
-  }, [activeIndex, orderedIds]);
+    if (activeIndex < orderedIds.length - 1) handleCategorySelect(orderedIds[activeIndex + 1]);
+  }, [activeIndex, orderedIds, handleCategorySelect]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -384,13 +394,14 @@ export default function Home() {
 
         {/* Category tabs */}
         <div className="px-3 md:container border-b">
-          <CategoryTabs activeId={activeCategoryId} onSelect={setActiveCategoryId} categories={categoryList} />
+          <CategoryTabs activeId={activeCategoryId} onSelect={handleCategorySelect} categories={categoryList} />
         </div>
       </div>
 
       {/* Content area - swipeable on mobile */}
       <div
-        className="px-2 md:container py-4 md:py-6"
+        ref={contentRef}
+        className="px-1 md:container py-2 md:py-6"
         onTouchStart={isMobile ? handleTouchStart : undefined}
         onTouchEnd={isMobile ? handleTouchEnd : undefined}
       >
@@ -399,33 +410,8 @@ export default function Home() {
           <FeaturedSubcategories parentId={activeCategoryId} />
         )}
 
-        {/* Admin-configured sections (only when "Бүгд" tab is active) */}
-        {activeCategoryId === null && (
-          <>
-            {loadingSections ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : sections && sections.length > 0 ? (
-              sections.map((section) => (
-                <HomeSectionBlock key={section.id} section={section} />
-              ))
-            ) : null}
-          </>
-        )}
-
-        {/* Infinite scroll product feed */}
-        <div className="mt-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-1.5 rounded-md bg-primary/10 text-primary">
-              <TrendingUp className="h-4 w-4" />
-            </div>
-            <h2 className="text-sm md:text-lg font-bold">
-              {activeCategoryId ? "Бараанууд" : "Танд санал болгох"}
-            </h2>
-          </div>
-          <InfiniteProductFeed categoryId={activeCategoryId} />
-        </div>
+        {/* Infinite scroll product feed - no headers for "Бүгд" */}
+        <InfiniteProductFeed categoryId={activeCategoryId} />
       </div>
     </div>
   );
