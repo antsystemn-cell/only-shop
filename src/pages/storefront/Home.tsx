@@ -409,12 +409,10 @@ export default function Home() {
           <HeaderSearch />
         </div>
 
-        {/* Category tabs - hide when "Бүгд" is active on mobile for clean feed */}
-        {(activeCategoryId !== null || !isMobile) && (
-          <div className="px-3 md:container border-b">
-            <CategoryTabs activeId={activeCategoryId} onSelect={handleCategorySelect} categories={categoryList} />
-          </div>
-        )}
+        {/* Category tabs - always visible */}
+        <div className="px-3 md:container border-b">
+          <CategoryTabs activeId={activeCategoryId} onSelect={handleCategorySelect} categories={categoryList} />
+        </div>
       </div>
 
       {/* Content area - swipeable on mobile */}
