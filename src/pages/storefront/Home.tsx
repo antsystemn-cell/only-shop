@@ -8,7 +8,8 @@ import { searchItems } from "@/services/otApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
 import type { OtProductCard } from "@/types/otApi";
-import { useRef, useCallback, useEffect, useState } from "react";
+import { useRef, useCallback, useEffect, useState, useMemo } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Icon map for admin-configured sections
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -40,20 +41,14 @@ interface ProviderSection {
 }
 
 // ─── Category Tabs (horizontal scrollable thin text) ────────
-function CategoryTabs({ activeId, onSelect }: { activeId: string | null; onSelect: (id: string | null) => void }) {
-  const { data: categories } = useQuery({
-    queryKey: ["ot-root-categories-strip"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("ot_categories")
-        .select("id, internal_id, name_mn, name_en, icon_url, parent_internal_id")
-        .is("parent_internal_id", null)
-        .eq("is_active", true)
-        .order("display_order");
-      return data || [];
-    },
-    staleTime: 1000 * 60 * 30,
-  });
+function CategoryTabs({ activeId, onSelect, categories }: { activeId: string | null; onSelect: (id: string | null) => void; categories: Array<{ internal_id: string; name_mn: string | null; name_en: string | null }> }) {
+  const activeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (activeRef.current) {
+      activeRef.current.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [activeId]);
 
   if (!categories || categories.length === 0) return null;
 
@@ -61,6 +56,7 @@ function CategoryTabs({ activeId, onSelect }: { activeId: string | null; onSelec
     <div className="overflow-x-auto scrollbar-hide">
       <div className="flex items-center gap-1 pb-1">
         <button
+          ref={activeId === null ? activeRef : undefined}
           onClick={() => onSelect(null)}
           className={`shrink-0 px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
             activeId === null
@@ -70,9 +66,10 @@ function CategoryTabs({ activeId, onSelect }: { activeId: string | null; onSelec
         >
           Бүгд
         </button>
-        {categories.slice(0, 12).map((cat) => (
+        {categories.map((cat) => (
           <button
             key={cat.internal_id}
+            ref={activeId === cat.internal_id ? activeRef : undefined}
             onClick={() => onSelect(cat.internal_id)}
             className={`shrink-0 px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
               activeId === cat.internal_id
@@ -315,6 +312,51 @@ function HomeSectionBlock({ section }: { section: ProviderSection }) {
 
 export default function Home() {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
+  // Fetch categories for tabs & swipe
+  const { data: rootCategories } = useQuery({
+    queryKey: ["ot-root-categories-strip"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ot_categories")
+        .select("id, internal_id, name_mn, name_en, icon_url, parent_internal_id")
+        .is("parent_internal_id", null)
+        .eq("is_active", true)
+        .order("display_order");
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const categoryList = useMemo(() => rootCategories?.slice(0, 12) || [], [rootCategories]);
+
+  // Build ordered list: [null, cat1, cat2, ...] for swipe navigation
+  const orderedIds = useMemo(() => [null, ...categoryList.map(c => c.internal_id)], [categoryList]);
+  const activeIndex = orderedIds.indexOf(activeCategoryId);
+
+  const swipeToPrev = useCallback(() => {
+    if (activeIndex > 0) setActiveCategoryId(orderedIds[activeIndex - 1]);
+  }, [activeIndex, orderedIds]);
+
+  const swipeToNext = useCallback(() => {
+    if (activeIndex < orderedIds.length - 1) setActiveCategoryId(orderedIds[activeIndex + 1]);
+  }, [activeIndex, orderedIds]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    touchEndX.current = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 60) {
+      if (diff > 0) swipeToNext();
+      else swipeToPrev();
+    }
+  }, [swipeToNext, swipeToPrev]);
 
   // Fetch all sections marked show_on_home from both providers
   const { data: sections, isLoading: loadingSections } = useQuery({
@@ -333,18 +375,25 @@ export default function Home() {
 
   return (
     <div className="animate-fade-in">
-      {/* Search bar - visible on mobile (no header on mobile), hidden on desktop (header has it) */}
-      <div className="px-3 pt-3 pb-2 md:hidden">
-        <HeaderSearch />
+      {/* Sticky header area on mobile: search + category tabs */}
+      <div className={isMobile ? "sticky top-0 z-30 bg-background" : ""}>
+        {/* Search bar - visible on mobile (no header on mobile), hidden on desktop (header has it) */}
+        <div className="px-3 pt-3 pb-2 md:hidden">
+          <HeaderSearch />
+        </div>
+
+        {/* Category tabs */}
+        <div className="px-3 md:container border-b">
+          <CategoryTabs activeId={activeCategoryId} onSelect={setActiveCategoryId} categories={categoryList} />
+        </div>
       </div>
 
-      {/* Category tabs - horizontal scroll with swipe to switch */}
-      <div className="px-3 md:container border-b">
-        <CategoryTabs activeId={activeCategoryId} onSelect={setActiveCategoryId} />
-      </div>
-
-      {/* Content area */}
-      <div className="px-2 md:container py-4 md:py-6">
+      {/* Content area - swipeable on mobile */}
+      <div
+        className="px-2 md:container py-4 md:py-6"
+        onTouchStart={isMobile ? handleTouchStart : undefined}
+        onTouchEnd={isMobile ? handleTouchEnd : undefined}
+      >
         {/* Show featured subcategories when a category is selected */}
         {activeCategoryId && (
           <FeaturedSubcategories parentId={activeCategoryId} />
