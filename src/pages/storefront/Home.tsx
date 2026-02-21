@@ -133,13 +133,19 @@ function FeaturedSubcategories({ parentId }: { parentId: string }) {
 }
 
 // ─── Infinite Scroll Feed (random from all providers) ───────
-function InfiniteProductFeed({ categoryId }: { categoryId: string | null }) {
+function InfiniteProductFeed({ categoryId, rootCategoryIds }: { categoryId: string | null; rootCategoryIds: string[] }) {
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  // Random order keywords to get variety
   const orderOptions = ["Volume:Desc", "Price:Asc", "Price:Desc"];
   const [randomOrder] = useState(() => orderOptions[Math.floor(Math.random() * orderOptions.length)]);
   const [randomSeed] = useState(() => Math.floor(Math.random() * 100));
+
+  // When no category selected ("Бүгд"), cycle through root categories per page
+  const getCategoryForPage = useCallback((page: number): string | undefined => {
+    if (categoryId) return categoryId;
+    if (rootCategoryIds.length === 0) return undefined;
+    return rootCategoryIds[page % rootCategoryIds.length];
+  }, [categoryId, rootCategoryIds]);
 
   const {
     data,
@@ -148,24 +154,25 @@ function InfiniteProductFeed({ categoryId }: { categoryId: string | null }) {
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["home-infinite-feed", categoryId, randomSeed],
-    queryFn: ({ pageParam = 0 }) =>
-      searchItems({
-        categoryId: categoryId || undefined,
-        page: pageParam,
+    queryKey: ["home-infinite-feed", categoryId, randomSeed, rootCategoryIds.length],
+    queryFn: ({ pageParam = 0 }) => {
+      const catId = getCategoryForPage(pageParam);
+      return searchItems({
+        categoryId: catId,
+        page: categoryId ? pageParam : Math.floor(pageParam / Math.max(rootCategoryIds.length, 1)),
         pageSize: 20,
         orderBy: randomOrder,
-      }),
-    getNextPageParam: (lastPage, allPages) => {
-      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
-      if (loaded < lastPage.totalCount && loaded < 200) return allPages.length;
+      });
+    },
+    getNextPageParam: (_lastPage, allPages) => {
+      if (allPages.length < 50) return allPages.length;
       return undefined;
     },
     initialPageParam: 0,
     staleTime: 1000 * 60 * 5,
+    enabled: categoryId !== null || rootCategoryIds.length > 0,
   });
 
-  // Intersection Observer for infinite scroll
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [entry] = entries;
@@ -184,7 +191,16 @@ function InfiniteProductFeed({ categoryId }: { categoryId: string | null }) {
     return () => observer.disconnect();
   }, [handleObserver]);
 
-  const allItems = data?.pages.flatMap((p) => p.items) || [];
+  // Deduplicate items
+  const allItems = useMemo(() => {
+    const items = data?.pages.flatMap((p) => p.items) || [];
+    const seen = new Set<string>();
+    return items.filter(item => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [data]);
 
   return (
     <>
@@ -208,7 +224,6 @@ function InfiniteProductFeed({ categoryId }: { categoryId: string | null }) {
         </div>
       )}
 
-      {/* Infinite scroll trigger */}
       <div ref={observerTarget} className="h-10 flex items-center justify-center">
         {isFetchingNextPage && (
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -414,7 +429,7 @@ export default function Home() {
           <FeaturedSubcategories parentId={activeCategoryId} />
         )}
 
-        <InfiniteProductFeed categoryId={activeCategoryId} />
+        <InfiniteProductFeed categoryId={activeCategoryId} rootCategoryIds={categoryList.map(c => c.internal_id)} />
       </div>
     </div>
   );
