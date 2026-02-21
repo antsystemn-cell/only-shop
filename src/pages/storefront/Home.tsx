@@ -318,10 +318,13 @@ export default function Home() {
   // Scroll to top when category changes
   const handleCategorySelect = useCallback((id: string | null) => {
     setActiveCategoryId(id);
+    // Scroll both window and any scrollable container to absolute top
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     if (contentRef.current) {
-      contentRef.current.scrollTo({ top: 0 });
+      contentRef.current.scrollTop = 0;
     }
-    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   }, []);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
