@@ -132,20 +132,22 @@ function FeaturedSubcategories({ parentId }: { parentId: string }) {
   );
 }
 
-// ─── Infinite Scroll Feed (random from all providers) ───────
+// ─── Provider list for round-robin ──────────────────────────
+const FEED_PROVIDERS = ["Poizon", "Taobao", "Taobao"]; // Taobao twice = includes Tmall results
+
+// ─── Infinite Scroll Feed (alternating providers) ───────────
 function InfiniteProductFeed({ categoryId, rootCategoryIds }: { categoryId: string | null; rootCategoryIds: string[] }) {
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  const orderOptions = ["Volume:Desc", "Price:Asc", "Price:Desc"];
+  // Random page offset per session so users see different products each visit
+  const [randomPageOffset] = useState(() => Math.floor(Math.random() * 20));
+  const orderOptions = ["Volume:Desc", "Price:Asc", "Price:Desc", "Popularity:Desc"];
   const [randomOrder] = useState(() => orderOptions[Math.floor(Math.random() * orderOptions.length)]);
-  const [randomSeed] = useState(() => Math.floor(Math.random() * 100));
 
-  // When no category selected ("Бүгд"), cycle through root categories per page
-  const getCategoryForPage = useCallback((page: number): string | undefined => {
-    if (categoryId) return categoryId;
-    if (rootCategoryIds.length === 0) return undefined;
-    return rootCategoryIds[page % rootCategoryIds.length];
-  }, [categoryId, rootCategoryIds]);
+  // Each pageParam maps to a provider in round-robin fashion
+  const getProviderForPage = useCallback((page: number): string => {
+    return FEED_PROVIDERS[page % FEED_PROVIDERS.length];
+  }, []);
 
   const {
     data,
@@ -154,23 +156,25 @@ function InfiniteProductFeed({ categoryId, rootCategoryIds }: { categoryId: stri
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["home-infinite-feed", categoryId, randomSeed, rootCategoryIds.length],
+    queryKey: ["home-infinite-feed", categoryId, randomPageOffset, randomOrder],
     queryFn: ({ pageParam = 0 }) => {
-      const catId = getCategoryForPage(pageParam);
+      const provider = getProviderForPage(pageParam);
+      // Calculate the actual API page for this provider (every N pages we advance by 1)
+      const providerPage = Math.floor(pageParam / FEED_PROVIDERS.length) + randomPageOffset;
       return searchItems({
-        categoryId: catId,
-        page: categoryId ? pageParam : Math.floor(pageParam / Math.max(rootCategoryIds.length, 1)),
+        categoryId: categoryId || undefined,
+        provider,
+        page: providerPage,
         pageSize: 20,
         orderBy: randomOrder,
       });
     },
     getNextPageParam: (_lastPage, allPages) => {
-      if (allPages.length < 50) return allPages.length;
+      if (allPages.length < 60) return allPages.length;
       return undefined;
     },
     initialPageParam: 0,
     staleTime: 1000 * 60 * 5,
-    enabled: categoryId !== null || rootCategoryIds.length > 0,
   });
 
   const handleObserver = useCallback(
