@@ -139,15 +139,20 @@ const FEED_PROVIDERS = ["Poizon", "Taobao", "Taobao"]; // Taobao twice = include
 function InfiniteProductFeed({ categoryId, rootCategoryIds }: { categoryId: string | null; rootCategoryIds: string[] }) {
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  // Random page offset per session so users see different products each visit
-  const [randomPageOffset] = useState(() => Math.floor(Math.random() * 20));
-  const orderOptions = ["Volume:Desc", "Price:Asc", "Price:Desc", "Popularity:Desc"];
+  const [randomPageOffset] = useState(() => Math.floor(Math.random() * 10));
+  const orderOptions = ["Volume:Desc", "Price:Asc", "Price:Desc"];
   const [randomOrder] = useState(() => orderOptions[Math.floor(Math.random() * orderOptions.length)]);
 
-  // Each pageParam maps to a provider in round-robin fashion
   const getProviderForPage = useCallback((page: number): string => {
     return FEED_PROVIDERS[page % FEED_PROVIDERS.length];
   }, []);
+
+  // Always provide a categoryId – cycle through root categories when "Бүгд" is selected
+  const getCategoryForPage = useCallback((page: number): string | undefined => {
+    if (categoryId) return categoryId;
+    if (rootCategoryIds.length === 0) return undefined;
+    return rootCategoryIds[page % rootCategoryIds.length];
+  }, [categoryId, rootCategoryIds]);
 
   const {
     data,
@@ -156,13 +161,13 @@ function InfiniteProductFeed({ categoryId, rootCategoryIds }: { categoryId: stri
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["home-infinite-feed", categoryId, randomPageOffset, randomOrder],
+    queryKey: ["home-infinite-feed", categoryId, randomPageOffset, randomOrder, rootCategoryIds.length],
     queryFn: ({ pageParam = 0 }) => {
       const provider = getProviderForPage(pageParam);
-      // Calculate the actual API page for this provider (every N pages we advance by 1)
+      const catId = getCategoryForPage(pageParam);
       const providerPage = Math.floor(pageParam / FEED_PROVIDERS.length) + randomPageOffset;
       return searchItems({
-        categoryId: categoryId || undefined,
+        categoryId: catId,
         provider,
         page: providerPage,
         pageSize: 20,
@@ -175,6 +180,7 @@ function InfiniteProductFeed({ categoryId, rootCategoryIds }: { categoryId: stri
     },
     initialPageParam: 0,
     staleTime: 1000 * 60 * 5,
+    enabled: rootCategoryIds.length > 0 || categoryId !== null,
   });
 
   const handleObserver = useCallback(
