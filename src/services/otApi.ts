@@ -7,6 +7,13 @@ import type {
   OtSearchItem,
   OtCategory,
 } from "@/types/otApi";
+import {
+  getPriceConfig,
+  calculateMntPrice,
+  getOriginalCurrencyCode,
+  getOriginalPriceValue,
+  type PriceConfig,
+} from "@/utils/priceCalculator";
 
 const LANGUAGE = "en";
 
@@ -108,13 +115,16 @@ export interface SearchResponse {
 }
 
 export async function searchItems(params: SearchParams): Promise<SearchResponse> {
-  const data = await callProxy<OtSearchResult>("searchItems", { ...params } as Record<string, unknown>);
+  const [data, priceConfig] = await Promise.all([
+    callProxy<OtSearchResult>("searchItems", { ...params } as Record<string, unknown>),
+    getPriceConfig(),
+  ]);
   const result = data?.Result;
 
   // Handle both array and { Content: [] } response formats
   const rawItems = result?.Items?.Items;
   const itemsArray = Array.isArray(rawItems) ? rawItems : (rawItems as any)?.Content || [];
-  const items = itemsArray.map((item: OtSearchItem) => mapSearchItem(item));
+  const items = itemsArray.map((item: OtSearchItem) => mapSearchItem(item, priceConfig));
   const totalCount = result?.Items?.TotalCount || (rawItems as any)?.TotalCount || 0;
 
   const rawSubCats = result?.SubCategories?.Items;
@@ -177,7 +187,10 @@ export interface ProductDetail {
 }
 
 export async function fetchProductDetail(itemId: string): Promise<ProductDetail> {
-  const data = await callProxy<any>("getItemFullInfo", { itemId });
+  const [data, priceConfig] = await Promise.all([
+    callProxy<any>("getItemFullInfo", { itemId }),
+    getPriceConfig(),
+  ]);
   const item = data?.Result?.Item;
 
   if (!item) throw new Error("Product not found");
@@ -243,9 +256,21 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
     externalTitle: item.ExternalTitle,
     imageUrl: item.MainPictureUrl || images[0] || "",
     images,
-    price: item.Price?.ConvertedPriceList?.Internal?.Price ?? (typeof item.Price?.ConvertedPrice === "number" ? item.Price.ConvertedPrice : undefined) ?? item.Price?.OriginalPrice ?? 0,
-    originalPrice: item.OriginalPrice?.ConvertedPriceList?.Internal?.Price ?? (typeof item.OriginalPrice?.ConvertedPrice === "number" ? item.OriginalPrice.ConvertedPrice : undefined) ?? item.OriginalPrice?.OriginalPrice,
-    currency: item.Price?.ConvertedPriceList?.Internal?.Sign || item.Price?.CurrencySign || "₮",
+    price: calculateMntPrice(
+      getOriginalPriceValue(item.Price),
+      getOriginalCurrencyCode(item.Price),
+      item.ProviderType,
+      priceConfig
+    ),
+    originalPrice: item.OriginalPrice
+      ? calculateMntPrice(
+          getOriginalPriceValue(item.OriginalPrice),
+          getOriginalCurrencyCode(item.OriginalPrice),
+          item.ProviderType,
+          priceConfig
+        )
+      : undefined,
+    currency: "₮",
     quantity: item.Quantity ?? item.MasterQuantity,
     vendorName: item.VendorName || item.VendorDisplayName,
     vendorScore: item.VendorScore,
@@ -259,7 +284,12 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
     configuredItems: configuredItemsArray.map((ci: any) => ({
       id: ci.Id,
       quantity: ci.Quantity,
-      price: ci.Price?.ConvertedPriceList?.Internal?.Price ?? (typeof ci.Price?.ConvertedPrice === "number" ? ci.Price.ConvertedPrice : undefined) ?? ci.Price?.OriginalPrice,
+      price: ci.Price ? calculateMntPrice(
+        getOriginalPriceValue(ci.Price),
+        getOriginalCurrencyCode(ci.Price),
+        item.ProviderType,
+        priceConfig
+      ) : undefined,
       imageUrl: ci.ImageUrl,
       configuratorIds: (Array.isArray(ci.Configurators) ? ci.Configurators : ci.Configurators ? [ci.Configurators] : []).map((c: any) => c.Vid),
     })),
@@ -703,16 +733,22 @@ function mapCategory(cat: OtCategory): OtCategoryCard {
   };
 }
 
-function mapSearchItem(item: OtSearchItem): OtProductCard {
-  // Extract price: prefer ConvertedPriceList.Internal.Price, fallback to OriginalPrice
-  const price = item.Price?.ConvertedPriceList?.Internal?.Price
-    ?? (typeof item.Price?.ConvertedPrice === "number" ? item.Price.ConvertedPrice : undefined)
-    ?? item.Price?.OriginalPrice
-    ?? 0;
-  const originalPrice = item.OriginalPrice?.ConvertedPriceList?.Internal?.Price
-    ?? (typeof item.OriginalPrice?.ConvertedPrice === "number" ? item.OriginalPrice.ConvertedPrice : undefined)
-    ?? item.OriginalPrice?.OriginalPrice;
-  const currency = item.Price?.ConvertedPriceList?.Internal?.Sign || item.Price?.CurrencySign || "₮";
+function mapSearchItem(item: OtSearchItem, priceConfig: PriceConfig): OtProductCard {
+  const currencyCode = getOriginalCurrencyCode(item.Price);
+  const price = calculateMntPrice(
+    getOriginalPriceValue(item.Price),
+    currencyCode,
+    item.ProviderType,
+    priceConfig
+  );
+  const originalPrice = item.OriginalPrice
+    ? calculateMntPrice(
+        getOriginalPriceValue(item.OriginalPrice),
+        getOriginalCurrencyCode(item.OriginalPrice),
+        item.ProviderType,
+        priceConfig
+      )
+    : undefined;
 
   return {
     id: item.Id || "",
@@ -720,7 +756,7 @@ function mapSearchItem(item: OtSearchItem): OtProductCard {
     imageUrl: item.MainPictureUrl || "",
     price,
     originalPrice,
-    currency,
+    currency: "₮",
     vendorName: item.VendorName,
     quantity: item.Quantity,
     providerType: item.ProviderType,
