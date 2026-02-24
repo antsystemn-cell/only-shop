@@ -20,7 +20,12 @@ export interface PriceConfig {
 
 let cachedConfig: PriceConfig | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 60 * 1000; // 1 minute – keeps prices fresh after admin edits
+
+export function invalidatePriceConfigCache() {
+  cachedConfig = null;
+  cacheTimestamp = 0;
+}
 
 export async function getPriceConfig(): Promise<PriceConfig> {
   const now = Date.now();
@@ -122,12 +127,25 @@ export function calculateMntPrice(
  * Extract original currency code from OT API price object.
  */
 export function getOriginalCurrencyCode(priceObj: any): string {
-  return priceObj?.OriginalCurrencyCode || "CNY";
+  return priceObj?.OriginalCurrencyCode
+    || priceObj?.PriceWithoutDelivery?.OriginalCurrencyCode
+    || "CNY";
 }
 
 /**
  * Extract original price value (in foreign currency, NOT converted).
+ * Prefers OriginalPrice > PriceWithoutDelivery.OriginalPrice > MarginPrice.
+ * Skips zero / negative values so we don't display 0₮.
  */
 export function getOriginalPriceValue(priceObj: any): number {
-  return priceObj?.OriginalPrice ?? priceObj?.MarginPrice ?? 0;
+  const orig = priceObj?.OriginalPrice;
+  if (typeof orig === "number" && orig > 0) return orig;
+
+  const pwod = priceObj?.PriceWithoutDelivery?.OriginalPrice;
+  if (typeof pwod === "number" && pwod > 0) return pwod;
+
+  const margin = priceObj?.MarginPrice;
+  if (typeof margin === "number" && margin > 0) return margin;
+
+  return 0;
 }
