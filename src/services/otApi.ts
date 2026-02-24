@@ -172,6 +172,7 @@ export interface ProductDetail {
     name?: string;
     score?: number;
   };
+  externalUrl?: string;
 }
 
 export async function fetchProductDetail(itemId: string): Promise<ProductDetail> {
@@ -275,6 +276,7 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
           score: item.VendorScore,
         }
       : undefined,
+    externalUrl: item.TaobaoItemUrl || item.ExternalItemUrl,
   };
 }
 
