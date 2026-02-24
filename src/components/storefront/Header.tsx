@@ -7,7 +7,13 @@ import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { UnifiedCartDrawer } from "./UnifiedCartDrawer";
 import HeaderSearch from "./HeaderSearch";
 import onlyLogo from "@/assets/only-logo.png";
@@ -25,32 +31,43 @@ export function Header() {
     await signOut();
     toast.success("Амжилттай гарлаа");
   };
-  const navLinks = [{
-    href: "/",
-    label: "Нүүр"
-  }, {
-    href: "/ot",
-    label: "Маркетплэйс"
-  }, {
-    href: "/shop",
-    label: "Дэлгүүр"
-  }, {
-    href: "/categories",
-    label: "Ангилал"
-  }];
-  return <header className="sticky top-0 z-50 w-full border-b backdrop-blur bg-secondary">
+  const navLinks = [
+    {
+      href: "/",
+      label: "Нүүр",
+    },
+    {
+      href: "/ot",
+      label: "Хятадаас захиалах",
+    },
+    {
+      href: "/shop",
+      label: "Дэлгүүр",
+    },
+    {
+      href: "/categories",
+      label: "Ангилал",
+    },
+  ];
+  return (
+    <header className="sticky top-0 z-50 w-full border-b backdrop-blur bg-secondary">
       <div className="container flex h-16 items-center justify-between gap-4 bg-secondary">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <img src={onlyLogo} alt="Only" className="h-10 w-auto" />
-          
         </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          {navLinks.map(link => <Link key={link.href} to={link.href} className="text-sm font-medium transition-colors text-secondary-foreground">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              to={link.href}
+              className="text-sm font-medium transition-colors text-secondary-foreground"
+            >
               {link.label}
-            </Link>)}
+            </Link>
+          ))}
         </nav>
 
         {/* Search - Desktop */}
@@ -69,24 +86,26 @@ export function Header() {
           <Link to="/wishlist">
             <Button variant="ghost" size="icon" className="relative">
               <Heart className={`h-5 w-5 ${wishlistCount > 0 ? "text-red-500 fill-red-500" : ""}`} />
-              {wishlistCount > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs font-bold text-white flex items-center justify-center">
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs font-bold text-white flex items-center justify-center">
                   {wishlistCount > 99 ? "99+" : wishlistCount}
-                </span>}
+                </span>
+              )}
             </Button>
           </Link>
 
           {/* User Menu */}
-          {!isLoading && <>
-              {user ? <DropdownMenu>
+          {!isLoading && (
+            <>
+              {user ? (
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
                       <User className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <div className="px-2 py-1.5 text-sm font-medium truncate">
-                      {user.email}
-                    </div>
+                    <div className="px-2 py-1.5 text-sm font-medium truncate">{user.email}</div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link to="/profile">Миний профайл</Link>
@@ -115,19 +134,25 @@ export function Header() {
                       Гарах
                     </DropdownMenuItem>
                   </DropdownMenuContent>
-                </DropdownMenu> : <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                </DropdownMenu>
+              ) : (
+                <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
                   <Link to="/auth">Нэвтрэх</Link>
-                </Button>}
-            </>}
+                </Button>
+              )}
+            </>
+          )}
 
           {/* Cart */}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
-                {itemCount > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-xs font-bold text-primary-foreground flex items-center justify-center">
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-xs font-bold text-primary-foreground flex items-center justify-center">
                     {itemCount > 99 ? "99+" : itemCount}
-                  </span>}
+                  </span>
+                )}
               </Button>
             </SheetTrigger>
             <SheetContent className="w-full sm:max-w-lg">
@@ -136,61 +161,123 @@ export function Header() {
           </Sheet>
 
           {/* Mobile Menu */}
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
             <Menu className="h-5 w-5" />
           </Button>
         </div>
       </div>
 
       {/* Mobile Search */}
-      {isSearchOpen && <div className="border-t p-4 md:hidden animate-fade-in">
+      {isSearchOpen && (
+        <div className="border-t p-4 md:hidden animate-fade-in">
           <HeaderSearch autoFocus onSearchComplete={() => setIsSearchOpen(false)} />
-        </div>}
+        </div>
+      )}
 
       {/* Mobile Navigation */}
-      {isMobileMenuOpen && <nav className="border-t p-4 md:hidden animate-fade-in">
+      {isMobileMenuOpen && (
+        <nav className="border-t p-4 md:hidden animate-fade-in">
           <div className="flex flex-col gap-2">
-            {navLinks.map(link => <Link key={link.href} to={link.href} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                to={link.href}
+                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
                 {link.label}
-              </Link>)}
-            <Link to="/wishlist" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+              </Link>
+            ))}
+            <Link
+              to="/wishlist"
+              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors flex items-center gap-2"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
               <Heart className={`h-4 w-4 ${wishlistCount > 0 ? "text-red-500 fill-red-500" : ""}`} />
               Хүслийн жагсаалт
-              {wishlistCount > 0 && <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{wishlistCount}</span>}
+              {wishlistCount > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{wishlistCount}</span>
+              )}
             </Link>
-            {!user && <Link to="/auth" className="px-4 py-2 text-sm font-medium text-primary hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+            {!user && (
+              <Link
+                to="/auth"
+                className="px-4 py-2 text-sm font-medium text-primary hover:bg-muted rounded-lg transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
                 Нэвтрэх / Бүртгүүлэх
-              </Link>}
-            {user && <>
-                <Link to="/profile" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+              </Link>
+            )}
+            {user && (
+              <>
+                <Link
+                  to="/profile"
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   Миний профайл
                 </Link>
-                <Link to="/ot/orders" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link
+                  to="/ot/orders"
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   OT Захиалгууд
                 </Link>
-                <Link to="/wallet" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link
+                  to="/wallet"
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   Данс / Wallet
                 </Link>
-                <Link to="/favourite-vendors" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link
+                  to="/favourite-vendors"
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   Дуртай борлуулагчид
                 </Link>
-                <Link to="/delivery-calculator" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link
+                  to="/delivery-calculator"
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   Хүргэлтийн тооцоолуур
                 </Link>
-                <Link to="/support" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link
+                  to="/support"
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   Дэмжлэг
                 </Link>
-                <Link to="/orders" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link
+                  to="/orders"
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   Дотоод захиалгууд
                 </Link>
-                <button className="px-4 py-2 text-sm font-medium text-destructive hover:bg-muted rounded-lg transition-colors text-left" onClick={() => {
-            handleSignOut();
-            setIsMobileMenuOpen(false);
-          }}>
+                <button
+                  className="px-4 py-2 text-sm font-medium text-destructive hover:bg-muted rounded-lg transition-colors text-left"
+                  onClick={() => {
+                    handleSignOut();
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
                   Гарах
                 </button>
-              </>}
+              </>
+            )}
           </div>
-        </nav>}
-    </header>;
+        </nav>
+      )}
+    </header>
+  );
 }
