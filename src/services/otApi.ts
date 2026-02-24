@@ -173,6 +173,7 @@ export interface ProductDetail {
     score?: number;
   };
   externalUrl?: string;
+  providerType?: string;
 }
 
 export async function fetchProductDetail(itemId: string): Promise<ProductDetail> {
@@ -277,6 +278,7 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
         }
       : undefined,
     externalUrl: item.TaobaoItemUrl || item.ExternalItemUrl,
+    providerType: item.ProviderType,
   };
 }
 
@@ -721,5 +723,6 @@ function mapSearchItem(item: OtSearchItem): OtProductCard {
     currency,
     vendorName: item.VendorName,
     quantity: item.Quantity,
+    providerType: item.ProviderType,
   };
 }

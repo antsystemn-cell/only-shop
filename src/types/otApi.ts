@@ -184,6 +184,7 @@ export interface OtProductCard {
   currency: string;
   vendorName?: string;
   quantity?: number;
+  providerType?: string;
 }
 
 export interface OtCategoryCard {

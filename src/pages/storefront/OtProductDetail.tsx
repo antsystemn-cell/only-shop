@@ -18,6 +18,7 @@ import {
   Share2,
   Package,
   Truck,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +31,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductReviews } from "@/components/storefront/ProductReviews";
 import { toast } from "sonner";
-import { ExternalLink } from "lucide-react";
 
 function ensureArray<T>(value: T | T[] | undefined | null): T[] {
   if (!value) return [];
@@ -95,6 +95,23 @@ export default function OtProductDetail() {
       selectedVids.every((vid) => ci.configuratorIds.includes(vid))
     );
   }, [product, selectedConfigs]);
+
+  // Price range from configured items
+  const priceRange = useMemo(() => {
+    if (!product?.configuredItems?.length) return null;
+    const prices = product.configuredItems
+      .map((ci) => ci.price)
+      .filter((p): p is number => p != null && p > 0);
+    if (prices.length < 2) return null;
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    if (min === max) return null;
+    return { min, max };
+  }, [product]);
+
+  const allConfigsSelected = product?.configurators?.length
+    ? product.configurators.every((c) => selectedConfigs[c.pid] && selectedConfigs[c.pid] !== "")
+    : true;
 
   const effectivePrice = matchedConfig?.price ?? product?.price ?? 0;
   const effectiveQuantity = matchedConfig?.quantity ?? product?.quantity;
@@ -202,7 +219,7 @@ export default function OtProductDetail() {
       <div className="grid md:grid-cols-2 gap-6 md:gap-10">
         {/* ─── Image Gallery ─── */}
         <div className="overflow-hidden min-w-0">
-          <div className="relative aspect-square rounded-xl overflow-hidden bg-muted border max-w-full">
+          <div className="relative aspect-square rounded-xl overflow-hidden bg-white border max-w-full">
             <img
               src={effectiveImage}
               alt={product.title}
@@ -282,18 +299,39 @@ export default function OtProductDetail() {
           {/* Price section */}
           <div className="space-y-1">
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-primary">
-                {formatPrice(effectivePrice, product.currency)}
-              </span>
-              {product.originalPrice && product.originalPrice > effectivePrice && (
+              {/* Show price range if variants have different prices and not all selected */}
+              {priceRange && !allConfigsSelected ? (
+                <span className="text-3xl font-bold text-primary">
+                  {formatPrice(priceRange.min, product.currency)} – {formatPrice(priceRange.max, product.currency)}
+                </span>
+              ) : (
+                <span className="text-3xl font-bold text-primary">
+                  {formatPrice(effectivePrice, product.currency)}
+                </span>
+              )}
+              {product.originalPrice && product.originalPrice > effectivePrice && allConfigsSelected && (
                 <span className="text-lg text-muted-foreground line-through">
                   {formatPrice(product.originalPrice, product.currency)}
                 </span>
               )}
             </div>
-          </div>
 
-          {/* Stock & Delivery info */}
+            {/* Provider badge under price */}
+            {product.providerType?.toLowerCase() === "poizon" || product.providerType?.toLowerCase() === "dewu" ? (
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="inline-flex items-center gap-1 bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded">
+                  <Shield className="h-3 w-3" />
+                  100% Оригинал
+                </span>
+              </div>
+            ) : (product.providerType?.toLowerCase() === "taobao" || product.providerType?.toLowerCase() === "tmall") ? (
+              <div className="mt-1">
+                <span className="inline-flex items-center bg-orange-500 text-white text-xs font-medium px-2 py-0.5 rounded">
+                  {product.providerType === "Tmall" || product.providerType?.toLowerCase() === "tmall" ? "Tmall" : "Taobao"}
+                </span>
+              </div>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             {effectiveQuantity !== undefined && effectiveQuantity > 0 ? (
               <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
