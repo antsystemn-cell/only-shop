@@ -734,21 +734,32 @@ function mapCategory(cat: OtCategory): OtCategoryCard {
 }
 
 function mapSearchItem(item: OtSearchItem, priceConfig: PriceConfig): OtProductCard {
-  const currencyCode = getOriginalCurrencyCode(item.Price);
-  const price = calculateMntPrice(
-    getOriginalPriceValue(item.Price),
-    currencyCode,
-    item.ProviderType,
-    priceConfig
-  );
-  const originalPrice = item.OriginalPrice
-    ? calculateMntPrice(
-        getOriginalPriceValue(item.OriginalPrice),
-        getOriginalCurrencyCode(item.OriginalPrice),
+  // Use PromotionPrice as the current price when available (it's the actual selling price)
+  const effectivePrice = item.PromotionPrice || item.Price;
+  const currencyCode = getOriginalCurrencyCode(effectivePrice);
+  const rawValue = getOriginalPriceValue(effectivePrice);
+  const price = calculateMntPrice(rawValue, currencyCode, item.ProviderType, priceConfig);
+
+  // Show the regular Price as "originalPrice" (strikethrough) when there's a promotion
+  let originalPrice: number | undefined;
+  if (item.PromotionPrice && item.Price) {
+    const regValue = getOriginalPriceValue(item.Price);
+    if (regValue > rawValue) {
+      originalPrice = calculateMntPrice(
+        regValue,
+        getOriginalCurrencyCode(item.Price),
         item.ProviderType,
         priceConfig
-      )
-    : undefined;
+      );
+    }
+  } else if (item.OriginalPrice) {
+    originalPrice = calculateMntPrice(
+      getOriginalPriceValue(item.OriginalPrice),
+      getOriginalCurrencyCode(item.OriginalPrice),
+      item.ProviderType,
+      priceConfig
+    );
+  }
 
   return {
     id: item.Id || "",
