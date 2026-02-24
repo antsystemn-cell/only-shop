@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { OtProductCard } from "@/types/otApi";
+import { Shield } from "lucide-react";
 
 interface OtProductCardComponentProps {
   product: OtProductCard;
@@ -12,11 +13,30 @@ function formatMntPrice(price: number, currency: string) {
   return `${currency}${price.toFixed(2)}`;
 }
 
+function isPoizon(providerType?: string) {
+  return providerType?.toLowerCase() === "poizon" || providerType?.toLowerCase() === "dewu";
+}
+
+function isTaobaoOrTmall(providerType?: string) {
+  const p = providerType?.toLowerCase();
+  return p === "taobao" || p === "tmall";
+}
+
+function getProviderLabel(providerType?: string) {
+  const p = providerType?.toLowerCase();
+  if (p === "taobao") return "Taobao";
+  if (p === "tmall") return "Tmall";
+  return providerType;
+}
+
 export function OtProductCardComponent({ product }: OtProductCardComponentProps) {
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
   const discountPercent = hasDiscount
     ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
     : 0;
+
+  const poizon = isPoizon(product.providerType);
+  const taobao = isTaobaoOrTmall(product.providerType);
 
   return (
     <Link
@@ -24,7 +44,7 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
       className="group block overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
     >
       {/* Image */}
-      <div className="relative aspect-square overflow-hidden bg-card">
+      <div className="relative aspect-square overflow-hidden bg-white">
         <img
           src={product.imageUrl}
           alt={product.title}
@@ -37,6 +57,18 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
         {hasDiscount && discountPercent > 0 && (
           <span className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-xs font-bold px-2 py-1 rounded-md">
             -{discountPercent}%
+          </span>
+        )}
+        {/* Provider badges on image */}
+        {poizon && (
+          <span className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-emerald-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded">
+            <Shield className="h-2.5 w-2.5" />
+            100% Оригинал
+          </span>
+        )}
+        {taobao && (
+          <span className="absolute bottom-1.5 left-1.5 bg-orange-500 text-white text-[9px] md:text-[10px] font-medium px-1.5 py-0.5 rounded">
+            {getProviderLabel(product.providerType)}
           </span>
         )}
       </div>
