@@ -30,6 +30,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductReviews } from "@/components/storefront/ProductReviews";
 import { toast } from "sonner";
+import { ExternalLink } from "lucide-react";
 
 function ensureArray<T>(value: T | T[] | undefined | null): T[] {
   if (!value) return [];
@@ -52,6 +53,23 @@ export default function OtProductDetail() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedConfigs, setSelectedConfigs] = useState<Record<string, string>>({});
+
+  // Check if current user is admin
+  const { data: isAdmin } = useQuery({
+    queryKey: ["is-admin", user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 30,
+  });
 
   const { data: product, isLoading, error } = useQuery({
     queryKey: ["ot-product", itemId],
@@ -318,6 +336,19 @@ export default function OtProductDetail() {
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleShare}>
                   <Share2 className="h-4 w-4" />
                 </Button>
+                {isAdmin && product.externalUrl && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    asChild
+                    title="Эх линк руу очих"
+                  >
+                    <a href={product.externalUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                )}
                 {user && (
                   <FavouriteVendorButton
                     userId={user.id}
