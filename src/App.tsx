@@ -15,7 +15,7 @@ import { StorefrontLayout } from "./components/storefront/StorefrontLayout";
 import Home from "./pages/storefront/Home";
 import Shop from "./pages/storefront/Shop";
 import ProductDetail from "./pages/storefront/ProductDetail";
-import CategoriesPage from "./pages/storefront/Categories";
+// Categories page removed - categories are now shown in Shop page strip
 import Auth from "./pages/storefront/Auth";
 import Checkout from "./pages/storefront/Checkout";
 import OrderConfirmation from "./pages/storefront/OrderConfirmation";
@@ -91,7 +91,7 @@ const App = () => (
                 <Route path="/" element={<Home />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
-                <Route path="/categories" element={<CategoriesPage />} />
+                {/* /categories removed - categories shown in /shop */}
                 <Route path="/wishlist" element={<Wishlist />} />
                 <Route path="/ot" element={<OtShop />} />
                 <Route path="/ot/category/:categoryId" element={<OtCategory />} />

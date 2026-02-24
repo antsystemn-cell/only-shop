@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Filter, Grid3X3, Grid2X2, Loader2, SlidersHorizontal, X } from "lucide-react";
@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductCard } from "@/components/storefront/ProductCard";
+import { ShopCategoryStrip } from "@/components/storefront/ShopCategoryStrip";
 
 type SortOption = "newest" | "price-asc" | "price-desc" | "popular";
 
@@ -205,12 +206,20 @@ export default function Shop() {
   );
 
   return (
-    <div className="container py-8 animate-fade-in">
+    <div className="animate-fade-in">
+      {/* Category Strip */}
+      <ShopCategoryStrip
+        categories={categories || []}
+        activeCategoryId={categoryFilter}
+        onSelect={(id) => updateFilter("category", id)}
+      />
+
+      <div className="container py-6 md:py-8">
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Дэлгүүр</h1>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold">Бэлэн бараа</h1>
         <p className="text-muted-foreground mt-1">
-          Бүх бараануудыг харах
+          Монголд бэлэн байгаа бараанууд
         </p>
       </div>
 
@@ -382,6 +391,7 @@ export default function Shop() {
             </p>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
