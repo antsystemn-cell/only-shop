@@ -67,47 +67,42 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "Захиалга",
+    label: "Бэлэн бараа",
     defaultOpen: true,
     items: [
-      { title: "Захиалгын жагсаалт", url: "/admin/orders", icon: ShoppingCart },
-      { title: "OT Захиалга", url: "/admin/ot-orders", icon: Globe },
+      { title: "Бараа удирдах", url: "/admin/products", icon: Package },
+      { title: "Ангилал", url: "/admin/categories", icon: FolderTree },
+      { title: "Брэнд удирдах", url: "/admin/brands", icon: Tags },
+      { title: "Захиалга", url: "/admin/orders", icon: ShoppingCart },
       { title: "Хүргэлтийн тохиргоо", url: "/admin/delivery", icon: Truck },
-      { title: "OT Хүргэлт", url: "/admin/ot-delivery", icon: Globe },
+      { title: "Үнийн удирдлага", url: "/admin/pricing", icon: DollarSign },
+      { title: "Сэтгэгдэл & Үнэлгээ", url: "/admin/reviews", icon: Star },
     ],
   },
   {
-    label: "Каталог",
+    label: "OT Commerce",
     items: [
-      { title: "Ангилал", url: "/admin/categories", icon: FolderTree },
+      { title: "OT Захиалга", url: "/admin/ot-orders", icon: Globe },
       { title: "OT Категори", url: "/admin/ot-categories", icon: FolderTree },
+      { title: "Провайдер тохиргоо", url: "/admin/provider-sections", icon: LayoutList },
+      { title: "Нийлүүлэгч & Markup", url: "/admin/ot-providers", icon: Store },
+      { title: "OT Валют & Хөнгөлөлт", url: "/admin/ot-pricing", icon: Percent },
+      { title: "OT Хүргэлт", url: "/admin/ot-delivery", icon: Globe },
+      { title: "Агуулах", url: "/admin/ot-warehouse", icon: Warehouse },
+      { title: "Рэйтинг жагсаалт", url: "/admin/ot-rating-lists", icon: LayoutList },
+      { title: "OT Контент", url: "/admin/ot-content", icon: Palette },
+      { title: "OT Роль & Эрх", url: "/admin/ot-roles", icon: Globe },
+      { title: "OT тохиргоо", url: "/admin/ot-settings", icon: Settings },
+    ],
+  },
+  {
+    label: "Каталог & Маркетинг",
+    items: [
       { title: "Цуглуулга", url: "/admin/collections", icon: Library },
       { title: "Хязгаарлалт", url: "/admin/restrictions", icon: Package },
       { title: "Бараа засах", url: "/admin/catalog-items", icon: Package },
-      { title: "Провайдер тохиргоо", url: "/admin/provider-sections", icon: LayoutList },
-    ],
-  },
-  {
-    label: "Үнийн тохиргоо",
-    items: [
-      { title: "Үнийн удирдлага", url: "/admin/pricing", icon: DollarSign },
-      { title: "OT Валют & Хөнгөлөлт", url: "/admin/ot-pricing", icon: Percent },
-      { title: "Нийлүүлэгч & Markup", url: "/admin/ot-providers", icon: Store },
-    ],
-  },
-  {
-    label: "Бараа & Брэнд",
-    items: [
-      { title: "Бараа удирдах", url: "/admin/products", icon: Package },
-      { title: "Брэнд удирдах", url: "/admin/brands", icon: Tags },
-    ],
-  },
-  {
-    label: "Сурталчилгаа",
-    items: [
       { title: "SEO тохиргоо", url: "/admin/seo", icon: Megaphone },
       { title: "Мэдээллийн товхимол", url: "/admin/newsletter", icon: Megaphone },
-      { title: "Сэтгэгдэл & Үнэлгээ", url: "/admin/reviews", icon: Star },
     ],
   },
   {
@@ -115,7 +110,6 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "Хуудсууд", url: "/admin/content", icon: FileText },
       { title: "Баннер удирдах", url: "/admin/banners", icon: Image },
-      { title: "OT Контент", url: "/admin/ot-content", icon: Palette },
     ],
   },
   {
@@ -133,20 +127,11 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "Агуулах & Рэйтинг",
-    items: [
-      { title: "Агуулах", url: "/admin/ot-warehouse", icon: Warehouse },
-      { title: "Рэйтинг жагсаалт", url: "/admin/ot-rating-lists", icon: LayoutList },
-    ],
-  },
-  {
     label: "Тохиргоо",
     items: [
-      { title: "OT Роль & Эрх", url: "/admin/ot-roles", icon: Globe },
       { title: "Ерөнхий тохиргоо", url: "/admin/settings", icon: Settings },
       { title: "Захиалгын тохиргоо", url: "/admin/settings-orders", icon: Settings },
       { title: "Хайлтын тохиргоо", url: "/admin/search-settings", icon: Search },
-      { title: "OT тохиргоо", url: "/admin/ot-settings", icon: Globe },
       { title: "Системийн хэрэгсэл", url: "/admin/system-tools", icon: Activity },
     ],
   },
