@@ -1,4 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -74,6 +76,8 @@
     --glass-bg: 0 0% 100% / 0.7;
     --glass-border: 0 0% 100% / 0.3;
     --glass-shadow: 216 85% 10% / 0.1;
+    --font-sans: Montserrat, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
   }
 
   .dark {
@@ -121,6 +125,8 @@
     --glass-bg: 216 70% 12% / 0.8;
     --glass-border: 0 0% 100% / 0.1;
     --glass-shadow: 0 0% 0% / 0.3;
+    --font-sans: Montserrat, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
   }
 }
 

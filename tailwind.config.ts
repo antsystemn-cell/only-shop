@@ -79,7 +79,7 @@ export default {
   		},
   		fontFamily: {
   			sans: [
-  				'Inter',
+  				'Montserrat',
   				'ui-sans-serif',
   				'system-ui',
   				'sans-serif',
@@ -97,6 +97,7 @@ export default {
   				'serif'
   			],
   			mono: [
+  				'Roboto Mono',
   				'ui-monospace',
   				'SFMono-Regular',
   				'Menlo',
