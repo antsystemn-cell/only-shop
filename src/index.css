@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -22,7 +23,7 @@
     --popover-foreground: 216 85% 15%;
 
     /* Primary: Neon Green #7CFF00 */
-    --primary: 90 100% 50%;
+    --primary: 345 65% 51%;
     --primary-foreground: 216 85% 15%;
 
     /* Secondary: Deep Blue #0B3A8F */
@@ -68,7 +69,7 @@
     --brand-blue: 216 85% 30%;
     --brand-blue-dark: 216 85% 20%;
     --brand-blue-light: 216 70% 45%;
-    
+
     /* Glassmorphism */
     --glass-bg: 0 0% 100% / 0.7;
     --glass-border: 0 0% 100% / 0.3;
@@ -140,7 +141,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -149,7 +150,7 @@
   .gradient-primary {
     @apply bg-gradient-to-r from-primary to-secondary;
   }
-  
+
   .gradient-brand {
     @apply bg-gradient-to-br from-[hsl(var(--brand-blue))] via-[hsl(var(--brand-blue-dark))] to-[hsl(var(--brand-blue))];
   }
