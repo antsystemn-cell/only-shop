@@ -24,6 +24,7 @@ import {
   LayoutList,
   Palette,
   Search,
+  DatabaseBackup,
 } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
@@ -133,6 +134,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Захиалгын тохиргоо", url: "/admin/settings-orders", icon: Settings },
       { title: "Хайлтын тохиргоо", url: "/admin/search-settings", icon: Search },
       { title: "Системийн хэрэгсэл", url: "/admin/system-tools", icon: Activity },
+      { title: "Legacy шилжүүлэг", url: "/admin/migration", icon: DatabaseBackup },
     ],
   },
 ];

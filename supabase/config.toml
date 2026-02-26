@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.storepay]
 verify_jwt = false
+
+[functions.migrate-legacy]
+verify_jwt = false

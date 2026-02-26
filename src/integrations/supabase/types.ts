@@ -385,6 +385,57 @@ export type Database = {
         }
         Relationships: []
       }
+      migration_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_count: number | null
+          errors: Json | null
+          id: string
+          job_type: string
+          params: Json | null
+          processed_count: number | null
+          started_at: string | null
+          status: string
+          success_count: number | null
+          total_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_count?: number | null
+          errors?: Json | null
+          id?: string
+          job_type: string
+          params?: Json | null
+          processed_count?: number | null
+          started_at?: string | null
+          status?: string
+          success_count?: number | null
+          total_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_count?: number | null
+          errors?: Json | null
+          id?: string
+          job_type?: string
+          params?: Json | null
+          processed_count?: number | null
+          started_at?: string | null
+          status?: string
+          success_count?: number | null
+          total_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       newsletter_subscribers: {
         Row: {
           created_at: string
