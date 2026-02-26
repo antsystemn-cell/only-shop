@@ -73,6 +73,7 @@ import OtCategoryBrowse from "./pages/storefront/OtCategoryBrowse";
 import OtAllCategories from "./pages/storefront/OtAllCategories";
 import ProviderPage from "./pages/storefront/ProviderPage";
 import ProviderSectionsAdmin from "./pages/admin/ProviderSections";
+import Migration from "./pages/admin/Migration";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -159,6 +160,7 @@ const App = () => (
                 <Route path="user-activity-log" element={<UserActivityLog />} />
                 <Route path="instance-logs" element={<InstanceLogs />} />
                 <Route path="provider-sections" element={<ProviderSectionsAdmin />} />
+                <Route path="migration" element={<Migration />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
