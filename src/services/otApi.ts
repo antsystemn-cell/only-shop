@@ -327,13 +327,20 @@ export async function getBasket(sessionId: string) {
   return callProxy("getBasket", { sessionId });
 }
 
-export async function addItemToBasket(sessionId: string, itemId: string, quantity: number, configurators?: string, configurationId?: string) {
-  // Use AddItemToBasket directly with fieldParameters=<Fields/> per OTAPI docs
+export async function addItemToBasket(
+  sessionId: string, 
+  itemId: string, 
+  quantity: number, 
+  configurators?: string, 
+  configurationId?: string,
+  fieldParameters?: string
+) {
   return callProxy("addItemToBasket", {
     sessionId,
     itemId,
     quantity,
     configurationId: configurationId || "",
+    fieldParameters: fieldParameters || "<Fields/>",
   });
 }
 

@@ -102,7 +102,6 @@ export default function OtCheckout() {
       setCheckError(null);
       setInvalidItems([]);
 
-      // Pre-validate: ensure cart has items locally
       if (items.length === 0) {
         setCheckError("Сагс хоосон байна. Бараа нэмнэ үү.");
         return;
@@ -130,9 +129,34 @@ export default function OtCheckout() {
         const invalid = itemsList
           .filter((ol: any) => ol.IsAvailable === false || ol.IsDeleted === true || ol.HasPriceChanged === true)
           .map((ol: any) => String(ol.Id || ol.OrderLineId || ""));
+        
         if (invalid.length > 0) {
-          setInvalidItems(invalid);
-          setCheckError(`${invalid.length} бараа боломжгүй байна (дууссан, устгагдсан, эсвэл үнэ өөрчлөгдсөн). Доорх барааг хасаад дахин оролдоно уу.`);
+          // Auto-remove invalid items from server basket
+          const removedTitles: string[] = [];
+          for (const invalidId of invalid) {
+            const matchingItem = items.find(i => i.orderLineId === invalidId);
+            if (matchingItem) removedTitles.push(matchingItem.title);
+            try {
+              await removeItem(invalidId);
+            } catch (e) {
+              console.warn("[OtCheckout] Failed to auto-remove item:", invalidId, e);
+            }
+          }
+
+          // After removal, refresh and re-check
+          await refreshBasket();
+          
+          if (removedTitles.length > 0) {
+            toast.warning(`${removedTitles.length} боломжгүй бараа автоматаар хасагдлаа`, {
+              description: removedTitles.slice(0, 3).map(t => t.substring(0, 40)).join(", ") + 
+                (removedTitles.length > 3 ? ` +${removedTitles.length - 3}` : ""),
+              duration: 6000,
+            });
+          }
+
+          // Re-run check with cleaned basket
+          setCheckError("Боломжгүй бараанууд хасагдлаа. Дахин шалгаж байна...");
+          setTimeout(() => runCheck(), 1500);
           return;
         }
       }
@@ -141,14 +165,13 @@ export default function OtCheckout() {
     } catch (err: any) {
       const msg = err.message || "Сагс шалгахад алдаа гарлаа";
       if (msg.includes("ContractViolation") || msg.includes("Missing parameter")) {
-        // The server basket is likely empty or corrupted - refresh and inform user
         await refreshBasket();
-        setCheckError("Сагсанд боломжгүй бараа байна. Дууссан эсвэл устгагдсан барааг хасаад дахин оролдоно уу.");
+        setCheckError("Сагсанд боломжгүй бараа байна. Дахин оролдоно уу.");
       } else {
         setCheckError(msg);
       }
     }
-  }, [checkBasket, items.length, refreshBasket]);
+  }, [checkBasket, items, refreshBasket, removeItem]);
 
   useEffect(() => {
     if (step === 1 && !checkResult && !checkingStatus.isRunning) {

@@ -129,12 +129,30 @@ export default function OtProductDetail() {
         toast.error("Бүх хувилбараа сонгоно уу (өнгө, хэмжээ гэх мэт)");
         return;
       }
+
+      // Check stock for selected variant
+      if (matchedConfig && matchedConfig.quantity !== undefined && matchedConfig.quantity <= 0) {
+        toast.error("Сонгосон хувилбарын үлдэгдэл дууссан байна");
+        return;
+      }
     }
 
     const configurationId = matchedConfig?.id;
 
+    // Build fieldParameters XML from configurator selections
+    let fieldParameters = "<Fields/>";
+    if (product.configurators.length > 0 && Object.keys(selectedConfigs).length > 0) {
+      const fieldXmlParts = Object.entries(selectedConfigs)
+        .filter(([, vid]) => vid)
+        .map(([pid, vid]) => `<Field><FieldId>${pid}</FieldId><ValueId>${vid}</ValueId></Field>`)
+        .join("");
+      if (fieldXmlParts) {
+        fieldParameters = `<Fields>${fieldXmlParts}</Fields>`;
+      }
+    }
+
     try {
-      await addItem(product.id, quantity, undefined, configurationId);
+      await addItem(product.id, quantity, undefined, configurationId, fieldParameters);
     } catch {
       // toast already shown in context
     }
