@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { parse } from "https://esm.sh/fast-xml-parser@4.3.2";
+import { XMLParser } from "https://esm.sh/fast-xml-parser@4.3.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,11 +85,12 @@ function json(data: unknown, status = 200) {
 }
 
 function parseUsersXml(xmlContent: string): ParsedUser[] {
-  const parsed = parse(xmlContent, {
+  const parser = new XMLParser({
     ignoreAttributes: false,
     trimValues: true,
     parseTagValue: false,
   });
+  const parsed = parser.parse(xmlContent);
 
   const usersRoot = parsed?.Users?.User;
   if (!usersRoot) return [];
