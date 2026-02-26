@@ -18,18 +18,19 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Search, Users as UsersIcon, Shield, User, Eye, Mail, Phone,
-  ShoppingCart, Plus, Minus, Tag, AlertTriangle, Loader2,
+  ShoppingCart, Plus, Minus, Tag, AlertTriangle, Wallet, CreditCard,
+  Loader2, Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import {
-  searchUsers as searchOtUsers,
-  getDiscountGroupList,
-  getUserDiscountGroups,
   addUserToDiscountGroup,
   removeUserFromDiscountGroup,
-  getUserInfoForOperator,
 } from "@/services/otApi";
 import { callWithOperatorSession } from "@/services/otSession";
 import { normalizeOtResponse } from "@/utils/otNormalizer";
@@ -48,15 +49,6 @@ interface UserProfile {
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("mn-MN").format(amount) + "₮";
-}
-
-function ErrorAlert({ message }: { message: string }) {
-  return (
-    <div className="flex items-center gap-2 text-destructive p-3 rounded-lg bg-destructive/10">
-      <AlertTriangle className="h-4 w-4 shrink-0" />
-      <span className="text-sm">{message}</span>
-    </div>
-  );
 }
 
 export default function Users() {
@@ -116,11 +108,46 @@ export default function Users() {
     return email.slice(0, 2).toUpperCase();
   };
 
+  // ── CSV Export ──
+  const handleExportCsv = () => {
+    if (!users?.length) return;
+    const headers = ["Name", "Email", "Phone", "OT User ID", "Role", "Registered"];
+    const rows = users.map(u => [
+      u.full_name || "", u.email, u.phone || "", u.ot_user_id || "",
+      u.user_roles.some(r => r.role === "admin") ? "admin" : "user",
+      format(new Date(u.created_at), "yyyy-MM-dd"),
+    ].join(","));
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${users.length} хэрэглэгч экспортлогдлоо`);
+  };
+
+  // Stats
+  const adminCount = users?.filter(u => u.user_roles.some(r => r.role === "admin")).length || 0;
+  const otLinkedCount = users?.filter(u => u.ot_user_id).length || 0;
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold">Хэрэглэгч удирдах</h1>
-        <p className="text-muted-foreground mt-1">Бүртгэлтэй хэрэглэгчдийг харах, хөнгөлөлтийн бүлэг удирдах</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Хэрэглэгч удирдах</h1>
+          <p className="text-muted-foreground mt-1">Бүртгэлтэй хэрэглэгчдийг харах, хөнгөлөлтийн бүлэг удирдах</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={!users?.length}>
+          <Download className="h-4 w-4 mr-1" /> CSV
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Нийт</p><p className="text-2xl font-bold">{users?.length || 0}</p></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Админ</p><p className="text-2xl font-bold text-primary">{adminCount}</p></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">OT холбоотой</p><p className="text-2xl font-bold text-primary">{otLinkedCount}</p></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Хэрэглэгч</p><p className="text-2xl font-bold">{(users?.length || 0) - adminCount}</p></CardContent></Card>
       </div>
 
       <Card>
@@ -209,10 +236,12 @@ export default function Users() {
   );
 }
 
-// ─── User Detail Sheet with Discount Management ─────────────
+// ─── User Detail Sheet ───────────────────────────────────────
 
 function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
+  const [walletDialogOpen, setWalletDialogOpen] = useState(false);
+  const [walletAmount, setWalletAmount] = useState("");
 
   const { data: userOrders } = useQuery({
     queryKey: ["admin", "user-orders", user?.user_id],
@@ -234,6 +263,34 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
       return data || [];
     },
     enabled: !!user,
+  });
+
+  // Wallet
+  const { data: walletData, refetch: refetchWallet } = useQuery({
+    queryKey: ["admin", "user-wallet", user?.user_id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase.from("user_wallets").select("*").eq("user_id", user.user_id).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const creditWalletMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      if (!user) throw new Error("No user");
+      const { data, error } = await supabase.rpc("credit_wallet", { p_user_id: user.user_id, p_amount: amount });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (newBalance) => {
+      refetchWallet();
+      toast.success(`Баланс шинэчлэгдлээ: ${formatCurrency(Number(newBalance))}`);
+      setWalletDialogOpen(false);
+      setWalletAmount("");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   // OT Discount groups
@@ -307,132 +364,206 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
   const statusMap: Record<string, string> = { pending: "Хүлээгдэж", processing: "Бэлтгэгдэж", shipped: "Хүргэлтэд", delivered: "Хүргэгдсэн", cancelled: "Цуцлагдсан" };
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2"><User className="h-5 w-5" />Хэрэглэгчийн мэдээлэл</SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={open} onOpenChange={onClose}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2"><User className="h-5 w-5" />Хэрэглэгчийн мэдээлэл</SheetTitle>
+          </SheetHeader>
 
-        <div className="mt-6 space-y-6">
-          {/* Profile Info */}
-          <Card>
-            <CardContent className="pt-4 space-y-3">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={user.avatar_url || undefined} />
-                  <AvatarFallback className="text-xl bg-secondary">{user.full_name?.slice(0, 2).toUpperCase() || user.email.slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-lg font-bold">{user.full_name || "Нэр байхгүй"}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    {isAdmin ? <Badge className="bg-primary/20 text-primary"><Shield className="h-3 w-3 mr-1" />Админ</Badge> : <Badge variant="secondary"><User className="h-3 w-3 mr-1" />Хэрэглэгч</Badge>}
+          <div className="mt-6 space-y-6">
+            {/* Profile Info */}
+            <Card>
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={user.avatar_url || undefined} />
+                    <AvatarFallback className="text-xl bg-secondary">{user.full_name?.slice(0, 2).toUpperCase() || user.email.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="text-lg font-bold">{user.full_name || "Нэр байхгүй"}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      {isAdmin ? <Badge className="bg-primary/20 text-primary"><Shield className="h-3 w-3 mr-1" />Админ</Badge> : <Badge variant="secondary"><User className="h-3 w-3 mr-1" />Хэрэглэгч</Badge>}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" />{user.email}</div>
-                {user.phone && <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{user.phone}</div>}
-                <div className="text-muted-foreground text-xs">ID: {user.user_id}</div>
-                {user.ot_user_id && <div className="text-muted-foreground text-xs">OT User ID: {user.ot_user_id}</div>}
-                <div className="text-muted-foreground text-xs">Бүртгүүлсэн: {format(new Date(user.created_at), "yyyy-MM-dd HH:mm")}</div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button size="sm" variant={isAdmin ? "destructive" : "default"} onClick={() => toggleAdminMutation.mutate({ userId: user.user_id, makeAdmin: !isAdmin })} disabled={toggleAdminMutation.isPending}>
-                  <Shield className="h-4 w-4 mr-1" />{isAdmin ? "Админ эрх хасах" : "Админ болгох"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" />{user.email}</div>
+                  {user.phone && <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{user.phone}</div>}
+                  <div className="text-muted-foreground text-xs">ID: {user.user_id}</div>
+                  {user.ot_user_id && <div className="text-muted-foreground text-xs">OT User ID: {user.ot_user_id}</div>}
+                  <div className="text-muted-foreground text-xs">Бүртгүүлсэн: {format(new Date(user.created_at), "yyyy-MM-dd HH:mm")}</div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button size="sm" variant={isAdmin ? "destructive" : "default"} onClick={() => toggleAdminMutation.mutate({ userId: user.user_id, makeAdmin: !isAdmin })} disabled={toggleAdminMutation.isPending}>
+                    <Shield className="h-4 w-4 mr-1" />{isAdmin ? "Админ эрх хасах" : "Админ болгох"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* OT Discount Groups */}
-          {user.ot_user_id && (
+            {/* Wallet */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2"><Tag className="h-4 w-4" />OT Хөнгөлөлтийн бүлэг</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2"><Wallet className="h-4 w-4" />Wallet</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {userDiscounts && userDiscounts.length > 0 && (
-                  <div className="space-y-2">
-                    {userDiscounts.map((d: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between p-2 border rounded-lg">
-                        <div>
-                          <span className="text-sm font-medium">{d.Name || d.DiscountGroupName || "Бүлэг"}</span>
-                          {d.Discount != null && <Badge variant="outline" className="ml-2">{d.Discount}%</Badge>}
-                        </div>
-                        <Button size="sm" variant="ghost" onClick={() => removeDiscountMut.mutate(String(d.Id?.Value || d.Id || d.DiscountGroupId))} disabled={removeDiscountMut.isPending}>
-                          <Minus className="h-3 w-3 mr-1" />Хасах
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {allDiscountGroups && allDiscountGroups.length > 0 && (
+              <CardContent>
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Бүлэг нэмэх:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {allDiscountGroups.filter((g: any) => !userDiscountIds.includes(String(g.Id?.Value || g.Id))).map((g: any, i: number) => (
-                        <Button key={i} size="sm" variant="outline" onClick={() => addDiscountMut.mutate(String(g.Id?.Value || g.Id))} disabled={addDiscountMut.isPending}>
-                          <Plus className="h-3 w-3 mr-1" />{g.Name || "Бүлэг"}
-                        </Button>
-                      ))}
-                    </div>
+                    <p className="text-2xl font-bold">{formatCurrency(Number(walletData?.balance || 0))}</p>
+                    <p className="text-xs text-muted-foreground">Одоогийн үлдэгдэл</p>
                   </div>
-                )}
-
-                {!user.ot_user_id && <p className="text-sm text-muted-foreground">OT User ID холбогдоогүй байна</p>}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Addresses */}
-          {addresses && addresses.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm">Хүргэлтийн хаягууд</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {addresses.map(addr => (
-                  <div key={addr.id} className="p-3 border rounded-lg text-sm">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">{addr.label || "Хаяг"}</Badge>
-                      {addr.is_default && <Badge className="text-xs">Үндсэн</Badge>}
-                    </div>
-                    <p className="mt-1">{addr.city}, {addr.district}</p>
-                    <p>{addr.street_address}</p>
-                    {addr.phone && <p className="text-muted-foreground">Утас: {addr.phone}</p>}
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { setWalletAmount(""); setWalletDialogOpen(true); }}>
+                      <CreditCard className="h-4 w-4 mr-1" /> Баланс удирдах
+                    </Button>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Orders */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2"><ShoppingCart className="h-4 w-4" />Захиалгууд ({userOrders?.length || 0})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {userOrders && userOrders.length > 0 ? (
-                <div className="space-y-2">
-                  {userOrders.map(order => (
-                    <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg text-sm">
-                      <div>
-                        <div className="font-mono font-medium">{order.order_number}</div>
-                        <div className="text-xs text-muted-foreground">{format(new Date(order.created_at), "yyyy-MM-dd")}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">{formatCurrency(Number(order.total))}</div>
-                        <Badge variant="outline" className="text-xs">{statusMap[order.status] || order.status}</Badge>
-                      </div>
-                    </div>
-                  ))}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">Захиалга байхгүй</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </SheetContent>
-    </Sheet>
+              </CardContent>
+            </Card>
+
+            {/* Tabs for organized content */}
+            <Tabs defaultValue="discounts">
+              <TabsList className="w-full">
+                <TabsTrigger value="discounts" className="flex-1">Хөнгөлөлт</TabsTrigger>
+                <TabsTrigger value="orders" className="flex-1">Захиалга</TabsTrigger>
+                <TabsTrigger value="addresses" className="flex-1">Хаяг</TabsTrigger>
+              </TabsList>
+
+              {/* Discounts Tab */}
+              <TabsContent value="discounts" className="mt-4">
+                {user.ot_user_id ? (
+                  <Card>
+                    <CardContent className="pt-4 space-y-3">
+                      {userDiscounts && userDiscounts.length > 0 && (
+                        <div className="space-y-2">
+                          {userDiscounts.map((d: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between p-2 border rounded-lg">
+                              <div>
+                                <span className="text-sm font-medium">{d.Name || d.DiscountGroupName || "Бүлэг"}</span>
+                                {d.Discount != null && <Badge variant="outline" className="ml-2">{d.Discount}%</Badge>}
+                              </div>
+                              <Button size="sm" variant="ghost" onClick={() => removeDiscountMut.mutate(String(d.Id?.Value || d.Id || d.DiscountGroupId))} disabled={removeDiscountMut.isPending}>
+                                <Minus className="h-3 w-3 mr-1" />Хасах
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {allDiscountGroups && allDiscountGroups.length > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-2">Бүлэг нэмэх:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {allDiscountGroups.filter((g: any) => !userDiscountIds.includes(String(g.Id?.Value || g.Id))).map((g: any, i: number) => (
+                              <Button key={i} size="sm" variant="outline" onClick={() => addDiscountMut.mutate(String(g.Id?.Value || g.Id))} disabled={addDiscountMut.isPending}>
+                                <Plus className="h-3 w-3 mr-1" />{g.Name || "Бүлэг"}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {(!userDiscounts || userDiscounts.length === 0) && (!allDiscountGroups || allDiscountGroups.length === 0) && (
+                        <p className="text-sm text-muted-foreground text-center py-4">Хөнгөлөлтийн бүлэг байхгүй</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground text-center py-4">OT User ID холбогдоогүй байна</p></CardContent></Card>
+                )}
+              </TabsContent>
+
+              {/* Orders Tab */}
+              <TabsContent value="orders" className="mt-4">
+                <Card>
+                  <CardContent className="pt-4">
+                    {userOrders && userOrders.length > 0 ? (
+                      <div className="space-y-2">
+                        {userOrders.map(order => (
+                          <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg text-sm">
+                            <div>
+                              <div className="font-mono font-medium">{order.order_number}</div>
+                              <div className="text-xs text-muted-foreground">{format(new Date(order.created_at), "yyyy-MM-dd")}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium">{formatCurrency(Number(order.total))}</div>
+                              <Badge variant="outline" className="text-xs">{statusMap[order.status] || order.status}</Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">Захиалга байхгүй</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Addresses Tab */}
+              <TabsContent value="addresses" className="mt-4">
+                <Card>
+                  <CardContent className="pt-4">
+                    {addresses && addresses.length > 0 ? (
+                      <div className="space-y-2">
+                        {addresses.map(addr => (
+                          <div key={addr.id} className="p-3 border rounded-lg text-sm">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">{addr.label || "Хаяг"}</Badge>
+                              {addr.is_default && <Badge className="text-xs">Үндсэн</Badge>}
+                            </div>
+                            <p className="mt-1">{addr.city}, {addr.district}</p>
+                            <p>{addr.street_address}</p>
+                            {addr.phone && <p className="text-muted-foreground">Утас: {addr.phone}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">Хаяг бүртгэгдээгүй</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Wallet Dialog */}
+      <Dialog open={walletDialogOpen} onOpenChange={setWalletDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Wallet баланс удирдах</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Одоогийн баланс</Label>
+              <p className="text-xl font-bold">{formatCurrency(Number(walletData?.balance || 0))}</p>
+            </div>
+            <div>
+              <Label>Дүн (эерэг = нэмэх, сөрөг = хасах)</Label>
+              <Input
+                type="number"
+                placeholder="Жш: 50000 эсвэл -10000"
+                value={walletAmount}
+                onChange={(e) => setWalletAmount(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWalletDialogOpen(false)}>Болих</Button>
+            <Button
+              onClick={() => {
+                const amt = Number(walletAmount);
+                if (!amt || isNaN(amt)) { toast.error("Зөв дүн оруулна уу"); return; }
+                creditWalletMutation.mutate(amt);
+              }}
+              disabled={creditWalletMutation.isPending}
+            >
+              {creditWalletMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Баталгаажуулах
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
