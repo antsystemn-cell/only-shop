@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { searchAllOtOrders, getSalesOrderDetails, cancelSalesOrder, cancelLineSalesOrder, getOrderLineStatusHistory } from "@/services/otApi";
 import { Button } from "@/components/ui/button";
@@ -16,19 +16,16 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import {
   Search, ShoppingCart, Eye, ChevronLeft, ChevronRight, ExternalLink,
-  Package, XCircle, Clock, User, History, Loader2,
+  Package, XCircle, Clock, User, History, Loader2, Download, Filter,
+  CheckCircle, RefreshCw,
 } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -56,19 +53,32 @@ function normalizeTotalCount(data: any): number {
 function getStatusColor(status?: string): string {
   if (!status) return "bg-muted text-muted-foreground";
   const s = status.toLowerCase();
-  if (s.includes("cancel")) return "bg-red-100 text-red-800";
-  if (s.includes("deliver") || s.includes("complet") || s.includes("received")) return "bg-green-100 text-green-800";
-  if (s.includes("ship") || s.includes("send") || s.includes("transit")) return "bg-purple-100 text-purple-800";
-  if (s.includes("process") || s.includes("purchas") || s.includes("paid")) return "bg-blue-100 text-blue-800";
-  if (s.includes("wait") || s.includes("pending") || s.includes("new")) return "bg-yellow-100 text-yellow-800";
+  if (s.includes("cancel")) return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+  if (s.includes("deliver") || s.includes("complet") || s.includes("received")) return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+  if (s.includes("ship") || s.includes("send") || s.includes("transit")) return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
+  if (s.includes("process") || s.includes("purchas") || s.includes("paid")) return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+  if (s.includes("wait") || s.includes("pending") || s.includes("new")) return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
   return "bg-muted text-muted-foreground";
 }
+
+const STATUS_FILTERS = [
+  { value: "all", label: "Бүгд" },
+  { value: "new", label: "Шинэ" },
+  { value: "pending", label: "Хүлээгдэж" },
+  { value: "processing", label: "Бэлтгэгдэж" },
+  { value: "purchased", label: "Худалдаж авсан" },
+  { value: "shipped", label: "Хүргэлтэд" },
+  { value: "delivered", label: "Хүргэгдсэн" },
+  { value: "cancelled", label: "Цуцлагдсан" },
+];
 
 // ─── Main Component ──────────────────────────────────────────
 
 export default function OtOrders() {
   const [searchUserId, setSearchUserId] = useState("");
   const [searchOrderId, setSearchOrderId] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [providerFilter, setProviderFilter] = useState("all");
   const [page, setPage] = useState(0);
   const [pageSize] = useState(20);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -80,8 +90,8 @@ export default function OtOrders() {
   const { toast } = useToast();
 
   // ── Search orders ──
-  const { data: ordersData, isLoading } = useQuery({
-    queryKey: ["admin", "ot-orders", searchUserId, searchOrderId, page],
+  const { data: ordersData, isLoading, refetch } = useQuery({
+    queryKey: ["admin", "ot-orders", searchUserId, searchOrderId, statusFilter, providerFilter, page],
     queryFn: () => searchAllOtOrders({
       userId: searchUserId || undefined,
       orderId: searchOrderId || undefined,
@@ -90,7 +100,18 @@ export default function OtOrders() {
     }),
   });
 
-  const orders = normalizeOrders(ordersData);
+  const allOrders = normalizeOrders(ordersData);
+  
+  // Client-side filtering for status and provider
+  const orders = allOrders.filter((order: any) => {
+    const statusName = (order.StatusName || order.Status?.Name || "").toLowerCase();
+    const provider = (order.ProviderType || order.Provider || "").toLowerCase();
+    
+    if (statusFilter !== "all" && !statusName.includes(statusFilter)) return false;
+    if (providerFilter !== "all" && !provider.includes(providerFilter)) return false;
+    return true;
+  });
+
   const totalCount = normalizeTotalCount(ordersData);
   const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -141,18 +162,94 @@ export default function OtOrders() {
     setDetailOpen(true);
   };
 
+  // ── CSV Export ──
+  const handleExportCsv = useCallback(() => {
+    if (!orders.length) return;
+    const headers = ["Order ID", "User ID", "Status", "Items", "Amount", "Date"];
+    const rows = orders.map((order: any) => {
+      const id = order.Id || order.SalesOrderId || "";
+      const userId = order.UserId || order.CustomerUserId || "";
+      const statusName = order.StatusName || order.Status?.Name || "";
+      const total = order.TotalPrice?.ConvertedPrice ?? order.TotalPrice?.OriginalPrice ?? order.Amount ?? "";
+      const itemCount = order.OrderLinesCount || order.ItemsCount || "";
+      const createdAt = order.CreatedDate || order.CreateDate || "";
+      return [id, userId, statusName, itemCount, total, createdAt].join(",");
+    });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ot-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "CSV татагдлаа", description: `${orders.length} захиалга экспортлогдлоо` });
+  }, [orders, toast]);
+
+  // ── Stats ──
+  const stats = {
+    total: totalCount,
+    filtered: orders.length,
+    pendingCount: allOrders.filter((o: any) => {
+      const s = (o.StatusName || o.Status?.Name || "").toLowerCase();
+      return s.includes("pending") || s.includes("new") || s.includes("wait");
+    }).length,
+    shippedCount: allOrders.filter((o: any) => {
+      const s = (o.StatusName || o.Status?.Name || "").toLowerCase();
+      return s.includes("ship") || s.includes("transit") || s.includes("send");
+    }).length,
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">OT Захиалгууд</h1>
-        <p className="text-muted-foreground mt-1">OT API-н захиалгуудыг хайх, удирдах</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">OT Захиалгууд</h1>
+          <p className="text-muted-foreground mt-1">OT API-н захиалгуудыг хайх, удирдах</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-1" /> Шинэчлэх
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={!orders.length}>
+            <Download className="h-4 w-4 mr-1" /> CSV
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-muted-foreground">Нийт</p>
+            <p className="text-2xl font-bold">{stats.total}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-muted-foreground">Шүүсэн</p>
+            <p className="text-2xl font-bold">{stats.filtered}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-muted-foreground">Хүлээгдэж</p>
+            <p className="text-2xl font-bold text-accent-foreground">{stats.pendingCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-muted-foreground">Хүргэлтэд</p>
+            <p className="text-2xl font-bold text-primary">{stats.shippedCount}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -171,12 +268,37 @@ export default function OtOrders() {
                 className="pl-10"
               />
             </div>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+              <SelectTrigger>
+                <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Төлөв" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_FILTERS.map(f => (
+                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={providerFilter} onValueChange={(v) => { setProviderFilter(v); setPage(0); }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Нийлүүлэгч" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Бүх нийлүүлэгч</SelectItem>
+                <SelectItem value="taobao">Taobao</SelectItem>
+                <SelectItem value="poizon">Poizon</SelectItem>
+                <SelectItem value="1688">1688</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="mt-3 flex justify-end">
             <Button
-              variant="outline"
-              onClick={() => { setSearchUserId(""); setSearchOrderId(""); setPage(0); }}
-              disabled={!searchUserId && !searchOrderId}
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSearchUserId(""); setSearchOrderId(""); setStatusFilter("all"); setProviderFilter("all"); setPage(0); }}
+              disabled={!searchUserId && !searchOrderId && statusFilter === "all" && providerFilter === "all"}
             >
-              Цэвэрлэх
+              Бүх шүүлтүүр цэвэрлэх
             </Button>
           </div>
         </CardContent>
@@ -188,7 +310,7 @@ export default function OtOrders() {
           <CardTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-primary" />
             OT Захиалгын жагсаалт
-            {totalCount > 0 && <Badge variant="secondary">{totalCount}</Badge>}
+            {orders.length > 0 && <Badge variant="secondary">{orders.length}</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -245,7 +367,7 @@ export default function OtOrders() {
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => openDetail(id)}>
+                              <Button variant="ghost" size="icon" onClick={() => openDetail(id)} title="Дэлгэрэнгүй">
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button
@@ -253,6 +375,7 @@ export default function OtOrders() {
                                 size="icon"
                                 className="text-destructive hover:text-destructive"
                                 onClick={() => setCancelTarget({ type: "order", id })}
+                                title="Цуцлах"
                               >
                                 <XCircle className="h-4 w-4" />
                               </Button>
@@ -366,6 +489,7 @@ function OrderDetailContent({ detail, onCancelLine }: { detail: any; onCancelLin
   const createdAt = order?.CreatedDate || order?.CreateDate || "";
   const deliveryMode = order?.DeliveryModeName || order?.DeliveryMode?.Name || "";
   const comment = order?.Comment || "";
+  const providerType = order?.ProviderType || "";
 
   return (
     <div className="space-y-6">
@@ -402,6 +526,15 @@ function OrderDetailContent({ detail, onCancelLine }: { detail: any; onCancelLin
           </CardContent>
         </Card>
       </div>
+
+      {providerType && (
+        <Card>
+          <CardContent className="pt-4">
+            <Label className="text-muted-foreground text-xs">Нийлүүлэгч</Label>
+            <p className="text-sm mt-1 font-medium">{providerType}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {deliveryMode && (
         <Card>
