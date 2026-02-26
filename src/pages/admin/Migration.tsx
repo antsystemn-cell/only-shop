@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,30 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import {
-  Upload,
-  FileText,
-  Eye,
-  Play,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  AlertTriangle,
-  Users,
-  UserPlus,
-  UserCheck,
-  UserX,
-  ChevronDown,
-  ChevronUp,
-  Download,
+  Upload, FileText, Eye, Play, CheckCircle2, XCircle, Loader2,
+  AlertTriangle, Users, UserPlus, UserCheck, UserX, ChevronDown,
+  ChevronUp, Download,
 } from "lucide-react";
 
 interface ParsedUser {
@@ -43,33 +26,41 @@ interface ParsedUser {
   full_name: string;
 }
 
-interface ImportResult {
+interface ClassifyResult {
   total: number;
   toInsert: number;
   toMerge: number;
   toSkip: number;
   skipReasons: Array<{ legacy_id: string; reason: string }>;
   sampleRows: ParsedUser[];
-  inserted?: number;
-  merged?: number;
-  skipped?: number;
-  errors?: Array<{ legacy_id: string; error: string }>;
+  insertUsers: ParsedUser[];
+  mergeUsers: Array<{ user: ParsedUser; existingUserId: string }>;
+}
+
+interface ImportProgress {
+  totalBatches: number;
+  completedBatches: number;
+  inserted: number;
+  merged: number;
+  errors: Array<{ legacy_id: string; error: string }>;
 }
 
 type Phase = "upload" | "preview" | "importing" | "done";
+
+const BATCH_SIZE = 200;
 
 export default function Migration() {
   const [phase, setPhase] = useState<Phase>("upload");
   const [xmlContent, setXmlContent] = useState("");
   const [fileName, setFileName] = useState("");
-  const [previewResult, setPreviewResult] = useState<ImportResult | null>(null);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [classifyResult, setClassifyResult] = useState<ClassifyResult | null>(null);
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [isDryRunning, setIsDryRunning] = useState(false);
   const [showSkipReasons, setShowSkipReasons] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
-  // Past jobs
   const { data: pastJobs } = useQuery({
     queryKey: ["migration-jobs"],
     queryFn: async () => {
@@ -83,57 +74,6 @@ export default function Migration() {
     },
   });
 
-  // Dry run mutation
-  const dryRunMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke("import-users-xml", {
-        body: {
-          action: "import_users_xml",
-          xmlContent,
-          sourceFile: fileName,
-          dryRun: true,
-        },
-      });
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Dry run амжилтгүй");
-      return data.result as ImportResult;
-    },
-    onSuccess: (result) => {
-      setPreviewResult(result);
-      setPhase("preview");
-      toast.success("Dry run амжилттай дууслаа");
-    },
-    onError: (error) => {
-      toast.error(`Dry run алдаа: ${error.message}`);
-    },
-  });
-
-  // Import mutation
-  const importMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke("import-users-xml", {
-        body: {
-          action: "import_users_xml",
-          xmlContent,
-          sourceFile: fileName,
-          dryRun: false,
-        },
-      });
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Импорт амжилтгүй");
-      return data.result as ImportResult;
-    },
-    onSuccess: (result) => {
-      setImportResult(result);
-      setPhase("done");
-      queryClient.invalidateQueries({ queryKey: ["migration-jobs"] });
-      toast.success("Импорт амжилттай дууслаа!");
-    },
-    onError: (error) => {
-      toast.error(`Импорт алдаа: ${error.message}`);
-    },
-  });
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -144,19 +84,123 @@ export default function Migration() {
     setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const content = evt.target?.result as string;
-      setXmlContent(content);
+      setXmlContent(evt.target?.result as string);
       toast.success(`${file.name} файл уншигдлаа`);
     };
     reader.readAsText(file);
   };
 
+  const runDryRun = async () => {
+    setIsDryRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("import-users-xml", {
+        body: { action: "parse_xml", xmlContent },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Dry run амжилтгүй");
+      setClassifyResult(data.result as ClassifyResult);
+      setPhase("preview");
+      toast.success("Dry run амжилттай");
+    } catch (err: any) {
+      toast.error(`Dry run алдаа: ${err.message}`);
+    } finally {
+      setIsDryRunning(false);
+    }
+  };
+
+  const runImport = useCallback(async () => {
+    if (!classifyResult) return;
+    setPhase("importing");
+    const startedAt = new Date().toISOString();
+
+    const insertBatches: ParsedUser[][] = [];
+    for (let i = 0; i < classifyResult.insertUsers.length; i += BATCH_SIZE) {
+      insertBatches.push(classifyResult.insertUsers.slice(i, i + BATCH_SIZE));
+    }
+
+    const mergeBatches: Array<Array<{ user: ParsedUser; existingUserId: string }>> = [];
+    for (let i = 0; i < classifyResult.mergeUsers.length; i += BATCH_SIZE) {
+      mergeBatches.push(classifyResult.mergeUsers.slice(i, i + BATCH_SIZE));
+    }
+
+    const totalBatches = insertBatches.length + mergeBatches.length;
+    const prog: ImportProgress = {
+      totalBatches,
+      completedBatches: 0,
+      inserted: 0,
+      merged: 0,
+      errors: [],
+    };
+    setProgress({ ...prog });
+
+    // Process insert batches
+    for (const batch of insertBatches) {
+      try {
+        const { data, error } = await supabase.functions.invoke("import-users-xml", {
+          body: {
+            action: "import_batch",
+            users: batch.map((u) => ({ user: u })),
+            mode: "insert",
+          },
+        });
+        if (error) throw error;
+        prog.inserted += data.successCount || 0;
+        if (data.errors?.length) prog.errors.push(...data.errors);
+      } catch (err: any) {
+        prog.errors.push({ legacy_id: "batch", error: err.message });
+      }
+      prog.completedBatches++;
+      setProgress({ ...prog });
+    }
+
+    // Process merge batches
+    for (const batch of mergeBatches) {
+      try {
+        const { data, error } = await supabase.functions.invoke("import-users-xml", {
+          body: {
+            action: "import_batch",
+            users: batch,
+            mode: "merge",
+          },
+        });
+        if (error) throw error;
+        prog.merged += data.successCount || 0;
+        if (data.errors?.length) prog.errors.push(...data.errors);
+      } catch (err: any) {
+        prog.errors.push({ legacy_id: "batch", error: err.message });
+      }
+      prog.completedBatches++;
+      setProgress({ ...prog });
+    }
+
+    // Log migration
+    try {
+      await supabase.functions.invoke("import-users-xml", {
+        body: {
+          action: "log_migration",
+          startedAt,
+          sourceFile: fileName,
+          totalCount: classifyResult.total,
+          processedCount: prog.inserted + prog.merged + classifyResult.toSkip,
+          successCount: prog.inserted + prog.merged,
+          errorCount: prog.errors.length,
+          errors: prog.errors.slice(0, 100),
+          status: prog.errors.length > 0 ? "completed_with_errors" : "completed",
+        },
+      });
+    } catch (_) {}
+
+    setPhase("done");
+    queryClient.invalidateQueries({ queryKey: ["migration-jobs"] });
+    toast.success("Импорт амжилттай дууслаа!");
+  }, [classifyResult, fileName, queryClient]);
+
   const reset = () => {
     setPhase("upload");
     setXmlContent("");
     setFileName("");
-    setPreviewResult(null);
-    setImportResult(null);
+    setClassifyResult(null);
+    setProgress(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -171,6 +215,10 @@ export default function Migration() {
     URL.revokeObjectURL(url);
   };
 
+  const progressPct = progress
+    ? Math.round((progress.completedBatches / Math.max(progress.totalBatches, 1)) * 100)
+    : 0;
+
   return (
     <div className="space-y-6">
       <div>
@@ -180,7 +228,6 @@ export default function Migration() {
         </p>
       </div>
 
-      {/* Warning */}
       <Card className="border-destructive/50 bg-destructive/5">
         <CardContent className="flex items-start gap-3 pt-6">
           <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
@@ -194,7 +241,7 @@ export default function Migration() {
         </CardContent>
       </Card>
 
-      {/* Steps indicator */}
+      {/* Steps */}
       <div className="flex items-center gap-2 text-sm">
         {[
           { key: "upload", label: "1. Файл оруулах" },
@@ -207,8 +254,7 @@ export default function Migration() {
             <Badge
               variant={phase === step.key ? "default" : "outline"}
               className={
-                ["importing", "done"].includes(phase) &&
-                ["upload", "preview"].includes(step.key)
+                ["importing", "done"].includes(phase) && ["upload", "preview"].includes(step.key)
                   ? "bg-primary/20 text-primary"
                   : ""
               }
@@ -219,7 +265,7 @@ export default function Migration() {
         ))}
       </div>
 
-      {/* Phase: Upload */}
+      {/* Upload */}
       {phase === "upload" && (
         <Card>
           <CardHeader>
@@ -232,13 +278,7 @@ export default function Migration() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xml"
-              className="hidden"
-              onChange={handleFileUpload}
-            />
+            <input ref={fileInputRef} type="file" accept=".xml" className="hidden" onChange={handleFileUpload} />
             <div
               className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
               onClick={() => fileInputRef.current?.click()}
@@ -248,39 +288,23 @@ export default function Migration() {
                   <FileText className="h-8 w-8 text-primary" />
                   <div>
                     <p className="font-medium">{fileName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(xmlContent.length / 1024).toFixed(0)} KB
-                    </p>
+                    <p className="text-sm text-muted-foreground">{(xmlContent.length / 1024).toFixed(0)} KB</p>
                   </div>
                 </div>
               ) : (
                 <div>
                   <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">
-                    Файл оруулахын тулд энд дарна уу
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Зөвхөн .xml файл
-                  </p>
+                  <p className="text-muted-foreground">Файл оруулахын тулд энд дарна уу</p>
+                  <p className="text-xs text-muted-foreground mt-1">Зөвхөн .xml файл</p>
                 </div>
               )}
             </div>
             {xmlContent && (
-              <Button
-                onClick={() => dryRunMutation.mutate()}
-                disabled={dryRunMutation.isPending}
-                className="w-full"
-              >
-                {dryRunMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Шалгаж байна...
-                  </>
+              <Button onClick={runDryRun} disabled={isDryRunning} className="w-full">
+                {isDryRunning ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Шалгаж байна...</>
                 ) : (
-                  <>
-                    <Eye className="h-4 w-4 mr-2" />
-                    Dry Run — Шалгах
-                  </>
+                  <><Eye className="h-4 w-4 mr-2" />Dry Run — Шалгах</>
                 )}
               </Button>
             )}
@@ -288,46 +312,34 @@ export default function Migration() {
         </Card>
       )}
 
-      {/* Phase: Preview */}
-      {phase === "preview" && previewResult && (
+      {/* Preview */}
+      {phase === "preview" && classifyResult && (
         <div className="space-y-4">
-          {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-2xl font-bold">{previewResult.total}</p>
-                <p className="text-sm text-muted-foreground">Нийт</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <UserPlus className="h-8 w-8 mx-auto text-primary mb-2" />
-                <p className="text-2xl font-bold text-primary">{previewResult.toInsert}</p>
-                <p className="text-sm text-muted-foreground">Шинэ нэмэх</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <UserCheck className="h-8 w-8 mx-auto text-amber-500 mb-2" />
-                <p className="text-2xl font-bold text-amber-500">{previewResult.toMerge}</p>
-                <p className="text-sm text-muted-foreground">Нэгтгэх</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <UserX className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-2xl font-bold">{previewResult.toSkip}</p>
-                <p className="text-sm text-muted-foreground">Алгасах</p>
-              </CardContent>
-            </Card>
+            <Card><CardContent className="pt-6 text-center">
+              <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-2xl font-bold">{classifyResult.total}</p>
+              <p className="text-sm text-muted-foreground">Нийт</p>
+            </CardContent></Card>
+            <Card><CardContent className="pt-6 text-center">
+              <UserPlus className="h-8 w-8 mx-auto text-primary mb-2" />
+              <p className="text-2xl font-bold text-primary">{classifyResult.toInsert}</p>
+              <p className="text-sm text-muted-foreground">Шинэ нэмэх</p>
+            </CardContent></Card>
+            <Card><CardContent className="pt-6 text-center">
+              <UserCheck className="h-8 w-8 mx-auto text-amber-500 mb-2" />
+              <p className="text-2xl font-bold text-amber-500">{classifyResult.toMerge}</p>
+              <p className="text-sm text-muted-foreground">Нэгтгэх</p>
+            </CardContent></Card>
+            <Card><CardContent className="pt-6 text-center">
+              <UserX className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-2xl font-bold">{classifyResult.toSkip}</p>
+              <p className="text-sm text-muted-foreground">Алгасах</p>
+            </CardContent></Card>
           </div>
 
-          {/* Sample rows */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Жишээ 10 хэрэглэгч</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg">Жишээ 10 хэрэглэгч</CardTitle></CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
@@ -340,7 +352,7 @@ export default function Migration() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {previewResult.sampleRows.map((u, i) => (
+                  {classifyResult.sampleRows.map((u, i) => (
                     <TableRow key={i}>
                       <TableCell className="font-mono text-xs">{u.legacy_id}</TableCell>
                       <TableCell className="text-xs">{u.email || "—"}</TableCell>
@@ -354,26 +366,19 @@ export default function Migration() {
             </CardContent>
           </Card>
 
-          {/* Skip reasons */}
-          {previewResult.skipReasons.length > 0 && (
+          {classifyResult.skipReasons.length > 0 && (
             <Card>
               <CardHeader>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between"
-                  onClick={() => setShowSkipReasons(!showSkipReasons)}
-                >
-                  <span>Алгасах шалтгаанууд ({previewResult.skipReasons.length})</span>
+                <Button variant="ghost" className="w-full justify-between" onClick={() => setShowSkipReasons(!showSkipReasons)}>
+                  <span>Алгасах шалтгаанууд ({classifyResult.skipReasons.length})</span>
                   {showSkipReasons ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </CardHeader>
               {showSkipReasons && (
                 <CardContent>
                   <div className="max-h-60 overflow-y-auto space-y-1 text-xs font-mono">
-                    {previewResult.skipReasons.map((s, i) => (
-                      <div key={i} className="text-muted-foreground">
-                        [{s.legacy_id}] {s.reason}
-                      </div>
+                    {classifyResult.skipReasons.map((s, i) => (
+                      <div key={i} className="text-muted-foreground">[{s.legacy_id}] {s.reason}</div>
                     ))}
                   </div>
                 </CardContent>
@@ -381,45 +386,48 @@ export default function Migration() {
             </Card>
           )}
 
-          {/* Actions */}
           <div className="flex gap-3">
-            <Button variant="outline" onClick={reset}>
-              Буцах
-            </Button>
+            <Button variant="outline" onClick={reset}>Буцах</Button>
             <Button
-              onClick={() => {
-                setPhase("importing");
-                importMutation.mutate();
-              }}
-              disabled={previewResult.toInsert === 0 && previewResult.toMerge === 0}
+              onClick={runImport}
+              disabled={classifyResult.toInsert === 0 && classifyResult.toMerge === 0}
             >
               <Play className="h-4 w-4 mr-2" />
-              Импорт эхлүүлэх ({previewResult.toInsert + previewResult.toMerge} хэрэглэгч)
+              Импорт эхлүүлэх ({classifyResult.toInsert + classifyResult.toMerge} хэрэглэгч)
             </Button>
           </div>
         </div>
       )}
 
-      {/* Phase: Importing */}
-      {phase === "importing" && (
+      {/* Importing */}
+      {phase === "importing" && progress && (
         <Card>
           <CardContent className="pt-6 text-center space-y-4">
             <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
             <p className="text-lg font-medium">Импорт хийж байна...</p>
-            <p className="text-sm text-muted-foreground">
-              {previewResult?.toInsert || 0} шинэ нэмэх, {previewResult?.toMerge || 0} нэгтгэх
-            </p>
-            <Progress value={50} className="h-2 max-w-md mx-auto" />
+            <div className="max-w-md mx-auto space-y-2">
+              <Progress value={progressPct} className="h-3" />
+              <p className="text-sm text-muted-foreground">
+                {progress.completedBatches}/{progress.totalBatches} багц ({progressPct}%)
+              </p>
+              <div className="flex justify-center gap-6 text-sm">
+                <span className="text-primary">✓ {progress.inserted} нэмсэн</span>
+                <span className="text-amber-500">⟳ {progress.merged} нэгтгэсэн</span>
+                {progress.errors.length > 0 && (
+                  <span className="text-destructive">✗ {progress.errors.length} алдаа</span>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Phase: Done */}
-      {phase === "done" && importResult && (
+      {/* Done */}
+      {phase === "done" && progress && (
         <div className="space-y-4">
-          <Card className={importResult.errors && importResult.errors.length > 0 ? "border-amber-500/50" : "border-primary/50"}>
+          <Card className={progress.errors.length > 0 ? "border-amber-500/50" : "border-primary/50"}>
             <CardContent className="pt-6 text-center space-y-3">
-              {importResult.errors && importResult.errors.length > 0 ? (
+              {progress.errors.length > 0 ? (
                 <AlertTriangle className="h-12 w-12 mx-auto text-amber-500" />
               ) : (
                 <CheckCircle2 className="h-12 w-12 mx-auto text-primary" />
@@ -429,64 +437,43 @@ export default function Migration() {
           </Card>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-2xl font-bold">{importResult.total}</p>
-                <p className="text-sm text-muted-foreground">Нийт XML</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-2xl font-bold text-primary">{importResult.inserted ?? 0}</p>
-                <p className="text-sm text-muted-foreground">Шинэ нэмсэн</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-2xl font-bold text-amber-500">{importResult.merged ?? 0}</p>
-                <p className="text-sm text-muted-foreground">Нэгтгэсэн</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-2xl font-bold text-destructive">
-                  {importResult.errors?.length ?? 0}
-                </p>
-                <p className="text-sm text-muted-foreground">Алдаа</p>
-              </CardContent>
-            </Card>
+            <Card><CardContent className="pt-6 text-center">
+              <p className="text-2xl font-bold">{classifyResult?.total ?? 0}</p>
+              <p className="text-sm text-muted-foreground">Нийт XML</p>
+            </CardContent></Card>
+            <Card><CardContent className="pt-6 text-center">
+              <p className="text-2xl font-bold text-primary">{progress.inserted}</p>
+              <p className="text-sm text-muted-foreground">Шинэ нэмсэн</p>
+            </CardContent></Card>
+            <Card><CardContent className="pt-6 text-center">
+              <p className="text-2xl font-bold text-amber-500">{progress.merged}</p>
+              <p className="text-sm text-muted-foreground">Нэгтгэсэн</p>
+            </CardContent></Card>
+            <Card><CardContent className="pt-6 text-center">
+              <p className="text-2xl font-bold text-destructive">{progress.errors.length}</p>
+              <p className="text-sm text-muted-foreground">Алдаа</p>
+            </CardContent></Card>
           </div>
 
-          {/* Errors */}
-          {importResult.errors && importResult.errors.length > 0 && (
+          {progress.errors.length > 0 && (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowErrors(!showErrors)}
-                  >
+                  <Button variant="ghost" onClick={() => setShowErrors(!showErrors)}>
                     <XCircle className="h-4 w-4 mr-2 text-destructive" />
-                    Алдаанууд ({importResult.errors.length})
+                    Алдаанууд ({progress.errors.length})
                     {showErrors ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => exportErrorsCsv(importResult.errors!)}
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    CSV
+                  <Button variant="outline" size="sm" onClick={() => exportErrorsCsv(progress.errors)}>
+                    <Download className="h-3 w-3 mr-1" />CSV
                   </Button>
                 </div>
               </CardHeader>
               {showErrors && (
                 <CardContent>
                   <div className="max-h-60 overflow-y-auto space-y-1 text-xs font-mono">
-                    {importResult.errors.map((e, i) => (
-                      <div key={i} className="text-destructive">
-                        [{e.legacy_id}] {e.error}
-                      </div>
+                    {progress.errors.map((e, i) => (
+                      <div key={i} className="text-destructive">[{e.legacy_id}] {e.error}</div>
                     ))}
                   </div>
                 </CardContent>
@@ -494,9 +481,7 @@ export default function Migration() {
             </Card>
           )}
 
-          <Button onClick={reset} variant="outline">
-            Шинэ файл оруулах
-          </Button>
+          <Button onClick={reset} variant="outline">Шинэ файл оруулах</Button>
         </div>
       )}
 
@@ -510,36 +495,18 @@ export default function Migration() {
               <Card key={job.id}>
                 <CardContent className="flex items-center justify-between py-3 px-4">
                   <div className="flex items-center gap-3">
-                    <Badge
-                      variant={
-                        job.status === "completed"
-                          ? "default"
-                          : job.status === "failed"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
+                    <Badge variant={job.status === "completed" ? "default" : job.status === "failed" ? "destructive" : "secondary"}>
                       {job.status}
                     </Badge>
                     <span className="font-medium capitalize">{job.job_type}</span>
                     {(job.params as any)?.source_file && (
-                      <span className="text-xs text-muted-foreground">
-                        {(job.params as any).source_file}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{(job.params as any).source_file}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>
-                      {job.success_count}/{job.total_count} амжилттай
-                    </span>
-                    {(job.error_count ?? 0) > 0 && (
-                      <span className="text-destructive">
-                        {job.error_count} алдаа
-                      </span>
-                    )}
-                    <span>
-                      {new Date(job.created_at).toLocaleDateString("mn-MN")}
-                    </span>
+                    <span>{job.success_count}/{job.total_count} амжилттай</span>
+                    {(job.error_count ?? 0) > 0 && <span className="text-destructive">{job.error_count} алдаа</span>}
+                    <span>{new Date(job.created_at).toLocaleDateString("mn-MN")}</span>
                   </div>
                 </CardContent>
               </Card>
