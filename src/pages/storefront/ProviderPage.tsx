@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Loader2, ChevronDown, Sparkles, Star, Footprints, Droplets, Shirt, Home, Baby, Smartphone, Heart, Dumbbell, ShoppingBag, TrendingUp, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { searchItems } from "@/services/otApi";
@@ -7,6 +8,7 @@ import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
+import { useProviderSafe, type ProviderFilter } from "@/contexts/ProviderContext";
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   sparkles: <Sparkles className="h-4 w-4" />,
@@ -169,6 +171,7 @@ function SectionBlock({ section }: { section: ProviderSection }) {
 
 export default function ProviderPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { setSelectedProvider } = useProviderSafe();
 
   const { data: providerInfo } = useQuery({
     queryKey: ["provider-strip-item", slug],
@@ -183,6 +186,14 @@ export default function ProviderPage() {
     },
     enabled: !!slug,
   });
+
+  // Sync ProviderContext when landing on a provider page
+  useEffect(() => {
+    if (providerInfo?.provider_type) {
+      const filter: ProviderFilter = providerInfo.provider_type === "Poizon" ? "Poizon" : providerInfo.provider_type === "Taobao" ? "Taobao" : "all";
+      setSelectedProvider(filter);
+    }
+  }, [providerInfo?.provider_type, setSelectedProvider]);
 
   const showCategories = providerInfo?.show_categories !== false;
 
