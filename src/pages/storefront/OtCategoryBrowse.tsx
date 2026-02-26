@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
-import { Loader2, Package, FolderTree, ArrowLeft } from "lucide-react";
+import { Loader2, Package, FolderTree, ArrowLeft, ChevronRight, Home } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
@@ -21,9 +21,68 @@ interface OtCat {
   parent_internal_id: string | null;
 }
 
+// ─── Breadcrumbs component ──────────────────────────────────
+function CategoryBreadcrumbs({ category, allCategories }: { category: OtCat; allCategories: OtCat[] }) {
+  // Build breadcrumb chain by walking up parent_internal_id
+  const chain: OtCat[] = [];
+  let current: OtCat | undefined = category;
+  const catMap = new Map(allCategories.map((c) => [c.internal_id, c]));
+
+  while (current) {
+    chain.unshift(current);
+    current = current.parent_internal_id ? catMap.get(current.parent_internal_id) : undefined;
+  }
+
+  return (
+    <nav className="flex items-center gap-1 text-sm flex-wrap mb-4">
+      <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
+        <Home className="h-3.5 w-3.5" />
+      </Link>
+      <ChevronRight className="h-3 w-3 text-muted-foreground" />
+      <Link to="/ot/allcats" className="text-muted-foreground hover:text-foreground transition-colors">
+        Ангилалууд
+      </Link>
+      {chain.map((crumb, i) => {
+        const isLast = i === chain.length - 1;
+        const name = crumb.name_mn || crumb.name_en || crumb.internal_id;
+        return (
+          <span key={crumb.internal_id} className="flex items-center gap-1">
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            {isLast ? (
+              <span className="font-medium text-foreground">{name}</span>
+            ) : (
+              <Link
+                to={`/ot/browse/${crumb.internal_id}`}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {name}
+              </Link>
+            )}
+          </span>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function OtCategoryBrowse() {
   const { internalId } = useParams<{ internalId: string }>();
   const { apiProvider } = useProviderSafe();
+
+  // Fetch ALL categories for breadcrumb chain
+  const { data: allCategories } = useQuery({
+    queryKey: ["ot-all-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ot_categories")
+        .select("id, internal_id, external_id, name_mn, name_en, name_ru, icon_url, provider_type, item_ids, parent_internal_id")
+        .eq("is_active", true)
+        .order("display_order");
+      if (error) throw error;
+      return data as OtCat[];
+    },
+    staleTime: 1000 * 60 * 30,
+  });
 
   // Fetch current category
   const { data: category, isLoading: loadingCat } = useQuery({
@@ -56,12 +115,11 @@ export default function OtCategoryBrowse() {
     enabled: !!internalId,
   });
 
-  // Fetch products from item_ids using OT API search
+  // Fetch products
   const { data: products, isLoading: loadingProducts } = useQuery({
     queryKey: ["ot-category-products", internalId, category?.item_ids, apiProvider],
     queryFn: async () => {
       if (!category?.item_ids?.length) return [];
-      
       if (category.external_id && category.provider_type) {
         const result = await searchItems({
           categoryId: category.external_id,
@@ -79,28 +137,29 @@ export default function OtCategoryBrowse() {
   const displayName = category?.name_mn || category?.name_en || category?.name_ru || internalId;
 
   return (
-    <div className="py-6 md:py-8 animate-fade-in">
-      {/* Header */}
+    <div className="py-4 md:py-8 animate-fade-in">
       <div className="px-3 md:container mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Link to="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Нүүр
-            </Button>
-          </Link>
-        </div>
+        {/* Breadcrumbs */}
+        {category && allCategories && (
+          <CategoryBreadcrumbs category={category} allCategories={allCategories} />
+        )}
+
         {loadingCat ? (
           <Loader2 className="h-6 w-6 animate-spin" />
         ) : (
-          <>
-            <h1 className="text-2xl md:text-3xl font-bold">{displayName}</h1>
-            {category?.provider_type && (
-              <span className="text-sm text-muted-foreground">
-                {category.provider_type} · {category.item_ids?.length || 0} бараа
-              </span>
+          <div className="flex items-center gap-3">
+            {category?.icon_url && (
+              <img src={category.icon_url} alt="" className="w-10 h-10 object-contain" />
             )}
-          </>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">{displayName}</h1>
+              {category?.provider_type && (
+                <span className="text-sm text-muted-foreground">
+                  {category.provider_type} · {category.item_ids?.length || 0} бараа
+                </span>
+              )}
+            </div>
+          </div>
         )}
       </div>
 
