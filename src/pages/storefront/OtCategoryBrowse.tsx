@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { searchItems } from "@/services/otApi";
+import { useProviderSafe } from "@/contexts/ProviderContext";
 import type { OtProductCard } from "@/types/otApi";
 
 interface OtCat {
@@ -22,6 +23,7 @@ interface OtCat {
 
 export default function OtCategoryBrowse() {
   const { internalId } = useParams<{ internalId: string }>();
+  const { apiProvider } = useProviderSafe();
 
   // Fetch current category
   const { data: category, isLoading: loadingCat } = useQuery({
@@ -56,16 +58,14 @@ export default function OtCategoryBrowse() {
 
   // Fetch products from item_ids using OT API search
   const { data: products, isLoading: loadingProducts } = useQuery({
-    queryKey: ["ot-category-products", internalId, category?.item_ids],
+    queryKey: ["ot-category-products", internalId, category?.item_ids, apiProvider],
     queryFn: async () => {
       if (!category?.item_ids?.length) return [];
       
-      // Use searchItems with the category's external_id if it has one
-      // Otherwise we'd need a batch item fetch which OT API supports
       if (category.external_id && category.provider_type) {
         const result = await searchItems({
           categoryId: category.external_id,
-          provider: category.provider_type,
+          provider: apiProvider || category.provider_type,
           pageSize: 40,
         });
         return result.items;

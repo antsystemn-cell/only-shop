@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
 import type { OtProductCard } from "@/types/otApi";
 import { useRef, useCallback, useEffect, useState, useMemo } from "react";
+import { useProviderSafe } from "@/contexts/ProviderContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 // Icon map for admin-configured sections
@@ -136,7 +137,7 @@ function FeaturedSubcategories({ parentId }: { parentId: string }) {
 const FEED_PROVIDERS = ["Poizon", "Taobao", "Taobao"]; // Taobao twice = includes Tmall results
 
 // ─── Infinite Scroll Feed (alternating providers) ───────────
-function InfiniteProductFeed({ categoryId, rootCategoryIds }: { categoryId: string | null; rootCategoryIds: string[] }) {
+function InfiniteProductFeed({ categoryId, rootCategoryIds, globalProvider }: { categoryId: string | null; rootCategoryIds: string[]; globalProvider?: string }) {
   const observerTarget = useRef<HTMLDivElement>(null);
 
   const [randomPageOffset] = useState(() => Math.floor(Math.random() * 10));
@@ -144,8 +145,10 @@ function InfiniteProductFeed({ categoryId, rootCategoryIds }: { categoryId: stri
   const [randomOrder] = useState(() => orderOptions[Math.floor(Math.random() * orderOptions.length)]);
 
   const getProviderForPage = useCallback((page: number): string => {
+    // If a global provider is selected, always use it
+    if (globalProvider) return globalProvider;
     return FEED_PROVIDERS[page % FEED_PROVIDERS.length];
-  }, []);
+  }, [globalProvider]);
 
   // Always provide a categoryId – cycle through root categories when "Бүгд" is selected
   const getCategoryForPage = useCallback((page: number): string | undefined => {
@@ -161,7 +164,7 @@ function InfiniteProductFeed({ categoryId, rootCategoryIds }: { categoryId: stri
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["home-infinite-feed", categoryId, randomPageOffset, randomOrder, rootCategoryIds.length],
+    queryKey: ["home-infinite-feed", categoryId, randomPageOffset, randomOrder, rootCategoryIds.length, globalProvider],
     queryFn: ({ pageParam = 0 }) => {
       const provider = getProviderForPage(pageParam);
       const catId = getCategoryForPage(pageParam);
@@ -244,7 +247,10 @@ function InfiniteProductFeed({ categoryId, rootCategoryIds }: { categoryId: stri
 }
 
 // ─── Home Section Block ─────────────────────────────────────
-function HomeSectionBlock({ section }: { section: ProviderSection }) {
+function HomeSectionBlock({ section, globalProvider }: { section: ProviderSection; globalProvider?: string }) {
+  // If a global provider is selected and this section is for a different provider, hide it
+  if (globalProvider && section.provider_type !== globalProvider) return null;
+
   const {
     data,
     fetchNextPage,
@@ -338,6 +344,7 @@ function HomeSectionBlock({ section }: { section: ProviderSection }) {
 export default function Home() {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const { apiProvider } = useProviderSafe();
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Scroll to top when category changes
@@ -437,7 +444,7 @@ export default function Home() {
           <FeaturedSubcategories parentId={activeCategoryId} />
         )}
 
-        <InfiniteProductFeed categoryId={activeCategoryId} rootCategoryIds={categoryList.map(c => c.internal_id)} />
+        <InfiniteProductFeed categoryId={activeCategoryId} rootCategoryIds={categoryList.map(c => c.internal_id)} globalProvider={apiProvider} />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Folder } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useProviderSafe } from "@/contexts/ProviderContext";
 
 interface OtCat {
   id: string;
@@ -14,15 +15,21 @@ interface OtCat {
 }
 
 export function OtCategoryStrip() {
+  const { apiProvider } = useProviderSafe();
+
   const { data: categories } = useQuery({
-    queryKey: ["ot-root-categories-strip"],
+    queryKey: ["ot-root-categories-strip", apiProvider],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("ot_categories")
         .select("id, internal_id, name_mn, name_en, icon_url, provider_type, item_ids")
         .is("parent_internal_id", null)
         .eq("is_active", true)
         .order("display_order");
+      if (apiProvider) {
+        query = query.eq("provider_type", apiProvider);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data as OtCat[];
     },
