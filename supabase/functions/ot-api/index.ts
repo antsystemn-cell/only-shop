@@ -126,24 +126,24 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getBasket": {
       console.log("[ot-api] GetBasket sessionId:", params.sessionId);
       const basketResult = await callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
-      // Log basket structure for debugging
+      // Log basket structure safely
       try {
         const ci = basketResult?.CollectionInfo || basketResult?.Result?.CollectionInfo;
         console.log("[ot-api] GetBasket TotalCount:", ci?.TotalCount, "hasElements:", !!ci?.Elements);
         if (ci?.Elements) {
           const elems = Array.isArray(ci.Elements) ? ci.Elements : [ci.Elements];
           const first = elems[0];
-          console.log("[ot-api] GetBasket first element keys:", Object.keys(first || {}));
-          // Log price-related fields
-          console.log("[ot-api] GetBasket first Price:", JSON.stringify(first?.Price)?.substring(0, 500));
-          console.log("[ot-api] GetBasket first FullTotalCost:", JSON.stringify(first?.FullTotalCost)?.substring(0, 500));
-          console.log("[ot-api] GetBasket first TotalCost:", JSON.stringify(first?.TotalCost)?.substring(0, 500));
-          console.log("[ot-api] GetBasket first ImageUrl:", first?.ImageUrl, "MainPictureUrl:", first?.MainPictureUrl);
-          console.log("[ot-api] GetBasket first sample:", JSON.stringify(first).substring(0, 2000));
+          if (first && typeof first === "object") {
+            console.log("[ot-api] GetBasket first element keys:", Object.keys(first));
+            const sample = JSON.stringify(first) || "";
+            console.log("[ot-api] GetBasket first sample:", sample.substring(0, 1000));
+          } else {
+            console.log("[ot-api] GetBasket first element is empty or non-object:", typeof first);
+          }
         } else {
           console.log("[ot-api] GetBasket raw top keys:", Object.keys(basketResult || {}));
         }
-      } catch(e) { console.log("[ot-api] GetBasket log error:", e); }
+      } catch(e) { console.log("[ot-api] GetBasket log error:", String(e)); }
       return basketResult;
     }
     case "addItemToBasket": {
@@ -254,7 +254,10 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getInstanceOptionsInfo":
       return callOtApi("GetInstanceOptionsInfo", baseMeta);
     case "getProviderSettings":
-      return callOtApi("GetProviderSettings", baseMeta);
+      return callOtApi("GetProviderSettings", {
+        ...baseMeta,
+        ...(params.providerType ? { providerType: params.providerType } : {}),
+      });
     case "getGeolocationSettings":
       return callOtApi("GetGeolocationSettings", baseMeta);
 
@@ -407,6 +410,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
         ...baseMeta,
         framePosition: String(params.page || 0),
         frameSize: String(params.pageSize || 50),
+        xmlSearchParameters: params.xmlSearchParameters || buildWarehouseXmlSearchParameters(params),
       });
     case "createWarehouseItem":
       return callOtApi("CreateWarehouseItem", { ...base, xmlParameters: params.xmlParameters });
