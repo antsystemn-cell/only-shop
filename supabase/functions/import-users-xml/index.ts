@@ -149,28 +149,48 @@ async function importBatch(
   const errors: Array<{ legacy_id: string; error: string }> = [];
 
   if (mode === "insert") {
-    // Batch insert
-    const rows = users.map((u) => ({
-      ot_user_id: u.user.legacy_id || null,
-      email: u.user.email || `${u.user.login || u.user.legacy_id}@imported.local`,
-      full_name: u.user.full_name || u.user.login || "",
-      phone: u.user.phone || null,
-      user_id: crypto.randomUUID(),
-    }));
+    for (const u of users) {
+      try {
+        const email = u.user.email || `${u.user.login || u.user.legacy_id}@imported.local`;
+        
+        // 1) Create auth user first via admin API
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email,
+          email_confirm: true,
+          user_metadata: {
+            full_name: u.user.full_name || u.user.login || "",
+            imported: true,
+          },
+        });
 
-    const { error: batchError } = await supabase.from("profiles").insert(rows);
-    if (batchError) {
-      // Fallback to individual inserts
-      for (const row of rows) {
-        const { error: singleError } = await supabase.from("profiles").insert(row);
-        if (singleError) {
-          errors.push({ legacy_id: row.ot_user_id || "unknown", error: singleError.message });
-        } else {
-          successCount++;
+        if (authError) {
+          errors.push({ legacy_id: u.user.legacy_id, error: `Auth: ${authError.message}` });
+          continue;
         }
+
+        const authUserId = authData.user.id;
+
+        // 2) Update the auto-created profile with legacy data
+        const updates: Record<string, unknown> = {};
+        if (u.user.legacy_id) updates.ot_user_id = u.user.legacy_id;
+        if (u.user.full_name) updates.full_name = u.user.full_name;
+        if (u.user.phone) updates.phone = u.user.phone;
+
+        if (Object.keys(updates).length > 0) {
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .update(updates)
+            .eq("user_id", authUserId);
+          if (profileError) {
+            console.warn(`[import] Profile update warning for ${u.user.legacy_id}: ${profileError.message}`);
+          }
+        }
+
+        successCount++;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Unknown error";
+        errors.push({ legacy_id: u.user.legacy_id, error: msg });
       }
-    } else {
-      successCount = rows.length;
     }
   } else {
     // Merge mode
