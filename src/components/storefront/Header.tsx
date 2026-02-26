@@ -41,12 +41,12 @@ export function Header() {
       label: "Хятадаас захиалах",
     },
     {
-      href: "/shop",
-      label: "Дэлгүүр",
+      href: "/ot/allcats",
+      label: "Бүх ангилал",
     },
     {
-      href: "/categories",
-      label: "Ангилал",
+      href: "/shop",
+      label: "Дэлгүүр",
     },
   ];
   return (
