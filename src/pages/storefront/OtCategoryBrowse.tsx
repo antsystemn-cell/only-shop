@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
 import { Loader2, Package, FolderTree, ArrowLeft, ChevronRight, Home } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
-import { searchItems } from "@/services/otApi";
+import { searchItems, fetchItemsByIds } from "@/services/otApi";
 import { useProviderSafe } from "@/contexts/ProviderContext";
 import type { OtProductCard } from "@/types/otApi";
 
@@ -68,6 +69,8 @@ function CategoryBreadcrumbs({ category, allCategories }: { category: OtCat; all
 export default function OtCategoryBrowse() {
   const { internalId } = useParams<{ internalId: string }>();
   const { apiProvider } = useProviderSafe();
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 20;
 
   // Fetch ALL categories for breadcrumb chain
   const { data: allCategories } = useQuery({
@@ -115,24 +118,35 @@ export default function OtCategoryBrowse() {
     enabled: !!internalId,
   });
 
-  // Fetch products
+  // Fetch products — either via API search (external_id) or by item_ids batch fetch
   const { data: products, isLoading: loadingProducts } = useQuery({
-    queryKey: ["ot-category-products", internalId, category?.item_ids, apiProvider],
+    queryKey: ["ot-category-products", internalId, category?.external_id, category?.item_ids?.length, apiProvider, page],
     queryFn: async () => {
-      if (!category?.item_ids?.length) return [];
+      if (!category) return [];
+      // Strategy 1: category has external_id → use OT API search
       if (category.external_id && category.provider_type) {
         const result = await searchItems({
           categoryId: category.external_id,
           provider: apiProvider || category.provider_type,
           pageSize: 40,
+          page,
         });
         return result.items;
+      }
+      // Strategy 2: category has item_ids → fetch items directly by ID
+      if (category.item_ids?.length) {
+        const pageItems = category.item_ids.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+        return fetchItemsByIds(pageItems);
       }
       return [];
     },
     enabled: !!category && (!!category.external_id || (category.item_ids?.length || 0) > 0),
     staleTime: 1000 * 60 * 10,
   });
+
+  const totalPages = category?.item_ids?.length && !category.external_id
+    ? Math.ceil(category.item_ids.length / PAGE_SIZE)
+    : 0;
 
   const displayName = category?.name_mn || category?.name_en || category?.name_ru || internalId;
 
@@ -196,12 +210,38 @@ export default function OtCategoryBrowse() {
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
         </div>
       ) : products && products.length > 0 ? (
-        <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
-          {products.map((product) => (
-            <OtProductCardComponent key={product.id} product={product} />
-          ))}
-        </div>
-      ) : category?.external_id ? (
+        <>
+          <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
+            {products.map((product) => (
+              <OtProductCardComponent key={product.id} product={product} />
+            ))}
+          </div>
+          {/* Pagination for item_ids-based categories */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 py-6">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                ← Өмнөх
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {page + 1} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Дараах →
+              </Button>
+            </div>
+          )}
+        </>
+      ) : (category?.external_id || (category?.item_ids?.length || 0) > 0) ? (
         <div className="text-center py-12 text-muted-foreground">
           <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
           <p>Бараа олдсонгүй</p>

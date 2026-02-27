@@ -354,6 +354,54 @@ export async function getBasket(sessionId: string) {
 }
 
 // Lightweight item info fetch (title + image only) for basket enrichment
+// Batch fetch items by IDs → OtProductCard[] (for curated collections / item_ids categories)
+export async function fetchItemsByIds(
+  itemIds: string[],
+  batchSize = 6
+): Promise<OtProductCard[]> {
+  if (!itemIds.length) return [];
+  const priceConfig = await getPriceConfig();
+  const results: OtProductCard[] = [];
+
+  for (let i = 0; i < itemIds.length; i += batchSize) {
+    const batch = itemIds.slice(i, i + batchSize);
+    const settled = await Promise.allSettled(
+      batch.map(async (id) => {
+        const data = await callProxy<any>("getItemFullInfo", { itemId: id });
+        const item = data?.Result?.Item;
+        if (!item) return null;
+        // Convert full info to OtProductCard format
+        const effectivePrice = item.PromotionPrice || item.Price;
+        const currencyCode = getOriginalCurrencyCode(effectivePrice);
+        const rawValue = getOriginalPriceValue(effectivePrice);
+        const price = calculateMntPrice(rawValue, currencyCode, item.ProviderType, priceConfig);
+        let originalPrice: number | undefined;
+        if (item.PromotionPrice && item.Price) {
+          const regValue = getOriginalPriceValue(item.Price);
+          if (regValue > rawValue) {
+            originalPrice = calculateMntPrice(regValue, getOriginalCurrencyCode(item.Price), item.ProviderType, priceConfig);
+          }
+        }
+        return {
+          id: item.Id || id,
+          title: item.Title || item.ExternalTitle || "",
+          imageUrl: item.MainPictureUrl || "",
+          price,
+          originalPrice,
+          currency: "₮",
+          vendorName: item.VendorName,
+          quantity: item.Quantity ?? item.MasterQuantity,
+          providerType: item.ProviderType,
+        } as OtProductCard;
+      })
+    );
+    for (const r of settled) {
+      if (r.status === "fulfilled" && r.value) results.push(r.value);
+    }
+  }
+  return results;
+}
+
 export async function getItemBasicInfo(itemId: string): Promise<{ title: string; imageUrl: string }> {
   try {
     const data = await callProxy<any>("getItemFullInfo", { itemId });
