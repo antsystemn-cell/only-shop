@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
   Loader2,
   CheckCircle2,
@@ -57,6 +57,7 @@ const STEP_LABELS = [
 
 export default function OtCheckout() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { items, groups, subtotal, checkBasket, checkingStatus, refreshBasket, itemCount, removeItem, clearCart } = useOtCartSafe();
   const [step, setStep] = useState<CheckoutStep>(1);
@@ -90,12 +91,35 @@ export default function OtCheckout() {
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [paymentPaid, setPaymentPaid] = useState(false);
 
-  // Redirect if cart is empty
+  // Handle ?pay=orderId — jump directly to payment step
   useEffect(() => {
-    if (items.length === 0 && step === 1) {
+    const payOrderId = searchParams.get("pay");
+    if (!payOrderId || !user) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from("ot_orders")
+        .select("*")
+        .eq("id", payOrderId)
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .single();
+      if (error || !data) {
+        toast.error("Захиалга олдсонгүй эсвэл төлбөр аль хэдийн төлөгдсөн.");
+        navigate("/ot/orders");
+        return;
+      }
+      setOrderResult(data);
+      setStep(5);
+    })();
+  }, [searchParams, user]);
+
+  // Redirect if cart is empty (only when not in pay mode)
+  useEffect(() => {
+    const payOrderId = searchParams.get("pay");
+    if (!payOrderId && items.length === 0 && step === 1) {
       navigate("/ot");
     }
-  }, [items.length, step, navigate]);
+  }, [items.length, step, navigate, searchParams]);
 
   // ─── Step 1: Basket Checking ──────────────────────────────
 

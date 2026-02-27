@@ -201,7 +201,14 @@ export default function OtOrders() {
                     </>
                   )}
 
-                  <div className="flex justify-end mt-3">
+                  <div className="flex justify-end mt-3 gap-2">
+                    {order.status === "pending" && (
+                      <Button size="sm" asChild>
+                        <Link to={`/ot/checkout?pay=${order.id}`}>
+                          💳 Төлбөр төлөх
+                        </Link>
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => { setSelectedOrder(order); setShowDetail(true); }}>
                       <Eye className="h-4 w-4 mr-1" />
                       Дэлгэрэнгүй
