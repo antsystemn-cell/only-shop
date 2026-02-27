@@ -515,7 +515,7 @@ function LocalOrderDetailSheet({
                             </span>
                           )}
                         </div>
-                        {/* ONLY show external link for OT items */}
+                        {/* OT items: external + internal links */}
                         {isOtapi && snapshot.externalUrl && (
                           <a
                             href={snapshot.externalUrl}
@@ -526,15 +526,25 @@ function LocalOrderDetailSheet({
                             🔗 Эх сурвалж линк
                           </a>
                         )}
-                        {/* LOCAL items: show internal product link */}
+                        {isOtapi && snapshot.itemId && (
+                          <a
+                            href={`/product/otapi/${snapshot.itemId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-green-600 hover:underline mt-0.5 block"
+                          >
+                            🏠 Манай сайтын линк
+                          </a>
+                        )}
+                        {/* LOCAL items: internal product link */}
                         {!isOtapi && item.product_id && (
                           <a
-                            href={`/product/${item.product_id}`}
+                            href={`/product/local/${item.product_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-green-600 hover:underline mt-1 block"
                           >
-                            📦 Барааны хуудас
+                            📦 Барааны линк
                           </a>
                         )}
                         {snapshot.brand && <div className="text-xs text-muted-foreground">{snapshot.brand}</div>}
