@@ -213,13 +213,18 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       // activityId must be a plain string UUID
       const gbcrParams: Record<string, string> = { ...base, sessionId: params.sessionId };
       const rawAid = params.activityId;
-      // Ensure we extract string from potential nested object
       const aidStr = extractActivityIdString(rawAid);
       if (aidStr) {
         gbcrParams.activityId = aidStr;
       }
       console.log("[ot-api] GetBasketCheckingResult activityId:", aidStr || "(none)", "original type:", typeof rawAid);
-      return callOtApi("GetBasketCheckingResult", gbcrParams);
+      const checkResult = await callOtApi("GetBasketCheckingResult", gbcrParams);
+      // Log the result structure to debug IsReady detection
+      const resultObj = checkResult?.Result || checkResult;
+      console.log("[ot-api] GetBasketCheckingResult response keys:", JSON.stringify(Object.keys(checkResult || {})));
+      console.log("[ot-api] GetBasketCheckingResult Result keys:", JSON.stringify(Object.keys(resultObj || {})));
+      console.log("[ot-api] GetBasketCheckingResult IsReady:", resultObj?.IsReady, "State:", resultObj?.State, "Status:", resultObj?.Status);
+      return checkResult;
     }
 
     // ── Orders ──
