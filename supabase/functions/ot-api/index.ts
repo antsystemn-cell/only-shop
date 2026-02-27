@@ -8,6 +8,25 @@ const corsHeaders = {
 
 const OT_API_BASE = "https://otapi.net/service-json";
 
+// ─── Extract activityId string from OTAPI nested response ───
+// OTAPI returns activityId as { Type: "BasketChecking", Id: { Value: "uuid-string" } }
+// We need to extract the plain string UUID from this nested structure
+function extractActivityIdString(raw: unknown): string | null {
+  if (!raw) return null;
+  if (typeof raw === "string") return raw;
+  if (typeof raw === "number") return String(raw);
+  if (typeof raw === "object") {
+    const obj = raw as Record<string, any>;
+    // Pattern: { Id: { Value: "uuid" } }
+    if (obj.Id?.Value) return String(obj.Id.Value);
+    // Pattern: { Value: "uuid" }
+    if (obj.Value) return String(obj.Value);
+    // Pattern: { ActivityId: "uuid" } or nested
+    if (obj.ActivityId) return extractActivityIdString(obj.ActivityId);
+  }
+  return null;
+}
+
 // ─── Default XML helpers ────────────────────────────────────
 function buildRatingListXmlSearchParameters() {
   return `<BatchRatingListSearchParameters><UseDefaultParameters>true</UseDefaultParameters></BatchRatingListSearchParameters>`;
@@ -181,22 +200,25 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       if (params.elements && typeof params.elements === "string" && params.elements.trim()) {
         rbcParams.elements = params.elements.trim();
       }
-      // else: omit elements to check entire basket
       console.log("[ot-api] RunBasketChecking elements:", rbcParams.elements || "(entire basket)");
       const rbcResult = await callOtApi("RunBasketChecking", rbcParams);
-      console.log("[ot-api] RunBasketChecking result keys:", JSON.stringify(Object.keys(rbcResult || {})));
-      // Extract activityId from response
-      const activityId = rbcResult?.Result?.ActivityId || rbcResult?.ActivityId || rbcResult?.Result?.Value || rbcResult?.Result;
-      console.log("[ot-api] RunBasketChecking activityId:", activityId);
-      return { ...rbcResult, _activityId: activityId };
+      console.log("[ot-api] RunBasketChecking raw result keys:", JSON.stringify(Object.keys(rbcResult || {})));
+      // Extract activityId - OTAPI returns nested object: { Type: "BasketChecking", Id: { Value: "uuid" } }
+      const rawActivityId = rbcResult?.Result?.ActivityId || rbcResult?.ActivityId || rbcResult?.Result;
+      const activityIdStr = extractActivityIdString(rawActivityId);
+      console.log("[ot-api] RunBasketChecking extracted activityId:", activityIdStr, "typeof:", typeof activityIdStr);
+      return { ...rbcResult, _activityId: activityIdStr };
     }
     case "getBasketCheckingResult": {
-      // activityId is required per OTAPI docs
+      // activityId must be a plain string UUID
       const gbcrParams: Record<string, string> = { ...base, sessionId: params.sessionId };
-      if (params.activityId) {
-        gbcrParams.activityId = String(params.activityId);
+      const rawAid = params.activityId;
+      // Ensure we extract string from potential nested object
+      const aidStr = extractActivityIdString(rawAid);
+      if (aidStr) {
+        gbcrParams.activityId = aidStr;
       }
-      console.log("[ot-api] GetBasketCheckingResult activityId:", params.activityId || "(none)");
+      console.log("[ot-api] GetBasketCheckingResult activityId:", aidStr || "(none)", "original type:", typeof rawAid);
       return callOtApi("GetBasketCheckingResult", gbcrParams);
     }
 

@@ -318,72 +318,96 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
       }
 
       const elementIds = elementsList.map((el: any) => String(el.Id)).filter(Boolean).join(",");
-      console.log(`[OtCart][${correlationId}] RunBasketChecking with ${elementsList.length} elements`);
+      console.log(`[OtCart][${correlationId}] RunBasketChecking with ${elementsList.length} elements, ids: ${elementIds}`);
 
-      // Step 2: Run basket checking (pass element IDs as comma-separated string)
-      const checkResponse = await runBasketChecking(sessionId, elementIds) as any;
-      const activityId = checkResponse?._activityId
-        || checkResponse?.Result?.ActivityId
-        || checkResponse?.ActivityId;
-      console.log(`[OtCart][${correlationId}] activityId:`, activityId);
+      // Step 2: Run basket checking - returns { activityId: string, raw: any }
+      const { activityId } = await runBasketChecking(sessionId, elementIds);
+      console.log(`[OtCart][${correlationId}] activityId: "${activityId}" (type: ${typeof activityId})`);
+
+      // Safety: activityId must be a string
+      if (typeof activityId !== "string" || !activityId) {
+        console.error(`[OtCart][${correlationId}] Invalid activityId:`, activityId);
+        throw new Error("BASKET_CHECK_NO_ACTIVITY_ID");
+      }
 
       // Step 3: Poll with backoff
-      const backoffMs = [300, 600, 1000, 1500, 2000, 2000, 2000, 2000, 2000, 2000];
-      let attempts = 0;
-      const maxAttempts = 15;
-      const maxTotalMs = 20000;
-      const startTime = Date.now();
+      return await pollBasketCheckingResult(sessionId, activityId, correlationId);
+    } catch (err: any) {
+      console.error(`[OtCart][${correlationId}] checkBasket error:`, err.message);
 
-      while (attempts < maxAttempts && (Date.now() - startTime) < maxTotalMs) {
-        const delay = backoffMs[Math.min(attempts, backoffMs.length - 1)];
-        await new Promise((r) => setTimeout(r, delay));
-        attempts++;
-
-        console.log(`[OtCart][${correlationId}] Poll attempt #${attempts}`);
-        const result = await getBasketCheckingResult(sessionId, activityId) as any;
-
-        const isReady = result?.Result?.IsReady || result?.IsReady;
-        if (isReady) {
-          console.log(`[OtCart][${correlationId}] Check complete after ${attempts} polls`);
-          
-          // Parse invalid items from result
-          const orderLines = result?.Result?.OrderLines || result?.OrderLines;
-          const linesList = orderLines ? (Array.isArray(orderLines) ? orderLines : [orderLines]) : [];
-          
-          const invalidItems: BasketInvalidItem[] = linesList
-            .filter((ol: any) => ol.IsAvailable === false || ol.IsDeleted === true || ol.HasPriceChanged === true)
-            .map((ol: any) => {
-              const reasons: string[] = [];
-              if (ol.IsDeleted) reasons.push("Устгагдсан");
-              if (ol.IsAvailable === false) reasons.push("Боломжгүй");
-              if (ol.HasPriceChanged) reasons.push("Үнэ өөрчлөгдсөн");
-              return {
-                elementId: String(ol.Id || ol.OrderLineId || ""),
-                itemId: ol.ItemId || "",
-                title: ol.Title || ol.ItemTitle || "",
-                reasonCode: ol.IsDeleted ? "DELETED" : ol.IsAvailable === false ? "UNAVAILABLE" : "PRICE_CHANGED",
-                reasonText: reasons.join(", ") || "Тодорхойгүй",
-              };
-            });
-
-          if (invalidItems.length > 0) {
-            console.log(`[OtCart][${correlationId}] Found ${invalidItems.length} invalid items`);
-            setCheckingStatus({ isRunning: false, isComplete: true, result, invalidItems });
-            return { ...result, _invalidItems: invalidItems };
-          }
-
-          setCheckingStatus({ isRunning: false, isComplete: true, result, invalidItems: [] });
-          return result;
+      // NotFound fallback: retry once with fresh RunBasketChecking
+      if (err.message?.includes("NotFound") || err.message?.includes("not found")) {
+        console.log(`[OtCart][${correlationId}] NotFound detected, retrying basket check...`);
+        try {
+          const sessionId = await getAnonymousSession();
+          const { activityId: retryId } = await runBasketChecking(sessionId);
+          console.log(`[OtCart][${correlationId}] Retry activityId: "${retryId}"`);
+          return await pollBasketCheckingResult(sessionId, retryId, correlationId + "-retry");
+        } catch (retryErr: any) {
+          console.error(`[OtCart][${correlationId}] Retry also failed:`, retryErr.message);
+          setCheckingStatus({ isRunning: false, isComplete: false, result: null });
+          throw retryErr;
         }
       }
 
-      console.warn(`[OtCart][${correlationId}] Basket checking timed out after ${attempts} polls`);
-      throw new Error("CHECK_TIMEOUT");
-    } catch (err: any) {
-      console.error(`[OtCart][${correlationId}] checkBasket error:`, err.message);
       setCheckingStatus({ isRunning: false, isComplete: false, result: null });
       throw err;
     }
+  }, []);
+
+  // Extracted polling logic for reuse in retries
+  const pollBasketCheckingResult = useCallback(async (sessionId: string, activityId: string, correlationId: string) => {
+    const backoffMs = [300, 600, 1000, 1500, 2000, 2000, 2000, 2000, 2000, 2000];
+    let attempts = 0;
+    const maxAttempts = 15;
+    const maxTotalMs = 25000;
+    const startTime = Date.now();
+
+    while (attempts < maxAttempts && (Date.now() - startTime) < maxTotalMs) {
+      const delay = backoffMs[Math.min(attempts, backoffMs.length - 1)];
+      await new Promise((r) => setTimeout(r, delay));
+      attempts++;
+
+      console.log(`[OtCart][${correlationId}] Poll #${attempts}, activityId: "${activityId}"`);
+      const result = await getBasketCheckingResult(sessionId, activityId) as any;
+
+      const isReady = result?.Result?.IsReady || result?.IsReady;
+      if (isReady) {
+        console.log(`[OtCart][${correlationId}] Check complete after ${attempts} polls`);
+
+        // Parse invalid items from result
+        const orderLines = result?.Result?.OrderLines || result?.OrderLines;
+        const linesList = orderLines ? (Array.isArray(orderLines) ? orderLines : [orderLines]) : [];
+
+        const invalidItems: BasketInvalidItem[] = linesList
+          .filter((ol: any) => ol.IsAvailable === false || ol.IsDeleted === true || ol.HasPriceChanged === true)
+          .map((ol: any) => {
+            const reasons: string[] = [];
+            if (ol.IsDeleted) reasons.push("Устгагдсан");
+            if (ol.IsAvailable === false) reasons.push("Боломжгүй");
+            if (ol.HasPriceChanged) reasons.push("Үнэ өөрчлөгдсөн");
+            return {
+              elementId: String(ol.Id || ol.OrderLineId || ""),
+              itemId: ol.ItemId || "",
+              title: ol.Title || ol.ItemTitle || "",
+              reasonCode: ol.IsDeleted ? "DELETED" : ol.IsAvailable === false ? "UNAVAILABLE" : "PRICE_CHANGED",
+              reasonText: reasons.join(", ") || "Тодорхойгүй",
+            };
+          });
+
+        if (invalidItems.length > 0) {
+          console.log(`[OtCart][${correlationId}] Found ${invalidItems.length} invalid items`);
+          setCheckingStatus({ isRunning: false, isComplete: true, result, invalidItems });
+          return { ...result, _invalidItems: invalidItems };
+        }
+
+        setCheckingStatus({ isRunning: false, isComplete: true, result, invalidItems: [] });
+        return result;
+      }
+    }
+
+    console.warn(`[OtCart][${correlationId}] Basket checking timed out after ${attempts} polls`);
+    throw new Error("CHECK_TIMEOUT");
   }, []);
 
   const groups = groupByProvider(items);
