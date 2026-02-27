@@ -659,6 +659,7 @@ export type Database = {
       }
       ot_orders: {
         Row: {
+          cancel_reason: string | null
           comment: string | null
           created_at: string
           delivery_address: Json | null
@@ -673,6 +674,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          cancel_reason?: string | null
           comment?: string | null
           created_at?: string
           delivery_address?: Json | null
@@ -687,6 +689,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          cancel_reason?: string | null
           comment?: string | null
           created_at?: string
           delivery_address?: Json | null

@@ -31,11 +31,13 @@ import {
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Хүлээгдэж буй", variant: "secondary" },
-  processing: { label: "Боловсруулж буй", variant: "default" },
-  shipped: { label: "Хүргэлтэд", variant: "default" },
-  delivered: { label: "Хүргэгдсэн", variant: "default" },
-  completed: { label: "Дууссан", variant: "default" },
+  pending: { label: "Төлбөр хүлээгдэж байна", variant: "secondary" },
+  paid: { label: "Төлбөр төлөгдсөн", variant: "default" },
+  foreign_ordered: { label: "Гадаад захиалга хийгдсэн", variant: "default" },
+  at_warehouse: { label: "Гадаад агуулахад хүлээн авсан", variant: "default" },
+  shipped_mn: { label: "Монгол руу ачигдсан", variant: "default" },
+  arrived_ub: { label: "Улаанбаатарт ирсэн", variant: "default" },
+  delivered: { label: "Хүлээлгэн өгсөн", variant: "default" },
   cancelled: { label: "Цуцлагдсан", variant: "destructive" },
 };
 
@@ -160,6 +162,9 @@ export default function OtOrders() {
                       </div>
                     </div>
                     <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                    {order.status === "cancelled" && order.cancel_reason && (
+                      <p className="text-xs text-destructive mt-1">Шалтгаан: {order.cancel_reason}</p>
+                    )}
                   </div>
 
                   {items.length > 0 && (
@@ -225,6 +230,9 @@ export default function OtOrders() {
                 <div>
                   <span className="text-muted-foreground">Статус:</span>
                   <p><Badge>{STATUS_LABELS[selectedOrder.status]?.label || selectedOrder.status}</Badge></p>
+                  {selectedOrder.status === "cancelled" && selectedOrder.cancel_reason && (
+                    <p className="text-xs text-destructive mt-1">Шалтгаан: {selectedOrder.cancel_reason}</p>
+                  )}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Огноо:</span>

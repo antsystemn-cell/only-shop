@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,28 +39,36 @@ function getStatusColor(status?: string): string {
   if (!status) return "bg-muted text-muted-foreground";
   const s = status.toLowerCase();
   if (s === "cancelled") return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
-  if (s === "delivered" || s === "completed") return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
-  if (s === "shipped") return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
-  if (s === "processing") return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+  if (s === "delivered") return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+  if (s === "arrived_ub") return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400";
+  if (s === "shipped_mn") return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
+  if (s === "at_warehouse") return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400";
+  if (s === "foreign_ordered") return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+  if (s === "paid") return "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400";
   if (s === "pending") return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
   return "bg-muted text-muted-foreground";
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Хүлээгдэж буй",
-  processing: "Боловсруулж буй",
-  shipped: "Хүргэлтэд",
-  delivered: "Хүргэгдсэн",
-  completed: "Дууссан",
+  pending: "Төлбөр хүлээгдэж байна",
+  paid: "Төлбөр төлөгдсөн",
+  foreign_ordered: "Гадаад захиалга хийгдсэн",
+  at_warehouse: "Гадаад агуулахад хүлээн авсан",
+  shipped_mn: "Монгол руу ачигдсан",
+  arrived_ub: "Улаанбаатарт ирсэн",
+  delivered: "Хүлээлгэн өгсөн",
   cancelled: "Цуцлагдсан",
 };
 
 const STATUS_FILTERS = [
   { value: "all", label: "Бүгд" },
-  { value: "pending", label: "Хүлээгдэж буй" },
-  { value: "processing", label: "Боловсруулж буй" },
-  { value: "shipped", label: "Хүргэлтэд" },
-  { value: "delivered", label: "Хүргэгдсэн" },
+  { value: "pending", label: "Төлбөр хүлээгдэж байна" },
+  { value: "paid", label: "Төлбөр төлөгдсөн" },
+  { value: "foreign_ordered", label: "Гадаад захиалга хийгдсэн" },
+  { value: "at_warehouse", label: "Гадаад агуулахад хүлээн авсан" },
+  { value: "shipped_mn", label: "Монгол руу ачигдсан" },
+  { value: "arrived_ub", label: "Улаанбаатарт ирсэн" },
+  { value: "delivered", label: "Хүлээлгэн өгсөн" },
   { value: "cancelled", label: "Цуцлагдсан" },
 ];
 
@@ -72,7 +81,8 @@ export default function OtOrdersTab() {
   const [pageSize] = useState(20);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [cancelTarget, setCancelTarget] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<any>(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -106,17 +116,38 @@ export default function OtOrdersTab() {
 
   // ── Update status mutation ──
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, cancel_reason }: { id: string; status: string; cancel_reason?: string }) => {
+      const updateData: any = { status };
+      if (cancel_reason) updateData.cancel_reason = cancel_reason;
+
       const { error } = await supabase
         .from("ot_orders")
-        .update({ status })
+        .update(updateData)
         .eq("id", id);
       if (error) throw error;
+
+      // If cancelling, refund to user wallet
+      if (status === "cancelled") {
+        // Get order to find user_id and subtotal
+        const { data: order } = await supabase
+          .from("ot_orders")
+          .select("user_id, subtotal")
+          .eq("id", id)
+          .single();
+
+        if (order?.user_id && order.subtotal > 0) {
+          await supabase.rpc("credit_wallet", {
+            p_user_id: order.user_id,
+            p_amount: order.subtotal,
+          });
+        }
+      }
     },
     onSuccess: () => {
       toast({ title: "Төлөв шинэчлэгдлээ" });
       queryClient.invalidateQueries({ queryKey: ["admin", "ot-orders-local"] });
       setCancelTarget(null);
+      setCancelReason("");
     },
     onError: (e: any) => toast({ title: "Алдаа", description: e.message, variant: "destructive" }),
   });
@@ -289,7 +320,7 @@ export default function OtOrdersTab() {
                                 variant="ghost"
                                 size="icon"
                                 className="text-destructive hover:text-destructive"
-                                onClick={() => setCancelTarget(order.id)}
+                                onClick={() => setCancelTarget(order)}
                                 title="Цуцлах"
                               >
                                 <XCircle className="h-4 w-4" />
@@ -368,6 +399,14 @@ export default function OtOrdersTab() {
                 </div>
               )}
 
+              {/* Cancel Reason */}
+              {selectedOrder.cancel_reason && (
+                <div>
+                  <Label className="text-muted-foreground">Цуцалсан шалтгаан</Label>
+                  <p className="text-sm mt-1 text-destructive">{selectedOrder.cancel_reason}</p>
+                </div>
+              )}
+
               {/* Comment */}
               {selectedOrder.comment && (
                 <div>
@@ -416,17 +455,39 @@ export default function OtOrdersTab() {
       </Sheet>
 
       {/* Cancel Confirmation */}
-      <AlertDialog open={!!cancelTarget} onOpenChange={(open) => !open && setCancelTarget(null)}>
+      <AlertDialog open={!!cancelTarget} onOpenChange={(open) => { if (!open) { setCancelTarget(null); setCancelReason(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Захиалга цуцлах уу?</AlertDialogTitle>
-            <AlertDialogDescription>Энэ захиалгын төлөвийг "Цуцлагдсан" болгож өөрчлөх гэж байна.</AlertDialogDescription>
+            <AlertDialogDescription>
+              Энэ захиалгыг цуцлахад төлбөрийн дүн хэрэглэгчийн хэтэвчинд буцаагдана.
+              {cancelTarget && (
+                <span className="block mt-1 font-semibold">
+                  Буцаагдах дүн: {formatPrice(cancelTarget.subtotal)}
+                </span>
+              )}
+            </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="px-6 pb-2">
+            <Label>Цуцлах шалтгаан *</Label>
+            <Textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Цуцалж байгаа шалтгаанаа бичнэ үү..."
+              className="mt-1"
+              rows={3}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Буцах</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => cancelTarget && updateStatusMutation.mutate({ id: cancelTarget, status: "cancelled" })}
+              onClick={() => cancelTarget && updateStatusMutation.mutate({ 
+                id: cancelTarget.id, 
+                status: "cancelled",
+                cancel_reason: cancelReason,
+              })}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!cancelReason.trim()}
             >
               Цуцлах
             </AlertDialogAction>

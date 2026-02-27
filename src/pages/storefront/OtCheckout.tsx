@@ -819,7 +819,7 @@ export default function OtCheckout() {
                         setPaymentPaid(true);
                         await supabase
                           .from("ot_orders")
-                          .update({ status: "processing" })
+                          .update({ status: "paid" })
                           .eq("id", orderResult.id);
                       }}
                     />
@@ -833,7 +833,7 @@ export default function OtCheckout() {
                         setPaymentPaid(true);
                         await supabase
                           .from("ot_orders")
-                          .update({ status: "processing" })
+                          .update({ status: "paid" })
                           .eq("id", orderResult.id);
                       }}
                     />
@@ -847,7 +847,7 @@ export default function OtCheckout() {
                         setPaymentPaid(true);
                         await supabase
                           .from("ot_orders")
-                          .update({ status: "processing" })
+                          .update({ status: "paid" })
                           .eq("id", orderResult.id);
                       }}
                     />
