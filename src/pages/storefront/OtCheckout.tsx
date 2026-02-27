@@ -37,6 +37,10 @@ import {
   createUserProfile,
   type OtUserProfile,
 } from "@/services/otApi";
+import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
+import QPayPayment from "@/components/storefront/QPayPayment";
+import OmniWayPayment from "@/components/storefront/OmniWayPayment";
+import StorepayPayment from "@/components/storefront/StorepayPayment";
 
 
 type CheckoutStep = 1 | 2 | 3 | 4 | 5;
@@ -46,7 +50,7 @@ const STEP_LABELS = [
   "Хүргэлт сонгох",
   "Хаяг сонгох",
   "Баталгаажуулах",
-  "Дууссан",
+  "Төлбөр төлөх",
 ];
 
 export default function OtCheckout() {
@@ -80,6 +84,9 @@ export default function OtCheckout() {
   const [comment, setComment] = useState("");
 
   const [orderResult, setOrderResult] = useState<any>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("qpay");
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [paymentPaid, setPaymentPaid] = useState(false);
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -275,9 +282,29 @@ export default function OtCheckout() {
 
       if (error) throw new Error(error.message);
 
+      // Create payment intent
+      if (user?.id) {
+        const { data: pi, error: piErr } = await supabase
+          .from("payment_intents")
+          .insert({
+            user_id: user.id,
+            type: "order" as const,
+            reference_id: newOrder.id,
+            amount: Math.round(subtotal),
+            provider: paymentMethod === "omniway" ? ("omniway" as const) : paymentMethod === "storepay" ? ("storepay" as const) : ("qpay" as const),
+            status: "initiated" as const,
+          })
+          .select()
+          .single();
+
+        if (!piErr && pi) {
+          setPaymentIntentId(pi.id);
+        }
+      }
+
       setOrderResult(newOrder);
       setStep(5);
-      toast.success("Захиалга амжилттай үүсгэгдлээ!");
+      toast.success("Захиалга амжилттай үүслээ! Төлбөрөө төлнө үү.");
 
       // Clear the OTAPI basket after successful order
       await clearCart();
@@ -722,33 +749,112 @@ export default function OtCheckout() {
             </Card>
           )}
 
-          {/* ─── Step 5: Order Complete ──────────────────────── */}
+          {/* ─── Step 5: Payment ──────────────────────────── */}
           {step === 5 && (
-            <Card className="animate-fade-in">
-              <CardContent className="text-center py-12 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="h-8 w-8 text-primary" />
-                </div>
-                <h2 className="text-2xl font-bold">Захиалга амжилттай!</h2>
-                <p className="text-muted-foreground">
-                  Таны захиалга амжилттай бүртгэгдлээ. Удахгүй тантай холбогдох болно.
-                </p>
-                {orderResult?.order_number && (
-                  <Badge variant="secondary" className="text-base py-1 px-3">
-                    Захиалгын дугаар: {orderResult.order_number}
-                  </Badge>
-                )}
+            <div className="space-y-6 animate-fade-in">
+              {/* Order created banner */}
+              <Card>
+                <CardContent className="py-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold">Захиалга амжилттай үүслээ</h2>
+                      {orderResult?.order_number && (
+                        <p className="text-sm text-muted-foreground">
+                          Захиалгын дугаар: <span className="font-mono font-semibold">{orderResult.order_number}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-3">
+                    Төлбөрөө төлсний дараа таны захиалга баталгаажна.
+                  </p>
+                  <Separator className="my-4" />
+                  <div className="flex justify-between font-bold text-lg">
+                    <span>Төлөх дүн:</span>
+                    <span className="text-primary">{new Intl.NumberFormat("mn-MN").format(Math.round(orderResult?.subtotal || subtotal))}₮</span>
+                  </div>
+                </CardContent>
+              </Card>
 
-                <div className="flex gap-3 justify-center pt-4">
-                  <Link to="/ot/orders">
-                    <Button>Захиалгууд харах</Button>
-                  </Link>
-                  <Link to="/ot">
-                    <Button variant="outline">Маркетплэйс руу буцах</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+              {/* Payment completed state */}
+              {paymentPaid ? (
+                <Card>
+                  <CardContent className="text-center py-12 space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold">Төлбөр амжилттай!</h2>
+                    <p className="text-muted-foreground">
+                      Таны захиалга баталгаажлаа. Удахгүй тантай холбогдох болно.
+                    </p>
+                    <div className="flex gap-3 justify-center pt-4">
+                      <Link to="/ot/orders">
+                        <Button>Захиалгууд харах</Button>
+                      </Link>
+                      <Link to="/ot">
+                        <Button variant="outline">Маркетплэйс руу буцах</Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {/* Payment method selector */}
+                  <PaymentMethodSelector
+                    selected={paymentMethod}
+                    onSelect={setPaymentMethod}
+                  />
+
+                  {/* Payment component based on selected method */}
+                  {paymentMethod === "qpay" && orderResult?.id && (
+                    <QPayPayment
+                      paymentIntentId={paymentIntentId || undefined}
+                      orderId={orderResult.id}
+                      orderNumber={orderResult.order_number}
+                      amount={Math.round(orderResult.subtotal || subtotal)}
+                      onPaymentSuccess={async () => {
+                        setPaymentPaid(true);
+                        await supabase
+                          .from("ot_orders")
+                          .update({ status: "processing" })
+                          .eq("id", orderResult.id);
+                      }}
+                    />
+                  )}
+
+                  {paymentMethod === "omniway" && paymentIntentId && (
+                    <OmniWayPayment
+                      paymentIntentId={paymentIntentId}
+                      amount={Math.round(orderResult?.subtotal || subtotal)}
+                      onPaymentSuccess={async () => {
+                        setPaymentPaid(true);
+                        await supabase
+                          .from("ot_orders")
+                          .update({ status: "processing" })
+                          .eq("id", orderResult.id);
+                      }}
+                    />
+                  )}
+
+                  {paymentMethod === "storepay" && paymentIntentId && (
+                    <StorepayPayment
+                      paymentIntentId={paymentIntentId}
+                      amount={Math.round(orderResult?.subtotal || subtotal)}
+                      onPaymentSuccess={async () => {
+                        setPaymentPaid(true);
+                        await supabase
+                          .from("ot_orders")
+                          .update({ status: "processing" })
+                          .eq("id", orderResult.id);
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </div>
           )}
 
           {/* ─── Navigation Buttons ──────────────────────────── */}
