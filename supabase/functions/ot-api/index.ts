@@ -647,7 +647,6 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
   // Log full URL for debugging AddItemToBasket
   if (methodName === "AddItemToBasket") {
     console.log("[ot-api] AddItemToBasket full URL:", url.toString());
-    console.log("[ot-api] postSignatureParams:", JSON.stringify(postSignatureParams));
   }
 
   const controller = new AbortController();
