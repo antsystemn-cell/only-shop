@@ -606,7 +606,7 @@ export default function OtCheckout() {
                         <div key={item.orderLineId} className="flex justify-between text-sm py-1.5">
                           <span className="line-clamp-1 flex-1 mr-2">{item.title}</span>
                           <span className="shrink-0 font-medium">
-                            {item.quantity} × ¥{item.price.toFixed(2)}
+                            {item.quantity} × {new Intl.NumberFormat("mn-MN").format(Math.round(item.price))}₮
                           </span>
                         </div>
                       ))}
@@ -656,7 +656,7 @@ export default function OtCheckout() {
 
                 <div className="flex justify-between text-lg font-bold">
                   <span>Нийт дүн:</span>
-                  <span className="text-primary">¥{subtotal.toFixed(2)}</span>
+                  <span className="text-primary">{new Intl.NumberFormat("mn-MN").format(Math.round(subtotal))}₮</span>
                 </div>
 
                 <Button
