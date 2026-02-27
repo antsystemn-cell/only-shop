@@ -416,15 +416,18 @@ export default function OtCheckout() {
                     <div className="space-y-2">
                       {items.map((item) => (
                         <div key={item.orderLineId} className="flex items-center gap-3 py-2">
-                          <div className="w-10 h-10 rounded bg-muted overflow-hidden shrink-0">
+                          <div className="w-12 h-12 rounded-md bg-muted overflow-hidden shrink-0">
                             {item.imageUrl && (
                               <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm line-clamp-1">{item.title}</p>
+                            <p className="text-sm line-clamp-1 font-medium">{item.title}</p>
+                            {item.configurators && (
+                              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{item.configurators}</p>
+                            )}
                           </div>
-                          <span className="text-sm font-medium">
+                          <span className="text-sm font-medium shrink-0">
                             {item.quantity} × {new Intl.NumberFormat("mn-MN").format(Math.round(item.price))}₮
                           </span>
                         </div>
@@ -603,9 +606,19 @@ export default function OtCheckout() {
                     <div key={group.providerType} className="mb-3">
                       <Badge variant="outline" className="mb-2">{group.providerType}</Badge>
                       {group.items.map((item) => (
-                        <div key={item.orderLineId} className="flex justify-between text-sm py-1.5">
-                          <span className="line-clamp-1 flex-1 mr-2">{item.title}</span>
-                          <span className="shrink-0 font-medium">
+                        <div key={item.orderLineId} className="flex items-center gap-3 py-2">
+                          <div className="w-12 h-12 rounded-md bg-muted overflow-hidden shrink-0">
+                            {item.imageUrl && (
+                              <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm line-clamp-1 font-medium">{item.title}</p>
+                            {item.configurators && (
+                              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{item.configurators}</p>
+                            )}
+                          </div>
+                          <span className="shrink-0 text-sm font-medium">
                             {item.quantity} × {new Intl.NumberFormat("mn-MN").format(Math.round(item.price))}₮
                           </span>
                         </div>
