@@ -55,7 +55,6 @@ async function callProxy<T = unknown>(action: string, params: Record<string, unk
     if (error) throw new Error(`OT API proxy error: ${error.message}`);
     if (data?.success === false) throw new Error(data.error || "Unknown OT API error");
     if (data?.error && typeof data.error === "string") throw new Error(`OT API error: ${data.error}`);
-    // Handle SessionExpired from OTAPI response
     if (data?.ErrorCode === "SessionExpired") {
       throw new Error("SessionExpired");
     }
@@ -66,10 +65,18 @@ async function callProxy<T = unknown>(action: string, params: Record<string, unk
     return await invoke(cleanParams);
   } catch (err: any) {
     // Auto-retry on SessionExpired: clear cached session, get fresh one, retry once
+    // IMPORTANT: only retry if the action doesn't depend on basket state (basket is tied to session)
+    const basketActions = ["createOrder", "getBasket", "runBasketChecking", "getBasketCheckingResult",
+      "addItemToBasket", "editBasketItemQuantity", "removeBasketItem", "clearBasket"];
     if (err?.message?.includes("SessionExpired") && cleanParams.sessionId) {
-      console.log("[otApi] SessionExpired detected, retrying with fresh session...");
       const { clearSessionCache, getAnonymousSession } = await import("@/services/otSession");
       clearSessionCache();
+      if (basketActions.includes(action)) {
+        // For basket-dependent actions, get fresh session but re-throw with clear message
+        // so the caller knows the basket is lost
+        throw new Error("SESSION_BASKET_LOST");
+      }
+      console.log("[otApi] SessionExpired detected, retrying with fresh session...");
       const freshSessionId = await getAnonymousSession();
       return await invoke({ ...cleanParams, sessionId: freshSessionId });
     }
@@ -449,7 +456,12 @@ export async function getOrderLineStatusHistory(orderLineId: string) {
 
 // ─── Create Order ───────────────────────────────────────────
 
-export async function createOtOrder(sessionId: string, params: { deliveryModeId?: string; profileId?: string; comment?: string }) {
+export async function createOtOrder(sessionId: string, params: { 
+  deliveryModeId?: string; 
+  profileId?: string; 
+  comment?: string;
+  elementIds?: string[];
+}) {
   return callProxy("createOrder", { sessionId, ...params });
 }
 

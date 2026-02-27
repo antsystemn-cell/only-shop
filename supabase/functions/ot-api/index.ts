@@ -509,45 +509,20 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 async function createOrder(apiKey: string, params: Record<string, any>) {
   const base = { instanceKey: apiKey, language: params.language || "en" };
 
-  // Step 1: Fetch current basket to get valid element IDs
-  const basketData = await callOtApi("GetBasket", { ...base, sessionId: params.sessionId });
-  const ci = basketData?.CollectionInfo || basketData?.Result?.CollectionInfo;
-  const rawElements = ci?.Elements;
-  const elements = rawElements ? (Array.isArray(rawElements) ? rawElements : [rawElements]) : [];
-
-  if (elements.length === 0) {
-    throw new Error("Сагс хоосон байна. Захиалга үүсгэх боломжгүй.");
-  }
-
-  // Step 2: Group elements by provider for potential split ordering
-  const providerGroups: Record<string, string[]> = {};
-  for (const el of elements) {
-    const provider = el.ProviderType || "Taobao";
-    const elId = String(el.Id || "");
-    if (elId) {
-      if (!providerGroups[provider]) providerGroups[provider] = [];
-      providerGroups[provider].push(elId);
-    }
-  }
-
-  const providers = Object.keys(providerGroups);
-  console.log("[ot-api] CreateOrder providers:", providers, "elements:", elements.length);
-
-  // Step 3: Build XML parameters
+  // Build XML parameters
   const xmlParts: string[] = [];
   if (params.deliveryModeId) xmlParts.push(`<DeliveryModeId>${escapeXml(String(params.deliveryModeId))}</DeliveryModeId>`);
   if (params.profileId) xmlParts.push(`<UserProfileId>${escapeXml(String(params.profileId))}</UserProfileId>`);
   if (params.comment) xmlParts.push(`<Comment>${escapeXml(String(params.comment))}</Comment>`);
 
-  // Step 4: If single provider or user wants to order all, omit elements (orders entire basket)
-  // If multiple providers, we order the entire basket in one call (OTAPI handles provider splitting)
-  // NEVER send elements: [] (empty array) — either omit or send valid IDs
+  // Use elementIds from frontend if provided, otherwise order entire basket
   if (params.elementIds && Array.isArray(params.elementIds) && params.elementIds.length > 0) {
-    // Specific elements requested
-    const elemXml = params.elementIds.map((id: string) => `<OrderLineId>${escapeXml(id)}</OrderLineId>`).join("");
+    const elemXml = params.elementIds.map((id: string) => `<OrderLineId>${escapeXml(String(id))}</OrderLineId>`).join("");
     xmlParts.push(`<Elements>${elemXml}</Elements>`);
+    console.log("[ot-api] CreateOrder with", params.elementIds.length, "specific elements");
+  } else {
+    console.log("[ot-api] CreateOrder for entire basket");
   }
-  // If no elementIds specified, omit — orders entire basket
 
   const xmlCreateData = `<OrderCreateData>${xmlParts.join("")}</OrderCreateData>`;
   console.log("[ot-api] CreateOrder xmlCreateData:", xmlCreateData);
