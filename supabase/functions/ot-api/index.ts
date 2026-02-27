@@ -549,7 +549,7 @@ async function createOrder(apiKey: string, params: Record<string, any>) {
   }
   // If no elementIds specified, omit — orders entire basket
 
-  const xmlCreateData = `<OrderParameters>${xmlParts.join("")}</OrderParameters>`;
+  const xmlCreateData = `<OrderCreateData>${xmlParts.join("")}</OrderCreateData>`;
   console.log("[ot-api] CreateOrder xmlCreateData:", xmlCreateData);
 
   return callOtApi("CreateOrder", {
