@@ -31,16 +31,14 @@ import { toast } from "sonner";
 import { useOtCartSafe, type OtBasketItem, type BasketInvalidItem } from "@/contexts/OtCartContext";
 import { getAnonymousSession } from "@/services/otSession";
 import {
-  searchDeliveryModesForSession,
   getUserProfileInfoList,
   createUserProfile,
   createOtOrder,
   salesPaymentReserve,
   getBasket,
-  type OtDeliveryMode,
   type OtUserProfile,
 } from "@/services/otApi";
-import { PickupPointSelector } from "@/components/storefront/PickupPointSelector";
+
 
 type CheckoutStep = 1 | 2 | 3 | 4 | 5;
 
@@ -64,11 +62,8 @@ export default function OtCheckout() {
   const [invalidItems, setInvalidItems] = useState<BasketInvalidItem[]>([]);
   const [isRemovingInvalid, setIsRemovingInvalid] = useState(false);
 
-  // Step 2 — delivery modes
-  const [deliveryModes, setDeliveryModes] = useState<OtDeliveryMode[]>([]);
-  const [selectedDelivery, setSelectedDelivery] = useState<string>("");
-  const [selectedPickupPoint, setSelectedPickupPoint] = useState<string>("");
-  const [loadingDelivery, setLoadingDelivery] = useState(false);
+  // Step 2 — delivery type (custom, not OTAPI)
+  const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
 
   // Step 3 — profiles
   const [profiles, setProfiles] = useState<OtUserProfile[]>([]);
@@ -179,25 +174,7 @@ export default function OtCheckout() {
     }
   }, [step]);
 
-  // ─── Step 2: Load Delivery Modes ──────────────────────────
-
-  const loadDeliveryModes = useCallback(async () => {
-    try {
-      setLoadingDelivery(true);
-      const sessionId = await getAnonymousSession();
-      const data = await searchDeliveryModesForSession(sessionId);
-      const rawItems = data?.Result?.Items;
-      const list = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
-      setDeliveryModes(list);
-      const defaultMode = list.find((m: any) => m.IsDefault);
-      if (defaultMode) setSelectedDelivery(defaultMode.Id);
-      else if (list.length > 0) setSelectedDelivery(list[0].Id);
-    } catch (err: any) {
-      toast.error("Хүргэлтийн горим ачаалахад алдаа гарлаа");
-    } finally {
-      setLoadingDelivery(false);
-    }
-  }, []);
+  // Step 2 is now static — no OTAPI call needed
 
   // ─── Step 3: Load Profiles ────────────────────────────────
 
@@ -267,9 +244,9 @@ export default function OtCheckout() {
       }
 
       const result = await createOtOrder(sessionId, {
-        deliveryModeId: selectedDelivery || undefined,
-        profileId: selectedProfile || undefined,
-        comment: comment || undefined,
+        deliveryModeId: undefined,
+        profileId: deliveryType === "delivery" ? (selectedProfile || undefined) : undefined,
+        comment: comment ? `[${deliveryType === "delivery" ? "Хүргэлт" : "Өөрөө авна"}] ${comment}` : `[${deliveryType === "delivery" ? "Хүргэлт" : "Өөрөө авна"}]`,
       });
       setOrderResult(result);
       setStep(5);
@@ -285,19 +262,28 @@ export default function OtCheckout() {
   // ─── Step navigation ──────────────────────────────────────
 
   const goNext = () => {
-    if (step === 2 && !loadingDelivery && deliveryModes.length === 0) {
-      loadDeliveryModes();
-    }
     if (step === 1) {
-      loadDeliveryModes();
+      // Moving to step 2 (delivery type selection)
     }
     if (step === 2) {
+      if (deliveryType === "pickup") {
+        // Skip address step, go straight to confirmation (step 4)
+        loadProfiles(); // still load in background in case needed
+        setStep(4);
+        return;
+      }
+      // delivery selected → load profiles for address step
       loadProfiles();
     }
     if (step < 5) setStep((s) => (s + 1) as CheckoutStep);
   };
 
   const goBack = () => {
+    if (step === 4 && deliveryType === "pickup") {
+      // Skip address step back to delivery selection
+      setStep(2);
+      return;
+    }
     if (step > 1) setStep((s) => (s - 1) as CheckoutStep);
   };
 
@@ -457,74 +443,53 @@ export default function OtCheckout() {
             </Card>
           )}
 
-          {/* ─── Step 2: Delivery Mode ──────────────────────── */}
+          {/* ─── Step 2: Delivery Type ──────────────────────── */}
           {step === 2 && (
             <Card className="animate-fade-in">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Truck className="h-5 w-5 text-primary" />
-                  Хүргэлтийн горим сонгох
+                  Хүргэлт сонгох
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                {loadingDelivery ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <CardContent className="space-y-3">
+                <button
+                  onClick={() => setDeliveryType("delivery")}
+                  className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
+                    deliveryType === "delivery"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Truck className={`h-6 w-6 shrink-0 ${deliveryType === "delivery" ? "text-primary" : "text-muted-foreground"}`} />
+                    <div>
+                      <p className="font-medium">Захиалга ирэхээр хүргэлтээр авна</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Таны зааж өгсөн хаяг руу хүргэлт хийнэ
+                      </p>
+                    </div>
                   </div>
-                ) : deliveryModes.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    Хүргэлтийн горим олдсонгүй. Автоматаар тохируулагдана.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {deliveryModes.map((mode) => (
-                      <button
-                        key={mode.Id}
-                        onClick={() => setSelectedDelivery(mode.Id)}
-                        className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
-                          selectedDelivery === mode.Id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{mode.Name || `Горим #${mode.Id}`}</p>
-                            {mode.Description && (
-                              <p className="text-sm text-muted-foreground mt-0.5">{mode.Description}</p>
-                            )}
-                            {mode.EstimatedDays && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                ~{mode.EstimatedDays} хоног
-                              </p>
-                            )}
-                          </div>
-                          {mode.Price !== undefined && (
-                            <Badge variant="secondary">
-                              {mode.Currency || "¥"}{mode.Price}
-                            </Badge>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                </button>
 
-                {/* Pickup Points */}
-                {selectedDelivery && (
-                  <div className="mt-4">
-                    <Separator className="mb-4" />
-                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                      <Package className="h-4 w-4 text-primary" />
-                      Авах цэг сонгох (заавал биш)
-                    </h3>
-                    <PickupPointSelector
-                      deliveryModeId={selectedDelivery}
-                      selectedPointId={selectedPickupPoint}
-                      onSelect={setSelectedPickupPoint}
-                    />
+                <button
+                  onClick={() => setDeliveryType("pickup")}
+                  className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
+                    deliveryType === "pickup"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Package className={`h-6 w-6 shrink-0 ${deliveryType === "pickup" ? "text-primary" : "text-muted-foreground"}`} />
+                    <div>
+                      <p className="font-medium">Захиалга ирэхээр өөрөө очиж авна</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Агуулахаас өөрөө ирж авна
+                      </p>
+                    </div>
                   </div>
-                )}
+                </button>
               </CardContent>
             </Card>
           )}
@@ -658,14 +623,12 @@ export default function OtCheckout() {
                 <Separator />
 
                 {/* Delivery info */}
-                {selectedDelivery && deliveryModes.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-1">Хүргэлт</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {deliveryModes.find((m) => m.Id === selectedDelivery)?.Name || selectedDelivery}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Хүргэлт</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {deliveryType === "delivery" ? "Хүргэлтээр авна" : "Өөрөө очиж авна"}
+                  </p>
+                </div>
 
                 {/* Profile info */}
                 {selectedProfile && profiles.length > 0 && (
