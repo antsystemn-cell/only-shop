@@ -356,8 +356,8 @@ export async function clearBasket(sessionId: string) {
   return callProxy("clearBasket", { sessionId });
 }
 
-export async function runBasketChecking(sessionId: string) {
-  return callProxy("runBasketChecking", { sessionId });
+export async function runBasketChecking(sessionId: string, elements: string) {
+  return callProxy("runBasketChecking", { sessionId, elements });
 }
 
 export async function getBasketCheckingResult(sessionId: string) {

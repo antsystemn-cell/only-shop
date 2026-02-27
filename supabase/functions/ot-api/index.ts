@@ -170,7 +170,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "clearBasket":
       return callOtApi("ClearBasket", { ...base, sessionId: params.sessionId });
     case "runBasketChecking":
-      return callOtApi("RunBasketChecking", { ...base, sessionId: params.sessionId });
+      return callOtApi("RunBasketChecking", { ...base, sessionId: params.sessionId, elements: params.elements || "" });
     case "getBasketCheckingResult":
       return callOtApi("GetBasketCheckingResult", { ...base, sessionId: params.sessionId });
 
