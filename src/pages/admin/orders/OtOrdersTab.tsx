@@ -117,6 +117,13 @@ export default function OtOrdersTab() {
   // ── Update status mutation ──
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status, cancel_reason }: { id: string; status: string; cancel_reason?: string }) => {
+      // Get order first to check current status for refund logic
+      const { data: order } = await supabase
+        .from("ot_orders")
+        .select("user_id, subtotal, status")
+        .eq("id", id)
+        .single();
+
       const updateData: any = { status };
       if (cancel_reason) updateData.cancel_reason = cancel_reason;
 
@@ -126,21 +133,13 @@ export default function OtOrdersTab() {
         .eq("id", id);
       if (error) throw error;
 
-      // If cancelling, refund to user wallet
-      if (status === "cancelled") {
-        // Get order to find user_id and subtotal
-        const { data: order } = await supabase
-          .from("ot_orders")
-          .select("user_id, subtotal")
-          .eq("id", id)
-          .single();
-
-        if (order?.user_id && order.subtotal > 0) {
-          await supabase.rpc("credit_wallet", {
-            p_user_id: order.user_id,
-            p_amount: order.subtotal,
-          });
-        }
+      // Only refund if cancelling an order that was already paid
+      const PAID_STATUSES = ["paid", "foreign_ordered", "at_warehouse", "shipped_mn", "arrived_ub", "delivered"];
+      if (status === "cancelled" && order?.user_id && order.subtotal > 0 && PAID_STATUSES.includes(order.status)) {
+        await supabase.rpc("credit_wallet", {
+          p_user_id: order.user_id,
+          p_amount: order.subtotal,
+        });
       }
     },
     onSuccess: () => {

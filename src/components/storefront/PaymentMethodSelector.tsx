@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Smartphone, Building2 } from "lucide-react";
+import { CreditCard, Smartphone, Building2, Wallet } from "lucide-react";
 
-export type PaymentMethod = "qpay" | "omniway" | "storepay" | "card" | "bank_transfer";
+export type PaymentMethod = "qpay" | "omniway" | "storepay" | "wallet" | "card" | "bank_transfer";
 
 interface PaymentMethodOption {
   id: PaymentMethod;
@@ -17,6 +17,13 @@ interface PaymentMethodOption {
 }
 
 const paymentMethods: PaymentMethodOption[] = [
+  {
+    id: "wallet",
+    name: "Хэтэвчнээс төлөх",
+    description: "Хэтэвчний үлдэгдлээс шууд төлөх",
+    icon: <Wallet className="h-5 w-5" />,
+    enabled: true,
+  },
   {
     id: "qpay",
     name: "QPay",
