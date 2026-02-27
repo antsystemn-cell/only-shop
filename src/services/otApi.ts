@@ -361,21 +361,41 @@ export async function clearBasket(sessionId: string) {
   return callProxy("clearBasket", { sessionId });
 }
 
-export async function runBasketChecking(sessionId: string, elements?: string) {
-  // elements: comma-separated IDs or undefined to check entire basket
+// Helper to extract string activityId from potentially nested OTAPI response
+function extractActivityId(resp: any): string | null {
+  // Edge function normalizes to _activityId, but handle all cases
+  const raw = resp?._activityId || resp?.Result?.ActivityId || resp?.ActivityId || resp?.Result;
+  if (!raw) return null;
+  if (typeof raw === "string") return raw;
+  if (typeof raw === "number") return String(raw);
+  if (typeof raw === "object") {
+    if (raw.Id?.Value) return String(raw.Id.Value);
+    if (raw.Value) return String(raw.Value);
+    if (raw.ActivityId) return extractActivityId({ _activityId: raw.ActivityId });
+  }
+  return null;
+}
+
+export async function runBasketChecking(sessionId: string, elements?: string): Promise<{ activityId: string; raw: any }> {
   const params: Record<string, unknown> = { sessionId };
   if (elements && elements.trim()) {
     params.elements = elements.trim();
   }
-  return callProxy("runBasketChecking", params);
+  const resp = await callProxy("runBasketChecking", params);
+  const activityId = extractActivityId(resp);
+  console.log("[otApi] runBasketChecking activityId:", activityId, "typeof:", typeof activityId);
+  if (!activityId) {
+    console.error("[otApi] runBasketChecking: could not extract activityId from response:", JSON.stringify(resp).substring(0, 500));
+    throw new Error("BASKET_CHECK_NO_ACTIVITY_ID");
+  }
+  return { activityId, raw: resp };
 }
 
-export async function getBasketCheckingResult(sessionId: string, activityId?: string) {
-  const params: Record<string, unknown> = { sessionId };
-  if (activityId) {
-    params.activityId = activityId;
+export async function getBasketCheckingResult(sessionId: string, activityId: string) {
+  if (!activityId || typeof activityId !== "string") {
+    throw new Error(`activityId must be a non-empty string, got: ${typeof activityId}`);
   }
-  return callProxy("getBasketCheckingResult", params);
+  return callProxy("getBasketCheckingResult", { sessionId, activityId });
 }
 
 // ─── Orders (OTAPI) ─────────────────────────────────────────

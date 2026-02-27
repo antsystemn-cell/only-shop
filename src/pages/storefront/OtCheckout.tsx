@@ -128,9 +128,13 @@ export default function OtCheckout() {
       if (msg === "EMPTY_BASKET") {
         setCheckError("Сагс хоосон байна. Бараа нэмнэ үү.");
       } else if (msg === "CHECK_TIMEOUT") {
-        setCheckError("Сагс шалгах хугацаа дууслаа. Дахин оролдоно уу.");
+        setCheckError("Сагс шалгалт удааширлаа. Дахин оролдоно уу.");
       } else if (msg.includes("SessionExpired")) {
         setCheckError("Сессийн хугацаа дууссан. Дахин оролдоно уу.");
+      } else if (msg === "BASKET_CHECK_NO_ACTIVITY_ID") {
+        setCheckError("Сагс шалгалт эхлүүлж чадсангүй (ID олдсонгүй). Дахин оролдоно уу.");
+      } else if (msg.includes("NotFound") || msg.includes("not found")) {
+        setCheckError("Сагс шалгалтын хүсэлт хугацаа дууссан. Дахин шалгаж байна…");
       } else if (msg.includes("ContractViolation")) {
         setCheckError("Техникийн алдаа гарлаа. Сагсаа шинэчилж дахин оролдоно уу.");
         await refreshBasket();
