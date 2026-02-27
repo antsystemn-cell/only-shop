@@ -92,52 +92,67 @@ function parseBasketResponse(data: any): OtBasketItem[] {
   return lines.map((line: any) => {
     const quantity = line.Quantity || 1;
 
+    // Debug: log full line keys and image/title related fields
+    console.log("[OtCart] Line keys:", Object.keys(line));
+    console.log("[OtCart] Line Title:", line.Title, "ItemTitle:", line.ItemTitle);
+    console.log("[OtCart] Line ImageUrl:", line.ImageUrl, "MainPictureUrl:", line.MainPictureUrl);
+    console.log("[OtCart] Line ItemPicture:", JSON.stringify(line.ItemPicture));
+    console.log("[OtCart] Line Pictures:", JSON.stringify(line.Pictures));
+    console.log("[OtCart] Line Picture:", JSON.stringify(line.Picture));
+    console.log("[OtCart] Line Configuration:", JSON.stringify(line.Configuration));
+    console.log("[OtCart] Line Configurators:", JSON.stringify(line.Configurators));
+    console.log("[OtCart] Line ConfiguredItemTitle:", line.ConfiguredItemTitle, "OriginalTitle:", line.OriginalTitle);
+
     // ── Price extraction (MNT) ──
-    // Try multiple paths for internal MNT price
     const fullTotalInternal = line.FullTotalCost?.ConvertedPriceList?.Internal?.Price;
     const totalCostInternal = line.TotalCost?.ConvertedPriceList?.Internal?.Price;
     const priceInternal = line.Price?.ConvertedPriceList?.Internal?.Price;
-    // Raw numeric price fallback
     const rawNumericPrice = typeof line.Price === "number" ? line.Price : 
                             typeof line.Price?.OriginalPrice === "number" ? line.Price.OriginalPrice : 0;
     
-    // Best total price in MNT
     const totalPrice = fullTotalInternal ?? totalCostInternal ?? (priceInternal ? priceInternal * quantity : rawNumericPrice * quantity);
     const unitPrice = totalPrice / (quantity || 1);
 
-    // Original price in foreign currency (CNY/USD) for admin reference
     const originalCnyPrice = line.Price?.OriginalPrice 
       ?? line.Price?.ConvertedPriceList?.Original?.Price
       ?? (typeof line.Price === "number" ? line.Price : undefined);
     const originalCnyCurrency = line.Price?.ConvertedPriceList?.Original?.Sign || "¥";
 
-    console.log("[OtCart] Item", line.ItemId, "totalPrice:", totalPrice, "unitPrice:", unitPrice, "originalCny:", originalCnyPrice);
-
-    // Currency: prefer Internal sign (₮)
     const currency = line.FullTotalCost?.ConvertedPriceList?.Internal?.Sign
       ?? line.Price?.ConvertedPriceList?.Internal?.Sign
       ?? "₮";
 
-    const title = line.Title || line.ItemTitle || "";
+    // ── Title: prefer OriginalTitle or ItemTitle over configurator-only title ──
+    const mainTitle = line.OriginalTitle || line.ItemTitle || line.Title || "";
 
-    // Image: try multiple paths
+    // ── Image: try multiple paths ──
     const imageUrl = line.ImageUrl
       || line.MainPictureUrl
       || line.ItemPicture?.Url
       || line.Pictures?.ItemPicture?.Url
       || line.Picture?.Url
+      || line.PictureUrl
+      || line.ThumbUrl
       || "";
 
-    // Extract configurator display text
-    const configs = line.Configuration?.Configurator;
-    const configText = Array.isArray(configs)
-      ? configs.map((c: any) => c.Value).join(", ")
-      : configs?.Value || "";
+    // ── Configurator display text ──
+    const configs = line.Configuration?.Configurator || line.Configurators;
+    let configList = Array.isArray(configs) ? configs : configs ? [configs] : [];
+    const configText = configList
+      .map((c: any) => {
+        if (typeof c === "string") return c;
+        // Show "PropertyName: Value" format for clarity
+        const name = c.Title || c.PropertyName || c.Name || "";
+        const val = c.Value || c.ValueTitle || "";
+        return name && val ? `${name}: ${val}` : val || name || "";
+      })
+      .filter(Boolean)
+      .join(", ");
 
     return {
       orderLineId: String(line.Id || ""),
       itemId: line.ItemId || "",
-      title: title || configText || line.ItemId || "",
+      title: mainTitle || line.ItemId || "",
       imageUrl,
       quantity,
       price: unitPrice,
@@ -145,7 +160,7 @@ function parseBasketResponse(data: any): OtBasketItem[] {
       currency,
       providerType: line.ProviderType || "Taobao",
       vendorName: line.VendorName || "",
-      configurators: line.Configurators || configText || "",
+      configurators: configText || "",
       weight: line.Weight,
       totalPrice,
       originalCnyPrice,
