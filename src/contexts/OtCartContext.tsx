@@ -294,7 +294,19 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
     try {
       setCheckingStatus({ isRunning: true, isComplete: false, result: null });
       const sessionId = await getAnonymousSession();
-      await runBasketChecking(sessionId);
+
+      // Get basket element IDs (required by RunBasketChecking)
+      const basketData = await getBasket(sessionId) as any;
+      const elements = basketData?.CollectionInfo?.Elements
+        || basketData?.Result?.CollectionInfo?.Elements;
+      const elementsList = elements ? (Array.isArray(elements) ? elements : [elements]) : [];
+      const elementIds = elementsList.map((el: any) => String(el.Id)).filter(Boolean).join(",");
+
+      if (!elementIds) {
+        throw new Error("Сагс хоосон байна");
+      }
+
+      await runBasketChecking(sessionId, elementIds);
 
       // Poll for result
       let attempts = 0;
