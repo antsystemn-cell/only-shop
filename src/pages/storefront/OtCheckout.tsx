@@ -74,7 +74,6 @@ export default function OtCheckout() {
     fullName: "",
     phone: "",
     address: "",
-    zipCode: "",
   });
 
   // Step 4 — comment
@@ -206,12 +205,11 @@ export default function OtCheckout() {
         <FullName>${newProfile.fullName}</FullName>
         <Phone>${newProfile.phone}</Phone>
         <Address>${newProfile.address}</Address>
-        ${newProfile.zipCode ? `<ZipCode>${newProfile.zipCode}</ZipCode>` : ""}
       </UserProfileInfo>`;
       await createUserProfile(sessionId, xml);
       toast.success("Хаяг амжилттай нэмэгдлээ");
       setShowNewProfile(false);
-      setNewProfile({ fullName: "", phone: "", address: "", zipCode: "" });
+      setNewProfile({ fullName: "", phone: "", address: "" });
       await loadProfiles();
     } catch (err: any) {
       toast.error(err.message || "Хаяг нэмэхэд алдаа гарлаа");
@@ -536,16 +534,12 @@ export default function OtCheckout() {
                           <Textarea
                             value={newProfile.address}
                             onChange={(e) => setNewProfile((p) => ({ ...p, address: e.target.value }))}
-                            placeholder="Дүүрэг, хороо, байр, тоот..."
+                            placeholder="Жишээ: БЗД, 25-р хороо, Нуур ХТ 15-205 тоот, орцны код: 1234"
+                            rows={3}
                           />
-                        </div>
-                        <div>
-                          <Label>Шуудангийн код</Label>
-                          <Input
-                            value={newProfile.zipCode}
-                            onChange={(e) => setNewProfile((p) => ({ ...p, zipCode: e.target.value }))}
-                            placeholder="14200"
-                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Хаягаа маш тодорхой дэлгэрэнгүй тайлбарлаж бичнэ үү, хэрэв орц тань кодтой бол кодоо мөн бичнэ үү.
+                          </p>
                         </div>
                         <Button onClick={handleCreateProfile} disabled={isProcessing} className="w-full">
                           {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
