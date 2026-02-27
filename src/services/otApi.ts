@@ -361,12 +361,21 @@ export async function clearBasket(sessionId: string) {
   return callProxy("clearBasket", { sessionId });
 }
 
-export async function runBasketChecking(sessionId: string, elements: string) {
-  return callProxy("runBasketChecking", { sessionId, elements });
+export async function runBasketChecking(sessionId: string, elements?: string) {
+  // elements: comma-separated IDs or undefined to check entire basket
+  const params: Record<string, unknown> = { sessionId };
+  if (elements && elements.trim()) {
+    params.elements = elements.trim();
+  }
+  return callProxy("runBasketChecking", params);
 }
 
-export async function getBasketCheckingResult(sessionId: string) {
-  return callProxy("getBasketCheckingResult", { sessionId });
+export async function getBasketCheckingResult(sessionId: string, activityId?: string) {
+  const params: Record<string, unknown> = { sessionId };
+  if (activityId) {
+    params.activityId = activityId;
+  }
+  return callProxy("getBasketCheckingResult", params);
 }
 
 // ─── Orders (OTAPI) ─────────────────────────────────────────
