@@ -68,13 +68,19 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: "Захиалга",
+    defaultOpen: true,
+    items: [
+      { title: "Захиалга удирдах", url: "/admin/orders", icon: ShoppingCart },
+    ],
+  },
+  {
     label: "Бэлэн бараа",
     defaultOpen: true,
     items: [
       { title: "Бараа удирдах", url: "/admin/products", icon: Package },
       { title: "Ангилал", url: "/admin/categories", icon: FolderTree },
       { title: "Брэнд удирдах", url: "/admin/brands", icon: Tags },
-      { title: "Захиалга", url: "/admin/orders", icon: ShoppingCart },
       { title: "Хүргэлтийн тохиргоо", url: "/admin/delivery", icon: Truck },
       { title: "Үнийн удирдлага", url: "/admin/pricing", icon: DollarSign },
       { title: "Сэтгэгдэл & Үнэлгээ", url: "/admin/reviews", icon: Star },
@@ -83,7 +89,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "OT Commerce",
     items: [
-      { title: "OT Захиалга", url: "/admin/ot-orders", icon: Globe },
       { title: "OT Категори", url: "/admin/ot-categories", icon: FolderTree },
       { title: "Провайдер тохиргоо", url: "/admin/provider-sections", icon: LayoutList },
       { title: "Нийлүүлэгч & Markup", url: "/admin/ot-providers", icon: Store },

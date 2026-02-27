@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { OtCartProvider } from "@/contexts/OtCartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -64,7 +64,7 @@ import OtWarehouse from "./pages/admin/OtWarehouse";
 import OtRatingLists from "./pages/admin/OtRatingLists";
 import OtSettings from "./pages/admin/OtSettings";
 import SearchSettings from "./pages/admin/SearchSettings";
-import AdminOtOrders from "./pages/admin/OtOrders";
+// AdminOtOrders removed — merged into unified Orders page
 import OtCategories from "./pages/admin/OtCategories";
 import OtRoles from "./pages/admin/OtRoles";
 import UserActivityLog from "./pages/admin/UserActivityLog";
@@ -74,6 +74,10 @@ import OtAllCategories from "./pages/storefront/OtAllCategories";
 import ProviderPage from "./pages/storefront/ProviderPage";
 import ProviderSectionsAdmin from "./pages/admin/ProviderSections";
 import Migration from "./pages/admin/Migration";
+
+// Redirect component for old OT Orders route
+const OtOrdersRedirect = () => <Navigate to="/admin/orders?source=ot" replace />;
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -132,7 +136,7 @@ const App = () => (
                 <Route path="brands" element={<Brands />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="users" element={<Users />} />
-                <Route path="ot-orders" element={<AdminOtOrders />} />
+                <Route path="ot-orders" element={<OtOrdersRedirect />} />
                 <Route path="delivery" element={<Delivery />} />
                 <Route path="banners" element={<Banners />} />
                 <Route path="pricing" element={<Pricing />} />
