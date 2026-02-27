@@ -12,6 +12,7 @@ import {
   Plus,
   Package,
   CreditCard,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefro
 import QPayPayment from "@/components/storefront/QPayPayment";
 import OmniWayPayment from "@/components/storefront/OmniWayPayment";
 import StorepayPayment from "@/components/storefront/StorepayPayment";
+import WalletPayment from "@/components/storefront/WalletPayment";
 
 
 type CheckoutStep = 1 | 2 | 3 | 4 | 5;
@@ -843,6 +845,21 @@ export default function OtCheckout() {
                     <StorepayPayment
                       paymentIntentId={paymentIntentId}
                       amount={Math.round(orderResult?.subtotal || subtotal)}
+                      onPaymentSuccess={async () => {
+                        setPaymentPaid(true);
+                        await supabase
+                          .from("ot_orders")
+                          .update({ status: "paid" })
+                          .eq("id", orderResult.id);
+                      }}
+                    />
+                  )}
+
+                  {/* Wallet payment */}
+                  {paymentMethod === "wallet" && orderResult?.id && (
+                    <WalletPayment
+                      amount={Math.round(orderResult.subtotal || subtotal)}
+                      orderId={orderResult.id}
                       onPaymentSuccess={async () => {
                         setPaymentPaid(true);
                         await supabase
