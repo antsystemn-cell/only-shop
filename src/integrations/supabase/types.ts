@@ -657,6 +657,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ot_orders: {
+        Row: {
+          comment: string | null
+          created_at: string
+          delivery_address: Json | null
+          delivery_type: string
+          id: string
+          item_count: number
+          items: Json
+          order_number: string
+          status: string
+          subtotal: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          delivery_address?: Json | null
+          delivery_type?: string
+          id?: string
+          item_count?: number
+          items?: Json
+          order_number: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          delivery_address?: Json | null
+          delivery_type?: string
+          id?: string
+          item_count?: number
+          items?: Json
+          order_number?: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       payment_intents: {
         Row: {
           amount: number

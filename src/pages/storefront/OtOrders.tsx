@@ -1,14 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAnonymousSession } from "@/services/otSession";
-import {
-  searchOtOrders,
-  getSalesOrderDetails,
-  cancelSalesOrder,
-} from "@/services/otApi";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -24,121 +19,66 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   Package,
   Loader2,
-  ChevronRight,
   Calendar,
   Eye,
-  XCircle,
   ShoppingBag,
   RefreshCw,
 } from "lucide-react";
 
-interface OtOrder {
-  Id?: string;
-  StatusId?: string;
-  StatusName?: string;
-  TotalPrice?: { ConvertedPriceValue?: number; CurrencySign?: string };
-  CreationDate?: string;
-  OrderLines?: { Items?: OtOrderLine[] };
-  [key: string]: any;
-}
-
-interface OtOrderLine {
-  Id?: string;
-  ItemTitle?: string;
-  ImageUrl?: string;
-  Quantity?: number;
-  TotalPrice?: { ConvertedPriceValue?: number; CurrencySign?: string };
-  StatusName?: string;
-  [key: string]: any;
-}
-
-const OT_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  InWork: { label: "Боловсруулж буй", variant: "default" },
-  Created: { label: "Үүсгэсэн", variant: "secondary" },
-  Purchased: { label: "Худалдаж авсан", variant: "default" },
-  Shipped: { label: "Хүргэгдэж буй", variant: "default" },
-  Received: { label: "Хүлээн авсан", variant: "default" },
-  Cancelled: { label: "Цуцлагдсан", variant: "destructive" },
-  Completed: { label: "Дууссан", variant: "default" },
+const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  pending: { label: "Хүлээгдэж буй", variant: "secondary" },
+  processing: { label: "Боловсруулж буй", variant: "default" },
+  shipped: { label: "Хүргэлтэд", variant: "default" },
+  delivered: { label: "Хүргэгдсэн", variant: "default" },
+  completed: { label: "Дууссан", variant: "default" },
+  cancelled: { label: "Цуцлагдсан", variant: "destructive" },
 };
 
 export default function OtOrders() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const [orders, setOrders] = useState<OtOrder[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [page, setPage] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
 
-  const loadOrders = useCallback(async () => {
+  const loadOrders = async () => {
+    if (!user) return;
     try {
       setLoading(true);
-      const sessionId = await getAnonymousSession();
-      const params: any = { sessionId, page, pageSize: 20 };
-      if (statusFilter !== "all") params.statusId = statusFilter;
-      const data: any = await searchOtOrders(params);
-      const rawItems = data?.Result?.Items;
-      setOrders(Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : []);
+      let query = supabase
+        .from("ot_orders")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setOrders(data || []);
     } catch (err: any) {
       console.error("OT orders load error:", err);
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter]);
+  };
 
   useEffect(() => {
     if (user) loadOrders();
-  }, [user, loadOrders]);
-
-  const viewDetail = async (orderId: string) => {
-    try {
-      setDetailLoading(true);
-      setShowDetail(true);
-      const data: any = await getSalesOrderDetails(orderId);
-      setSelectedOrder(data?.Result || data);
-    } catch (err: any) {
-      toast.error("Дэлгэрэнгүй ачаалахад алдаа гарлаа");
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const handleCancel = async (orderId: string) => {
-    try {
-      await cancelSalesOrder(orderId, cancelReason || undefined);
-      toast.success("Захиалга цуцлагдлаа");
-      setCancelReason("");
-      setShowDetail(false);
-      await loadOrders();
-    } catch (err: any) {
-      toast.error(err.message || "Цуцлах үед алдаа гарлаа");
-    }
-  };
+  }, [user, statusFilter]);
 
   if (authLoading) {
     return (
@@ -157,22 +97,19 @@ export default function OtOrders() {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold">OT Захиалгууд</h1>
+          <h1 className="text-3xl font-bold">Миний захиалгууд</h1>
           <p className="text-muted-foreground mt-1">Маркетплэйсийн захиалгуудын түүх</p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Статус" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Бүгд</SelectItem>
-              <SelectItem value="Created">Үүсгэсэн</SelectItem>
-              <SelectItem value="InWork">Боловсруулж буй</SelectItem>
-              <SelectItem value="Purchased">Худалдаж авсан</SelectItem>
-              <SelectItem value="Shipped">Хүргэгдэж буй</SelectItem>
-              <SelectItem value="Received">Хүлээн авсан</SelectItem>
-              <SelectItem value="Cancelled">Цуцлагдсан</SelectItem>
+              {Object.entries(STATUS_LABELS).map(([value, { label }]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button variant="outline" size="icon" onClick={loadOrders}>
@@ -204,11 +141,10 @@ export default function OtOrders() {
       ) : (
         <div className="space-y-4">
           {orders.map((order) => {
-            const statusInfo = OT_STATUS_MAP[order.StatusId || ""] || { label: order.StatusName || order.StatusId || "?", variant: "outline" as const };
-            const lines = order.OrderLines?.Items || [];
-            const totalPrice = order.TotalPrice;
+            const statusInfo = STATUS_LABELS[order.status] || { label: order.status, variant: "outline" as const };
+            const items = (order.items as any[]) || [];
             return (
-              <Card key={order.Id} className="overflow-hidden hover:shadow-md transition-shadow">
+              <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-3">
@@ -216,31 +152,29 @@ export default function OtOrders() {
                         <Package className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-mono font-semibold text-sm">#{order.Id}</p>
-                        {order.CreationDate && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(order.CreationDate).toLocaleDateString("mn-MN")}
-                          </p>
-                        )}
+                        <p className="font-mono font-semibold text-sm">{order.order_number}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(order.created_at).toLocaleDateString("mn-MN")}
+                        </p>
                       </div>
                     </div>
                     <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
                   </div>
 
-                  {lines.length > 0 && (
+                  {items.length > 0 && (
                     <>
                       <Separator className="my-3" />
                       <div className="flex items-center gap-3">
                         <div className="flex -space-x-2">
-                          {lines.slice(0, 3).map((line, i) => (
+                          {items.slice(0, 3).map((item, i) => (
                             <div
-                              key={line.Id || i}
+                              key={i}
                               className="w-10 h-10 rounded bg-muted border-2 border-background overflow-hidden"
                               style={{ zIndex: 3 - i }}
                             >
-                              {line.ImageUrl ? (
-                                <img src={line.ImageUrl} alt="" className="w-full h-full object-cover" />
+                              {item.imageUrl ? (
+                                <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
                                   <ShoppingBag className="h-3 w-3 text-muted-foreground" />
@@ -248,24 +182,22 @@ export default function OtOrders() {
                               )}
                             </div>
                           ))}
-                          {lines.length > 3 && (
+                          {items.length > 3 && (
                             <div className="w-10 h-10 rounded bg-muted border-2 border-background flex items-center justify-center text-xs font-medium">
-                              +{lines.length - 3}
+                              +{items.length - 3}
                             </div>
                           )}
                         </div>
-                        <span className="text-sm text-muted-foreground flex-1">{lines.length} бараа</span>
-                        {totalPrice && (
-                          <span className="font-bold text-primary">
-                            {totalPrice.CurrencySign || "¥"}{totalPrice.ConvertedPriceValue?.toFixed(2)}
-                          </span>
-                        )}
+                        <span className="text-sm text-muted-foreground flex-1">{order.item_count} бараа</span>
+                        <span className="font-bold text-primary">
+                          {new Intl.NumberFormat("mn-MN").format(Math.round(order.subtotal))}₮
+                        </span>
                       </div>
                     </>
                   )}
 
-                  <div className="flex justify-end mt-3 gap-2">
-                    <Button variant="outline" size="sm" onClick={() => viewDetail(order.Id!)}>
+                  <div className="flex justify-end mt-3">
+                    <Button variant="outline" size="sm" onClick={() => { setSelectedOrder(order); setShowDetail(true); }}>
                       <Eye className="h-4 w-4 mr-1" />
                       Дэлгэрэнгүй
                     </Button>
@@ -274,16 +206,6 @@ export default function OtOrders() {
               </Card>
             );
           })}
-
-          {/* Pagination */}
-          <div className="flex justify-center gap-2 pt-4">
-            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-              Өмнөх
-            </Button>
-            <Button variant="outline" size="sm" disabled={orders.length < 20} onClick={() => setPage((p) => p + 1)}>
-              Дараах
-            </Button>
-          </div>
         </div>
       )}
 
@@ -293,48 +215,52 @@ export default function OtOrders() {
           <DialogHeader>
             <DialogTitle>Захиалгын дэлгэрэнгүй</DialogTitle>
           </DialogHeader>
-          {detailLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : selectedOrder ? (
+          {selectedOrder && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Захиалгын №:</span>
-                  <p className="font-mono font-semibold">#{selectedOrder.Id}</p>
+                  <p className="font-mono font-semibold">{selectedOrder.order_number}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Статус:</span>
-                  <p><Badge>{selectedOrder.StatusName || selectedOrder.StatusId}</Badge></p>
+                  <p><Badge>{STATUS_LABELS[selectedOrder.status]?.label || selectedOrder.status}</Badge></p>
                 </div>
-                {selectedOrder.CreationDate && (
-                  <div>
-                    <span className="text-muted-foreground">Огноо:</span>
-                    <p>{new Date(selectedOrder.CreationDate).toLocaleString("mn-MN")}</p>
-                  </div>
-                )}
-                {selectedOrder.TotalPrice && (
-                  <div>
-                    <span className="text-muted-foreground">Нийт дүн:</span>
-                    <p className="font-bold text-primary">
-                      {selectedOrder.TotalPrice.CurrencySign || "¥"}
-                      {selectedOrder.TotalPrice.ConvertedPriceValue?.toFixed(2)}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <span className="text-muted-foreground">Огноо:</span>
+                  <p>{new Date(selectedOrder.created_at).toLocaleString("mn-MN")}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Хүргэлт:</span>
+                  <p>{selectedOrder.delivery_type === "delivery" ? "Хүргэлтээр" : "Өөрөө авна"}</p>
+                </div>
               </div>
+
+              {selectedOrder.delivery_address && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Хаяг:</span>
+                  <p>{selectedOrder.delivery_address.fullName} — {selectedOrder.delivery_address.address}
+                    {selectedOrder.delivery_address.phone && ` (${selectedOrder.delivery_address.phone})`}
+                  </p>
+                </div>
+              )}
+
+              {selectedOrder.comment && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Тэмдэглэл:</span>
+                  <p>{selectedOrder.comment}</p>
+                </div>
+              )}
 
               <Separator />
 
-              {/* Order Lines */}
               <div className="space-y-3">
                 <h4 className="font-semibold">Бараанууд</h4>
-                {(selectedOrder.OrderLines?.Items || []).map((line: OtOrderLine, i: number) => (
-                  <div key={line.Id || i} className="flex items-center gap-3 p-3 rounded-lg border">
+                {((selectedOrder.items as any[]) || []).map((item: any, i: number) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg border">
                     <div className="w-14 h-14 rounded bg-muted overflow-hidden shrink-0">
-                      {line.ImageUrl ? (
-                        <img src={line.ImageUrl} alt="" className="w-full h-full object-cover" />
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <ShoppingBag className="h-4 w-4 text-muted-foreground" />
@@ -342,55 +268,24 @@ export default function OtOrders() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm line-clamp-2">{line.ItemTitle || "Бараа"}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">Тоо: {line.Quantity || 1}</span>
-                        {line.StatusName && <Badge variant="outline" className="text-xs">{line.StatusName}</Badge>}
-                      </div>
+                      <p className="text-sm line-clamp-2">{item.title}</p>
+                      {item.configurators && <p className="text-xs text-muted-foreground">{item.configurators}</p>}
+                      <span className="text-xs text-muted-foreground">Тоо: {item.quantity}</span>
                     </div>
-                    {line.TotalPrice && (
-                      <span className="text-sm font-medium shrink-0">
-                        {line.TotalPrice.CurrencySign || "¥"}{line.TotalPrice.ConvertedPriceValue?.toFixed(2)}
-                      </span>
-                    )}
+                    <span className="text-sm font-medium shrink-0">
+                      {new Intl.NumberFormat("mn-MN").format(Math.round(item.totalPrice))}₮
+                    </span>
                   </div>
                 ))}
               </div>
 
-              {/* Cancel button */}
-              {selectedOrder.StatusId !== "Cancelled" && selectedOrder.StatusId !== "Completed" && (
-                <>
-                  <Separator />
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" className="w-full">
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Захиалга цуцлах
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Захиалга цуцлах уу?</AlertDialogTitle>
-                        <AlertDialogDescription>Энэ үйлдлийг буцаах боломжгүй.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <Textarea
-                        placeholder="Шалтгаан (заавал биш)"
-                        value={cancelReason}
-                        onChange={(e) => setCancelReason(e.target.value)}
-                        className="mt-2"
-                      />
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Буцах</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleCancel(selectedOrder.Id)}>
-                          Цуцлах
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </>
-              )}
+              <Separator />
+              <div className="flex justify-between font-bold text-lg">
+                <span>Нийт:</span>
+                <span className="text-primary">{new Intl.NumberFormat("mn-MN").format(Math.round(selectedOrder.subtotal))}₮</span>
+              </div>
             </div>
-          ) : null}
+          )}
         </DialogContent>
       </Dialog>
     </div>
