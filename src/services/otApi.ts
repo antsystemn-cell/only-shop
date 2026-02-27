@@ -327,6 +327,22 @@ export async function getBasket(sessionId: string) {
   return callProxy("getBasket", { sessionId });
 }
 
+// Lightweight item info fetch (title + image only) for basket enrichment
+export async function getItemBasicInfo(itemId: string): Promise<{ title: string; imageUrl: string }> {
+  try {
+    const data = await callProxy<any>("getItemFullInfo", { itemId });
+    const item = data?.Result?.Item;
+    const title = item?.Title || item?.OriginalTitle || "";
+    const imageUrl = item?.MainPictureUrl 
+      || item?.Pictures?.ItemPicture?.Url
+      || (Array.isArray(item?.Pictures) ? item.Pictures[0]?.Url : "")
+      || "";
+    return { title, imageUrl };
+  } catch {
+    return { title: "", imageUrl: "" };
+  }
+}
+
 export async function addItemToBasket(
   sessionId: string, 
   itemId: string, 

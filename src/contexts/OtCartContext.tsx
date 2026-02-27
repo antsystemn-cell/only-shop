@@ -10,6 +10,7 @@ import {
   getBasketCheckingResult,
   batchSimplifiedAddItemsToBasket,
   moveItemsBetweenBasketAndNote,
+  getItemBasicInfo,
 } from "@/services/otApi";
 import { toast } from "sonner";
 
@@ -92,16 +93,8 @@ function parseBasketResponse(data: any): OtBasketItem[] {
   return lines.map((line: any) => {
     const quantity = line.Quantity || 1;
 
-    // Debug: log full line keys and image/title related fields
-    console.log("[OtCart] Line keys:", Object.keys(line));
-    console.log("[OtCart] Line Title:", line.Title, "ItemTitle:", line.ItemTitle);
-    console.log("[OtCart] Line ImageUrl:", line.ImageUrl, "MainPictureUrl:", line.MainPictureUrl);
-    console.log("[OtCart] Line ItemPicture:", JSON.stringify(line.ItemPicture));
-    console.log("[OtCart] Line Pictures:", JSON.stringify(line.Pictures));
-    console.log("[OtCart] Line Picture:", JSON.stringify(line.Picture));
-    console.log("[OtCart] Line Configuration:", JSON.stringify(line.Configuration));
-    console.log("[OtCart] Line Configurators:", JSON.stringify(line.Configurators));
-    console.log("[OtCart] Line ConfiguredItemTitle:", line.ConfiguredItemTitle, "OriginalTitle:", line.OriginalTitle);
+    // Minimal debug
+    console.log("[OtCart] Line ItemId:", line.ItemId, "Config:", JSON.stringify(line.Configuration));
 
     // ── Price extraction (MNT) ──
     const fullTotalInternal = line.FullTotalCost?.ConvertedPriceList?.Internal?.Price;
@@ -190,19 +183,55 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const sessionReady = useRef(false);
 
+  // Cache for item basic info (title + image) by itemId
+  const itemInfoCache = useRef<Record<string, { title: string; imageUrl: string }>>({});
+
+  const enrichItems = useCallback(async (parsed: OtBasketItem[]): Promise<OtBasketItem[]> => {
+    // Find items missing title or image
+    const needsEnrich = parsed.filter(
+      (item) => (!item.title || item.title === item.itemId) && item.itemId && !itemInfoCache.current[item.itemId]
+    );
+    // Also enrich items that have no imageUrl
+    const needsImage = parsed.filter(
+      (item) => !item.imageUrl && item.itemId && !itemInfoCache.current[item.itemId] && !needsEnrich.find(n => n.itemId === item.itemId)
+    );
+    const allNeeds = [...needsEnrich, ...needsImage];
+
+    // Fetch missing info in parallel
+    if (allNeeds.length > 0) {
+      const uniqueIds = [...new Set(allNeeds.map((i) => i.itemId))];
+      const results = await Promise.all(uniqueIds.map((id) => getItemBasicInfo(id)));
+      uniqueIds.forEach((id, idx) => {
+        itemInfoCache.current[id] = results[idx];
+      });
+    }
+
+    // Merge cached info into items
+    return parsed.map((item) => {
+      const cached = itemInfoCache.current[item.itemId];
+      if (!cached) return item;
+      return {
+        ...item,
+        title: item.title && item.title !== item.itemId ? item.title : cached.title || item.title,
+        imageUrl: item.imageUrl || cached.imageUrl || "",
+      };
+    });
+  }, []);
+
   const fetchBasket = useCallback(async () => {
     try {
       setIsLoading(true);
       const sessionId = await getAnonymousSession();
       const data = await getBasket(sessionId);
       const parsed = parseBasketResponse(data);
-      setItems(parsed);
+      const enriched = await enrichItems(parsed);
+      setItems(enriched);
     } catch (err) {
       console.error("Failed to fetch basket:", err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [enrichItems]);
 
   // Load basket on mount
   useEffect(() => {
