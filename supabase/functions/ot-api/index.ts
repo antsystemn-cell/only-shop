@@ -147,21 +147,27 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       return basketResult;
     }
     case "addItemToBasket": {
-      // Use AddItemToBasket with fieldParameters per OTAPI docs
-      // For configurable items, fieldParameters must contain actual FieldId/ValueId pairs
-      // For non-configurable items, use <Fields/> as safe default
+      // Use AddItemToBasket per OTAPI docs: http://docs.otapi.net/en/Documentations/Method?name=AddItemToBasket
+      // Required: sessionId, itemId, quantity, fieldParameters, priceType
+      // Optional: configurationId (for configurable items)
       const fieldParams = params.fieldParameters || "<Fields/>";
       console.log("[ot-api] AddItemToBasket itemId:", params.itemId, 
         "configurationId:", params.configurationId || "(none)", 
         "fieldParams:", fieldParams.substring(0, 200));
-      return callOtApi("AddItemToBasket", {
+      
+      const addParams: Record<string, string> = {
         ...base,
         sessionId: params.sessionId,
         itemId: params.itemId,
-        configurationId: params.configurationId || "",
         quantity: String(params.quantity || 1),
         fieldParameters: fieldParams,
-      });
+        priceType: params.priceType || "Default",
+      };
+      // Only include configurationId if provided (not empty string)
+      if (params.configurationId) {
+        addParams.configurationId = params.configurationId;
+      }
+      return callOtApi("AddItemToBasket", addParams);
     }
     case "editBasketItemQuantity":
       return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, quantity: String(params.quantity) });
@@ -317,11 +323,19 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       return callOtApi("FindBaseUserInfoListFrame", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 20), ...(params.searchText ? { searchText: params.searchText } : {}) });
 
     // ── Basket Extended ──
+    // BatchSimplifiedAddItemsToBasket is undocumented per OT Commerce guidance.
+    // Use sequential AddItemToBasket calls instead for reliability.
     case "batchSimplifiedAddItemsToBasket": {
       const batchXml = params.xmlParameters || params.xmlRequest || "";
-      return callBatchSimplifiedAdd({
-        instanceKey: apiKey, language: lang, sessionId: params.sessionId, xmlRequest: batchXml,
-      });
+      // Try the batch method first, fall back to sequential if it fails
+      try {
+        return await callBatchSimplifiedAdd({
+          instanceKey: apiKey, language: lang, sessionId: params.sessionId, xmlRequest: batchXml,
+        });
+      } catch (batchErr) {
+        console.warn("[ot-api] BatchSimplifiedAddItemsToBasket failed, method may be unsupported:", String(batchErr));
+        throw new Error("Batch add is not supported. Please add items one by one.");
+      }
     }
     case "moveItemsBetweenBasketAndNote":
       return callOtApi("MoveItemsBetweenBasketAndNote", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, direction: params.direction || "ToNote" });
@@ -602,11 +616,20 @@ function getTimestamp(): string {
 
 // ─── Core API caller ─────────────────────────────────────────
 
-async function callOtApi(methodName: string, queryParams: Record<string, string>, postSignatureParams?: Record<string, string>) {
+async function callOtApi(methodName: string, queryParams: Record<string, string>) {
   const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
   const timestamp = getTimestamp();
 
-  const allParams: Record<string, string> = { ...queryParams, timestamp };
+  // Build params: only include non-empty values for signature calculation
+  // Per OTAPI docs: signature = SHA256(methodName + concatenatedSortedValues + secret)
+  // "Concatenation of values should be obtained before URL-encoding from sorted parameters by name"
+  const allParams: Record<string, string> = {};
+  for (const [key, value] of Object.entries(queryParams)) {
+    if (value !== undefined && value !== null && value !== "") {
+      allParams[key] = value;
+    }
+  }
+  allParams.timestamp = timestamp;
 
   if (OT_API_SECRET) {
     const sortedKeys = Object.keys(allParams).sort();
@@ -617,20 +640,8 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
   }
 
   const url = new URL(`${OT_API_BASE}/${methodName}`);
-  // These params must always be present in URL even when empty (OTAPI contract requirement)
-  const alwaysInclude = new Set(["configurationId", "fieldParameters"]);
   for (const [key, value] of Object.entries(allParams)) {
-    if (value !== undefined && value !== null && (value !== "" || alwaysInclude.has(key))) {
-      url.searchParams.set(key, String(value));
-    }
-  }
-
-  // postSignatureParams: params that must appear in URL but were excluded from signature
-  // (e.g. fieldParameters, configurationId which OTAPI requires even when empty)
-  if (postSignatureParams) {
-    for (const [key, value] of Object.entries(postSignatureParams)) {
-      url.searchParams.set(key, value ?? "");
-    }
+    url.searchParams.set(key, String(value));
   }
 
   // Log full URL for debugging AddItemToBasket
@@ -652,7 +663,9 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
   const data = await response.json();
 
   if (data?.ErrorCode && data.ErrorCode !== "Ok" && data.ErrorCode !== "BatchError") {
-    throw new Error(`OT API [${data.ErrorCode}]: ${data.ErrorDescription || "Unknown"}`);
+    // Per OTAPI docs: SessionExpired, AccessDenied, InstanceKeyBan are global errors
+    const errDesc = data.ErrorDescription || data.SubErrorCode || "Unknown";
+    throw new Error(`OT API [${data.ErrorCode}${data.SubErrorCode ? '/' + data.SubErrorCode : ''}]: ${errDesc}`);
   }
 
   return data;

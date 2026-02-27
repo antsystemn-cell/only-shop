@@ -32,6 +32,11 @@ async function callProxy<T = unknown>(action: string, params: Record<string, unk
   if (error) throw new Error(`OT API proxy error: ${error.message}`);
   if (data?.success === false) throw new Error(data.error || "Unknown OT API error");
   if (data?.error && typeof data.error === "string") throw new Error(`OT API error: ${data.error}`);
+  // Handle SessionExpired globally per OTAPI docs
+  if (data?.ErrorCode === "SessionExpired") {
+    clearSessionCache();
+    throw new Error("SessionExpired");
+  }
   return data as T;
 }
 
@@ -92,16 +97,36 @@ export async function callWithOperatorSession<T = unknown>(
   action: string,
   params: Record<string, unknown> = {}
 ): Promise<T> {
-  const sessionId = await getOperatorSession();
-  return callProxy<T>(action, { ...params, sessionId });
+  try {
+    const sessionId = await getOperatorSession();
+    return await callProxy<T>(action, { ...params, sessionId });
+  } catch (err: any) {
+    // Auto-retry on SessionExpired
+    if (err?.message?.includes("SessionExpired")) {
+      clearSessionCache();
+      const sessionId = await getOperatorSession();
+      return callProxy<T>(action, { ...params, sessionId });
+    }
+    throw err;
+  }
 }
 
 export async function callWithAnonymousSession<T = unknown>(
   action: string,
   params: Record<string, unknown> = {}
 ): Promise<T> {
-  const sessionId = await getAnonymousSession();
-  return callProxy<T>(action, { ...params, sessionId });
+  try {
+    const sessionId = await getAnonymousSession();
+    return await callProxy<T>(action, { ...params, sessionId });
+  } catch (err: any) {
+    // Auto-retry on SessionExpired
+    if (err?.message?.includes("SessionExpired")) {
+      clearSessionCache();
+      const sessionId = await getAnonymousSession();
+      return callProxy<T>(action, { ...params, sessionId });
+    }
+    throw err;
+  }
 }
 
 // ─── Clear cached sessions ──────────────────────────────────

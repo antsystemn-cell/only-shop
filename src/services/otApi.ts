@@ -335,13 +335,18 @@ export async function addItemToBasket(
   configurationId?: string,
   fieldParameters?: string
 ) {
-  return callProxy("addItemToBasket", {
+  const params: Record<string, unknown> = {
     sessionId,
     itemId,
     quantity,
-    configurationId: configurationId || "",
     fieldParameters: fieldParameters || "<Fields/>",
-  });
+    priceType: "Default",
+  };
+  // Only send configurationId if it has a value (per OTAPI docs)
+  if (configurationId) {
+    params.configurationId = configurationId;
+  }
+  return callProxy("addItemToBasket", params);
 }
 
 export async function editBasketItemQuantity(sessionId: string, orderLineId: string, quantity: number) {
