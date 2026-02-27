@@ -230,7 +230,7 @@ export default function OtCheckout() {
         return;
       }
 
-      // Verify server basket is not empty
+      // Get current session and verify basket
       const sessionId = await getAnonymousSession();
       const basketData = await getBasket(sessionId) as any;
       const elements = basketData?.CollectionInfo?.Elements || basketData?.Result?.CollectionInfo?.Elements;
@@ -241,17 +241,26 @@ export default function OtCheckout() {
         return;
       }
 
+      // Extract element IDs to pass directly to CreateOrder (avoids redundant GetBasket in edge function)
+      const elementIds = serverItems.map((el: any) => String(el.Id)).filter(Boolean);
+
       const result = await createOtOrder(sessionId, {
         deliveryModeId: undefined,
         profileId: deliveryType === "delivery" ? (selectedProfile || undefined) : undefined,
         comment: comment ? `[${deliveryType === "delivery" ? "Хүргэлт" : "Өөрөө авна"}] ${comment}` : `[${deliveryType === "delivery" ? "Хүргэлт" : "Өөрөө авна"}]`,
+        elementIds,
       });
       setOrderResult(result);
       setStep(5);
       toast.success("Захиалга амжилттай үүсгэгдлээ!");
       refreshBasket();
     } catch (err: any) {
-      toast.error(err.message || "Захиалга үүсгэхэд алдаа гарлаа");
+      if (err.message === "SESSION_BASKET_LOST") {
+        toast.error("Сесс дууссан тул сагс хоосорсон. Бараагаа дахин нэмнэ үү.");
+        refreshBasket();
+      } else {
+        toast.error(err.message || "Захиалга үүсгэхэд алдаа гарлаа");
+      }
     } finally {
       setIsProcessing(false);
     }
