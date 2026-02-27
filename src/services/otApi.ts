@@ -48,14 +48,33 @@ async function callProxy<T = unknown>(action: string, params: Record<string, unk
     }
   }
 
-  const { data, error } = await supabase.functions.invoke("ot-api", {
-    body: { action, params: cleanParams },
-  });
+  const invoke = async (p: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke("ot-api", {
+      body: { action, params: p },
+    });
+    if (error) throw new Error(`OT API proxy error: ${error.message}`);
+    if (data?.success === false) throw new Error(data.error || "Unknown OT API error");
+    if (data?.error && typeof data.error === "string") throw new Error(`OT API error: ${data.error}`);
+    // Handle SessionExpired from OTAPI response
+    if (data?.ErrorCode === "SessionExpired") {
+      throw new Error("SessionExpired");
+    }
+    return data as T;
+  };
 
-  if (error) throw new Error(`OT API proxy error: ${error.message}`);
-  if (data?.success === false) throw new Error(data.error || "Unknown OT API error");
-  if (data?.error && typeof data.error === "string") throw new Error(`OT API error: ${data.error}`);
-  return data as T;
+  try {
+    return await invoke(cleanParams);
+  } catch (err: any) {
+    // Auto-retry on SessionExpired: clear cached session, get fresh one, retry once
+    if (err?.message?.includes("SessionExpired") && cleanParams.sessionId) {
+      console.log("[otApi] SessionExpired detected, retrying with fresh session...");
+      const { clearSessionCache, getAnonymousSession } = await import("@/services/otSession");
+      clearSessionCache();
+      const freshSessionId = await getAnonymousSession();
+      return await invoke({ ...cleanParams, sessionId: freshSessionId });
+    }
+    throw err;
+  }
 }
 
 // ─── Categories ──────────────────────────────────────────────
