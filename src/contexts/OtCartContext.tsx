@@ -43,6 +43,15 @@ interface BasketCheckingStatus {
   isRunning: boolean;
   isComplete: boolean;
   result: any | null;
+  invalidItems?: BasketInvalidItem[];
+}
+
+export interface BasketInvalidItem {
+  elementId: string;
+  itemId?: string;
+  title?: string;
+  reasonCode: string;
+  reasonText: string;
 }
 
 interface OtCartContextType {
@@ -291,39 +300,88 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
   });
 
   const checkBasket = useCallback(async () => {
+    const correlationId = Math.random().toString(36).substring(2, 10);
+    console.log(`[OtCart][${correlationId}] Checkout: checkBasket started`);
     try {
-      setCheckingStatus({ isRunning: true, isComplete: false, result: null });
+      setCheckingStatus({ isRunning: true, isComplete: false, result: null, invalidItems: [] });
       const sessionId = await getAnonymousSession();
 
-      // Get basket element IDs (required by RunBasketChecking)
+      // Step 1: Get basket element IDs
       const basketData = await getBasket(sessionId) as any;
       const elements = basketData?.CollectionInfo?.Elements
         || basketData?.Result?.CollectionInfo?.Elements;
       const elementsList = elements ? (Array.isArray(elements) ? elements : [elements]) : [];
-      const elementIds = elementsList.map((el: any) => String(el.Id)).filter(Boolean).join(",");
 
-      if (!elementIds) {
-        throw new Error("Сагс хоосон байна");
+      if (elementsList.length === 0) {
+        console.log(`[OtCart][${correlationId}] Empty basket, aborting check`);
+        throw new Error("EMPTY_BASKET");
       }
 
-      await runBasketChecking(sessionId, elementIds);
+      const elementIds = elementsList.map((el: any) => String(el.Id)).filter(Boolean).join(",");
+      console.log(`[OtCart][${correlationId}] RunBasketChecking with ${elementsList.length} elements`);
 
-      // Poll for result
+      // Step 2: Run basket checking (pass element IDs as comma-separated string)
+      const checkResponse = await runBasketChecking(sessionId, elementIds) as any;
+      const activityId = checkResponse?._activityId
+        || checkResponse?.Result?.ActivityId
+        || checkResponse?.ActivityId;
+      console.log(`[OtCart][${correlationId}] activityId:`, activityId);
+
+      // Step 3: Poll with backoff
+      const backoffMs = [300, 600, 1000, 1500, 2000, 2000, 2000, 2000, 2000, 2000];
       let attempts = 0;
-      const maxAttempts = 30;
-      while (attempts < maxAttempts) {
-        await new Promise((r) => setTimeout(r, 2000));
-        const result = await getBasketCheckingResult(sessionId) as any;
-        if (result?.Result?.IsReady || result?.IsReady) {
-          setCheckingStatus({ isRunning: false, isComplete: true, result });
+      const maxAttempts = 15;
+      const maxTotalMs = 20000;
+      const startTime = Date.now();
+
+      while (attempts < maxAttempts && (Date.now() - startTime) < maxTotalMs) {
+        const delay = backoffMs[Math.min(attempts, backoffMs.length - 1)];
+        await new Promise((r) => setTimeout(r, delay));
+        attempts++;
+
+        console.log(`[OtCart][${correlationId}] Poll attempt #${attempts}`);
+        const result = await getBasketCheckingResult(sessionId, activityId) as any;
+
+        const isReady = result?.Result?.IsReady || result?.IsReady;
+        if (isReady) {
+          console.log(`[OtCart][${correlationId}] Check complete after ${attempts} polls`);
+          
+          // Parse invalid items from result
+          const orderLines = result?.Result?.OrderLines || result?.OrderLines;
+          const linesList = orderLines ? (Array.isArray(orderLines) ? orderLines : [orderLines]) : [];
+          
+          const invalidItems: BasketInvalidItem[] = linesList
+            .filter((ol: any) => ol.IsAvailable === false || ol.IsDeleted === true || ol.HasPriceChanged === true)
+            .map((ol: any) => {
+              const reasons: string[] = [];
+              if (ol.IsDeleted) reasons.push("Устгагдсан");
+              if (ol.IsAvailable === false) reasons.push("Боломжгүй");
+              if (ol.HasPriceChanged) reasons.push("Үнэ өөрчлөгдсөн");
+              return {
+                elementId: String(ol.Id || ol.OrderLineId || ""),
+                itemId: ol.ItemId || "",
+                title: ol.Title || ol.ItemTitle || "",
+                reasonCode: ol.IsDeleted ? "DELETED" : ol.IsAvailable === false ? "UNAVAILABLE" : "PRICE_CHANGED",
+                reasonText: reasons.join(", ") || "Тодорхойгүй",
+              };
+            });
+
+          if (invalidItems.length > 0) {
+            console.log(`[OtCart][${correlationId}] Found ${invalidItems.length} invalid items`);
+            setCheckingStatus({ isRunning: false, isComplete: true, result, invalidItems });
+            return { ...result, _invalidItems: invalidItems };
+          }
+
+          setCheckingStatus({ isRunning: false, isComplete: true, result, invalidItems: [] });
           return result;
         }
-        attempts++;
       }
-      throw new Error("Basket checking timeout");
+
+      console.warn(`[OtCart][${correlationId}] Basket checking timed out after ${attempts} polls`);
+      throw new Error("CHECK_TIMEOUT");
     } catch (err: any) {
+      console.error(`[OtCart][${correlationId}] checkBasket error:`, err.message);
       setCheckingStatus({ isRunning: false, isComplete: false, result: null });
-      toast.error("Сагс шалгахад алдаа гарлаа");
       throw err;
     }
   }, []);

@@ -175,10 +175,30 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       return callOtApi("RemoveItemFromBasket", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId });
     case "clearBasket":
       return callOtApi("ClearBasket", { ...base, sessionId: params.sessionId });
-    case "runBasketChecking":
-      return callOtApi("RunBasketChecking", { ...base, sessionId: params.sessionId, elements: params.elements || "" });
-    case "getBasketCheckingResult":
-      return callOtApi("GetBasketCheckingResult", { ...base, sessionId: params.sessionId });
+    case "runBasketChecking": {
+      // elements must be comma-separated string of element IDs, or omitted entirely
+      const rbcParams: Record<string, string> = { ...base, sessionId: params.sessionId };
+      if (params.elements && typeof params.elements === "string" && params.elements.trim()) {
+        rbcParams.elements = params.elements.trim();
+      }
+      // else: omit elements to check entire basket
+      console.log("[ot-api] RunBasketChecking elements:", rbcParams.elements || "(entire basket)");
+      const rbcResult = await callOtApi("RunBasketChecking", rbcParams);
+      console.log("[ot-api] RunBasketChecking result keys:", JSON.stringify(Object.keys(rbcResult || {})));
+      // Extract activityId from response
+      const activityId = rbcResult?.Result?.ActivityId || rbcResult?.ActivityId || rbcResult?.Result?.Value || rbcResult?.Result;
+      console.log("[ot-api] RunBasketChecking activityId:", activityId);
+      return { ...rbcResult, _activityId: activityId };
+    }
+    case "getBasketCheckingResult": {
+      // activityId is required per OTAPI docs
+      const gbcrParams: Record<string, string> = { ...base, sessionId: params.sessionId };
+      if (params.activityId) {
+        gbcrParams.activityId = String(params.activityId);
+      }
+      console.log("[ot-api] GetBasketCheckingResult activityId:", params.activityId || "(none)");
+      return callOtApi("GetBasketCheckingResult", gbcrParams);
+    }
 
     // ── Orders ──
     case "searchOrders":

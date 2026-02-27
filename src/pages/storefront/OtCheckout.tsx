@@ -28,7 +28,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useOtCartSafe, type OtBasketItem } from "@/contexts/OtCartContext";
+import { useOtCartSafe, type OtBasketItem, type BasketInvalidItem } from "@/contexts/OtCartContext";
 import { getAnonymousSession } from "@/services/otSession";
 import {
   searchDeliveryModesForSession,
@@ -61,7 +61,8 @@ export default function OtCheckout() {
   // Step 1 — basket checking
   const [checkResult, setCheckResult] = useState<any>(null);
   const [checkError, setCheckError] = useState<string | null>(null);
-  const [invalidItems, setInvalidItems] = useState<string[]>([]); // orderLineIds of invalid items
+  const [invalidItems, setInvalidItems] = useState<BasketInvalidItem[]>([]);
+  const [isRemovingInvalid, setIsRemovingInvalid] = useState(false);
 
   // Step 2 — delivery modes
   const [deliveryModes, setDeliveryModes] = useState<OtDeliveryMode[]>([]);
@@ -101,77 +102,72 @@ export default function OtCheckout() {
     try {
       setCheckError(null);
       setInvalidItems([]);
+      setCheckResult(null);
 
       if (items.length === 0) {
         setCheckError("Сагс хоосон байна. Бараа нэмнэ үү.");
         return;
       }
 
-      // Step 1: Verify server-side basket has items
-      const sessionId = await getAnonymousSession();
-      const basketData = await getBasket(sessionId) as any;
-      const elements = basketData?.CollectionInfo?.Elements
-        || basketData?.Result?.CollectionInfo?.Elements;
-      const serverItems = elements ? (Array.isArray(elements) ? elements : [elements]) : [];
+      console.log("[OtCheckout] Running basket check...");
+      const result = await checkBasket();
 
-      if (serverItems.length === 0) {
-        setCheckError("Серверийн сагс хоосон байна. Бараагаа дахин нэмнэ үү.");
+      // Check if checkBasket returned invalid items
+      const resultInvalid = result?._invalidItems as BasketInvalidItem[] | undefined;
+      if (resultInvalid && resultInvalid.length > 0) {
+        setInvalidItems(resultInvalid);
+        setCheckError(`Сагсанд ${resultInvalid.length} боломжгүй бараа байна`);
         return;
       }
 
-      // Step 2: Run basket checking
-      const result = await checkBasket();
-
-      // Step 3: Parse checking result for invalid items
-      const checkingItems = result?.Result?.OrderLines || result?.OrderLines;
-      if (checkingItems) {
-        const itemsList = Array.isArray(checkingItems) ? checkingItems : [checkingItems];
-        const invalid = itemsList
-          .filter((ol: any) => ol.IsAvailable === false || ol.IsDeleted === true || ol.HasPriceChanged === true)
-          .map((ol: any) => String(ol.Id || ol.OrderLineId || ""));
-        
-        if (invalid.length > 0) {
-          // Auto-remove invalid items from server basket
-          const removedTitles: string[] = [];
-          for (const invalidId of invalid) {
-            const matchingItem = items.find(i => i.orderLineId === invalidId);
-            if (matchingItem) removedTitles.push(matchingItem.title);
-            try {
-              await removeItem(invalidId);
-            } catch (e) {
-              console.warn("[OtCheckout] Failed to auto-remove item:", invalidId, e);
-            }
-          }
-
-          // After removal, refresh and re-check
-          await refreshBasket();
-          
-          if (removedTitles.length > 0) {
-            toast.warning(`${removedTitles.length} боломжгүй бараа автоматаар хасагдлаа`, {
-              description: removedTitles.slice(0, 3).map(t => t.substring(0, 40)).join(", ") + 
-                (removedTitles.length > 3 ? ` +${removedTitles.length - 3}` : ""),
-              duration: 6000,
-            });
-          }
-
-          // Re-run check with cleaned basket
-          setCheckError("Боломжгүй бараанууд хасагдлаа. Дахин шалгаж байна...");
-          setTimeout(() => runCheck(), 1500);
-          return;
-        }
-      }
-
+      // Success
       setCheckResult(result);
+      console.log("[OtCheckout] Basket check passed");
     } catch (err: any) {
-      const msg = err.message || "Сагс шалгахад алдаа гарлаа";
-      if (msg.includes("ContractViolation") || msg.includes("Missing parameter")) {
+      const msg = err.message || "";
+      if (msg === "EMPTY_BASKET") {
+        setCheckError("Сагс хоосон байна. Бараа нэмнэ үү.");
+      } else if (msg === "CHECK_TIMEOUT") {
+        setCheckError("Сагс шалгах хугацаа дууслаа. Дахин оролдоно уу.");
+      } else if (msg.includes("SessionExpired")) {
+        setCheckError("Сессийн хугацаа дууссан. Дахин оролдоно уу.");
+      } else if (msg.includes("ContractViolation")) {
+        setCheckError("Техникийн алдаа гарлаа. Сагсаа шинэчилж дахин оролдоно уу.");
         await refreshBasket();
-        setCheckError("Сагсанд боломжгүй бараа байна. Дахин оролдоно уу.");
       } else {
-        setCheckError(msg);
+        setCheckError(msg || "Сагс шалгахад алдаа гарлаа");
       }
     }
-  }, [checkBasket, items, refreshBasket, removeItem]);
+  }, [checkBasket, items, refreshBasket]);
+
+  const handleRemoveInvalidAndRecheck = useCallback(async () => {
+    if (invalidItems.length === 0) return;
+    setIsRemovingInvalid(true);
+    try {
+      const removedTitles: string[] = [];
+      for (const inv of invalidItems) {
+        const matchingItem = items.find(i => i.orderLineId === inv.elementId);
+        if (matchingItem) removedTitles.push(matchingItem.title);
+        try {
+          await removeItem(inv.elementId);
+        } catch (e) {
+          console.warn("[OtCheckout] Failed to remove item:", inv.elementId, e);
+        }
+      }
+      await refreshBasket();
+      if (removedTitles.length > 0) {
+        toast.info(`${removedTitles.length} боломжгүй бараа хасагдлаа`);
+      }
+      setInvalidItems([]);
+      setCheckError(null);
+      // Re-run check
+      setTimeout(() => runCheck(), 1000);
+    } catch (err: any) {
+      toast.error("Бараа хасахад алдаа гарлаа");
+    } finally {
+      setIsRemovingInvalid(false);
+    }
+  }, [invalidItems, items, removeItem, refreshBasket, runCheck]);
 
   useEffect(() => {
     if (step === 1 && !checkResult && !checkingStatus.isRunning) {
@@ -388,31 +384,37 @@ export default function OtCheckout() {
                     {invalidItems.length > 0 && (
                       <div className="space-y-2 border border-destructive/30 rounded-lg p-3">
                         <p className="text-xs font-semibold text-destructive">Боломжгүй бараанууд:</p>
-                        {items
-                          .filter((item) => invalidItems.includes(item.orderLineId))
-                          .map((item) => (
-                            <div key={item.orderLineId} className="flex items-center gap-3 py-1.5">
+                        {invalidItems.map((inv) => {
+                          const matchingItem = items.find(i => i.orderLineId === inv.elementId);
+                          return (
+                            <div key={inv.elementId} className="flex items-center gap-3 py-1.5">
                               <div className="w-8 h-8 rounded bg-muted overflow-hidden shrink-0">
-                                {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />}
+                                {matchingItem?.imageUrl && <img src={matchingItem.imageUrl} alt="" className="w-full h-full object-cover" />}
                               </div>
-                              <span className="text-xs line-clamp-1 flex-1 text-destructive">{item.title}</span>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="h-7 text-xs"
-                                onClick={async () => {
-                                  await removeItem(item.orderLineId);
-                                  setInvalidItems((prev) => prev.filter((id) => id !== item.orderLineId));
-                                }}
-                              >
-                                Хасах
-                              </Button>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-xs line-clamp-1 text-destructive">{inv.title || matchingItem?.title || inv.itemId}</span>
+                                <span className="text-[10px] text-muted-foreground block">{inv.reasonText}</span>
+                              </div>
                             </div>
-                          ))}
+                          );
+                        })}
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="w-full mt-2"
+                          disabled={isRemovingInvalid}
+                          onClick={handleRemoveInvalidAndRecheck}
+                        >
+                          {isRemovingInvalid ? (
+                            <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Хасаж байна...</>
+                          ) : (
+                            "Боломжгүй барааг устгаад дахин шалгах"
+                          )}
+                        </Button>
                       </div>
                     )}
                     <div className="flex gap-2 justify-center">
-                      <Button onClick={runCheck}>Дахин шалгах</Button>
+                      <Button onClick={runCheck} disabled={checkingStatus.isRunning}>Дахин шалгах</Button>
                       <Button variant="outline" onClick={() => navigate("/ot")}>Сагс руу буцах</Button>
                     </div>
                   </div>
