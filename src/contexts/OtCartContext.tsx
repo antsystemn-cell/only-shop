@@ -371,27 +371,32 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
       console.log(`[OtCart][${correlationId}] Poll #${attempts}, activityId: "${activityId}"`);
       const result = await getBasketCheckingResult(sessionId, activityId) as any;
 
-      const isReady = result?.Result?.IsReady || result?.IsReady;
-      if (isReady) {
+      // OTAPI returns IsFinished (not IsReady)
+      const resultObj = result?.Result || result;
+      const isFinished = resultObj?.IsFinished || resultObj?.IsReady;
+      console.log(`[OtCart][${correlationId}] Poll #${attempts} IsFinished:`, resultObj?.IsFinished, "ProgressPercent:", resultObj?.ProgressPercent);
+      
+      if (isFinished) {
         console.log(`[OtCart][${correlationId}] Check complete after ${attempts} polls`);
 
-        // Parse invalid items from result
-        const orderLines = result?.Result?.OrderLines || result?.OrderLines;
-        const linesList = orderLines ? (Array.isArray(orderLines) ? orderLines : [orderLines]) : [];
+        // Parse invalid items from Messages array
+        // OTAPI returns: { Messages: [{ ElementId: {Value}, Status, Code, Text }], IsFinished, ProgressPercent }
+        const messages = resultObj?.Messages;
+        const msgList = messages ? (Array.isArray(messages) ? messages : [messages]) : [];
 
-        const invalidItems: BasketInvalidItem[] = linesList
-          .filter((ol: any) => ol.IsAvailable === false || ol.IsDeleted === true || ol.HasPriceChanged === true)
-          .map((ol: any) => {
-            const reasons: string[] = [];
-            if (ol.IsDeleted) reasons.push("Устгагдсан");
-            if (ol.IsAvailable === false) reasons.push("Боломжгүй");
-            if (ol.HasPriceChanged) reasons.push("Үнэ өөрчлөгдсөн");
+        const invalidItems: BasketInvalidItem[] = msgList
+          .filter((msg: any) => {
+            const status = msg.Status || msg.Code;
+            return status && status !== "Ok";
+          })
+          .map((msg: any) => {
+            const elementId = msg.ElementId?.Value ? String(msg.ElementId.Value) : String(msg.ElementId || "");
             return {
-              elementId: String(ol.Id || ol.OrderLineId || ""),
-              itemId: ol.ItemId || "",
-              title: ol.Title || ol.ItemTitle || "",
-              reasonCode: ol.IsDeleted ? "DELETED" : ol.IsAvailable === false ? "UNAVAILABLE" : "PRICE_CHANGED",
-              reasonText: reasons.join(", ") || "Тодорхойгүй",
+              elementId,
+              itemId: msg.ItemId || "",
+              title: msg.Text || msg.Title || "",
+              reasonCode: msg.Code || msg.Status || "UNKNOWN",
+              reasonText: msg.Text || msg.Code || "Тодорхойгүй",
             };
           });
 
