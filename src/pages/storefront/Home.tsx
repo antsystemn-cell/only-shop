@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Shield, ShoppingBag, Package } from "lucide-react";
+import { Shield, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
 import { useProviderSafe } from "@/contexts/ProviderContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { OtProductCard } from "@/types/otApi";
 
 // ─── Static Provider Section ────────────────────────────────
 function ProviderShowcase({
@@ -29,25 +30,67 @@ function ProviderShowcase({
   const navigate = useNavigate();
   const { setSelectedProvider } = useProviderSafe();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["home-provider-showcase", providerType],
-    queryFn: () =>
-      searchItems({
-        provider: providerType,
-        page: 0,
-        pageSize,
-        orderBy: "Volume:Desc",
-      }),
-    staleTime: 1000 * 60 * 10,
+  // First fetch root categories to get valid categoryIds for the search
+  const { data: rootCategories } = useQuery({
+    queryKey: ["home-root-cats", providerType],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ot_categories")
+        .select("internal_id")
+        .is("parent_internal_id", null)
+        .eq("is_active", true)
+        .eq("provider_type", providerType)
+        .order("display_order")
+        .limit(6);
+      return data?.map((c) => c.internal_id) || [];
+    },
+    staleTime: 1000 * 60 * 60,
   });
 
-  const items = data?.items || [];
+  // Fetch products from multiple root categories in parallel to get variety
+  const { data: items, isLoading } = useQuery({
+    queryKey: ["home-provider-showcase", providerType, rootCategories],
+    queryFn: async () => {
+      if (!rootCategories || rootCategories.length === 0) return [];
+      // Fetch from up to 3 categories to get variety
+      const categoriesToFetch = rootCategories.slice(0, 3);
+      const perCat = Math.ceil(pageSize / categoriesToFetch.length);
+      const results = await Promise.allSettled(
+        categoriesToFetch.map((catId) =>
+          searchItems({
+            categoryId: catId,
+            provider: providerType,
+            page: 0,
+            pageSize: perCat,
+            orderBy: "Volume:Desc",
+          })
+        )
+      );
+      const allItems: OtProductCard[] = [];
+      const seen = new Set<string>();
+      for (const r of results) {
+        if (r.status === "fulfilled") {
+          for (const item of r.value.items) {
+            if (!seen.has(item.id)) {
+              seen.add(item.id);
+              allItems.push(item);
+            }
+          }
+        }
+      }
+      return allItems.slice(0, pageSize);
+    },
+    staleTime: 1000 * 60 * 10,
+    enabled: !!rootCategories && rootCategories.length > 0,
+  });
 
   const handleViewAll = () => {
-    const filter = providerType === "Poizon" ? "Poizon" as const : "Taobao" as const;
+    const filter = providerType === "Poizon" ? ("Poizon" as const) : ("Taobao" as const);
     setSelectedProvider(filter);
     navigate(`/ot/provider/${slug}`);
   };
+
+  const loading = isLoading || !rootCategories;
 
   return (
     <section className="mb-6">
@@ -64,7 +107,7 @@ function ProviderShowcase({
         </Button>
       </div>
 
-      {isLoading ? (
+      {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
           {Array.from({ length: pageSize }).map((_, i) => (
             <div key={i} className="overflow-hidden">
@@ -79,11 +122,11 @@ function ProviderShowcase({
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
-            {items.map((product) => (
+            {(items || []).map((product) => (
               <OtProductCardComponent key={product.id} product={product} />
             ))}
           </div>
-          {items.length > 0 && (
+          {items && items.length > 0 && (
             <div className="flex justify-center mt-4">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleViewAll}>
                 Бүгдийг үзэх
