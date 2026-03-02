@@ -278,7 +278,7 @@ export default function ProviderPage() {
   const providerType = providerInfo?.provider_type;
 
   // Fetch provider-specific root categories
-  const { data: rootCategories } = useQuery({
+  const { data: rawRootCategories } = useQuery({
     queryKey: ["ot-root-categories-provider", providerType],
     queryFn: async () => {
       const { data } = await supabase
@@ -293,6 +293,28 @@ export default function ProviderPage() {
     staleTime: 1000 * 60 * 30,
     enabled: !!providerType,
   });
+
+  // If only 1 root category (e.g. Poizon), expand to show its children as tabs
+  const singleRootId = rawRootCategories?.length === 1 ? rawRootCategories[0].internal_id : null;
+
+  const { data: childCategories } = useQuery({
+    queryKey: ["ot-child-categories-provider", singleRootId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ot_categories")
+        .select("id, internal_id, name_mn, name_en, icon_url, parent_internal_id")
+        .eq("parent_internal_id", singleRootId!)
+        .eq("is_active", true)
+        .order("display_order");
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 30,
+    enabled: !!singleRootId,
+  });
+
+  const rootCategories = singleRootId && childCategories && childCategories.length > 0
+    ? childCategories
+    : rawRootCategories || [];
 
   const categoryList = useMemo(() => rootCategories?.slice(0, 15) || [], [rootCategories]);
   const orderedIds = useMemo(() => [null, ...categoryList.map((c) => c.internal_id)], [categoryList]);
