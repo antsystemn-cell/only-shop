@@ -32,12 +32,6 @@ import { toast } from "sonner";
 import { useOtCartSafe, type OtBasketItem, type BasketInvalidItem } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { getAnonymousSession } from "@/services/otSession";
-import {
-  getUserProfileInfoList,
-  createUserProfile,
-  type OtUserProfile,
-} from "@/services/otApi";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
 import QPayPayment from "@/components/storefront/QPayPayment";
 import OmniWayPayment from "@/components/storefront/OmniWayPayment";
@@ -73,13 +67,21 @@ export default function OtCheckout() {
   // Step 2 — delivery type (custom, not OTAPI)
   const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
 
-  // Step 3 — profiles
-  const [profiles, setProfiles] = useState<OtUserProfile[]>([]);
-  const [selectedProfile, setSelectedProfile] = useState<string>("");
-  const [loadingProfiles, setLoadingProfiles] = useState(false);
-  const [showNewProfile, setShowNewProfile] = useState(false);
-  const [newProfile, setNewProfile] = useState({
-    fullName: "",
+  // Step 3 — local addresses from user_addresses table
+  interface LocalAddress {
+    id: string;
+    label: string | null;
+    street_address: string;
+    district: string | null;
+    city: string;
+    phone: string | null;
+  }
+  const [addresses, setAddresses] = useState<LocalAddress[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<string>("");
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [showNewAddress, setShowNewAddress] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    label: "",
     phone: "",
     address: "",
   });
@@ -226,40 +228,54 @@ export default function OtCheckout() {
 
   // ─── Step 3: Load Profiles ────────────────────────────────
 
-  const loadProfiles = useCallback(async () => {
+  const loadAddresses = useCallback(async () => {
+    if (!user) return;
     try {
-      setLoadingProfiles(true);
-      const sessionId = await getAnonymousSession();
-      const data = await getUserProfileInfoList(sessionId);
-      const rawItems = data?.Result?.Items;
-      const list = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
-      setProfiles(list);
-      if (list.length > 0) setSelectedProfile(list[0].Id);
+      setLoadingAddresses(true);
+      const { data, error } = await supabase
+        .from("user_addresses")
+        .select("id, label, street_address, district, city, phone")
+        .eq("user_id", user.id)
+        .order("is_default", { ascending: false });
+      if (error) throw error;
+      setAddresses(data || []);
+      if (data && data.length > 0) setSelectedAddress(data[0].id);
     } catch (err: any) {
-      console.error("Profiles load error:", err);
+      console.error("Addresses load error:", err);
     } finally {
-      setLoadingProfiles(false);
+      setLoadingAddresses(false);
     }
-  }, []);
+  }, [user]);
 
-  const handleCreateProfile = async () => {
-    if (!newProfile.fullName || !newProfile.phone || !newProfile.address) {
-      toast.error("Бүх талбарыг бөглөнө үү");
+  const handleCreateAddress = async () => {
+    if (!newAddress.phone || !newAddress.address) {
+      toast.error("Утас болон хаягаа бөглөнө үү");
+      return;
+    }
+    if (newAddress.phone.length !== 8 || !/^\d{8}$/.test(newAddress.phone)) {
+      toast.error("Утасны дугаар 8 оронтой байх ёстой");
+      return;
+    }
+    if (!user) {
+      toast.error("Нэвтэрсэн байх шаардлагатай");
       return;
     }
     try {
       setIsProcessing(true);
-      const sessionId = await getAnonymousSession();
-      const xml = `<UserProfileInfo>
-        <FullName>${newProfile.fullName}</FullName>
-        <Phone>${newProfile.phone}</Phone>
-        <Address>${newProfile.address}</Address>
-      </UserProfileInfo>`;
-      await createUserProfile(sessionId, xml);
+      const { error } = await supabase
+        .from("user_addresses")
+        .insert({
+          user_id: user.id,
+          label: newAddress.label || null,
+          street_address: newAddress.address,
+          city: "Улаанбаатар",
+          phone: newAddress.phone,
+        });
+      if (error) throw error;
       toast.success("Хаяг амжилттай нэмэгдлээ");
-      setShowNewProfile(false);
-      setNewProfile({ fullName: "", phone: "", address: "" });
-      await loadProfiles();
+      setShowNewAddress(false);
+      setNewAddress({ label: "", phone: "", address: "" });
+      await loadAddresses();
     } catch (err: any) {
       toast.error(err.message || "Хаяг нэмэхэд алдаа гарлаа");
     } finally {
@@ -278,12 +294,14 @@ export default function OtCheckout() {
         return;
       }
 
-      // Build delivery address from selected profile
-      const selectedProfileData = profiles.find(p => p.Id === selectedProfile);
-      const deliveryAddress = selectedProfileData ? {
-        fullName: selectedProfileData.FullName,
-        phone: selectedProfileData.Phone,
-        address: selectedProfileData.Address,
+      // Build delivery address from selected local address
+      const selectedAddr = addresses.find(a => a.id === selectedAddress);
+      const deliveryAddress = selectedAddr ? {
+        phone: selectedAddr.phone,
+        address: selectedAddr.street_address,
+        district: selectedAddr.district,
+        city: selectedAddr.city,
+        label: selectedAddr.label,
       } : null;
 
       // Build items snapshot
@@ -367,13 +385,11 @@ export default function OtCheckout() {
     }
     if (step === 2) {
       if (deliveryType === "pickup") {
-        // Skip address step, go straight to confirmation (step 4)
-        loadProfiles(); // still load in background in case needed
         setStep(4);
         return;
       }
-      // delivery selected → load profiles for address step
-      loadProfiles();
+      // delivery selected → load local addresses
+      loadAddresses();
     }
     if (step < 5) setStep((s) => (s + 1) as CheckoutStep);
   };
@@ -659,7 +675,7 @@ export default function OtCheckout() {
                     <MapPin className="h-5 w-5 text-primary" />
                     Хүргэлтийн хаяг
                   </span>
-                  <Dialog open={showNewProfile} onOpenChange={setShowNewProfile}>
+                  <Dialog open={showNewAddress} onOpenChange={setShowNewAddress}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm">
                         <Plus className="h-4 w-4 mr-1" />
@@ -672,26 +688,32 @@ export default function OtCheckout() {
                       </DialogHeader>
                       <div className="space-y-4 pt-2">
                         <div>
-                          <Label>Нэр *</Label>
+                          <Label>Хаягийн нэр (заавал биш)</Label>
                           <Input
-                            value={newProfile.fullName}
-                            onChange={(e) => setNewProfile((p) => ({ ...p, fullName: e.target.value }))}
-                            placeholder="Баатар Болд"
+                            value={newAddress.label}
+                            onChange={(e) => setNewAddress((p) => ({ ...p, label: e.target.value }))}
+                            placeholder="Жишээ: Гэр, Оффис"
                           />
                         </div>
                         <div>
-                          <Label>Утас *</Label>
+                          <Label>Утасны дугаар *</Label>
                           <Input
-                            value={newProfile.phone}
-                            onChange={(e) => setNewProfile((p) => ({ ...p, phone: e.target.value }))}
-                            placeholder="+976 9999 9999"
+                            value={newAddress.phone}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "").slice(0, 8);
+                              setNewAddress((p) => ({ ...p, phone: val }));
+                            }}
+                            placeholder="99119911"
+                            maxLength={8}
+                            inputMode="numeric"
                           />
+                          <p className="text-xs text-muted-foreground mt-1">8 оронтой утасны дугаар</p>
                         </div>
                         <div>
                           <Label>Хаяг *</Label>
                           <Textarea
-                            value={newProfile.address}
-                            onChange={(e) => setNewProfile((p) => ({ ...p, address: e.target.value }))}
+                            value={newAddress.address}
+                            onChange={(e) => setNewAddress((p) => ({ ...p, address: e.target.value }))}
                             placeholder="Жишээ: БЗД, 25-р хороо, Нуур ХТ 15-205 тоот, орцны код: 1234"
                             rows={3}
                           />
@@ -699,7 +721,7 @@ export default function OtCheckout() {
                             Хаягаа маш тодорхой дэлгэрэнгүй тайлбарлаж бичнэ үү, хэрэв орц тань кодтой бол кодоо мөн бичнэ үү.
                           </p>
                         </div>
-                        <Button onClick={handleCreateProfile} disabled={isProcessing} className="w-full">
+                        <Button onClick={handleCreateAddress} disabled={isProcessing} className="w-full">
                           {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                           Хаяг нэмэх
                         </Button>
@@ -709,32 +731,30 @@ export default function OtCheckout() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {loadingProfiles ? (
+                {loadingAddresses ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
-                ) : profiles.length === 0 ? (
+                ) : addresses.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">
-                    Хаяг байхгүй байна. "Шинэ хаяг" товч дарж нэмнэ үү, эсвэл алгасаарай.
+                    Хаяг байхгүй байна. "Шинэ хаяг" товч дарж нэмнэ үү.
                   </p>
                 ) : (
                   <div className="space-y-3">
-                    {profiles.map((profile) => (
+                    {addresses.map((addr) => (
                       <button
-                        key={profile.Id}
-                        onClick={() => setSelectedProfile(profile.Id)}
+                        key={addr.id}
+                        onClick={() => setSelectedAddress(addr.id)}
                         className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
-                          selectedProfile === profile.Id
+                          selectedAddress === addr.id
                             ? "border-primary bg-primary/5"
                             : "border-border hover:border-primary/50"
                         }`}
                       >
-                        <p className="font-medium">{profile.FullName || "Нэргүй"}</p>
-                        {profile.Address && (
-                          <p className="text-sm text-muted-foreground mt-0.5">{profile.Address}</p>
-                        )}
-                        {profile.Phone && (
-                          <p className="text-sm text-muted-foreground">{profile.Phone}</p>
+                        {addr.label && <p className="text-xs font-semibold text-primary mb-0.5">{addr.label}</p>}
+                        <p className="text-sm">{addr.street_address}</p>
+                        {addr.phone && (
+                          <p className="text-sm text-muted-foreground mt-0.5">{addr.phone}</p>
                         )}
                       </button>
                     ))}
@@ -792,15 +812,15 @@ export default function OtCheckout() {
                   </p>
                 </div>
 
-                {/* Profile info */}
-                {selectedProfile && profiles.length > 0 && (
+                {/* Address info */}
+                {selectedAddress && addresses.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold mb-1">Хаяг</h3>
                     {(() => {
-                      const p = profiles.find((pr) => pr.Id === selectedProfile);
-                      return p ? (
+                      const a = addresses.find((addr) => addr.id === selectedAddress);
+                      return a ? (
                         <p className="text-sm text-muted-foreground">
-                          {p.FullName} — {p.Address} {p.Phone && `(${p.Phone})`}
+                          {a.street_address} {a.phone && `(${a.phone})`}
                         </p>
                       ) : null;
                     })()}
