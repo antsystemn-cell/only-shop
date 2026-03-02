@@ -159,17 +159,20 @@ function InfiniteProductFeed({
 
   // Find the active category's metadata
   const activeMeta = categoryId ? categoryMetas.find((m) => m.internal_id === categoryId) : null;
-  const isCurated = activeMeta && activeMeta.item_ids && activeMeta.item_ids.length > 0 && !activeMeta.external_id;
+  const isCurated = !!(activeMeta && activeMeta.item_ids && activeMeta.item_ids.length > 0 && !activeMeta.external_id);
 
   // For "All" tab, only use categories with external_id for API search
   const apiCategoryIds = useMemo(
-    () => categoryMetas.filter((m) => m.external_id).map((m) => m.external_id!),
+    () => categoryMetas.filter((m) => !!m.external_id).map((m) => m.external_id!),
     [categoryMetas]
   );
 
   // ─── Curated feed (item_ids based) ────────────────────────
   const PAGE_SIZE = 20;
-  const curatedItemIds = isCurated ? activeMeta!.item_ids! : [];
+  const curatedItemIds = useMemo(
+    () => (isCurated && activeMeta?.item_ids ? activeMeta.item_ids : []),
+    [isCurated, activeMeta]
+  );
   const [curatedPage, setCuratedPage] = useState(0);
 
   // Reset curated page when category changes
@@ -185,22 +188,17 @@ function InfiniteProductFeed({
       return fetchItemsByIds(pageIds, 6);
     },
     staleTime: 1000 * 60 * 10,
-    enabled: !!isCurated && curatedItemIds.length > 0,
+    enabled: isCurated && curatedItemIds.length > 0,
   });
 
   const curatedTotalPages = Math.ceil(curatedItemIds.length / PAGE_SIZE);
 
   // ─── API-based infinite feed ──────────────────────────────
-  const getCategoryForPage = useCallback(
-    (page: number): string | undefined => {
-      if (activeMeta?.external_id) return activeMeta.external_id;
-      if (apiCategoryIds.length === 0) return undefined;
-      return apiCategoryIds[page % apiCategoryIds.length];
-    },
-    [activeMeta, apiCategoryIds]
-  );
+  // For "All" tab (no categoryId): cycle through apiCategoryIds
+  // For specific category with external_id: use that external_id
+  const activeExternalId = activeMeta?.external_id;
 
-  const apiEnabled = !isCurated && (apiCategoryIds.length > 0 || (activeMeta?.external_id != null));
+  const apiEnabled = !isCurated && (apiCategoryIds.length > 0 || !!activeExternalId);
 
   const {
     data,
@@ -209,10 +207,15 @@ function InfiniteProductFeed({
     isFetchingNextPage,
     isLoading: apiLoading,
   } = useInfiniteQuery({
-    queryKey: ["provider-infinite-feed", providerType, categoryId, randomPageOffset, randomOrder, apiCategoryIds.length],
+    queryKey: ["provider-infinite-feed", providerType, categoryId, randomPageOffset, randomOrder, apiCategoryIds.join(",")],
     queryFn: ({ pageParam = 0 }) => {
-      const catId = getCategoryForPage(pageParam);
-      const providerPage = Math.floor(pageParam / 3) + randomPageOffset;
+      let catId: string | undefined;
+      if (activeExternalId) {
+        catId = activeExternalId;
+      } else if (apiCategoryIds.length > 0) {
+        catId = apiCategoryIds[pageParam % apiCategoryIds.length];
+      }
+      const providerPage = Math.floor(pageParam / Math.max(apiCategoryIds.length, 1)) + randomPageOffset;
       return searchItems({
         categoryId: catId,
         provider: providerType,
