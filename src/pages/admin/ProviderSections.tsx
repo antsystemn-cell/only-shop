@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Pencil, Trash2, GripVertical, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ProviderCategoryConfig } from "@/components/admin/ProviderCategoryConfig";
 
 interface Section {
   id: string;
@@ -388,10 +389,12 @@ export default function ProviderSectionsAdmin() {
       </div>
 
       <Tabs defaultValue="strip">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="strip">Провайдер товчлуурууд</TabsTrigger>
           <TabsTrigger value="poizon">Poizon секцүүд</TabsTrigger>
           <TabsTrigger value="taobao">Taobao секцүүд</TabsTrigger>
+          <TabsTrigger value="poizon-cats">Poizon ангилал</TabsTrigger>
+          <TabsTrigger value="taobao-cats">Taobao ангилал</TabsTrigger>
         </TabsList>
         <TabsContent value="strip" className="mt-4">
           <StripItemsManager />
@@ -401,6 +404,12 @@ export default function ProviderSectionsAdmin() {
         </TabsContent>
         <TabsContent value="taobao" className="mt-4">
           <SectionsManager providerType="Taobao" />
+        </TabsContent>
+        <TabsContent value="poizon-cats" className="mt-4">
+          <ProviderCategoryConfig providerType="Poizon" />
+        </TabsContent>
+        <TabsContent value="taobao-cats" className="mt-4">
+          <ProviderCategoryConfig providerType="Taobao" />
         </TabsContent>
       </Tabs>
     </div>
