@@ -67,6 +67,7 @@ export default function OtCheckout() {
   const [checkResult, setCheckResult] = useState<any>(null);
   const [checkError, setCheckError] = useState<string | null>(null);
   const [invalidItems, setInvalidItems] = useState<BasketInvalidItem[]>([]);
+  const [priceChangedItems, setPriceChangedItems] = useState<BasketInvalidItem[]>([]);
   const [isRemovingInvalid, setIsRemovingInvalid] = useState(false);
 
   // Step 2 — delivery type (custom, not OTAPI)
@@ -127,6 +128,7 @@ export default function OtCheckout() {
     try {
       setCheckError(null);
       setInvalidItems([]);
+      setPriceChangedItems([]);
       setCheckResult(null);
 
       if (items.length === 0) {
@@ -140,8 +142,24 @@ export default function OtCheckout() {
       // Check if checkBasket returned invalid items
       const resultInvalid = result?._invalidItems as BasketInvalidItem[] | undefined;
       if (resultInvalid && resultInvalid.length > 0) {
-        setInvalidItems(resultInvalid);
-        setCheckError(`Сагсанд ${resultInvalid.length} боломжгүй бараа байна`);
+        // Separate price-changed items from truly invalid items
+        const priceChanged = resultInvalid.filter(i => i.isPriceChanged);
+        const trulyInvalid = resultInvalid.filter(i => !i.isPriceChanged);
+
+        if (trulyInvalid.length > 0) {
+          setInvalidItems(trulyInvalid);
+          setCheckError(`Сагсанд ${trulyInvalid.length} боломжгүй бараа байна`);
+        }
+        if (priceChanged.length > 0) {
+          setPriceChangedItems(priceChanged);
+          // If only price changes (no truly invalid), don't set error - show dialog instead
+          if (trulyInvalid.length === 0) {
+            setCheckResult(result); // still mark as "checked"
+          }
+        }
+        if (trulyInvalid.length === 0 && priceChanged.length === 0) {
+          setCheckResult(result);
+        }
         return;
       }
 
@@ -372,7 +390,7 @@ export default function OtCheckout() {
   const canProceed = () => {
     switch (step) {
       case 1:
-        return checkingStatus.isComplete || checkResult;
+        return (checkingStatus.isComplete || checkResult) && priceChangedItems.length === 0;
       case 2:
         return true; // delivery optional
       case 3:
@@ -383,6 +401,18 @@ export default function OtCheckout() {
         return false;
     }
   };
+
+  const handleAcceptPriceChanges = useCallback(() => {
+    setPriceChangedItems([]);
+    // Price accepted — basket check is already marked complete, allow proceeding
+    toast.success("Үнийн өөрчлөлт зөвшөөрөгдлөө");
+  }, []);
+
+  const handleRejectPriceChanges = useCallback(() => {
+    setPriceChangedItems([]);
+    setCheckResult(null);
+    navigate("/ot");
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -527,6 +557,47 @@ export default function OtCheckout() {
               </CardContent>
             </Card>
           )}
+
+          {/* Price Change Confirmation Dialog */}
+          <Dialog open={priceChangedItems.length > 0} onOpenChange={(open) => { if (!open) handleRejectPriceChanges(); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  Барааны үнэ өөрчлөгдсөн
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Таны сонгосон барааны үнэ өөрчлөгдсөн байна. Та энэ үнийг хүлээн зөвшөөрч байна уу?
+                </p>
+                <div className="space-y-2 border rounded-lg p-3 bg-muted/30">
+                  {priceChangedItems.map((item) => {
+                    const matchingItem = items.find(i => i.orderLineId === item.elementId);
+                    return (
+                      <div key={item.elementId} className="flex items-center gap-3 py-1.5">
+                        <div className="w-10 h-10 rounded bg-muted overflow-hidden shrink-0">
+                          {matchingItem?.imageUrl && <img src={matchingItem.imageUrl} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm line-clamp-1 font-medium">{matchingItem?.title || item.title || item.itemId}</p>
+                          <p className="text-xs text-amber-600">{item.reasonText}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-3">
+                  <Button className="flex-1" onClick={handleAcceptPriceChanges}>
+                    Тийм
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={handleRejectPriceChanges}>
+                    Үгүй
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* ─── Step 2: Delivery Type ──────────────────────── */}
           {step === 2 && (
