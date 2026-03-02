@@ -138,7 +138,7 @@ function FeaturedSubcategories({ parentId }: { parentId: string }) {
 // ─── Category metadata type ─────────────────────────────────
 interface CategoryMeta {
   internal_id: string;
-  external_id?: string | null;
+  has_api: boolean; // true if category can be searched via OT API (has external_id)
   item_ids?: string[] | null;
 }
 
@@ -159,11 +159,12 @@ function InfiniteProductFeed({
 
   // Find the active category's metadata
   const activeMeta = categoryId ? categoryMetas.find((m) => m.internal_id === categoryId) : null;
-  const isCurated = !!(activeMeta && activeMeta.item_ids && activeMeta.item_ids.length > 0 && !activeMeta.external_id);
+  const isCurated = !!(activeMeta && activeMeta.item_ids && activeMeta.item_ids.length > 0 && !activeMeta.has_api);
 
-  // For "All" tab, only use categories with external_id for API search
+  // For "All" tab, only use categories that can be searched via API
+  // Use internal_id (otc-XXX) for API search as it works for both Taobao and Poizon
   const apiCategoryIds = useMemo(
-    () => categoryMetas.filter((m) => !!m.external_id).map((m) => m.external_id!),
+    () => categoryMetas.filter((m) => m.has_api).map((m) => m.internal_id),
     [categoryMetas]
   );
 
@@ -194,11 +195,10 @@ function InfiniteProductFeed({
   const curatedTotalPages = Math.ceil(curatedItemIds.length / PAGE_SIZE);
 
   // ─── API-based infinite feed ──────────────────────────────
-  // For "All" tab (no categoryId): cycle through apiCategoryIds
-  // For specific category with external_id: use that external_id
-  const activeExternalId = activeMeta?.external_id;
+  // For specific category with API capability: use that internal_id
+  const activeHasApi = activeMeta?.has_api;
 
-  const apiEnabled = !isCurated && (apiCategoryIds.length > 0 || !!activeExternalId);
+  const apiEnabled = !isCurated && (apiCategoryIds.length > 0 || !!activeHasApi);
 
   const {
     data,
@@ -210,12 +210,15 @@ function InfiniteProductFeed({
     queryKey: ["provider-infinite-feed", providerType, categoryId, randomPageOffset, randomOrder, apiCategoryIds.join(",")],
     queryFn: ({ pageParam = 0 }) => {
       let catId: string | undefined;
-      if (activeExternalId) {
-        catId = activeExternalId;
+      if (activeHasApi && activeMeta) {
+        catId = activeMeta.internal_id;
       } else if (apiCategoryIds.length > 0) {
         catId = apiCategoryIds[pageParam % apiCategoryIds.length];
       }
-      const providerPage = Math.floor(pageParam / Math.max(apiCategoryIds.length, 1)) + randomPageOffset;
+      // When a specific category is selected, start from page 0; only use randomPageOffset for "All" tab
+      const providerPage = activeHasApi
+        ? pageParam
+        : Math.floor(pageParam / Math.max(apiCategoryIds.length, 1)) + randomPageOffset;
       return searchItems({
         categoryId: catId,
         provider: providerType,
@@ -474,7 +477,7 @@ export default function ProviderPage() {
           categoryId={activeCategoryId}
           categoryMetas={categoryList.map((c) => ({
             internal_id: c.internal_id,
-            external_id: c.external_id,
+            has_api: !!c.external_id,
             item_ids: c.item_ids,
           }))}
           providerType={providerType!}

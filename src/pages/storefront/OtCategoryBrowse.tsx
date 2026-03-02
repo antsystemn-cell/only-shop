@@ -118,15 +118,16 @@ export default function OtCategoryBrowse() {
     enabled: !!internalId,
   });
 
-  // Fetch products — either via API search (external_id) or by item_ids batch fetch
+  // Fetch products — either via API search (external_id means it has an API category) or by item_ids batch fetch
+  // Always use internal_id (otc-XXX) for API search as it works for both Taobao and Poizon
   const { data: products, isLoading: loadingProducts } = useQuery({
     queryKey: ["ot-category-products", internalId, category?.external_id, category?.item_ids?.length, apiProvider, page],
     queryFn: async () => {
       if (!category) return [];
-      // Strategy 1: category has external_id → use OT API search
+      // Strategy 1: category has external_id → use OT API search with internal_id
       if (category.external_id && category.provider_type) {
         const result = await searchItems({
-          categoryId: category.external_id,
+          categoryId: category.internal_id,
           provider: apiProvider || category.provider_type,
           pageSize: 40,
           page,
