@@ -189,9 +189,9 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       return callOtApi("AddItemToBasket", addParams);
     }
     case "editBasketItemQuantity":
-      return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, quantity: String(params.quantity) });
+      return callOtApi("EditBasketItemQuantity", { ...base, sessionId: params.sessionId, elementId: params.orderLineId || params.elementId, quantity: String(params.quantity) });
     case "removeBasketItem":
-      return callOtApi("RemoveItemFromBasket", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId });
+      return callOtApi("RemoveItemFromBasket", { ...base, sessionId: params.sessionId, elementId: params.orderLineId || params.elementId });
     case "clearBasket":
       return callOtApi("ClearBasket", { ...base, sessionId: params.sessionId });
     case "runBasketChecking": {
@@ -385,7 +385,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       }
     }
     case "moveItemsBetweenBasketAndNote":
-      return callOtApi("MoveItemsBetweenBasketAndNote", { ...base, sessionId: params.sessionId, orderLineId: params.orderLineId, direction: params.direction || "ToNote" });
+      return callOtApi("MoveItemsBetweenBasketAndNote", { ...base, sessionId: params.sessionId, elementId: params.orderLineId || params.elementId, direction: params.direction || "ToNote" });
 
     // ── Orders Extended ──
     case "updateOrderLineInfo":
