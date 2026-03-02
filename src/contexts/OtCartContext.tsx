@@ -53,6 +53,7 @@ export interface BasketInvalidItem {
   title?: string;
   reasonCode: string;
   reasonText: string;
+  isPriceChanged?: boolean;
 }
 
 interface OtCartContextType {
@@ -428,6 +429,8 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
         const messages = resultObj?.Messages;
         const msgList = messages ? (Array.isArray(messages) ? messages : [messages]) : [];
 
+        const PRICE_CHANGE_CODES = ["PriceChanged", "PriceHasBeenChanged", "ContentChanged", "PriceChange"];
+
         const invalidItems: BasketInvalidItem[] = msgList
           .filter((msg: any) => {
             const status = msg.Status || msg.Code;
@@ -435,17 +438,20 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
           })
           .map((msg: any) => {
             const elementId = msg.ElementId?.Value ? String(msg.ElementId.Value) : String(msg.ElementId || "");
+            const code = msg.Code || msg.Status || "UNKNOWN";
+            const isPriceChanged = PRICE_CHANGE_CODES.some(pc => code.toLowerCase().includes(pc.toLowerCase()));
             return {
               elementId,
               itemId: msg.ItemId || "",
               title: msg.Text || msg.Title || "",
-              reasonCode: msg.Code || msg.Status || "UNKNOWN",
+              reasonCode: code,
               reasonText: msg.Text || msg.Code || "Тодорхойгүй",
+              isPriceChanged,
             };
           });
 
         if (invalidItems.length > 0) {
-          console.log(`[OtCart][${correlationId}] Found ${invalidItems.length} invalid items`);
+          console.log(`[OtCart][${correlationId}] Found ${invalidItems.length} invalid items (price changed: ${invalidItems.filter(i => i.isPriceChanged).length})`);
           setCheckingStatus({ isRunning: false, isComplete: true, result, invalidItems });
           return { ...result, _invalidItems: invalidItems };
         }
