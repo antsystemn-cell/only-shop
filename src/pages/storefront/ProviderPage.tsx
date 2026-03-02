@@ -3,13 +3,14 @@ import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { Loader2, ChevronDown, Sparkles, Star, Footprints, Droplets, Shirt, Home, Baby, Smartphone, Heart, Dumbbell, ShoppingBag, TrendingUp, Package, Folder } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { searchItems } from "@/services/otApi";
+import { searchItems, fetchItemsByIds } from "@/services/otApi";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
 import { useProviderSafe, type ProviderFilter } from "@/contexts/ProviderContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { OtProductCard } from "@/types/otApi";
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   sparkles: <Sparkles className="h-4 w-4" />,
@@ -134,14 +135,21 @@ function FeaturedSubcategories({ parentId }: { parentId: string }) {
   );
 }
 
+// ─── Category metadata type ─────────────────────────────────
+interface CategoryMeta {
+  internal_id: string;
+  external_id?: string | null;
+  item_ids?: string[] | null;
+}
+
 // ─── Infinite Product Feed ──────────────────────────────────
 function InfiniteProductFeed({
   categoryId,
-  rootCategoryIds,
+  categoryMetas,
   providerType,
 }: {
   categoryId: string | null;
-  rootCategoryIds: string[];
+  categoryMetas: CategoryMeta[];
   providerType: string;
 }) {
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -149,23 +157,59 @@ function InfiniteProductFeed({
   const orderOptions = ["Volume:Desc", "Price:Asc", "Price:Desc"];
   const [randomOrder] = useState(() => orderOptions[Math.floor(Math.random() * orderOptions.length)]);
 
+  // Find the active category's metadata
+  const activeMeta = categoryId ? categoryMetas.find((m) => m.internal_id === categoryId) : null;
+  const isCurated = activeMeta && activeMeta.item_ids && activeMeta.item_ids.length > 0 && !activeMeta.external_id;
+
+  // For "All" tab, only use categories with external_id for API search
+  const apiCategoryIds = useMemo(
+    () => categoryMetas.filter((m) => m.external_id).map((m) => m.external_id!),
+    [categoryMetas]
+  );
+
+  // ─── Curated feed (item_ids based) ────────────────────────
+  const PAGE_SIZE = 20;
+  const curatedItemIds = isCurated ? activeMeta!.item_ids! : [];
+  const [curatedPage, setCuratedPage] = useState(0);
+
+  // Reset curated page when category changes
+  useEffect(() => {
+    setCuratedPage(0);
+  }, [categoryId]);
+
+  const { data: curatedItems, isLoading: curatedLoading } = useQuery({
+    queryKey: ["curated-feed", categoryId, curatedPage],
+    queryFn: () => {
+      const start = curatedPage * PAGE_SIZE;
+      const pageIds = curatedItemIds.slice(start, start + PAGE_SIZE);
+      return fetchItemsByIds(pageIds, 6);
+    },
+    staleTime: 1000 * 60 * 10,
+    enabled: !!isCurated && curatedItemIds.length > 0,
+  });
+
+  const curatedTotalPages = Math.ceil(curatedItemIds.length / PAGE_SIZE);
+
+  // ─── API-based infinite feed ──────────────────────────────
   const getCategoryForPage = useCallback(
     (page: number): string | undefined => {
-      if (categoryId) return categoryId;
-      if (rootCategoryIds.length === 0) return undefined;
-      return rootCategoryIds[page % rootCategoryIds.length];
+      if (activeMeta?.external_id) return activeMeta.external_id;
+      if (apiCategoryIds.length === 0) return undefined;
+      return apiCategoryIds[page % apiCategoryIds.length];
     },
-    [categoryId, rootCategoryIds]
+    [activeMeta, apiCategoryIds]
   );
+
+  const apiEnabled = !isCurated && (apiCategoryIds.length > 0 || (activeMeta?.external_id != null));
 
   const {
     data,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading,
+    isLoading: apiLoading,
   } = useInfiniteQuery({
-    queryKey: ["provider-infinite-feed", providerType, categoryId, randomPageOffset, randomOrder, rootCategoryIds.length],
+    queryKey: ["provider-infinite-feed", providerType, categoryId, randomPageOffset, randomOrder, apiCategoryIds.length],
     queryFn: ({ pageParam = 0 }) => {
       const catId = getCategoryForPage(pageParam);
       const providerPage = Math.floor(pageParam / 3) + randomPageOffset;
@@ -183,7 +227,7 @@ function InfiniteProductFeed({
     },
     initialPageParam: 0,
     staleTime: 1000 * 60 * 5,
-    enabled: rootCategoryIds.length > 0 || categoryId !== null,
+    enabled: apiEnabled,
   });
 
   const handleObserver = useCallback(
@@ -204,7 +248,7 @@ function InfiniteProductFeed({
     return () => observer.disconnect();
   }, [handleObserver]);
 
-  const allItems = useMemo(() => {
+  const apiItems = useMemo(() => {
     const items = data?.pages.flatMap((p) => p.items) || [];
     const seen = new Set<string>();
     return items.filter((item) => {
@@ -213,6 +257,10 @@ function InfiniteProductFeed({
       return true;
     });
   }, [data]);
+
+  // ─── Render ───────────────────────────────────────────────
+  const isLoading = isCurated ? curatedLoading : apiLoading;
+  const displayItems: OtProductCard[] = isCurated ? (curatedItems || []) : apiItems;
 
   return (
     <>
@@ -230,15 +278,43 @@ function InfiniteProductFeed({
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
-          {allItems.map((product) => (
+          {displayItems.map((product) => (
             <OtProductCardComponent key={product.id} product={product} />
           ))}
         </div>
       )}
 
-      <div ref={observerTarget} className="h-10 flex items-center justify-center">
-        {isFetchingNextPage && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
-      </div>
+      {/* Curated pagination */}
+      {isCurated && curatedTotalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={curatedPage === 0}
+            onClick={() => setCuratedPage((p) => p - 1)}
+          >
+            Өмнөх
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {curatedPage + 1} / {curatedTotalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={curatedPage >= curatedTotalPages - 1}
+            onClick={() => setCuratedPage((p) => p + 1)}
+          >
+            Дараах
+          </Button>
+        </div>
+      )}
+
+      {/* API infinite scroll sentinel */}
+      {!isCurated && (
+        <div ref={observerTarget} className="h-10 flex items-center justify-center">
+          {isFetchingNextPage && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+        </div>
+      )}
     </>
   );
 }
@@ -283,7 +359,7 @@ export default function ProviderPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("ot_categories")
-        .select("id, internal_id, name_mn, name_en, icon_url, parent_internal_id")
+        .select("id, internal_id, name_mn, name_en, icon_url, parent_internal_id, external_id, item_ids")
         .is("parent_internal_id", null)
         .eq("is_active", true)
         .eq("provider_type", providerType!)
@@ -302,7 +378,7 @@ export default function ProviderPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("ot_categories")
-        .select("id, internal_id, name_mn, name_en, icon_url, parent_internal_id")
+        .select("id, internal_id, name_mn, name_en, icon_url, parent_internal_id, external_id, item_ids")
         .eq("parent_internal_id", singleRootId!)
         .eq("is_active", true)
         .order("display_order");
@@ -393,7 +469,11 @@ export default function ProviderPage() {
 
         <InfiniteProductFeed
           categoryId={activeCategoryId}
-          rootCategoryIds={categoryList.map((c) => c.internal_id)}
+          categoryMetas={categoryList.map((c) => ({
+            internal_id: c.internal_id,
+            external_id: c.external_id,
+            item_ids: c.item_ids,
+          }))}
           providerType={providerType!}
         />
       </div>
