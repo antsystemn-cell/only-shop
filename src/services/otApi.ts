@@ -394,24 +394,28 @@ export async function getBasket(sessionId: string) {
 // Batch fetch items by IDs → OtProductCard[] (for curated collections / item_ids categories)
 export async function fetchItemsByIds(
   itemIds: string[],
-  batchSize = 6
+  batchSize = 6,
+  options?: { includeUnavailable?: boolean }
 ): Promise<OtProductCard[]> {
   if (!itemIds.length) return [];
   const priceConfig = await getPriceConfig();
-  const results: OtProductCard[] = [];
+  const includeUnavailable = options?.includeUnavailable === true;
+  const byRequestedId = new Map<string, OtProductCard>();
 
   for (let i = 0; i < itemIds.length; i += batchSize) {
     const batch = itemIds.slice(i, i + batchSize);
     const settled = await Promise.allSettled(
       batch.map(async (id) => {
-        const data = await callProxy<any>("getItemFullInfo", { itemId: id });
+        const requestedId = String(id).trim();
+        const data = await callProxy<any>("getItemFullInfo", { itemId: requestedId });
         const item = data?.Result?.Item;
         if (!item) return null;
-        // Convert full info to OtProductCard format
+
         const effectivePrice = item.PromotionPrice || item.Price;
         const currencyCode = getOriginalCurrencyCode(effectivePrice);
         const rawValue = getOriginalPriceValue(effectivePrice);
         const price = calculateMntPrice(rawValue, currencyCode, item.ProviderType, priceConfig);
+
         let originalPrice: number | undefined;
         if (item.PromotionPrice && item.Price) {
           const regValue = getOriginalPriceValue(item.Price);
@@ -419,8 +423,9 @@ export async function fetchItemsByIds(
             originalPrice = calculateMntPrice(regValue, getOriginalCurrencyCode(item.Price), item.ProviderType, priceConfig);
           }
         }
+
         return {
-          id: item.Id || id,
+          id: requestedId, // keep strict 1:1 mapping to category item_ids
           title: item.Title || item.ExternalTitle || "",
           imageUrl: item.MainPictureUrl || "",
           price,
@@ -432,11 +437,20 @@ export async function fetchItemsByIds(
         } as OtProductCard;
       })
     );
+
     for (const r of settled) {
-      if (r.status === "fulfilled" && r.value && isAvailableProduct(r.value)) results.push(r.value);
+      if (r.status === "fulfilled" && r.value) {
+        if (includeUnavailable || isAvailableProduct(r.value)) {
+          byRequestedId.set(String(r.value.id), r.value);
+        }
+      }
     }
   }
-  return results;
+
+  // Preserve exact order from category item_ids and avoid cross-category mixups
+  return itemIds
+    .map((id) => byRequestedId.get(String(id).trim()))
+    .filter((v): v is OtProductCard => Boolean(v));
 }
 
 export async function getItemBasicInfo(itemId: string): Promise<{ title: string; imageUrl: string }> {
