@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Shield, ShoppingBag } from "lucide-react";
@@ -59,6 +60,8 @@ function ProviderShowcase({
 }) {
   const navigate = useNavigate();
   const { setSelectedProvider } = useProviderSafe();
+  // Unique seed per mount so guaranteed items are re-shuffled on every page visit
+  const [shuffleSeed] = useState(() => Date.now());
 
   // Fetch category IDs: use provided list or fetch all root categories
   const { data: resolvedCatIds } = useQuery({
@@ -79,7 +82,7 @@ function ProviderShowcase({
 
   // Fetch products from categories and shuffle
   const { data: items, isLoading } = useQuery({
-    queryKey: ["home-showcase", providerType, resolvedCatIds, pageSize, guaranteedCategoryIds, guaranteedPerCategory],
+    queryKey: ["home-showcase", providerType, resolvedCatIds, pageSize, guaranteedCategoryIds, guaranteedPerCategory, shuffleSeed],
     queryFn: async () => {
       if (!resolvedCatIds || resolvedCatIds.length === 0) return [];
 
