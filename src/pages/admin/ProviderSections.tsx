@@ -535,6 +535,110 @@ function HomeShowcaseSettingsManager() {
   );
 }
 
+const BLOCKED_VENDORS_KEY = "blocked_vendors";
+
+function BlockedVendorsManager() {
+  const queryClient = useQueryClient();
+  const [newVendor, setNewVendor] = useState("");
+
+  const { data: blockedVendors, isLoading } = useQuery({
+    queryKey: ["admin-blocked-vendors"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("admin_settings")
+        .select("id, setting_value")
+        .eq("category", "storefront")
+        .eq("setting_key", BLOCKED_VENDORS_KEY)
+        .maybeSingle();
+      const raw = data?.setting_value;
+      return {
+        id: data?.id,
+        vendors: Array.isArray(raw) ? (raw as string[]) : [],
+      };
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (vendors: string[]) => {
+      if (blockedVendors?.id) {
+        const { error } = await supabase
+          .from("admin_settings")
+          .update({ setting_value: vendors as any })
+          .eq("id", blockedVendors.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("admin_settings").insert([{
+          category: "storefront",
+          setting_key: BLOCKED_VENDORS_KEY,
+          setting_value: vendors as any,
+          description: "Хасагдсан борлуулагчдын жагсаалт",
+        }]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-blocked-vendors"] });
+      toast.success("Хадгалагдлаа");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const handleAdd = () => {
+    const v = newVendor.trim();
+    if (!v) return;
+    const current = blockedVendors?.vendors || [];
+    if (current.some((x) => x.toLowerCase() === v.toLowerCase())) {
+      toast.error("Аль хэдийн нэмэгдсэн байна");
+      return;
+    }
+    saveMutation.mutate([...current, v]);
+    setNewVendor("");
+  };
+
+  const handleRemove = (vendor: string) => {
+    const current = blockedVendors?.vendors || [];
+    saveMutation.mutate(current.filter((x) => x !== vendor));
+  };
+
+  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4 rounded-lg border p-4 bg-card">
+      <h3 className="font-semibold">Хасагдсан борлуулагчид</h3>
+      <p className="text-sm text-muted-foreground">
+        Энд нэмсэн борлуулагчдын бараа хайлтын үр дүнд, нүүр хуудас болон бүх хуудсанд харагдахгүй.
+      </p>
+
+      <div className="flex gap-2">
+        <Input
+          value={newVendor}
+          onChange={(e) => setNewVendor(e.target.value)}
+          placeholder="Борлуулагчийн нэр (жнь: Dewu Only)"
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+        />
+        <Button onClick={handleAdd} disabled={saveMutation.isPending} size="sm">
+          Нэмэх
+        </Button>
+      </div>
+
+      <div className="space-y-1">
+        {(blockedVendors?.vendors || []).length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">Хасагдсан борлуулагч байхгүй</p>
+        ) : (
+          (blockedVendors?.vendors || []).map((v) => (
+            <div key={v} className="flex items-center justify-between rounded border px-3 py-2">
+              <span className="text-sm">{v}</span>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemove(v)}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ProviderSectionsAdmin() {
   return (
     <div className="space-y-8">
@@ -547,6 +651,7 @@ export default function ProviderSectionsAdmin() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="strip">Провайдер товчлуурууд</TabsTrigger>
           <TabsTrigger value="home-counts">Нүүрийн бараа тоо</TabsTrigger>
+          <TabsTrigger value="blocked-vendors">Хасагдсан борлуулагчид</TabsTrigger>
           <TabsTrigger value="poizon">Poizon секцүүд</TabsTrigger>
           <TabsTrigger value="taobao">Taobao секцүүд</TabsTrigger>
           <TabsTrigger value="poizon-cats">Poizon ангилал</TabsTrigger>
@@ -557,6 +662,9 @@ export default function ProviderSectionsAdmin() {
         </TabsContent>
         <TabsContent value="home-counts" className="mt-4">
           <HomeShowcaseSettingsManager />
+        </TabsContent>
+        <TabsContent value="blocked-vendors" className="mt-4">
+          <BlockedVendorsManager />
         </TabsContent>
         <TabsContent value="poizon" className="mt-4">
           <SectionsManager providerType="Poizon" />

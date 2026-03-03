@@ -140,27 +140,51 @@ export interface SearchResponse {
   searchProperties: SearchProperty[];
 }
 
+// ─── Blocked Vendors Cache ────────────────────────────────────
+let _blockedVendorsCache: { vendors: string[]; fetchedAt: number } | null = null;
+const BLOCKED_VENDORS_TTL = 1000 * 60 * 10; // 10 min
+
+async function getBlockedVendors(): Promise<string[]> {
+  if (_blockedVendorsCache && Date.now() - _blockedVendorsCache.fetchedAt < BLOCKED_VENDORS_TTL) {
+    return _blockedVendorsCache.vendors;
+  }
+  try {
+    const { data } = await supabase
+      .from("admin_settings")
+      .select("setting_value")
+      .eq("category", "storefront")
+      .eq("setting_key", "blocked_vendors")
+      .maybeSingle();
+    const raw = data?.setting_value;
+    const list: string[] = Array.isArray(raw) ? raw.map((v: any) => String(v).toLowerCase().trim()).filter(Boolean) : [];
+    _blockedVendorsCache = { vendors: list, fetchedAt: Date.now() };
+    return list;
+  } catch {
+    return _blockedVendorsCache?.vendors || [];
+  }
+}
+
 export async function searchItems(params: SearchParams): Promise<SearchResponse> {
-  const [data, priceConfig] = await Promise.all([
+  const [data, priceConfig, blockedVendors] = await Promise.all([
     callProxy<OtSearchResult>("searchItems", { ...params } as Record<string, unknown>),
     getPriceConfig(),
+    getBlockedVendors(),
   ]);
   const result = data?.Result;
 
   // Handle both array and { Content: [] } response formats
   const rawItems = result?.Items?.Items;
   const itemsArray: OtSearchItem[] = Array.isArray(rawItems) ? rawItems : (rawItems as any)?.Content || [];
-  // Pre-filter: remove auction items and sold-out items at the raw level
+  // Pre-filter: remove auction items, sold-out items, and blocked vendors
   const filteredRaw = itemsArray.filter((item: any) => {
     if (item.IsAuction) return false;
     if (item.IsSoldOut) return false;
     if (item.IsTranslationItem) return false;
-    // No quantity info or zero quantity
     const qty = item.Quantity ?? item.MasterQuantity;
     if (qty !== undefined && qty !== null && qty <= 0) return false;
-    // Exclude "Dewu Only" vendor items
+    // Check blocked vendors list from admin settings
     const vName = (item.VendorName || item.VendorDisplayName || "").toLowerCase();
-    if (vName.includes("dewu only")) return false;
+    if (blockedVendors.some((bv) => vName.includes(bv))) return false;
     return true;
   });
   const items = filteredRaw.map((item: OtSearchItem) => mapSearchItem(item, priceConfig)).filter(isAvailableProduct);

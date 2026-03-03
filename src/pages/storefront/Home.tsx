@@ -5,7 +5,7 @@ import { Shield, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
-import { fetchItemsByIds, searchItems } from "@/services/otApi";
+import { searchItems } from "@/services/otApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
 import { useProviderSafe } from "@/contexts/ProviderContext";
@@ -89,38 +89,18 @@ function ProviderShowcase({
       const guaranteedSet = new Set(guaranteedCategoryIds.filter((id) => resolvedCatIds.includes(id)));
       const targetGuaranteed = Math.max(0, guaranteedPerCategory);
 
-      // For guaranteed categories, try curated DB item_ids first (full pool),
-      // then fallback to randomized search pages.
-      const { data: guaranteedCategoryMeta } = await supabase
-        .from("ot_categories")
-        .select("internal_id, item_ids")
-        .in("internal_id", guaranteedCategoryIds);
-
-      const guaranteedItemIdsByCategory = new Map<string, string[]>();
-      for (const row of guaranteedCategoryMeta || []) {
-        guaranteedItemIdsByCategory.set(row.internal_id, (row.item_ids || []).filter(Boolean));
-      }
-
-      const RANDOM_PAGE_SIZE = 24;
-      const RANDOM_PAGE_FETCH_COUNT = 6;
+      // For guaranteed categories, use searchItems with random pages (much faster than fetchItemsByIds)
+      const RANDOM_PAGE_SIZE = 48;
 
       const results = await Promise.allSettled(
         resolvedCatIds.map(async (catId) => {
           if (guaranteedSet.has(catId)) {
-            const curatedIds = guaranteedItemIdsByCategory.get(catId) || [];
-
-            // Priority 1: curated full pool from DB item_ids (true randomness across all curated items)
-            if (curatedIds.length > 0) {
-              const poolSize = Math.min(curatedIds.length, Math.max(targetGuaranteed * 30, 120));
-              const sampledIds = shuffle(curatedIds).slice(0, poolSize);
-              return fetchItemsByIds(sampledIds, 10);
-            }
-
-            // Priority 2: randomized multi-page search pool
-            const firstPage = await searchItems({
+            // Single search call with large page size — fast and gives random pool
+            const randomPage = Math.floor(Math.random() * 5); // random page 0-4
+            const result = await searchItems({
               categoryId: catId,
               provider: providerType,
-              page: 0,
+              page: randomPage,
               pageSize: RANDOM_PAGE_SIZE,
               orderBy: "Volume:Desc",
             }).catch(() => ({
@@ -131,34 +111,24 @@ function ProviderShowcase({
               searchProperties: [],
             }));
 
-            const maxPage = Math.max(0, Math.ceil((firstPage.totalCount || 0) / RANDOM_PAGE_SIZE) - 1);
-            const pageTarget = Math.min(RANDOM_PAGE_FETCH_COUNT, maxPage + 1);
-            const randomPages = new Set<number>([0]);
-
-            while (randomPages.size < pageTarget) {
-              randomPages.add(Math.floor(Math.random() * (maxPage + 1)));
+            // If random page returned nothing, fallback to page 0
+            if (result.items.length === 0 && randomPage > 0) {
+              const fallback = await searchItems({
+                categoryId: catId,
+                provider: providerType,
+                page: 0,
+                pageSize: RANDOM_PAGE_SIZE,
+                orderBy: "Volume:Desc",
+              }).catch(() => ({
+                items: [] as OtProductCard[],
+                totalCount: 0,
+                subCategories: [],
+                breadcrumbs: [],
+                searchProperties: [],
+              }));
+              return fallback.items;
             }
-
-            const pageResults = await Promise.all(
-              Array.from(randomPages).map((page) => {
-                if (page === 0) return Promise.resolve(firstPage);
-                return searchItems({
-                  categoryId: catId,
-                  provider: providerType,
-                  page,
-                  pageSize: RANDOM_PAGE_SIZE,
-                  orderBy: "Volume:Desc",
-                }).catch(() => ({
-                  items: [] as OtProductCard[],
-                  totalCount: 0,
-                  subCategories: [],
-                  breadcrumbs: [],
-                  searchProperties: [],
-                }));
-              })
-            );
-
-            return pageResults.flatMap((p) => p.items);
+            return result.items;
           }
 
           // Non-guaranteed categories: fetch normally
