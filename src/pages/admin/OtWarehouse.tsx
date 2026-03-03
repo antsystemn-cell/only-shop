@@ -15,7 +15,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Package, Pencil, Plus, Search, Warehouse } from "lucide-react";
+import { Package, Pencil, Plus, RefreshCw, Search, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 
 interface WarehouseItem {
@@ -43,6 +43,8 @@ export default function OtWarehouse() {
   const [search, setSearch] = useState("");
   const [editItem, setEditItem] = useState<WarehouseItem | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState("");
 
   const { data: items = [], isLoading } = useQuery<WarehouseItem[]>({
     queryKey: ["admin", "warehouse-items"],
@@ -55,6 +57,30 @@ export default function OtWarehouse() {
       return (data || []) as unknown as WarehouseItem[];
     },
   });
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncProgress("OT API-аас агуулахын бүх барааг татаж, зургийг хуулж байна...");
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-warehouse-items", {
+        body: { batchSize: 3, downloadImages: true },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(`Амжилттай: ${data.successCount}/${data.totalFetched} бараа синк хийгдлээ. Алдаа: ${data.errorCount}`);
+        qc.invalidateQueries({ queryKey: ["admin", "warehouse-items"] });
+      } else {
+        toast.error(data?.error || "Sync failed");
+      }
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSyncing(false);
+      setSyncProgress("");
+    }
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (item: Partial<WarehouseItem> & { id?: string }) => {
@@ -114,9 +140,20 @@ export default function OtWarehouse() {
             Гараар оруулсан бараанууд (wh- prefix), өөрийн ₮ үнэтэй
           </p>
         </div>
-        <Button onClick={() => setShowAdd(true)} size="sm">
-          <Plus className="h-4 w-4 mr-1" /> Шинэ бараа
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => handleSync()}
+            disabled={syncing}
+            variant="outline"
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? syncProgress : "Хуучнаас сэргээх"}
+          </Button>
+          <Button onClick={() => setShowAdd(true)} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> Шинэ бараа
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
