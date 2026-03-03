@@ -173,7 +173,7 @@ export default function Home() {
           providerType="Poizon"
           slug="poizon"
           categoryIds={DEWU_HOME_CATEGORIES}
-          pageSize={12}
+          pageSize={20}
         />
 
         {/* Taobao Section */}
@@ -183,7 +183,7 @@ export default function Home() {
           icon={<ShoppingBag className="h-4 w-4" />}
           providerType="Taobao"
           slug="taobao"
-          pageSize={12}
+          pageSize={20}
         />
       </div>
     </div>
