@@ -39,7 +39,7 @@ export function OtCategoryItemsManager({ open, onOpenChange, categoryId, categor
   // Fetch item details for display
   const { data: itemDetails, isLoading: loadingItems } = useQuery({
     queryKey: ["category-items-detail", categoryId, localItemIds.join(",")],
-    queryFn: () => fetchItemsByIds(localItemIds.slice(0, 50), 6),
+    queryFn: () => fetchItemsByIds(localItemIds, 8, { includeUnavailable: true }),
     enabled: open && localItemIds.length > 0,
     staleTime: 1000 * 60 * 10,
   });
@@ -103,7 +103,7 @@ export function OtCategoryItemsManager({ open, onOpenChange, categoryId, categor
         </div>
 
         {/* Item list */}
-        <div className="flex-1 max-h-[400px] overflow-y-auto border rounded-md">
+        <div className="h-[400px] overflow-y-auto overscroll-contain pr-1 border rounded-md">
           {localItemIds.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-10 w-10 mx-auto mb-2 opacity-50" />
