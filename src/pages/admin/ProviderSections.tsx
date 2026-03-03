@@ -288,18 +288,40 @@ function StripItemsManager() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    let logoUrl = editingItem?.logo_url || null;
+
+    if (logoFile) {
+      setUploading(true);
+      const ext = logoFile.name.split(".").pop() || "png";
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("provider-logos")
+        .upload(path, logoFile, { upsert: true });
+      setUploading(false);
+      if (uploadError) {
+        toast.error("Лого upload алдаа: " + uploadError.message);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("provider-logos").getPublicUrl(path);
+      logoUrl = urlData.publicUrl;
+    }
+
     saveMutation.mutate({
       id: editingItem?.id,
       name: fd.get("name") as string,
       slug: fd.get("slug") as string,
       provider_type: fd.get("provider_type") as string,
-      logo_url: fd.get("logo_url") as string || null,
+      logo_url: logoUrl,
       display_order: Number(fd.get("display_order")) || 0,
       show_categories: fd.get("show_categories") === "on",
     });
+    setLogoFile(null);
   };
 
   return (
@@ -326,8 +348,24 @@ function StripItemsManager() {
                 <Input name="provider_type" defaultValue={editingItem?.provider_type || ""} required placeholder="Poizon" />
               </div>
               <div>
-                <Label>Лого URL</Label>
-                <Input name="logo_url" defaultValue={editingItem?.logo_url || ""} placeholder="https://..." />
+                <Label>Лого (зураг upload)</Label>
+                {(editingItem?.logo_url || logoFile) && (
+                  <div className="mb-2 flex items-center gap-2">
+                    <img
+                      src={logoFile ? URL.createObjectURL(logoFile) : editingItem?.logo_url || ""}
+                      alt="logo preview"
+                      className="h-10 w-10 rounded border object-contain bg-muted"
+                    />
+                    {editingItem?.logo_url && !logoFile && (
+                      <span className="text-xs text-muted-foreground truncate max-w-[200px]">{editingItem.logo_url.split("/").pop()}</span>
+                    )}
+                  </div>
+                )}
+                <Input
+                  type="file"
+                  accept="image/png,image/svg+xml,image/jpeg,image/webp,image/x-icon"
+                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                />
               </div>
               <div>
                 <Label>Дараалал</Label>
@@ -337,7 +375,9 @@ function StripItemsManager() {
                 <input type="checkbox" id="show_categories" name="show_categories" defaultChecked={editingItem?.show_categories !== false} />
                 <Label htmlFor="show_categories">Ангилалууд харуулах</Label>
               </div>
-              <Button type="submit" disabled={saveMutation.isPending} className="w-full">Хадгалах</Button>
+              <Button type="submit" disabled={saveMutation.isPending || uploading} className="w-full">
+                {uploading ? "Лого upload хийж байна..." : "Хадгалах"}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>

@@ -79,7 +79,7 @@ export function ProviderStrip() {
               }`}
             >
               {item.logo_url ? (
-                <img src={item.logo_url} alt="" className="w-5 h-5 object-contain rounded-full" />
+                <img src={item.logo_url} alt="" className="w-5 h-5 object-contain" />
               ) : item.slug === "home" ? (
                 <img src={onlyLogo} alt="" className="w-5 h-5 object-contain" />
               ) : (
