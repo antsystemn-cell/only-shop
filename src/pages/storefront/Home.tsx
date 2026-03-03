@@ -89,33 +89,38 @@ function ProviderShowcase({
       const guaranteedSet = new Set(guaranteedCategoryIds.filter((id) => resolvedCatIds.includes(id)));
       const targetGuaranteed = Math.max(0, guaranteedPerCategory);
 
+      // For guaranteed categories, fetch multiple pages to build a large pool for true randomness
+      const GUARANTEED_PAGE_SIZE = 48;
+      const GUARANTEED_PAGES = 4; // fetch up to 4 pages (~192 items) per guaranteed category
+
       const results = await Promise.allSettled(
         resolvedCatIds.map(async (catId) => {
-          const perCat = guaranteedSet.has(catId)
-            ? Math.max(targetGuaranteed * 8, 48)
-            : Math.max(Math.ceil((pageSize * 3) / resolvedCatIds.length), 6);
+          if (guaranteedSet.has(catId)) {
+            // Fetch multiple pages in parallel for a large random pool
+            const pages = await Promise.all(
+              Array.from({ length: GUARANTEED_PAGES }, (_, i) =>
+                searchItems({
+                  categoryId: catId,
+                  provider: providerType,
+                  page: i,
+                  pageSize: GUARANTEED_PAGE_SIZE,
+                  orderBy: "Volume:Desc",
+                }).catch(() => ({ items: [] as OtProductCard[] }))
+              )
+            );
+            return pages.flatMap((p) => p.items);
+          }
 
-          const first = await searchItems({
+          // Non-guaranteed categories: fetch normally
+          const perCat = Math.max(Math.ceil((pageSize * 3) / resolvedCatIds.length), 6);
+          const result = await searchItems({
             categoryId: catId,
             provider: providerType,
             page: 0,
             pageSize: perCat,
             orderBy: "Volume:Desc",
           });
-
-          if (!guaranteedSet.has(catId) || first.items.length >= targetGuaranteed) {
-            return first.items;
-          }
-
-          const second = await searchItems({
-            categoryId: catId,
-            provider: providerType,
-            page: 1,
-            pageSize: perCat,
-            orderBy: "Volume:Desc",
-          });
-
-          return [...first.items, ...second.items];
+          return result.items;
         })
       );
 
