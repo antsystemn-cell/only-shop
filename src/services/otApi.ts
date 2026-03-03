@@ -158,6 +158,9 @@ export async function searchItems(params: SearchParams): Promise<SearchResponse>
     // No quantity info or zero quantity
     const qty = item.Quantity ?? item.MasterQuantity;
     if (qty !== undefined && qty !== null && qty <= 0) return false;
+    // Exclude "Dewu Only" vendor items
+    const vName = (item.VendorName || item.VendorDisplayName || "").toLowerCase();
+    if (vName.includes("dewu only")) return false;
     return true;
   });
   const items = filteredRaw.map((item: OtSearchItem) => mapSearchItem(item, priceConfig)).filter(isAvailableProduct);
