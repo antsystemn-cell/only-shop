@@ -68,11 +68,11 @@ function ProviderShowcase({
     queryFn: async () => {
       if (!resolvedCatIds || resolvedCatIds.length === 0) return [];
       const boostedIds = new Set(["otc-1368", "otc-1466"]);
-      const GUARANTEED_PER_BOOSTED = 3;
+      const GUARANTEED_PER_CAT = 3;
       const results = await Promise.allSettled(
         resolvedCatIds.map((catId) => {
           const perCat = boostedIds.has(catId)
-            ? Math.max(GUARANTEED_PER_BOOSTED * 2, Math.ceil((pageSize * 2) / resolvedCatIds.length) * 3)
+            ? Math.max(GUARANTEED_PER_CAT * 3, 20)
             : Math.ceil((pageSize * 2) / resolvedCatIds.length);
           return searchItems({
             categoryId: catId,
@@ -84,31 +84,49 @@ function ProviderShowcase({
         })
       );
 
-      // Separate boosted vs rest
-      const boostedItems: OtProductCard[] = [];
-      const restItems: OtProductCard[] = [];
+      // Collect items per category
+      const perCatItems: Map<string, OtProductCard[]> = new Map();
       const seen = new Set<string>();
       resolvedCatIds.forEach((catId, idx) => {
         const r = results[idx];
         if (r.status === "fulfilled") {
+          const catList: OtProductCard[] = [];
           for (const item of r.value.items) {
             if (!seen.has(item.id)) {
               seen.add(item.id);
-              if (boostedIds.has(catId)) {
-                boostedItems.push(item);
-              } else {
-                restItems.push(item);
-              }
+              catList.push(item);
             }
           }
+          perCatItems.set(catId, catList);
         }
       });
 
-      // Guarantee GUARANTEED_PER_BOOSTED from boosted, fill rest with shuffle
-      const guaranteed = shuffle(boostedItems).slice(0, GUARANTEED_PER_BOOSTED * boostedIds.size);
-      const remaining = shuffle([...boostedItems.slice(guaranteed.length), ...restItems]);
-      const final = [...guaranteed, ...remaining.slice(0, pageSize - guaranteed.length)];
-      return shuffle(final).slice(0, pageSize);
+      // Guarantee GUARANTEED_PER_CAT from each boosted category
+      const guaranteed: OtProductCard[] = [];
+      const guaranteedIds = new Set<string>();
+      for (const bId of boostedIds) {
+        const catItems = perCatItems.get(bId) || [];
+        const picked = shuffle(catItems).slice(0, GUARANTEED_PER_CAT);
+        for (const p of picked) {
+          guaranteed.push(p);
+          guaranteedIds.add(p.id);
+        }
+      }
+
+      // Collect remaining items (excluding guaranteed ones)
+      const rest: OtProductCard[] = [];
+      for (const [, items] of perCatItems) {
+        for (const item of items) {
+          if (!guaranteedIds.has(item.id)) {
+            rest.push(item);
+          }
+        }
+      }
+
+      // Combine: guaranteed first, then fill with shuffled rest, then shuffle all
+      const fillCount = Math.max(0, pageSize - guaranteed.length);
+      const combined = [...guaranteed, ...shuffle(rest).slice(0, fillCount)];
+      return shuffle(combined);
     },
     staleTime: 1000 * 60 * 10,
     enabled: !!resolvedCatIds && resolvedCatIds.length > 0,
