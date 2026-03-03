@@ -22,10 +22,15 @@ function isTaobaoOrTmall(providerType?: string) {
   return p === "taobao" || p === "tmall";
 }
 
+function isWarehouse(providerType?: string) {
+  return providerType?.toLowerCase() === "warehouse";
+}
+
 function getProviderLabel(providerType?: string) {
   const p = providerType?.toLowerCase();
   if (p === "taobao") return "Taobao";
   if (p === "tmall") return "Tmall";
+  if (p === "warehouse") return "Агуулах";
   return providerType;
 }
 
@@ -37,7 +42,7 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
 
   const poizon = isPoizon(product.providerType);
   const taobao = isTaobaoOrTmall(product.providerType);
-
+  const warehouse = isWarehouse(product.providerType);
   return (
     <Link
       to={`/ot/product/${product.id}`}
@@ -69,6 +74,11 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
         {taobao && (
           <span className="absolute bottom-1.5 left-1.5 bg-orange-500 text-white text-[9px] md:text-[10px] font-medium px-1.5 py-0.5 rounded">
             {getProviderLabel(product.providerType)}
+          </span>
+        )}
+        {warehouse && (
+          <span className="absolute bottom-1.5 left-1.5 bg-primary text-primary-foreground text-[9px] md:text-[10px] font-medium px-1.5 py-0.5 rounded">
+            Агуулах
           </span>
         )}
       </div>
