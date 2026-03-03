@@ -89,26 +89,76 @@ function ProviderShowcase({
       const guaranteedSet = new Set(guaranteedCategoryIds.filter((id) => resolvedCatIds.includes(id)));
       const targetGuaranteed = Math.max(0, guaranteedPerCategory);
 
-      // For guaranteed categories, fetch multiple pages to build a large pool for true randomness
-      const GUARANTEED_PAGE_SIZE = 48;
-      const GUARANTEED_PAGES = 4; // fetch up to 4 pages (~192 items) per guaranteed category
+      // For guaranteed categories, try curated DB item_ids first (full pool),
+      // then fallback to randomized search pages.
+      const { data: guaranteedCategoryMeta } = await supabase
+        .from("ot_categories")
+        .select("internal_id, item_ids")
+        .in("internal_id", guaranteedCategoryIds);
+
+      const guaranteedItemIdsByCategory = new Map<string, string[]>();
+      for (const row of guaranteedCategoryMeta || []) {
+        guaranteedItemIdsByCategory.set(row.internal_id, (row.item_ids || []).filter(Boolean));
+      }
+
+      const RANDOM_PAGE_SIZE = 24;
+      const RANDOM_PAGE_FETCH_COUNT = 6;
 
       const results = await Promise.allSettled(
         resolvedCatIds.map(async (catId) => {
           if (guaranteedSet.has(catId)) {
-            // Fetch multiple pages in parallel for a large random pool
-            const pages = await Promise.all(
-              Array.from({ length: GUARANTEED_PAGES }, (_, i) =>
-                searchItems({
+            const curatedIds = guaranteedItemIdsByCategory.get(catId) || [];
+
+            // Priority 1: curated full pool from DB item_ids (true randomness across all curated items)
+            if (curatedIds.length > 0) {
+              const poolSize = Math.min(curatedIds.length, Math.max(targetGuaranteed * 30, 120));
+              const sampledIds = shuffle(curatedIds).slice(0, poolSize);
+              return fetchItemsByIds(sampledIds, 10);
+            }
+
+            // Priority 2: randomized multi-page search pool
+            const firstPage = await searchItems({
+              categoryId: catId,
+              provider: providerType,
+              page: 0,
+              pageSize: RANDOM_PAGE_SIZE,
+              orderBy: "Volume:Desc",
+            }).catch(() => ({
+              items: [] as OtProductCard[],
+              totalCount: 0,
+              subCategories: [],
+              breadcrumbs: [],
+              searchProperties: [],
+            }));
+
+            const maxPage = Math.max(0, Math.ceil((firstPage.totalCount || 0) / RANDOM_PAGE_SIZE) - 1);
+            const pageTarget = Math.min(RANDOM_PAGE_FETCH_COUNT, maxPage + 1);
+            const randomPages = new Set<number>([0]);
+
+            while (randomPages.size < pageTarget) {
+              randomPages.add(Math.floor(Math.random() * (maxPage + 1)));
+            }
+
+            const pageResults = await Promise.all(
+              Array.from(randomPages).map((page) => {
+                if (page === 0) return Promise.resolve(firstPage);
+                return searchItems({
                   categoryId: catId,
                   provider: providerType,
-                  page: i,
-                  pageSize: GUARANTEED_PAGE_SIZE,
+                  page,
+                  pageSize: RANDOM_PAGE_SIZE,
                   orderBy: "Volume:Desc",
-                }).catch(() => ({ items: [] as OtProductCard[] }))
-              )
+                }).catch(() => ({
+                  items: [] as OtProductCard[],
+                  totalCount: 0,
+                  subCategories: [],
+                  breadcrumbs: [],
+                  searchProperties: [],
+                }));
+              })
             );
-            return pages.flatMap((p) => p.items);
+
+            return pageResults.flatMap((p) => p.items);
           }
 
           // Non-guaranteed categories: fetch normally
@@ -141,49 +191,11 @@ function ProviderShowcase({
         }
       });
 
-      // Guarantee items from specific categories
+      // Pick guaranteed items from each required category
       const pickedByGuaranteedCategory = new Map<string, OtProductCard[]>();
       for (const guaranteedId of guaranteedCategoryIds) {
         const catItems = perCatItems.get(guaranteedId) || [];
         pickedByGuaranteedCategory.set(guaranteedId, shuffle(catItems).slice(0, targetGuaranteed));
-      }
-
-      // If guaranteed categories still don't have enough items, top up from curated item_ids in DB
-      const missingGuaranteedIds = guaranteedCategoryIds.filter((catId) => {
-        const picked = pickedByGuaranteedCategory.get(catId) || [];
-        return picked.length < targetGuaranteed;
-      });
-
-      if (missingGuaranteedIds.length > 0 && targetGuaranteed > 0) {
-        const { data: fallbackCategories } = await supabase
-          .from("ot_categories")
-          .select("internal_id, item_ids")
-          .in("internal_id", missingGuaranteedIds);
-
-        const fallbackMap = new Map<string, string[]>();
-        for (const cat of fallbackCategories || []) {
-          fallbackMap.set(cat.internal_id, (cat.item_ids || []).filter(Boolean));
-        }
-
-        await Promise.all(
-          missingGuaranteedIds.map(async (catId) => {
-            const picked = pickedByGuaranteedCategory.get(catId) || [];
-            const needed = targetGuaranteed - picked.length;
-            if (needed <= 0) return;
-
-            const fallbackIds = fallbackMap.get(catId) || [];
-            if (!fallbackIds.length) return;
-
-            const fallbackItems = await fetchItemsByIds(fallbackIds.slice(0, 60), 10);
-            const pickedIds = new Set(picked.map((p) => p.id));
-            const additions = fallbackItems.filter((p) => !pickedIds.has(p.id)).slice(0, needed);
-
-            if (additions.length > 0) {
-              pickedByGuaranteedCategory.set(catId, [...picked, ...additions]);
-              perCatItems.set(catId, [...(perCatItems.get(catId) || []), ...additions]);
-            }
-          })
-        );
       }
 
       const guaranteed: OtProductCard[] = [];
