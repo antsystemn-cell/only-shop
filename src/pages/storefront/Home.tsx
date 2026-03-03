@@ -11,6 +11,19 @@ import { useProviderSafe } from "@/contexts/ProviderContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { OtProductCard } from "@/types/otApi";
 
+// Shuffle array helper
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Specific Dewu category IDs to show on home
+const DEWU_HOME_CATEGORIES = ["otc-1368", "otc-1466", "otc-1470", "otc-1471", "otc-1467"];
+
 // ─── Static Provider Section ────────────────────────────────
 function ProviderShowcase({
   title,
@@ -18,6 +31,7 @@ function ProviderShowcase({
   icon,
   providerType,
   slug,
+  categoryIds,
   pageSize = 12,
 }: {
   title: string;
@@ -25,38 +39,37 @@ function ProviderShowcase({
   icon: React.ReactNode;
   providerType: string;
   slug: string;
+  categoryIds?: string[];
   pageSize?: number;
 }) {
   const navigate = useNavigate();
   const { setSelectedProvider } = useProviderSafe();
 
-  // First fetch root categories to get valid categoryIds for the search
-  const { data: rootCategories } = useQuery({
-    queryKey: ["home-root-cats", providerType],
+  // Fetch category IDs: use provided list or fetch all root categories
+  const { data: resolvedCatIds } = useQuery({
+    queryKey: ["home-cat-ids", providerType, categoryIds],
     queryFn: async () => {
+      if (categoryIds && categoryIds.length > 0) return categoryIds;
       const { data } = await supabase
         .from("ot_categories")
         .select("internal_id")
         .is("parent_internal_id", null)
         .eq("is_active", true)
         .eq("provider_type", providerType)
-        .order("display_order")
-        .limit(6);
+        .order("display_order");
       return data?.map((c) => c.internal_id) || [];
     },
     staleTime: 1000 * 60 * 60,
   });
 
-  // Fetch products from multiple root categories in parallel to get variety
+  // Fetch products from categories and shuffle
   const { data: items, isLoading } = useQuery({
-    queryKey: ["home-provider-showcase", providerType, rootCategories],
+    queryKey: ["home-showcase", providerType, resolvedCatIds],
     queryFn: async () => {
-      if (!rootCategories || rootCategories.length === 0) return [];
-      // Fetch from up to 3 categories to get variety
-      const categoriesToFetch = rootCategories.slice(0, 3);
-      const perCat = Math.ceil(pageSize / categoriesToFetch.length);
+      if (!resolvedCatIds || resolvedCatIds.length === 0) return [];
+      const perCat = Math.ceil((pageSize * 2) / resolvedCatIds.length);
       const results = await Promise.allSettled(
-        categoriesToFetch.map((catId) =>
+        resolvedCatIds.map((catId) =>
           searchItems({
             categoryId: catId,
             provider: providerType,
@@ -78,10 +91,10 @@ function ProviderShowcase({
           }
         }
       }
-      return allItems.slice(0, pageSize);
+      return shuffle(allItems).slice(0, pageSize);
     },
     staleTime: 1000 * 60 * 10,
-    enabled: !!rootCategories && rootCategories.length > 0,
+    enabled: !!resolvedCatIds && resolvedCatIds.length > 0,
   });
 
   const handleViewAll = () => {
@@ -90,7 +103,7 @@ function ProviderShowcase({
     navigate(`/ot/provider/${slug}`);
   };
 
-  const loading = isLoading || !rootCategories;
+  const loading = isLoading || !resolvedCatIds;
 
   return (
     <section className="mb-6">
@@ -159,6 +172,7 @@ export default function Home() {
           icon={<Shield className="h-4 w-4" />}
           providerType="Poizon"
           slug="poizon"
+          categoryIds={DEWU_HOME_CATEGORIES}
           pageSize={12}
         />
 
