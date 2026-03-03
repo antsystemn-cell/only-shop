@@ -149,8 +149,18 @@ export async function searchItems(params: SearchParams): Promise<SearchResponse>
 
   // Handle both array and { Content: [] } response formats
   const rawItems = result?.Items?.Items;
-  const itemsArray = Array.isArray(rawItems) ? rawItems : (rawItems as any)?.Content || [];
-  const items = itemsArray.map((item: OtSearchItem) => mapSearchItem(item, priceConfig));
+  const itemsArray: OtSearchItem[] = Array.isArray(rawItems) ? rawItems : (rawItems as any)?.Content || [];
+  // Pre-filter: remove auction items and sold-out items at the raw level
+  const filteredRaw = itemsArray.filter((item: any) => {
+    if (item.IsAuction) return false;
+    if (item.IsSoldOut) return false;
+    if (item.IsTranslationItem) return false;
+    // No quantity info or zero quantity
+    const qty = item.Quantity ?? item.MasterQuantity;
+    if (qty !== undefined && qty !== null && qty <= 0) return false;
+    return true;
+  });
+  const items = filteredRaw.map((item: OtSearchItem) => mapSearchItem(item, priceConfig)).filter(isAvailableProduct);
   const totalCount = result?.Items?.TotalCount || (rawItems as any)?.TotalCount || 0;
 
   const rawSubCats = result?.SubCategories?.Items;
@@ -396,7 +406,7 @@ export async function fetchItemsByIds(
       })
     );
     for (const r of settled) {
-      if (r.status === "fulfilled" && r.value) results.push(r.value);
+      if (r.status === "fulfilled" && r.value && isAvailableProduct(r.value)) results.push(r.value);
     }
   }
   return results;
@@ -856,6 +866,16 @@ export async function getProviderCommonSettings(providerType: string) {
 
 export async function searchDeliveryPickupPoints(deliveryModeId?: string) {
   return callProxy("searchDeliveryPickupPoints", { deliveryModeId });
+}
+
+// ─── Availability Filter ─────────────────────────────────────
+// Filters out: out-of-stock, no-price, auction items
+function isAvailableProduct(product: OtProductCard): boolean {
+  // No price or zero price → hide
+  if (!product.price || product.price <= 0) return false;
+  // Out of stock (quantity explicitly 0)
+  if (product.quantity !== undefined && product.quantity !== null && product.quantity <= 0) return false;
+  return true;
 }
 
 // ─── Mappers ─────────────────────────────────────────────────
