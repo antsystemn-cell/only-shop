@@ -68,10 +68,11 @@ function ProviderShowcase({
     queryFn: async () => {
       if (!resolvedCatIds || resolvedCatIds.length === 0) return [];
       const boostedIds = new Set(["otc-1368", "otc-1466"]);
+      const GUARANTEED_PER_BOOSTED = 3;
       const results = await Promise.allSettled(
         resolvedCatIds.map((catId) => {
           const perCat = boostedIds.has(catId)
-            ? Math.ceil((pageSize * 2) / resolvedCatIds.length) * 3
+            ? Math.max(GUARANTEED_PER_BOOSTED * 2, Math.ceil((pageSize * 2) / resolvedCatIds.length) * 3)
             : Math.ceil((pageSize * 2) / resolvedCatIds.length);
           return searchItems({
             categoryId: catId,
@@ -82,19 +83,32 @@ function ProviderShowcase({
           });
         })
       );
-      const allItems: OtProductCard[] = [];
+
+      // Separate boosted vs rest
+      const boostedItems: OtProductCard[] = [];
+      const restItems: OtProductCard[] = [];
       const seen = new Set<string>();
-      for (const r of results) {
+      resolvedCatIds.forEach((catId, idx) => {
+        const r = results[idx];
         if (r.status === "fulfilled") {
           for (const item of r.value.items) {
             if (!seen.has(item.id)) {
               seen.add(item.id);
-              allItems.push(item);
+              if (boostedIds.has(catId)) {
+                boostedItems.push(item);
+              } else {
+                restItems.push(item);
+              }
             }
           }
         }
-      }
-      return shuffle(allItems).slice(0, pageSize);
+      });
+
+      // Guarantee GUARANTEED_PER_BOOSTED from boosted, fill rest with shuffle
+      const guaranteed = shuffle(boostedItems).slice(0, GUARANTEED_PER_BOOSTED * boostedIds.size);
+      const remaining = shuffle([...boostedItems.slice(guaranteed.length), ...restItems]);
+      const final = [...guaranteed, ...remaining.slice(0, pageSize - guaranteed.length)];
+      return shuffle(final).slice(0, pageSize);
     },
     staleTime: 1000 * 60 * 10,
     enabled: !!resolvedCatIds && resolvedCatIds.length > 0,
