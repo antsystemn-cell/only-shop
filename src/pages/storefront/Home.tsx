@@ -67,17 +67,20 @@ function ProviderShowcase({
     queryKey: ["home-showcase", providerType, resolvedCatIds],
     queryFn: async () => {
       if (!resolvedCatIds || resolvedCatIds.length === 0) return [];
-      const perCat = Math.ceil((pageSize * 2) / resolvedCatIds.length);
+      const boostedIds = new Set(["otc-1368", "otc-1466"]);
       const results = await Promise.allSettled(
-        resolvedCatIds.map((catId) =>
-          searchItems({
+        resolvedCatIds.map((catId) => {
+          const perCat = boostedIds.has(catId)
+            ? Math.ceil((pageSize * 2) / resolvedCatIds.length) * 3
+            : Math.ceil((pageSize * 2) / resolvedCatIds.length);
+          return searchItems({
             categoryId: catId,
             provider: providerType,
             page: 0,
             pageSize: perCat,
             orderBy: "Volume:Desc",
-          })
-        )
+          });
+        })
       );
       const allItems: OtProductCard[] = [];
       const seen = new Set<string>();
