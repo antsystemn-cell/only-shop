@@ -103,7 +103,7 @@ export function OtCategoryItemsManager({ open, onOpenChange, categoryId, categor
         </div>
 
         {/* Item list */}
-        <ScrollArea className="flex-1 max-h-[400px]">
+        <div className="flex-1 max-h-[400px] overflow-y-auto border rounded-md">
           {localItemIds.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-10 w-10 mx-auto mb-2 opacity-50" />
@@ -153,7 +153,7 @@ export function OtCategoryItemsManager({ open, onOpenChange, categoryId, categor
               })}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <div className="flex gap-2 pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
