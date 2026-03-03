@@ -4,7 +4,7 @@ import { Shield, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
-import { searchItems } from "@/services/otApi";
+import { fetchItemsByIds, searchItems } from "@/services/otApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
 import { useProviderSafe } from "@/contexts/ProviderContext";
@@ -21,8 +21,19 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+const DEFAULT_HOME_PAGE_SIZE = 24;
+const HOME_POIZON_COUNT_KEY = "home_poizon_count";
+const HOME_TAOBAO_COUNT_KEY = "home_taobao_count";
+
 // Specific Dewu category IDs to show on home
 const DEWU_HOME_CATEGORIES = ["otc-1368", "otc-1466", "otc-1470", "otc-1471", "otc-1467"];
+const POIZON_GUARANTEED_CATEGORY_IDS = ["otc-1368", "otc-1466"];
+
+function toPositiveInt(value: unknown, fallback: number) {
+  const num = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(num) || num <= 0) return fallback;
+  return Math.floor(num);
+}
 
 // ─── Static Provider Section ────────────────────────────────
 function ProviderShowcase({
@@ -32,6 +43,8 @@ function ProviderShowcase({
   providerType,
   slug,
   categoryIds,
+  guaranteedCategoryIds = [],
+  guaranteedPerCategory = 0,
   pageSize = 12,
 }: {
   title: string;
@@ -40,6 +53,8 @@ function ProviderShowcase({
   providerType: string;
   slug: string;
   categoryIds?: string[];
+  guaranteedCategoryIds?: string[];
+  guaranteedPerCategory?: number;
   pageSize?: number;
 }) {
   const navigate = useNavigate();
@@ -64,36 +79,53 @@ function ProviderShowcase({
 
   // Fetch products from categories and shuffle
   const { data: items, isLoading } = useQuery({
-    queryKey: ["home-showcase", providerType, resolvedCatIds],
+    queryKey: ["home-showcase", providerType, resolvedCatIds, pageSize, guaranteedCategoryIds, guaranteedPerCategory],
     queryFn: async () => {
       if (!resolvedCatIds || resolvedCatIds.length === 0) return [];
-      const boostedIds = new Set(["otc-1368", "otc-1466"]);
-      const GUARANTEED_PER_CAT = 3;
+
+      const guaranteedSet = new Set(guaranteedCategoryIds.filter((id) => resolvedCatIds.includes(id)));
+      const targetGuaranteed = Math.max(0, guaranteedPerCategory);
+
       const results = await Promise.allSettled(
-        resolvedCatIds.map((catId) => {
-          const perCat = boostedIds.has(catId)
-            ? Math.max(GUARANTEED_PER_CAT * 3, 20)
-            : Math.ceil((pageSize * 2) / resolvedCatIds.length);
-          return searchItems({
+        resolvedCatIds.map(async (catId) => {
+          const perCat = guaranteedSet.has(catId)
+            ? Math.max(targetGuaranteed * 8, 48)
+            : Math.max(Math.ceil((pageSize * 3) / resolvedCatIds.length), 6);
+
+          const first = await searchItems({
             categoryId: catId,
             provider: providerType,
             page: 0,
             pageSize: perCat,
             orderBy: "Volume:Desc",
           });
+
+          if (!guaranteedSet.has(catId) || first.items.length >= targetGuaranteed) {
+            return first.items;
+          }
+
+          const second = await searchItems({
+            categoryId: catId,
+            provider: providerType,
+            page: 1,
+            pageSize: perCat,
+            orderBy: "Volume:Desc",
+          });
+
+          return [...first.items, ...second.items];
         })
       );
 
       // Collect items per category
       const perCatItems: Map<string, OtProductCard[]> = new Map();
-      const seen = new Set<string>();
       resolvedCatIds.forEach((catId, idx) => {
         const r = results[idx];
         if (r.status === "fulfilled") {
+          const localSeen = new Set<string>();
           const catList: OtProductCard[] = [];
-          for (const item of r.value.items) {
-            if (!seen.has(item.id)) {
-              seen.add(item.id);
+          for (const item of r.value) {
+            if (!localSeen.has(item.id)) {
+              localSeen.add(item.id);
               catList.push(item);
             }
           }
@@ -101,32 +133,76 @@ function ProviderShowcase({
         }
       });
 
-      // Guarantee GUARANTEED_PER_CAT from each boosted category
+      // Guarantee items from specific categories
+      const pickedByGuaranteedCategory = new Map<string, OtProductCard[]>();
+      for (const guaranteedId of guaranteedCategoryIds) {
+        const catItems = perCatItems.get(guaranteedId) || [];
+        pickedByGuaranteedCategory.set(guaranteedId, shuffle(catItems).slice(0, targetGuaranteed));
+      }
+
+      // If guaranteed categories still don't have enough items, top up from curated item_ids in DB
+      const missingGuaranteedIds = guaranteedCategoryIds.filter((catId) => {
+        const picked = pickedByGuaranteedCategory.get(catId) || [];
+        return picked.length < targetGuaranteed;
+      });
+
+      if (missingGuaranteedIds.length > 0 && targetGuaranteed > 0) {
+        const { data: fallbackCategories } = await supabase
+          .from("ot_categories")
+          .select("internal_id, item_ids")
+          .in("internal_id", missingGuaranteedIds);
+
+        const fallbackMap = new Map<string, string[]>();
+        for (const cat of fallbackCategories || []) {
+          fallbackMap.set(cat.internal_id, (cat.item_ids || []).filter(Boolean));
+        }
+
+        await Promise.all(
+          missingGuaranteedIds.map(async (catId) => {
+            const picked = pickedByGuaranteedCategory.get(catId) || [];
+            const needed = targetGuaranteed - picked.length;
+            if (needed <= 0) return;
+
+            const fallbackIds = fallbackMap.get(catId) || [];
+            if (!fallbackIds.length) return;
+
+            const fallbackItems = await fetchItemsByIds(fallbackIds.slice(0, 60), 10);
+            const pickedIds = new Set(picked.map((p) => p.id));
+            const additions = fallbackItems.filter((p) => !pickedIds.has(p.id)).slice(0, needed);
+
+            if (additions.length > 0) {
+              pickedByGuaranteedCategory.set(catId, [...picked, ...additions]);
+              perCatItems.set(catId, [...(perCatItems.get(catId) || []), ...additions]);
+            }
+          })
+        );
+      }
+
       const guaranteed: OtProductCard[] = [];
       const guaranteedIds = new Set<string>();
-      for (const bId of boostedIds) {
-        const catItems = perCatItems.get(bId) || [];
-        const picked = shuffle(catItems).slice(0, GUARANTEED_PER_CAT);
-        for (const p of picked) {
-          guaranteed.push(p);
-          guaranteedIds.add(p.id);
+      for (const guaranteedId of guaranteedCategoryIds) {
+        const picked = pickedByGuaranteedCategory.get(guaranteedId) || [];
+        for (const product of picked) {
+          if (!guaranteedIds.has(product.id)) {
+            guaranteed.push(product);
+            guaranteedIds.add(product.id);
+          }
         }
       }
 
       // Collect remaining items (excluding guaranteed ones)
       const rest: OtProductCard[] = [];
-      for (const [, items] of perCatItems) {
-        for (const item of items) {
-          if (!guaranteedIds.has(item.id)) {
-            rest.push(item);
-          }
+      const restSeen = new Set<string>();
+      for (const [, catItems] of perCatItems) {
+        for (const item of catItems) {
+          if (guaranteedIds.has(item.id) || restSeen.has(item.id)) continue;
+          restSeen.add(item.id);
+          rest.push(item);
         }
       }
 
-      // Combine: guaranteed first, then fill with shuffled rest, then shuffle all
       const fillCount = Math.max(0, pageSize - guaranteed.length);
-      const combined = [...guaranteed, ...shuffle(rest).slice(0, fillCount)];
-      return shuffle(combined);
+      return [...guaranteed, ...shuffle(rest).slice(0, fillCount)];
     },
     staleTime: 1000 * 60 * 10,
     enabled: !!resolvedCatIds && resolvedCatIds.length > 0,
@@ -190,6 +266,30 @@ function ProviderShowcase({
 export default function Home() {
   const isMobile = useIsMobile();
 
+  const { data: homeShowcaseSettings } = useQuery({
+    queryKey: ["home-showcase-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("admin_settings")
+        .select("setting_key, setting_value")
+        .eq("category", "storefront")
+        .in("setting_key", [HOME_POIZON_COUNT_KEY, HOME_TAOBAO_COUNT_KEY]);
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const poizonPageSize = toPositiveInt(
+    homeShowcaseSettings?.find((s) => s.setting_key === HOME_POIZON_COUNT_KEY)?.setting_value,
+    DEFAULT_HOME_PAGE_SIZE
+  );
+
+  const taobaoPageSize = toPositiveInt(
+    homeShowcaseSettings?.find((s) => s.setting_key === HOME_TAOBAO_COUNT_KEY)?.setting_value,
+    DEFAULT_HOME_PAGE_SIZE
+  );
+
   return (
     <div className="animate-fade-in">
       {/* Mobile search */}
@@ -208,7 +308,9 @@ export default function Home() {
           providerType="Poizon"
           slug="poizon"
           categoryIds={DEWU_HOME_CATEGORIES}
-          pageSize={20}
+          guaranteedCategoryIds={POIZON_GUARANTEED_CATEGORY_IDS}
+          guaranteedPerCategory={3}
+          pageSize={poizonPageSize}
         />
 
         {/* Taobao Section */}
@@ -218,9 +320,10 @@ export default function Home() {
           icon={<ShoppingBag className="h-4 w-4" />}
           providerType="Taobao"
           slug="taobao"
-          pageSize={20}
+          pageSize={taobaoPageSize}
         />
       </div>
     </div>
   );
 }
+

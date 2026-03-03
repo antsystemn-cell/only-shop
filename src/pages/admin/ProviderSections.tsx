@@ -45,6 +45,10 @@ const ICON_OPTIONS = [
   "smartphone", "heart", "dumbbell", "shopping-bag", "trending-up", "package",
 ];
 
+const HOME_POIZON_COUNT_KEY = "home_poizon_count";
+const HOME_TAOBAO_COUNT_KEY = "home_taobao_count";
+const DEFAULT_HOME_PAGE_SIZE = 24;
+
 function SectionsManager({ providerType }: { providerType: string }) {
   const queryClient = useQueryClient();
   const [editingSection, setEditingSection] = useState<Section | null>(null);
@@ -420,6 +424,117 @@ function StripItemsManager() {
   );
 }
 
+function HomeShowcaseSettingsManager() {
+  const queryClient = useQueryClient();
+
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["admin-home-showcase-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("admin_settings")
+        .select("id, setting_key, setting_value")
+        .eq("category", "storefront")
+        .in("setting_key", [HOME_POIZON_COUNT_KEY, HOME_TAOBAO_COUNT_KEY]);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const getSettingValue = (settingKey: string) => {
+    const existing = settings?.find((s) => s.setting_key === settingKey);
+    const raw = existing?.setting_value;
+    const parsed = typeof raw === "number" ? raw : Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_HOME_PAGE_SIZE;
+    return Math.floor(parsed);
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: async ({ poizonCount, taobaoCount }: { poizonCount: number; taobaoCount: number }) => {
+      const payload = [
+        { key: HOME_POIZON_COUNT_KEY, value: poizonCount, description: "Нүүр хуудасны Poizon барааны тоо" },
+        { key: HOME_TAOBAO_COUNT_KEY, value: taobaoCount, description: "Нүүр хуудасны Taobao барааны тоо" },
+      ];
+
+      await Promise.all(
+        payload.map(async (item) => {
+          const existing = settings?.find((s) => s.setting_key === item.key);
+          if (existing?.id) {
+            const { error } = await supabase
+              .from("admin_settings")
+              .update({ setting_value: item.value })
+              .eq("id", existing.id);
+            if (error) throw error;
+            return;
+          }
+
+          const { error } = await supabase.from("admin_settings").insert([
+            {
+              category: "storefront",
+              setting_key: item.key,
+              setting_value: item.value,
+              description: item.description,
+            },
+          ]);
+          if (error) throw error;
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-home-showcase-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["home-showcase-settings"] });
+      toast.success("Нүүр хуудасны барааны тоо хадгалагдлаа");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const poizonCount = Math.max(1, Number(fd.get("poizon_count")) || DEFAULT_HOME_PAGE_SIZE);
+    const taobaoCount = Math.max(1, Number(fd.get("taobao_count")) || DEFAULT_HOME_PAGE_SIZE);
+    saveMutation.mutate({ poizonCount, taobaoCount });
+  };
+
+  if (isLoading) {
+    return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  }
+
+  return (
+    <form onSubmit={handleSave} className="space-y-4 rounded-lg border p-4 bg-card">
+      <h3 className="font-semibold">Нүүр хуудсанд харагдах барааны тоо</h3>
+      <p className="text-sm text-muted-foreground">Poizon болон Taobao тус бүр хэдэн бараа харагдахыг тохируулна.</p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="poizon_count">Poizon барааны тоо</Label>
+          <Input
+            id="poizon_count"
+            name="poizon_count"
+            type="number"
+            min={1}
+            defaultValue={getSettingValue(HOME_POIZON_COUNT_KEY)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="taobao_count">Taobao барааны тоо</Label>
+          <Input
+            id="taobao_count"
+            name="taobao_count"
+            type="number"
+            min={1}
+            defaultValue={getSettingValue(HOME_TAOBAO_COUNT_KEY)}
+          />
+        </div>
+      </div>
+
+      <Button type="submit" disabled={saveMutation.isPending} className="gap-2">
+        {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        Хадгалах
+      </Button>
+    </form>
+  );
+}
+
 export default function ProviderSectionsAdmin() {
   return (
     <div className="space-y-8">
@@ -431,6 +546,7 @@ export default function ProviderSectionsAdmin() {
       <Tabs defaultValue="strip">
         <TabsList className="flex-wrap">
           <TabsTrigger value="strip">Провайдер товчлуурууд</TabsTrigger>
+          <TabsTrigger value="home-counts">Нүүрийн бараа тоо</TabsTrigger>
           <TabsTrigger value="poizon">Poizon секцүүд</TabsTrigger>
           <TabsTrigger value="taobao">Taobao секцүүд</TabsTrigger>
           <TabsTrigger value="poizon-cats">Poizon ангилал</TabsTrigger>
@@ -438,6 +554,9 @@ export default function ProviderSectionsAdmin() {
         </TabsList>
         <TabsContent value="strip" className="mt-4">
           <StripItemsManager />
+        </TabsContent>
+        <TabsContent value="home-counts" className="mt-4">
+          <HomeShowcaseSettingsManager />
         </TabsContent>
         <TabsContent value="poizon" className="mt-4">
           <SectionsManager providerType="Poizon" />
