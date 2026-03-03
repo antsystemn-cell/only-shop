@@ -1259,6 +1259,54 @@ export type Database = {
         }
         Relationships: []
       }
+      warehouse_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          images: string[] | null
+          is_active: boolean
+          item_id: string
+          original_price_mnt: number | null
+          price_mnt: number
+          provider_type: string | null
+          stock: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          images?: string[] | null
+          is_active?: boolean
+          item_id: string
+          original_price_mnt?: number | null
+          price_mnt?: number
+          provider_type?: string | null
+          stock?: number
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          images?: string[] | null
+          is_active?: boolean
+          item_id?: string
+          original_price_mnt?: number | null
+          price_mnt?: number
+          provider_type?: string | null
+          stock?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       wishlists: {
         Row: {
           created_at: string

@@ -250,6 +250,32 @@ export interface ProductDetail {
 }
 
 export async function fetchProductDetail(itemId: string): Promise<ProductDetail> {
+  // Handle warehouse items (wh-) from local DB
+  if (itemId.startsWith("wh-")) {
+    const { data: wh, error } = await supabase
+      .from("warehouse_items")
+      .select("*")
+      .eq("item_id", itemId)
+      .maybeSingle();
+    if (error || !wh) throw new Error("Product not found");
+    return {
+      id: wh.item_id,
+      title: wh.title || "",
+      imageUrl: wh.image_url || "",
+      images: wh.image_url ? [wh.image_url] : [],
+      price: Number(wh.price_mnt) || 0,
+      originalPrice: wh.original_price_mnt ? Number(wh.original_price_mnt) : undefined,
+      currency: "₮",
+      quantity: wh.stock ?? 0,
+      vendorName: "Агуулах",
+      features: [],
+      configurators: [],
+      configuredItems: [],
+      breadcrumbs: [],
+      providerType: "warehouse",
+    };
+  }
+
   const [data, priceConfig] = await Promise.all([
     callProxy<any>("getItemFullInfo", { itemId }),
     getPriceConfig(),
@@ -376,6 +402,15 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
 }
 
 export async function fetchProductDescription(itemId: string): Promise<string> {
+  // Warehouse items: return description from DB
+  if (itemId.startsWith("wh-")) {
+    const { data: wh } = await supabase
+      .from("warehouse_items")
+      .select("description")
+      .eq("item_id", itemId)
+      .maybeSingle();
+    return wh?.description || "";
+  }
   try {
     const data = await callProxy<any>("getItemDescription", { itemId });
     return data?.OtapiItemDescription?.ItemDescription || data?.Result?.ItemDescription || "";
@@ -402,8 +437,41 @@ export async function fetchItemsByIds(
   const includeUnavailable = options?.includeUnavailable === true;
   const byRequestedId = new Map<string, OtProductCard>();
 
-  for (let i = 0; i < itemIds.length; i += batchSize) {
-    const batch = itemIds.slice(i, i + batchSize);
+  // Separate warehouse items (wh-) from OT API items
+  const whIds = itemIds.filter((id) => String(id).trim().startsWith("wh-"));
+  const otIds = itemIds.filter((id) => !String(id).trim().startsWith("wh-"));
+
+  // Fetch warehouse items from local DB
+  if (whIds.length > 0) {
+    try {
+      const { data: whItems } = await supabase
+        .from("warehouse_items")
+        .select("*")
+        .in("item_id", whIds.map((id) => String(id).trim()));
+      for (const wh of whItems || []) {
+        const card: OtProductCard = {
+          id: wh.item_id,
+          title: wh.title || "",
+          imageUrl: wh.image_url || "",
+          price: Number(wh.price_mnt) || 0,
+          originalPrice: wh.original_price_mnt ? Number(wh.original_price_mnt) : undefined,
+          currency: "₮",
+          vendorName: "Агуулах",
+          quantity: wh.stock ?? 0,
+          providerType: "warehouse",
+        };
+        if (includeUnavailable || (card.price > 0 && (card.quantity ?? 0) > 0)) {
+          byRequestedId.set(wh.item_id, card);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch warehouse items:", e);
+    }
+  }
+
+  // Fetch OT API items
+  for (let i = 0; i < otIds.length; i += batchSize) {
+    const batch = otIds.slice(i, i + batchSize);
     const settled = await Promise.allSettled(
       batch.map(async (id) => {
         const requestedId = String(id).trim();
@@ -425,7 +493,7 @@ export async function fetchItemsByIds(
         }
 
         return {
-          id: requestedId, // keep strict 1:1 mapping to category item_ids
+          id: requestedId,
           title: item.Title || item.ExternalTitle || "",
           imageUrl: item.MainPictureUrl || "",
           price,
