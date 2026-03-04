@@ -17,6 +17,7 @@ import Shop from "./pages/storefront/Shop";
 import ProductDetail from "./pages/storefront/ProductDetail";
 // Categories page removed - categories are now shown in Shop page strip
 import Auth from "./pages/storefront/Auth";
+import ResetPassword from "./pages/storefront/ResetPassword";
 import Checkout from "./pages/storefront/Checkout";
 import OrderConfirmation from "./pages/storefront/OrderConfirmation";
 import CustomerOrders from "./pages/storefront/CustomerOrders";
@@ -109,6 +110,7 @@ const App = () => (
               
               {/* Auth and checkout routes - outside layout */}
               <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/ot/checkout" element={<OtCheckout />} />
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />

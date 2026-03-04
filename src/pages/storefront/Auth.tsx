@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,9 @@ export default function Auth() {
   const { user, signIn, signUp, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
   
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -154,6 +158,79 @@ export default function Auth() {
             </div>
           </CardHeader>
           <CardContent>
+            {showForgotPassword ? (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-center">Нууц үг сэргээх</h3>
+                <p className="text-sm text-muted-foreground text-center">
+                  Бүртгэлтэй имэйл хаягаа оруулна уу. Нууц үг сэргээх холбоос илгээх болно.
+                </p>
+                {forgotSent ? (
+                  <div className="text-center space-y-3 py-4">
+                    <p className="text-sm text-primary font-medium">
+                      ✓ Нууц үг сэргээх холбоос имэйл рүү илгээгдлээ!
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Имэйлээ шалгаж, холбоос дээр дарна уу.
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => { setShowForgotPassword(false); setForgotSent(false); setForgotEmail(""); }}
+                    >
+                      Нэвтрэх хэсэг рүү буцах
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!forgotEmail.trim()) {
+                      toast.error("Имэйл хаягаа оруулна уу");
+                      return;
+                    }
+                    setIsLoading(true);
+                    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+                      redirectTo: `${window.location.origin}/reset-password`,
+                    });
+                    setIsLoading(false);
+                    if (error) {
+                      toast.error("Алдаа гарлаа: " + error.message);
+                      return;
+                    }
+                    setForgotSent(true);
+                  }} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="forgot-email">Имэйл</Label>
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        placeholder="example@email.com"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Илгээж байна...
+                        </>
+                      ) : (
+                        "Холбоос илгээх"
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => setShowForgotPassword(false)}
+                    >
+                      Буцах
+                    </Button>
+                  </form>
+                )}
+              </div>
+            ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="login">Нэвтрэх</TabsTrigger>
@@ -280,6 +357,7 @@ export default function Auth() {
                 </form>
               </TabsContent>
             </Tabs>
+            )}
           </CardContent>
           <CardFooter className="flex justify-center text-sm text-muted-foreground">
             <p>
