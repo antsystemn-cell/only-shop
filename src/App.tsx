@@ -73,6 +73,7 @@ import InstanceLogs from "./pages/admin/InstanceLogs";
 import OtCategoryBrowse from "./pages/storefront/OtCategoryBrowse";
 import OtAllCategories from "./pages/storefront/OtAllCategories";
 import ProviderPage from "./pages/storefront/ProviderPage";
+import MobileCategories from "./pages/storefront/MobileCategories";
 import ProviderSectionsAdmin from "./pages/admin/ProviderSections";
 import Migration from "./pages/admin/Migration";
 
@@ -98,7 +99,7 @@ const App = () => (
                 <Route path="/" element={<Home />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
-                {/* /categories removed - categories shown in /shop */}
+                <Route path="/categories" element={<MobileCategories />} />
                 <Route path="/wishlist" element={<Wishlist />} />
                 <Route path="/ot" element={<OtShop />} />
                 <Route path="/ot/category/:categoryId" element={<OtCategory />} />
