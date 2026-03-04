@@ -185,7 +185,8 @@ export default function OtProductDetail() {
     const success = await handleAddToCart();
     setIsBuyingNow(false);
     if (success) {
-      navigate("/ot/checkout");
+      // Navigate with buyNow flag + itemId so checkout only processes this item
+      navigate(`/ot/checkout?buyNow=${encodeURIComponent(product!.id)}`);
     }
   };
 

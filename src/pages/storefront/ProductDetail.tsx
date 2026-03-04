@@ -669,7 +669,7 @@ export default function ProductDetail() {
               className="flex-1 gap-2"
               onClick={() => {
                 handleAddToCart();
-                navigate("/checkout");
+                navigate("/checkout", { state: { buyNowProductId: product.id } });
               }}
               disabled={
                 !hasAnyStock ||
