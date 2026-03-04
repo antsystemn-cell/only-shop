@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Camera, ImagePlus, Link2, Loader2, ChevronDown, Globe, ShoppingBag, Package } from "lucide-react";
+import { Search, Camera, ImagePlus, Link2, Loader2, ChevronDown, Globe, Package } from "lucide-react";
+import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,8 +25,8 @@ export interface SearchProvider {
 
 const DEFAULT_PROVIDERS: SearchProvider[] = [
   { value: "", label: "Бүгд", icon: Globe },
-  { value: "Taobao", label: "Taobao", icon: ShoppingBag },
-  { value: "Poizon", label: "Poizon", icon: Package },
+  { value: "Taobao", label: "Taobao", icon: Globe },
+  { value: "Poizon", label: "Poizon", icon: Globe },
   { value: "local", label: "Бэлэн бараа", icon: Package },
 ];
 
@@ -63,10 +64,12 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: stripItems } = useProviderLogos();
 
   const providers = DEFAULT_PROVIDERS;
   const selectedProvider = providers.find((p) => p.value === provider) || providers[0];
   const SelectedIcon = selectedProvider.icon;
+  const selectedLogo = getProviderLogo(stripItems, selectedProvider.value);
 
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -123,7 +126,11 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
               variant="outline"
               className="shrink-0 rounded-r-none border-r-0 h-10 gap-1.5 px-2.5 bg-muted/50"
             >
-              <SelectedIcon className="h-4 w-4" />
+              {selectedLogo ? (
+                <img src={selectedLogo} alt="" className="w-4 h-4 object-contain rounded-full" />
+              ) : (
+                <SelectedIcon className="h-4 w-4" />
+              )}
               <span className="text-xs font-medium hidden sm:inline">{selectedProvider.label}</span>
               <ChevronDown className="h-3 w-3 opacity-60" />
             </Button>
@@ -131,6 +138,7 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
           <DropdownMenuContent align="start" className="w-44 bg-popover z-50">
             {providers.map((p) => {
               const Icon = p.icon;
+              const logo = getProviderLogo(stripItems, p.value);
               return (
                 <DropdownMenuItem
                   key={p.value}
@@ -140,7 +148,11 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
                     provider === p.value && "bg-accent"
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  {logo ? (
+                    <img src={logo} alt="" className="w-4 h-4 object-contain rounded-full" />
+                  ) : (
+                    <Icon className="h-4 w-4" />
+                  )}
                   <span>{p.label}</span>
                 </DropdownMenuItem>
               );

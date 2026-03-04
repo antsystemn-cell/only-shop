@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Shield, ShoppingBag } from "lucide-react";
+import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
@@ -41,6 +42,7 @@ function ProviderShowcase({
   title,
   subtitle,
   icon,
+  logoUrl,
   providerType,
   slug,
   categoryIds,
@@ -51,6 +53,7 @@ function ProviderShowcase({
   title: string;
   subtitle: string;
   icon: React.ReactNode;
+  logoUrl?: string | null;
   providerType: string;
   slug: string;
   categoryIds?: string[];
@@ -205,7 +208,11 @@ function ProviderShowcase({
     <section className="mb-6">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-md bg-primary/10 text-primary">{icon}</div>
+          <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+            {logoUrl ? (
+              <img src={logoUrl} alt="" className="h-5 w-5 object-contain rounded-full" />
+            ) : icon}
+          </div>
           <div>
             <h2 className="text-sm md:text-lg font-bold">{title}</h2>
             <p className="text-[10px] md:text-xs text-muted-foreground">{subtitle}</p>
@@ -250,6 +257,7 @@ function ProviderShowcase({
 
 export default function Home() {
   const isMobile = useIsMobile();
+  const { data: stripItems } = useProviderLogos();
 
   const { data: homeShowcaseSettings } = useQuery({
     queryKey: ["home-showcase-settings"],
@@ -290,6 +298,7 @@ export default function Home() {
           title="Poizon, Dewu"
           subtitle="100% Оригинал"
           icon={<Shield className="h-4 w-4" />}
+          logoUrl={getProviderLogo(stripItems, "Poizon")}
           providerType="Poizon"
           slug="poizon"
           categoryIds={DEWU_HOME_CATEGORIES}
@@ -303,6 +312,7 @@ export default function Home() {
           title="Taobao"
           subtitle="Хүссэн бүхэн нэг дор"
           icon={<ShoppingBag className="h-4 w-4" />}
+          logoUrl={getProviderLogo(stripItems, "Taobao")}
           providerType="Taobao"
           slug="taobao"
           pageSize={taobaoPageSize}
