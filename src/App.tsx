@@ -15,22 +15,19 @@ import { StorefrontLayout } from "./components/storefront/StorefrontLayout";
 import Home from "./pages/storefront/Home";
 import Shop from "./pages/storefront/Shop";
 import ProductDetail from "./pages/storefront/ProductDetail";
-// Categories page removed - categories are now shown in Shop page strip
 import Auth from "./pages/storefront/Auth";
 import ResetPassword from "./pages/storefront/ResetPassword";
 import Checkout from "./pages/storefront/Checkout";
 import OrderConfirmation from "./pages/storefront/OrderConfirmation";
-import CustomerOrders from "./pages/storefront/CustomerOrders";
+import MyOrders from "./pages/storefront/MyOrders";
 import Wishlist from "./pages/storefront/Wishlist";
 import OtShop from "./pages/storefront/OtShop";
 import OtCategory from "./pages/storefront/OtCategory";
 import OtProductDetail from "./pages/storefront/OtProductDetail";
 import OtCheckout from "./pages/storefront/OtCheckout";
 import Profile from "./pages/storefront/Profile";
-import OtOrders from "./pages/storefront/OtOrders";
 import Wallet from "./pages/storefront/Wallet";
 import FavouriteVendors from "./pages/storefront/FavouriteVendors";
-import DeliveryCalculator from "./pages/storefront/DeliveryCalculator";
 import Support from "./pages/storefront/Support";
 
 // Admin imports
@@ -65,7 +62,6 @@ import OtWarehouse from "./pages/admin/OtWarehouse";
 import OtRatingLists from "./pages/admin/OtRatingLists";
 import OtSettings from "./pages/admin/OtSettings";
 import SearchSettings from "./pages/admin/SearchSettings";
-// AdminOtOrders removed — merged into unified Orders page
 import OtCategories from "./pages/admin/OtCategories";
 import OtRoles from "./pages/admin/OtRoles";
 import UserActivityLog from "./pages/admin/UserActivityLog";
@@ -115,12 +111,12 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/ot/checkout" element={<OtCheckout />} />
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
-              <Route path="/orders" element={<CustomerOrders />} />
-              <Route path="/ot/orders" element={<OtOrders />} />
+              <Route path="/orders" element={<MyOrders />} />
+              {/* Redirect old OT orders route */}
+              <Route path="/ot/orders" element={<Navigate to="/orders" replace />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/wallet" element={<Wallet />} />
               <Route path="/favourite-vendors" element={<FavouriteVendors />} />
-              <Route path="/delivery-calculator" element={<DeliveryCalculator />} />
               <Route path="/support" element={<Support />} />
               
               {/* Admin routes */}
