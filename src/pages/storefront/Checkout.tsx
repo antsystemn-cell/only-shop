@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
@@ -55,9 +55,16 @@ function formatOtPrice(price: number) {
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { items: localItems, getSubtotal, clearCart: clearLocalCart } = useCart();
+  const location = useLocation();
+  const { items: allLocalItems, getSubtotal: getAllLocalSubtotal, clearCart: clearLocalCart, removeFromCart } = useCart();
   const { items: otItems, subtotal: otSubtotal, clearCart: clearOtCart, groups: otGroups } = useOtCartSafe();
   const { user, isLoading: authLoading } = useAuth();
+
+  // Buy Now mode: only process the single product
+  const buyNowProductId = (location.state as any)?.buyNowProductId as string | undefined;
+  const localItems = buyNowProductId
+    ? allLocalItems.filter(i => i.product.id === buyNowProductId)
+    : allLocalItems;
 
   const [selectedZone, setSelectedZone] = useState<DeliveryZone | null>(null);
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("standard");
@@ -74,8 +81,8 @@ export default function Checkout() {
   });
 
   const hasLocalItems = localItems.length > 0;
-  const hasOtItems = otItems.length > 0;
-  const totalItemCount = localItems.length + otItems.length;
+  const hasOtItems = buyNowProductId ? false : otItems.length > 0; // In buyNow mode, ignore OT items
+  const totalItemCount = localItems.length + (buyNowProductId ? 0 : otItems.length);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -110,7 +117,9 @@ export default function Checkout() {
   const ubDistricts = deliveryZones?.filter(z => z.zone_type === "ub_district") || [];
   const aimags = deliveryZones?.filter(z => z.zone_type === "aimag") || [];
 
-  const localSubtotal = getSubtotal();
+  const localSubtotal = buyNowProductId
+    ? localItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0)
+    : getAllLocalSubtotal();
   const otSubtotalMnt = otSubtotal; // Already in MNT from ConvertedPriceList.Internal
   const deliveryFee = selectedZone
     ? (deliveryType === "express" && selectedZone.express_price
@@ -266,7 +275,12 @@ export default function Checkout() {
       return { order, paymentIntentId: pi?.id };
     },
     onSuccess: ({ order, paymentIntentId }) => {
-      clearLocalCart();
+      // Buy Now mode: only remove the specific product; otherwise clear entire cart
+      if (buyNowProductId) {
+        removeFromCart(buyNowProductId);
+      } else {
+        clearLocalCart();
+      }
       if (hasOtItems) clearOtCart();
       toast.success("Захиалга амжилттай үүсгэгдлээ!");
       const url = paymentIntentId

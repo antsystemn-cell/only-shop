@@ -53,7 +53,23 @@ export default function OtCheckout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { items, groups, subtotal, checkBasket, checkingStatus, refreshBasket, itemCount, removeItem, clearCart } = useOtCartSafe();
+  const { items: allItems, groups: allGroups, subtotal: allSubtotal, checkBasket, checkingStatus, refreshBasket, itemCount: allItemCount, removeItem, clearCart } = useOtCartSafe();
+  
+  // Buy Now mode: only process the single item matching the buyNow itemId
+  const buyNowItemId = searchParams.get("buyNow");
+  const items = buyNowItemId
+    ? allItems.filter(i => i.itemId === buyNowItemId)
+    : allItems;
+  const subtotal = buyNowItemId
+    ? items.reduce((sum, i) => sum + (i.totalPrice || i.price * i.quantity), 0)
+    : allSubtotal;
+  const itemCount = buyNowItemId
+    ? items.reduce((sum, i) => sum + i.quantity, 0)
+    : allItemCount;
+  const groups = buyNowItemId
+    ? allGroups.map(g => ({ ...g, items: g.items.filter(i => i.itemId === buyNowItemId) })).filter(g => g.items.length > 0)
+    : allGroups;
+  
   const [step, setStep] = useState<CheckoutStep>(1);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -368,8 +384,14 @@ export default function OtCheckout() {
       setStep(5);
       toast.success("Захиалга амжилттай үүслээ! Төлбөрөө төлнө үү.");
 
-      // Clear the OTAPI basket after successful order
-      await clearCart();
+      // Clear cart: if buyNow mode, only remove the specific items; otherwise clear all
+      if (buyNowItemId) {
+        for (const item of items) {
+          try { await removeItem(item.orderLineId); } catch {}
+        }
+      } else {
+        await clearCart();
+      }
     } catch (err: any) {
       toast.error(err.message || "Захиалга үүсгэхэд алдаа гарлаа");
     } finally {
