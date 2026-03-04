@@ -269,6 +269,8 @@ function SearchResultsSection({
   const maxPrice = sp.get("maxPrice") || "";
   const urlProvider = sp.get("provider") || "";
   const imageUrl = sp.get("imageUrl") || "";
+  const vendorId = sp.get("vendorId") || "";
+  const vendorName = sp.get("vendorName") || "";
   const pageSize = 40;
 
   // Use URL provider if set, otherwise global provider context
@@ -288,11 +290,12 @@ function SearchResultsSection({
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["ot-search", query, categoryId, orderBy, minPrice, maxPrice, effectiveProvider, imageUrl, JSON.stringify(selectedProperties)],
+    queryKey: ["ot-search", query, categoryId, orderBy, minPrice, maxPrice, effectiveProvider, imageUrl, vendorId, JSON.stringify(selectedProperties)],
     queryFn: ({ pageParam = 0 }) =>
       searchItems({
         query: query || undefined,
         categoryId: categoryId || undefined,
+        vendorId: vendorId || undefined,
         page: pageParam,
         pageSize,
         orderBy: orderBy || undefined,
@@ -308,7 +311,7 @@ function SearchResultsSection({
       return undefined;
     },
     initialPageParam: 0,
-    enabled: !!(query || categoryId || imageUrl),
+    enabled: !!(query || categoryId || imageUrl || vendorId),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -352,7 +355,7 @@ function SearchResultsSection({
         {/* Toolbar */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-muted-foreground">
-            {isLoading ? "Хайж байна..." : `${totalCount} бараа олдлоо`}
+            {isLoading ? "Хайж байна..." : vendorName ? `${vendorName} — ${totalCount} бараа` : `${totalCount} бараа олдлоо`}
           </p>
           <div className="flex items-center gap-2">
             {isMobile && (
