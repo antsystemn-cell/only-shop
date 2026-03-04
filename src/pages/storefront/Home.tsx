@@ -179,8 +179,15 @@ function ProviderShowcase({
         }
       }
 
-      const fillCount = Math.max(0, pageSize - guaranteed.length);
-      return [...guaranteed, ...shuffle(rest).slice(0, fillCount)];
+      // Filter out warehouse items (wh- prefix or providerType "warehouse")
+      const isWarehouse = (item: OtProductCard) =>
+        item.id.startsWith("wh-") || item.providerType?.toLowerCase() === "warehouse";
+
+      const filteredGuaranteed = guaranteed.filter((i) => !isWarehouse(i));
+      const filteredRest = rest.filter((i) => !isWarehouse(i));
+
+      const fillCount = Math.max(0, pageSize - filteredGuaranteed.length);
+      return [...filteredGuaranteed, ...shuffle(filteredRest).slice(0, fillCount)];
     },
     staleTime: 1000 * 60 * 10,
     enabled: !!resolvedCatIds && resolvedCatIds.length > 0,
