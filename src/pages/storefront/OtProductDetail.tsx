@@ -32,6 +32,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductReviews } from "@/components/storefront/ProductReviews";
 import { ImageZoomModal } from "@/components/storefront/ImageZoomModal";
+import { SimilarProducts } from "@/components/storefront/SimilarProducts";
 import { toast } from "sonner";
 
 function ensureArray<T>(value: T | T[] | undefined | null): T[] {
@@ -645,6 +646,9 @@ export default function OtProductDetail() {
           <ProductReviews itemId={itemId!} />
         </TabsContent>
       </Tabs>
+
+      {/* Similar / Vendor Products */}
+      <SimilarProducts product={product} />
     </div>
   );
 }
