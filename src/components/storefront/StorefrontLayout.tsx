@@ -9,10 +9,8 @@ export function StorefrontLayout() {
   const isMobile = useIsMobile();
   const location = useLocation();
 
-  // Hide header on mobile for pages that have their own search
-  const isHomePage = location.pathname === "/";
-  const isProviderPage = location.pathname.startsWith("/ot/provider/");
-  const hideHeader = isMobile && (isHomePage || isProviderPage);
+  // Hide header on mobile - use bottom nav + provider strip instead
+  const hideHeader = isMobile;
 
   return (
     <div className="min-h-screen flex flex-col">
