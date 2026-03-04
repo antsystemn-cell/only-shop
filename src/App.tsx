@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { WishlistProvider } from "@/contexts/WishlistContext";
 import { ProviderProvider } from "@/contexts/ProviderContext";
 import NotFound from "./pages/NotFound";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 // Storefront imports
 import { StorefrontLayout } from "./components/storefront/StorefrontLayout";
@@ -89,6 +90,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+            <ScrollToTop />
             <Routes>
               {/* Storefront routes */}
               <Route element={<StorefrontLayout />}>
