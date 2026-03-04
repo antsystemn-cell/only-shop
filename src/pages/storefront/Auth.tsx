@@ -279,6 +279,15 @@ export default function Auth() {
                       "Нэвтрэх"
                     )}
                   </Button>
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Нууц үгээ мартсан уу?
+                    </button>
+                  </div>
                 </form>
               </TabsContent>
               
