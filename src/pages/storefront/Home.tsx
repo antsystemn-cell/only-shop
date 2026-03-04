@@ -5,7 +5,7 @@ import { Shield, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
-import { searchItems } from "@/services/otApi";
+import { searchItems, fetchItemsByIds } from "@/services/otApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
 import { useProviderSafe } from "@/contexts/ProviderContext";
@@ -89,50 +89,27 @@ function ProviderShowcase({
       const guaranteedSet = new Set(guaranteedCategoryIds.filter((id) => resolvedCatIds.includes(id)));
       const targetGuaranteed = Math.max(0, guaranteedPerCategory);
 
-      // For guaranteed categories, use searchItems with random pages (much faster than fetchItemsByIds)
-      const RANDOM_PAGE_SIZE = 48;
+      // For guaranteed categories, fetch item_ids from DB and use fetchItemsByIds
+      // (these are parent categories with curated item_ids, searchItems returns 0 for them)
+      const guaranteedItemIdsMap = new Map<string, string[]>();
+      if (guaranteedSet.size > 0) {
+        const { data: catRows } = await supabase
+          .from("ot_categories")
+          .select("internal_id, item_ids")
+          .in("internal_id", [...guaranteedSet]);
+        for (const row of catRows || []) {
+          if (row.item_ids && row.item_ids.length > 0) {
+            guaranteedItemIdsMap.set(row.internal_id, row.item_ids);
+          }
+        }
+      }
+
+      // Non-guaranteed category IDs for searchItems
+      const nonGuaranteedCatIds = resolvedCatIds.filter((id) => !guaranteedSet.has(id));
 
       const results = await Promise.allSettled(
-        resolvedCatIds.map(async (catId) => {
-          if (guaranteedSet.has(catId)) {
-            // Single search call with large page size — fast and gives random pool
-            const randomPage = Math.floor(Math.random() * 5); // random page 0-4
-            const result = await searchItems({
-              categoryId: catId,
-              provider: providerType,
-              page: randomPage,
-              pageSize: RANDOM_PAGE_SIZE,
-              orderBy: "Volume:Desc",
-            }).catch(() => ({
-              items: [] as OtProductCard[],
-              totalCount: 0,
-              subCategories: [],
-              breadcrumbs: [],
-              searchProperties: [],
-            }));
-
-            // If random page returned nothing, fallback to page 0
-            if (result.items.length === 0 && randomPage > 0) {
-              const fallback = await searchItems({
-                categoryId: catId,
-                provider: providerType,
-                page: 0,
-                pageSize: RANDOM_PAGE_SIZE,
-                orderBy: "Volume:Desc",
-              }).catch(() => ({
-                items: [] as OtProductCard[],
-                totalCount: 0,
-                subCategories: [],
-                breadcrumbs: [],
-                searchProperties: [],
-              }));
-              return fallback.items;
-            }
-            return result.items;
-          }
-
-          // Non-guaranteed categories: fetch normally
-          const perCat = Math.max(Math.ceil((pageSize * 3) / resolvedCatIds.length), 6);
+        nonGuaranteedCatIds.map(async (catId) => {
+          const perCat = Math.max(Math.ceil((pageSize * 3) / Math.max(nonGuaranteedCatIds.length, 1)), 6);
           const result = await searchItems({
             categoryId: catId,
             provider: providerType,
@@ -144,9 +121,22 @@ function ProviderShowcase({
         })
       );
 
-      // Collect items per category
+      // Fetch guaranteed items via fetchItemsByIds (pick random subset from item_ids)
+      const guaranteedFetchResults = await Promise.allSettled(
+        [...guaranteedSet].map(async (catId) => {
+          const allIds = guaranteedItemIdsMap.get(catId) || [];
+          if (allIds.length === 0) return [] as OtProductCard[];
+          // Pick a random subset to fetch (more than needed, then shuffle & slice)
+          const poolSize = Math.min(allIds.length, targetGuaranteed * 4);
+          const shuffledIds = shuffle(allIds).slice(0, poolSize);
+          const fetched = await fetchItemsByIds(shuffledIds, 6);
+          return fetched;
+        })
+      );
+
+      // Collect items per non-guaranteed category
       const perCatItems: Map<string, OtProductCard[]> = new Map();
-      resolvedCatIds.forEach((catId, idx) => {
+      nonGuaranteedCatIds.forEach((catId, idx) => {
         const r = results[idx];
         if (r.status === "fulfilled") {
           const localSeen = new Set<string>();
@@ -161,24 +151,22 @@ function ProviderShowcase({
         }
       });
 
-      // Pick guaranteed items from each required category
-      const pickedByGuaranteedCategory = new Map<string, OtProductCard[]>();
-      for (const guaranteedId of guaranteedCategoryIds) {
-        const catItems = perCatItems.get(guaranteedId) || [];
-        pickedByGuaranteedCategory.set(guaranteedId, shuffle(catItems).slice(0, targetGuaranteed));
-      }
-
+      // Pick guaranteed items from fetchItemsByIds results
       const guaranteed: OtProductCard[] = [];
       const guaranteedIds = new Set<string>();
-      for (const guaranteedId of guaranteedCategoryIds) {
-        const picked = pickedByGuaranteedCategory.get(guaranteedId) || [];
-        for (const product of picked) {
-          if (!guaranteedIds.has(product.id)) {
-            guaranteed.push(product);
-            guaranteedIds.add(product.id);
+      const guaranteedCatList = [...guaranteedSet];
+      guaranteedCatList.forEach((catId, idx) => {
+        const r = guaranteedFetchResults[idx];
+        if (r.status === "fulfilled" && r.value.length > 0) {
+          const picked = shuffle(r.value).slice(0, targetGuaranteed);
+          for (const product of picked) {
+            if (!guaranteedIds.has(product.id)) {
+              guaranteed.push(product);
+              guaranteedIds.add(product.id);
+            }
           }
         }
-      }
+      });
 
       // Collect remaining items (excluding guaranteed ones)
       const rest: OtProductCard[] = [];
