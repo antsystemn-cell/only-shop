@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useProviderSafe, type ProviderFilter } from "@/contexts/ProviderContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { User } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 
 interface StripItem {
@@ -25,6 +28,8 @@ export function ProviderStrip() {
   const navigate = useNavigate();
   const location = useLocation();
   const { selectedProvider, setSelectedProvider } = useProviderSafe();
+  const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const { data: items } = useQuery({
     queryKey: ["provider-strip-items"],
@@ -43,12 +48,10 @@ export function ProviderStrip() {
     const filter = item.slug === "home" ? "all" : toProviderFilter(item.provider_type);
     setSelectedProvider(filter);
 
-    // Navigate to home if on a provider page, otherwise stay
     const isOnProviderPage = location.pathname.startsWith("/ot/provider/");
     if (item.slug === "home") {
       if (isOnProviderPage || location.pathname !== "/") navigate("/");
     } else {
-      // For specific providers, navigate to their dedicated page if it exists
       if (!isOnProviderPage || !location.pathname.includes(item.slug)) {
         navigate(`/ot/provider/${item.slug}`);
       }
@@ -57,7 +60,6 @@ export function ProviderStrip() {
 
   if (!items || items.length === 0) return null;
 
-  // Determine active: match by selectedProvider context
   const getIsActive = (item: StripItem) => {
     if (item.slug === "home") return selectedProvider === "all";
     return toProviderFilter(item.provider_type) === selectedProvider;
@@ -91,6 +93,20 @@ export function ProviderStrip() {
             </button>
           );
         })}
+
+        {/* Mobile profile button - separated */}
+        {isMobile && (
+          <>
+            <div className="w-px h-6 bg-border shrink-0 mx-1" />
+            <Link
+              to={user ? "/profile" : "/auth"}
+              className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0 border bg-secondary-foreground/10 text-secondary-foreground border-transparent hover:bg-secondary-foreground/20"
+            >
+              <User className="w-4 h-4" />
+              {user ? "Профайл" : "Нэвтрэх"}
+            </Link>
+          </>
+        )}
       </div>
     </div>
   );

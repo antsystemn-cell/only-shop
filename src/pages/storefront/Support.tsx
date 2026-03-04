@@ -130,7 +130,7 @@ export default function Support() {
       <div className="container py-20 text-center">
         <MessageSquare className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
         <h2 className="text-xl font-semibold mb-2">Нэвтэрнэ үү</h2>
-        <p className="text-muted-foreground mb-4">Дэмжлэг авахын тулд нэвтрэх шаардлагатай</p>
+        <p className="text-muted-foreground mb-4">Тусламж авахын тулд нэвтрэх шаардлагатай</p>
         <Button onClick={() => navigate("/auth")}>Нэвтрэх</Button>
       </div>
     );
@@ -150,7 +150,7 @@ export default function Support() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <MessageSquare className="h-6 w-6 text-primary" />
-          Дэмжлэг
+          Тусламж
         </h1>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4 mr-2" /> Тикет үүсгэх
@@ -278,7 +278,7 @@ export default function Support() {
                     >
                       <div className="flex items-center gap-2 mb-1 text-xs text-muted-foreground">
                         <User className="h-3 w-3" />
-                        {m.is_admin ? "Дэмжлэг" : "Та"}
+                        {m.is_admin ? "Тусламж" : "Та"}
                         <span>• {format(new Date(m.created_at), "MM-dd HH:mm")}</span>
                       </div>
                       <p>{m.message}</p>

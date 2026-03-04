@@ -111,7 +111,7 @@ export function Header() {
                       <Link to="/profile">Миний профайл</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link to="/ot/orders">OT Захиалгууд</Link>
+                      <Link to="/orders">Миний захиалгууд</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/wallet">Данс / Wallet</Link>
@@ -120,13 +120,7 @@ export function Header() {
                       <Link to="/favourite-vendors">Дуртай борлуулагчид</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link to="/delivery-calculator">Хүргэлтийн тооцоолуур</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/support">Дэмжлэг</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/orders">Дотоод захиалгууд</Link>
+                      <Link to="/support">Тусламж</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
@@ -223,11 +217,11 @@ export function Header() {
                   Миний профайл
                 </Link>
                 <Link
-                  to="/ot/orders"
+                  to="/orders"
                   className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  OT Захиалгууд
+                  Миний захиалгууд
                 </Link>
                 <Link
                   to="/wallet"
@@ -244,25 +238,11 @@ export function Header() {
                   Дуртай борлуулагчид
                 </Link>
                 <Link
-                  to="/delivery-calculator"
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Хүргэлтийн тооцоолуур
-                </Link>
-                <Link
                   to="/support"
                   className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Дэмжлэг
-                </Link>
-                <Link
-                  to="/orders"
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Дотоод захиалгууд
+                  Тусламж
                 </Link>
                 <button
                   className="px-4 py-2 text-sm font-medium text-destructive hover:bg-muted rounded-lg transition-colors text-left"
