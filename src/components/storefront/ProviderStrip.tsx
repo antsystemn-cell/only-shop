@@ -87,9 +87,9 @@ export function ProviderStrip() {
 
   return (
     <div className="w-full bg-secondary overflow-hidden">
-      <div className="container flex items-center gap-1.5 py-1.5">
+      <div className="flex items-center gap-1 py-1.5 pl-3 md:container md:px-4">
         {/* Scrollable provider buttons */}
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0 pr-1">
           {items.map((item) => {
             const isActive = getIsActive(item);
             const isHome = item.slug === "home";
@@ -139,10 +139,10 @@ export function ProviderStrip() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex items-center justify-center w-7 h-7 rounded-full shrink-0 bg-secondary-foreground/10 text-secondary-foreground hover:bg-secondary-foreground/20 transition-colors"
+                className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 bg-secondary-foreground/10 text-secondary-foreground hover:bg-secondary-foreground/20 transition-colors mr-1.5"
                 aria-label="Профайл"
               >
-                <User className="w-3.5 h-3.5" />
+                <User className="w-3 h-3" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
