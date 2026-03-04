@@ -139,10 +139,10 @@ export function ProviderStrip() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 bg-secondary-foreground/10 text-secondary-foreground hover:bg-secondary-foreground/20 transition-colors mr-1.5"
+                className="flex items-center justify-center h-[30px] w-[30px] rounded-full shrink-0 bg-secondary-foreground/10 text-secondary-foreground hover:bg-secondary-foreground/20 transition-colors mr-1.5"
                 aria-label="Профайл"
               >
-                <User className="w-3 h-3" />
+                <User className="w-3.5 h-3.5" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
