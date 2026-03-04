@@ -316,15 +316,16 @@ function StripItemsManager() {
       logoUrl = urlData.publicUrl;
     }
 
-    saveMutation.mutate({
-      id: editingItem?.id,
+    const payload: Partial<StripItem> = {
       name: fd.get("name") as string,
       slug: fd.get("slug") as string,
       provider_type: fd.get("provider_type") as string,
       logo_url: logoUrl,
       display_order: Number(fd.get("display_order")) || 0,
       show_categories: fd.get("show_categories") === "on",
-    });
+    };
+    if (editingItem?.id) payload.id = editingItem.id;
+    saveMutation.mutate(payload);
     setLogoFile(null);
   };
 
