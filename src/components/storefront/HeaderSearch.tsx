@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Camera, ImagePlus, Link2, Loader2, ChevronDown, Globe, Package } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -102,17 +104,39 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
     onSearchComplete?.();
   };
 
-  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      handleImageSearch(reader.result as string);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      // Try authenticated upload first, fall back to anonymous-friendly path
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id || "anon";
+      const path = `${userId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("image-search")
+        .upload(path, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("image-search")
+        .getPublicUrl(path);
+
+      if (urlData?.publicUrl) {
+        handleImageSearch(urlData.publicUrl);
+      }
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      // Fallback: try URL input instead
+      toast.error("Зураг upload хийхэд алдаа гарлаа. Зургийн URL оруулна уу.");
+    } finally {
       setUploading(false);
-    };
-    reader.onerror = () => setUploading(false);
-    reader.readAsDataURL(file);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   return (
