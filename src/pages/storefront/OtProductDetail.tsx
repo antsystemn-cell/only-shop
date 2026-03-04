@@ -1,7 +1,7 @@
 import DOMPurify from "dompurify";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Loader2,
   ChevronLeft,
@@ -19,6 +19,7 @@ import {
   Package,
   Truck,
   ExternalLink,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductReviews } from "@/components/storefront/ProductReviews";
+import { ImageZoomModal } from "@/components/storefront/ImageZoomModal";
 import { toast } from "sonner";
 
 function ensureArray<T>(value: T | T[] | undefined | null): T[] {
@@ -47,12 +49,31 @@ function formatPrice(price: number, currency: string) {
 
 export default function OtProductDetail() {
   const { itemId } = useParams<{ itemId: string }>();
+  const navigate = useNavigate();
   const { addItem, isLoading: isCartLoading } = useOtCartSafe();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedConfigs, setSelectedConfigs] = useState<Record<string, string>>({});
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
+
+  // Touch swipe state for image gallery
+  const touchStartX = useRef(0);
+  const imageCountRef = useRef(0);
+  const handleGalleryTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+  const handleGalleryTouchEnd = useCallback((e: React.TouchEvent) => {
+    const count = imageCountRef.current;
+    if (count <= 1) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 50) {
+      if (dx > 0) setSelectedImage((p) => (p - 1 + count) % count);
+      else setSelectedImage((p) => (p + 1) % count);
+    }
+  }, []);
 
   // Check if current user is admin
   const { data: isAdmin } = useQuery({
@@ -117,8 +138,8 @@ export default function OtProductDetail() {
   const effectiveQuantity = matchedConfig?.quantity ?? product?.quantity;
   const effectiveImage = matchedConfig?.imageUrl || product?.images?.[selectedImage] || product?.imageUrl;
 
-  const handleAddToCart = async () => {
-    if (!product) return;
+  const handleAddToCart = async (): Promise<boolean> => {
+    if (!product) return false;
 
     // If there are configurators, ALL must be selected
     if (product.configurators.length > 0) {
@@ -127,13 +148,13 @@ export default function OtProductDetail() {
       );
       if (!allSelected) {
         toast.error("Бүх хувилбараа сонгоно уу (өнгө, хэмжээ гэх мэт)");
-        return;
+        return false;
       }
 
       // Check stock for selected variant
       if (matchedConfig && matchedConfig.quantity !== undefined && matchedConfig.quantity <= 0) {
         toast.error("Сонгосон хувилбарын үлдэгдэл дууссан байна");
-        return;
+        return false;
       }
     }
 
@@ -153,8 +174,18 @@ export default function OtProductDetail() {
 
     try {
       await addItem(product.id, quantity, undefined, configurationId, fieldParameters);
+      return true;
     } catch {
-      // toast already shown in context
+      return false;
+    }
+  };
+
+  const handleBuyNow = async () => {
+    setIsBuyingNow(true);
+    const success = await handleAddToCart();
+    setIsBuyingNow(false);
+    if (success) {
+      navigate("/ot/checkout");
     }
   };
 
@@ -217,6 +248,9 @@ export default function OtProductDetail() {
       ? Math.round(((product.originalPrice - effectivePrice) / product.originalPrice) * 100)
       : 0;
 
+  // Update ref for touch handler
+  imageCountRef.current = product.images.length;
+
   return (
     <div className="container py-4 md:py-8 animate-fade-in">
       {/* Breadcrumbs */}
@@ -237,7 +271,12 @@ export default function OtProductDetail() {
       <div className="grid md:grid-cols-2 gap-6 md:gap-10">
         {/* ─── Image Gallery ─── */}
         <div className="overflow-hidden min-w-0">
-          <div className="relative aspect-square rounded-xl overflow-hidden bg-white border max-w-full">
+          <div
+            className="relative aspect-square rounded-xl overflow-hidden bg-white border max-w-full cursor-zoom-in"
+            onTouchStart={handleGalleryTouchStart}
+            onTouchEnd={handleGalleryTouchEnd}
+            onClick={() => setZoomOpen(true)}
+          >
             <img
               src={effectiveImage}
               alt={product.title}
@@ -252,9 +291,10 @@ export default function OtProductDetail() {
                   variant="secondary"
                   size="icon"
                   className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 h-8 w-8"
-                  onClick={() =>
-                    setSelectedImage((p) => (p - 1 + product.images.length) % product.images.length)
-                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedImage((p) => (p - 1 + product.images.length) % product.images.length);
+                  }}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -262,9 +302,10 @@ export default function OtProductDetail() {
                   variant="secondary"
                   size="icon"
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 h-8 w-8"
-                  onClick={() =>
-                    setSelectedImage((p) => (p + 1) % product.images.length)
-                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedImage((p) => (p + 1) % product.images.length);
+                  }}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -283,6 +324,14 @@ export default function OtProductDetail() {
               </span>
             )}
           </div>
+
+          {/* Image Zoom Modal */}
+          <ImageZoomModal
+            images={product.images}
+            initialIndex={selectedImage}
+            open={zoomOpen}
+            onOpenChange={setZoomOpen}
+          />
 
           {/* Thumbnails */}
           {product.images.length > 1 && (
@@ -486,35 +535,47 @@ export default function OtProductDetail() {
             </div>
           ))}
 
-          {/* Quantity + Add to Cart */}
-          <div className="flex items-center gap-3 pt-2">
-            <div className="flex items-center border rounded-lg bg-muted/50">
+          {/* Quantity + Add to Cart + Buy Now */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center border rounded-lg bg-muted/50">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="w-12 text-center font-medium">{quantity}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10"
+                  onClick={() => setQuantity((q) => q + 1)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                size="lg"
+                className="flex-1 gap-2"
+                variant="outline"
+                disabled={effectiveQuantity === 0 || isCartLoading}
+                onClick={handleAddToCart}
               >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="w-12 text-center font-medium">{quantity}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10"
-                onClick={() => setQuantity((q) => q + 1)}
-              >
-                <Plus className="h-4 w-4" />
+                <ShoppingCart className="h-5 w-5" />
+                {isCartLoading && !isBuyingNow ? "Нэмж байна..." : "Сагсанд нэмэх"}
               </Button>
             </div>
             <Button
               size="lg"
-              className="flex-1 gap-2"
-              disabled={effectiveQuantity === 0 || isCartLoading}
-              onClick={handleAddToCart}
+              className="w-full gap-2"
+              disabled={effectiveQuantity === 0 || isCartLoading || isBuyingNow}
+              onClick={handleBuyNow}
             >
-              <ShoppingCart className="h-5 w-5" />
-              {isCartLoading ? "Нэмж байна..." : "Сагсанд нэмэх"}
+              <Zap className="h-5 w-5" />
+              {isBuyingNow ? "Бэлдэж байна..." : "Шууд захиалах"}
             </Button>
           </div>
 
@@ -555,7 +616,7 @@ export default function OtProductDetail() {
         </div>
       </div>
 
-      {/* Tabs: Description + Reviews */}
+      {/* Tabs */}
       <Tabs defaultValue="description" className="mt-8">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="description">Тайлбар</TabsTrigger>
@@ -565,7 +626,12 @@ export default function OtProductDetail() {
           {description ? (
             <div
               className="prose prose-sm max-w-none dark:prose-invert [&_img]:rounded-lg [&_img]:max-w-full"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description, { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'b', 'i', 'u', 'sub', 'sup', 'dl', 'dt', 'dd'], ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'width', 'height', 'target', 'rel'] }) }}
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(description, {
+                  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'b', 'i', 'u', 'sub', 'sup', 'dl', 'dt', 'dd'],
+                  ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'width', 'height', 'target', 'rel'],
+                }),
+              }}
             />
           ) : (
             <div className="text-center py-8 text-muted-foreground">

@@ -1,6 +1,6 @@
 import DOMPurify from "dompurify";
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import useEmblaCarousel from "embla-carousel-react";
 import {
@@ -15,6 +15,7 @@ import {
   Shield,
   Loader2,
   Check,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,7 @@ function formatPrice(price: number) {
 }
 
 export default function ProductDetail() {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { addToCart } = useCart();
   const { toast } = useToast();
@@ -650,7 +652,8 @@ export default function ProductDetail() {
 
             <Button
               size="lg"
-              className="flex-1 gap-2 glow-green"
+              className="flex-1 gap-2"
+              variant="outline"
               onClick={handleAddToCart}
               disabled={
                 !hasAnyStock ||
@@ -660,6 +663,22 @@ export default function ProductDetail() {
             >
               <ShoppingCart className="h-5 w-5" />
               Сагсанд нэмэх
+            </Button>
+            <Button
+              size="lg"
+              className="flex-1 gap-2"
+              onClick={() => {
+                handleAddToCart();
+                navigate("/checkout");
+              }}
+              disabled={
+                !hasAnyStock ||
+                (variants.length > 0 && !selectedVariant) ||
+                (selectedVariant && selectedVariant.stock === 0)
+              }
+            >
+              <Zap className="h-5 w-5" />
+              Шууд захиалах
             </Button>
           </div>
 
