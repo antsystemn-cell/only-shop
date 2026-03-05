@@ -1,6 +1,9 @@
+import { memo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import type { OtProductCard } from "@/types/otApi";
 import { Shield } from "lucide-react";
+import { getGridImageUrl } from "@/utils/imageOptimizer";
+import { prefetchProductDetail } from "@/services/otApi";
 
 interface OtProductCardComponentProps {
   product: OtProductCard;
@@ -35,8 +38,7 @@ function getProviderLabel(providerType?: string) {
   return providerType;
 }
 
-export function OtProductCardComponent({ product, translatedTitle }: OtProductCardComponentProps) {
-  // Always show OTAPI title immediately; replace with AI translation when available
+export const OtProductCardComponent = memo(function OtProductCardComponent({ product, translatedTitle }: OtProductCardComponentProps) {
   const displayTitle = translatedTitle || product.title;
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
   const discountPercent = hasDiscount
@@ -46,18 +48,32 @@ export function OtProductCardComponent({ product, translatedTitle }: OtProductCa
   const poizon = isPoizon(product.providerType);
   const taobao = isTaobaoOrTmall(product.providerType);
   const warehouse = isWarehouse(product.providerType);
+  
+  // Prefetch product detail on hover/touch for instant navigation
+  const handlePrefetch = useCallback(() => {
+    prefetchProductDetail(product.id);
+  }, [product.id]);
+
+  // Use optimized thumbnail URL for grid
+  const gridImageUrl = getGridImageUrl(product.imageUrl);
+
   return (
     <Link
       to={`/ot/product/${product.id}`}
       className="group block overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+      onMouseEnter={handlePrefetch}
+      onTouchStart={handlePrefetch}
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-white">
         <img
-          src={product.imageUrl}
+          src={gridImageUrl}
           alt={product.title}
           className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
+          decoding="async"
+          width={310}
+          height={310}
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/placeholder.svg";
           }}
@@ -111,4 +127,4 @@ export function OtProductCardComponent({ product, translatedTitle }: OtProductCa
       </div>
     </Link>
   );
-}
+});
