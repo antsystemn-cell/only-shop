@@ -83,6 +83,7 @@ export default function OtSettings() {
       <Tabs defaultValue="translation">
         <TabsList className="flex-wrap">
           <TabsTrigger value="translation">Орчуулга</TabsTrigger>
+          <TabsTrigger value="otapi-language">OTAPI хэлний тохиргоо</TabsTrigger>
           <TabsTrigger value="geolocation">Геолокаци</TabsTrigger>
           <TabsTrigger value="common">Ерөнхий</TabsTrigger>
           <TabsTrigger value="collections">Цуглуулга</TabsTrigger>
@@ -91,6 +92,10 @@ export default function OtSettings() {
 
         <TabsContent value="translation" className="mt-4">
           <TranslationSettingsCard />
+        </TabsContent>
+
+        <TabsContent value="otapi-language" className="mt-4">
+          <OtApiLanguageSettingsCard />
         </TabsContent>
 
         <TabsContent value="geolocation" className="mt-4">
@@ -316,7 +321,7 @@ function TranslationSettingsCard() {
                 📝 Үндсэн орчуулга ашиглах
               </Label>
               <p className="text-xs text-muted-foreground">
-                OTAPI-ийн Англи хэл дээрх орчуулгыг шууд ашиглана. AI орчуулга хийхгүй.
+                OTAPI-ийн Монгол хэл дээрх орчуулгыг шууд ашиглана. AI орчуулга хийхгүй.
               </p>
             </div>
           </div>
@@ -329,6 +334,103 @@ function TranslationSettingsCard() {
         >
           {saveMutation.isPending ? "Хадгалж байна..." : "Хадгалах"}
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OtApiLanguageSettingsCard() {
+  const { data: translationSettingsRaw, isLoading } = useQuery<any>({
+    queryKey: ["admin", "ot-translation-settings"],
+    queryFn: async () => {
+      try { return await callWithOperatorSession("getTranslationSettings"); }
+      catch (e: any) { return { success: false, error: e.message }; }
+    },
+    retry: false,
+  });
+
+  const { data: contentListRaw, isLoading: contentLoading } = useQuery<any>({
+    queryKey: ["admin", "ot-translatable-content"],
+    queryFn: async () => {
+      try { return await callWithOperatorSession("getTranslatableContentList"); }
+      catch (e: any) { return { success: false, error: e.message }; }
+    },
+    retry: false,
+  });
+
+  const translationSettings = normalizeOtResponse<any>(translationSettingsRaw);
+  const contentList = normalizeOtResponse<any>(contentListRaw);
+
+  // Extract content items
+  const contentItems = (() => {
+    const d = contentList.data;
+    if (!d) return [];
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(d?.Content)) return d.Content;
+    if (Array.isArray(d?.Content?.Item)) return d.Content.Item;
+    if (d?.Content?.Item && typeof d.Content.Item === "object") return [d.Content.Item];
+    return [];
+  })();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Languages className="h-5 w-5 text-primary" />
+          OTAPI олон хэлний тохиргоо
+        </CardTitle>
+        <CardDescription>
+          OTAPI-ийн орчуулгын тохиргоо болон боломжит контентийн жагсаалт. Энэ нь OTAPI серверийн тал дахь хэлний тохиргоог хянана.
+          Одоогоор систем нь <Badge variant="outline" className="mx-1">mn (Монгол)</Badge> хэлийг үндсэн хэлээр ашиглаж байна.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Current language info */}
+        <div className="p-4 rounded-lg border bg-primary/5">
+          <h4 className="text-sm font-semibold mb-2">🌐 Үндсэн хэлний тохиргоо</h4>
+          <p className="text-xs text-muted-foreground mb-3">
+            OTAPI руу илгээх бүх API дуудлагад <code className="bg-muted px-1 rounded">language=mn</code> параметр ашиглагдаж байна. 
+            Энэ нь барааны нэр, ангиллын нэр зэрэг бүх текстийг Монгол хэл дээр буцаана.
+          </p>
+          <div className="flex items-center gap-2">
+            <Badge className="bg-primary text-primary-foreground">Идэвхтэй: Монгол (mn)</Badge>
+          </div>
+        </div>
+
+        {/* OTAPI Translation Settings */}
+        <div>
+          <h4 className="text-sm font-semibold mb-2">📋 OTAPI серверийн орчуулгын тохиргоо</h4>
+          {isLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : !translationSettings.success ? (
+            <ErrorAlert message={translationSettings.error || "Орчуулгын тохиргоо ачаалж чадсангүй"} />
+          ) : (
+            <RenderSettings data={translationSettings.data} />
+          )}
+        </div>
+
+        {/* Translatable Content List */}
+        <div>
+          <h4 className="text-sm font-semibold mb-2">📄 Орчуулах боломжтой контентийн жагсаалт</h4>
+          {contentLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : !contentList.success ? (
+            <ErrorAlert message={contentList.error || "Контентийн жагсаалт ачаалж чадсангүй"} />
+          ) : contentItems.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Орчуулах боломжтой контент олдсонгүй</p>
+          ) : (
+            <div className="space-y-2">
+              {contentItems.map((item: any, i: number) => (
+                <div key={item.Id || i} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                  <div>
+                    <span className="font-medium text-sm">{item.Description || item.Id || "—"}</span>
+                  </div>
+                  {item.Id && <Badge variant="outline" className="text-xs">{item.Id}</Badge>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

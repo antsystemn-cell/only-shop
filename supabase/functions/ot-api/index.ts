@@ -345,6 +345,16 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getBlackListContents":
       return callOtApi("GetBlackListContents", { ...base, framePosition: String(params.page || 0), frameSize: String(params.pageSize || 50) });
 
+    // ── Translation & Language Settings ──
+    case "getTranslationSettings":
+      return callOtApi("GetTranslationSettings", baseMeta);
+    case "updateTranslationSettings":
+      return callOtApi("UpdateTranslationSettings", { ...base, xmlUpdateData: params.xmlUpdateData });
+    case "getTranslatableContentList":
+      return callOtApi("GetTranslatableContentList", base);
+    case "searchTranslations":
+      return callOtApi("SearchTranslations", { ...base, xmlSearchParameters: params.xmlSearchParameters || "<TranslationSearchParameters/>", framePosition: String(params.page || 0), frameSize: String(params.pageSize || 50) });
+
     // ── Design & Theme ──
     case "getApplicationDesignSettings":
       return callOtApi("GetApplicationDesignSettings", baseMeta);
