@@ -15,7 +15,7 @@ import {
   type PriceConfig,
 } from "@/utils/priceCalculator";
 
-const LANGUAGE = "en";
+const LANGUAGE = "mn";
 
 async function callProxy<T = unknown>(action: string, params: Record<string, unknown> = {}): Promise<T> {
   // Validate required parameters for critical actions
