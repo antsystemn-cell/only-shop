@@ -153,7 +153,9 @@ export function ImageZoomModal({ images, initialIndex, open, onOpenChange }: Ima
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) closeModal(); }}>
-      <DialogContent className="max-w-[100vw] max-h-[100vh] w-screen h-screen p-0 border-0 bg-black/95 [&>button]:hidden">
+      <DialogContent className="fixed inset-0 translate-x-0 translate-y-0 left-0 top-0 max-w-none w-[100dvw] h-[100dvh] p-0 border-0 rounded-none bg-black/95 [&>button]:hidden data-[state=open]:slide-in-from-bottom-0 data-[state=open]:zoom-in-100"
+        style={{ maxWidth: '100dvw', maxHeight: '100dvh' }}
+      >
         {/* Top bar */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-3 safe-area-top">
           <span className="text-white/70 text-sm bg-black/40 px-3 py-1 rounded-full">
