@@ -197,7 +197,8 @@ function ProviderShowcase({
     enabled: !!resolvedCatIds && resolvedCatIds.length > 0,
   });
 
-  const homeTitlesList = useMemo(() => (items || []).map(p => p.title), [(items || []).map(p => p.id).join(",")]);
+  const itemsKey = (items || []).map(p => p.id).join(",");
+  const homeTitlesList = useMemo(() => (items || []).map(p => p.title), [itemsKey]);
   const homeTranslations = useTranslatedTitles(homeTitlesList);
 
   const handleViewAll = () => {

@@ -150,7 +150,8 @@ export default function OtCategoryBrowse() {
     ? Math.ceil(category.item_ids.length / PAGE_SIZE)
     : 0;
 
-  const browseTitlesList = useMemo(() => (products || []).map(p => p.title), [(products || []).map(p => p.id).join(",")]);
+  const browseItemsKey = (products || []).map(p => p.id).join(",");
+  const browseTitlesList = useMemo(() => (products || []).map(p => p.title), [browseItemsKey]);
   const browseTranslations = useTranslatedTitles(browseTitlesList);
 
   const displayName = category?.name_mn || category?.name_en || category?.name_ru || internalId;
