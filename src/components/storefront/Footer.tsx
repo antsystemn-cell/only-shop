@@ -27,7 +27,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/terms" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                <Link to="/terms_of_use" className="text-secondary-foreground/70 hover:text-primary transition-colors">
                   Үйлчилгээний нөхцөл
                 </Link>
               </li>
