@@ -73,10 +73,7 @@ import ProviderPage from "./pages/storefront/ProviderPage";
 import MobileCategories from "./pages/storefront/MobileCategories";
 import ProviderSectionsAdmin from "./pages/admin/ProviderSections";
 import Migration from "./pages/admin/Migration";
-import Terms from "./pages/storefront/Terms";
-import FAQ from "./pages/storefront/FAQ";
-import SizeGuide from "./pages/storefront/SizeGuide";
-import OrderGuide from "./pages/storefront/OrderGuide";
+import DynamicContentPage from "./pages/storefront/DynamicContentPage";
 
 // Redirect component for old OT Orders route
 const OtOrdersRedirect = () => <Navigate to="/admin/orders?source=ot" replace />;
@@ -109,10 +106,11 @@ const App = () => (
                 <Route path="/ot/allcats" element={<OtAllCategories />} />
                 <Route path="/ot/provider/:slug" element={<ProviderPage />} />
               <Route path="/ot/product/:itemId" element={<OtProductDetail />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/faq" element={<FAQ />} />
-              <Route path="/size-guide" element={<SizeGuide />} />
-              <Route path="/order-guide" element={<OrderGuide />} />
+              <Route path="/terms" element={<DynamicContentPage slug="terms" />} />
+              <Route path="/faq" element={<DynamicContentPage slug="faq" />} />
+              <Route path="/size-guide" element={<DynamicContentPage slug="size-guide" />} />
+              <Route path="/order-guide" element={<DynamicContentPage slug="order-guide" />} />
+              <Route path="/page/:slug" element={<DynamicContentPage />} />
               </Route>
               
               {/* Auth and checkout routes - outside layout */}

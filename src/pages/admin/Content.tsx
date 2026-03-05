@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FileText, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Search, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 
 const pageTypes = [
@@ -159,7 +159,10 @@ export default function Content() {
               <TableBody>
                 {pages?.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.title}</TableCell>
+                    <TableCell className="font-medium">
+                      <div>{p.title}</div>
+                      <div className="text-xs text-muted-foreground">/{p.slug}</div>
+                    </TableCell>
                     <TableCell><Badge variant="outline">{pageTypes.find((t) => t.value === p.page_type)?.label || p.page_type}</Badge></TableCell>
                     <TableCell className="text-center">
                       <Badge className={p.status === "published" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
@@ -167,7 +170,12 @@ export default function Content() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{format(new Date(p.created_at), "yyyy-MM-dd")}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-1">
+                      {p.status === "published" && (
+                        <Button variant="ghost" size="icon" asChild>
+                          <a href={`/page/${p.slug}`} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" onClick={() => handleOpen(p)}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => { if (confirm("Устгах уу?")) deleteMutation.mutate(p.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </TableCell>
