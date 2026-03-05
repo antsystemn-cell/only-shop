@@ -67,11 +67,11 @@ export function MobileBottomNav() {
             return (
               <Sheet key="cart-drawer">
                 <SheetTrigger asChild>
-                  <button className="flex flex-col items-center justify-center gap-1 py-1 w-16 relative">
-                    <div className="relative h-6 w-6 flex items-center justify-center">
-                      <Icon className={cn("h-6 w-6 transition-colors text-muted-foreground")} />
-                      {item.badge && item.badge > 0 && (
-                        <span className="absolute -top-1 -right-2 min-w-[14px] h-[14px] rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center px-0.5">
+                  <button className="flex flex-col items-center justify-center gap-1 py-1 w-16">
+                    <div className="relative">
+                      <Icon className="h-6 w-6 text-muted-foreground" />
+                      {item.badge != null && item.badge > 0 && (
+                        <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-1">
                           {item.badge > 99 ? "99+" : item.badge}
                         </span>
                       )}
@@ -92,16 +92,16 @@ export function MobileBottomNav() {
             <Link
               key={item.href}
               to={item.href}
-              className="flex flex-col items-center justify-center gap-1 py-1 w-16 relative"
+              className="flex flex-col items-center justify-center gap-1 py-1 w-16"
             >
-              <div className="relative h-6 w-6 flex items-center justify-center">
+              <div className="relative">
                 <Icon className={cn(
                   "h-6 w-6 transition-colors",
                   active ? "text-primary" : "text-muted-foreground",
-                  item.href === "/wishlist" && wishlistCount > 0 && "text-red-500 fill-red-500"
+                  item.href === "/wishlist" && wishlistCount > 0 && "text-destructive fill-destructive"
                 )} />
-                {item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1 -right-2 min-w-[14px] h-[14px] rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center px-0.5">
+                {item.badge != null && item.badge > 0 && (
+                  <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-1">
                     {item.badge > 99 ? "99+" : item.badge}
                   </span>
                 )}
