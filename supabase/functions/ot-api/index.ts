@@ -347,13 +347,13 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 
     // ── Translation & Language Settings ──
     case "getTranslationSettings":
-      return callOtApi("GetTranslationSettings", baseMeta);
+      return callOtApi("GetTranslationSettings", { ...baseMeta, sessionId: params.sessionId });
     case "updateTranslationSettings":
-      return callOtApi("UpdateTranslationSettings", { ...base, xmlUpdateData: params.xmlUpdateData });
+      return callOtApi("UpdateTranslationSettings", { ...base, sessionId: params.sessionId, xmlUpdateData: params.xmlUpdateData });
     case "getTranslatableContentList":
-      return callOtApi("GetTranslatableContentList", base);
+      return callOtApi("GetTranslatableContentList", { ...base, sessionId: params.sessionId });
     case "searchTranslations":
-      return callOtApi("SearchTranslations", { ...base, xmlSearchParameters: params.xmlSearchParameters || "<TranslationSearchParameters/>", framePosition: String(params.page || 0), frameSize: String(params.pageSize || 50) });
+      return callOtApi("SearchTranslations", { ...base, sessionId: params.sessionId, xmlSearchParameters: params.xmlSearchParameters || "<TranslationSearchParameters/>", framePosition: String(params.page || 0), frameSize: String(params.pageSize || 50) });
 
     // ── Design & Theme ──
     case "getApplicationDesignSettings":
