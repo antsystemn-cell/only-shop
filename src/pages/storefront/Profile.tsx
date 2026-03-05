@@ -49,6 +49,10 @@ import {
   Mail,
   Phone,
   Save,
+  ShoppingBag,
+  Heart,
+  Store,
+  ChevronRight,
 } from "lucide-react";
 import { ChangeContactInfo } from "@/components/storefront/ChangeContactInfo";
 
@@ -76,6 +80,26 @@ export default function Profile() {
       </Link>
 
       <h1 className="text-3xl font-bold mb-6">Миний профайл</h1>
+
+      {/* Quick Links */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {[
+          { href: "/orders", icon: ShoppingBag, label: "Миний захиалгууд", color: "text-blue-500" },
+          { href: "/wallet", icon: Wallet, label: "Данс", color: "text-green-500" },
+          { href: "/favourite-vendors", icon: Store, label: "Дуртай борлуулагч", color: "text-orange-500" },
+          { href: "/wishlist", icon: Heart, label: "Дуртай бараа", color: "text-red-500" },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            to={item.href}
+            className="flex items-center gap-3 p-4 rounded-xl border bg-card hover:bg-accent transition-colors group"
+          >
+            <item.icon className={`h-5 w-5 ${item.color} shrink-0`} />
+            <span className="text-sm font-medium flex-1">{item.label}</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        ))}
+      </div>
 
       <Tabs defaultValue="info" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">

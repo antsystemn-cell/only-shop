@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Megaphone, LayoutGrid, Heart, ShoppingCart } from "lucide-react";
+import { Home, Heart, LayoutGrid, ShoppingCart, User } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -18,10 +18,10 @@ export function MobileBottomNav() {
 
   const navItems = [
     { href: "/", label: "Нүүр", icon: Home },
-    { href: "/ot", label: "Маркет", icon: Megaphone },
-    { href: "/categories", label: "Ангилал", icon: LayoutGrid, isCenter: true },
     { href: "/wishlist", label: "Таалагдсан", icon: Heart, badge: wishlistCount },
+    { href: "/categories", label: "Ангилал", icon: LayoutGrid, isCenter: true },
     { href: "cart-drawer", label: "Сагс", icon: ShoppingCart, badge: cartCount, isCartDrawer: true },
+    { href: "/profile", label: "Профайл", icon: User },
   ];
 
   const isActive = (href: string) => {
