@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   resetInstanceCaches,
   getMethodNamesForStatistics,
 } from "@/services/otApi";
+import { getPerformanceStats, clearAllCache } from "@/services/apiCache";
 import { callWithOperatorSession } from "@/services/otSession";
 import {
   normalizeOtResponse,
@@ -52,6 +53,84 @@ function ErrorAlert({ message }: { message: string }) {
     <div className="flex items-center gap-2 text-destructive p-3 rounded-lg bg-destructive/10">
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <span className="text-sm">{message}</span>
+    </div>
+  );
+}
+
+function GatewayPerformancePanel() {
+  const [stats, setStats] = useState(() => getPerformanceStats());
+
+  const refreshStats = () => setStats(getPerformanceStats());
+
+  const handleClearCache = () => {
+    clearAllCache();
+    setStats(getPerformanceStats());
+    toast.success("Gateway кэш цэвэрлэгдлээ");
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={refreshStats}>
+          <RefreshCw className="h-3 w-3 mr-1" /> Шинэчлэх
+        </Button>
+        <Button size="sm" variant="destructive" onClick={handleClearCache}>
+          Кэш цэвэрлэх
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatItem label="Нийт хүсэлт" value={stats.totalRequests} />
+        <StatItem label="Кэш hit rate" value={stats.cacheHitRate} />
+        <StatItem label="Дундаж хурд" value={stats.avgResponseTime} />
+        <StatItem label="Кэш хэмжээ" value={stats.cacheSize} />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatItem label="Идэвхтэй хүсэлт" value={stats.activeRequests} />
+        <StatItem label="Дараалалд" value={stats.queuedRequests} />
+        <StatItem label="Inflight" value={stats.inflightSize} />
+        <StatItem label="Кэш hits" value={stats.cacheHits} />
+      </div>
+
+      {stats.slowRequests.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" /> Удаан хүсэлтүүд (&gt;1.5с)</CardTitle></CardHeader>
+          <CardContent>
+            <div className="space-y-1 max-h-60 overflow-y-auto text-xs">
+              {stats.slowRequests.map((r, i) => (
+                <div key={i} className="flex items-center justify-between py-1 border-b border-border/50">
+                  <span className="truncate max-w-[70%] font-mono">{r.key}</span>
+                  <Badge variant="destructive" className="text-[10px]">{r.duration}ms</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {stats.recentRequests.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> Сүүлийн 20 хүсэлт</CardTitle></CardHeader>
+          <CardContent>
+            <div className="space-y-1 max-h-80 overflow-y-auto text-xs">
+              {[...stats.recentRequests].reverse().map((r, i) => (
+                <div key={i} className="flex items-center justify-between py-1 border-b border-border/50">
+                  <span className="truncate max-w-[55%] font-mono">{r.key}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={r.cacheHit ? "secondary" : "outline"} className="text-[10px]">
+                      {r.cacheHit ? "HIT" : "MISS"}
+                    </Badge>
+                    <span className={`font-mono ${r.duration > 1500 ? "text-destructive" : r.duration > 500 ? "text-yellow-600" : "text-green-600"}`}>
+                      {r.duration}ms
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -137,12 +216,18 @@ export default function SystemTools() {
         </Button>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue="gateway">
         <TabsList>
+          <TabsTrigger value="gateway">Gateway</TabsTrigger>
           <TabsTrigger value="overview">Ерөнхий</TabsTrigger>
           <TabsTrigger value="statistics">Статистик</TabsTrigger>
           <TabsTrigger value="security">Аюулгүй байдал</TabsTrigger>
         </TabsList>
+
+        {/* ── Gateway Performance Tab ── */}
+        <TabsContent value="gateway" className="space-y-6">
+          <GatewayPerformancePanel />
+        </TabsContent>
 
         {/* ── Overview Tab ── */}
         <TabsContent value="overview" className="space-y-6">
