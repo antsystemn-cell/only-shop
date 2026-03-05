@@ -27,18 +27,23 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/categories" className="text-secondary-foreground/70 hover:text-primary transition-colors">
-                  Ангилал
+                <Link to="/terms" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                  Үйлчилгээний нөхцөл
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="text-secondary-foreground/70 hover:text-primary transition-colors">
-                  Бидний тухай
+                <Link to="/faq" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                  Түгээмэл асуултууд
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-secondary-foreground/70 hover:text-primary transition-colors">
-                  Холбоо барих
+                <Link to="/size-guide" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                  Размерын хүснэгт
+                </Link>
+              </li>
+              <li>
+                <Link to="/order-guide" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                  Захиалга хийх заавар
                 </Link>
               </li>
             </ul>
