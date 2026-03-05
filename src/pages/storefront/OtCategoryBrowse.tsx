@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
 import { Loader2, Package, FolderTree, ArrowLeft, ChevronRight, Home } from "lucide-react";
@@ -8,6 +8,7 @@ import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { searchItems, fetchItemsByIds } from "@/services/otApi";
 import { useProviderSafe } from "@/contexts/ProviderContext";
 import type { OtProductCard } from "@/types/otApi";
+import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
 
 interface OtCat {
   id: string;
@@ -149,6 +150,9 @@ export default function OtCategoryBrowse() {
     ? Math.ceil(category.item_ids.length / PAGE_SIZE)
     : 0;
 
+  const browseTitlesList = useMemo(() => (products || []).map(p => p.title), [(products || []).map(p => p.id).join(",")]);
+  const browseTranslations = useTranslatedTitles(browseTitlesList);
+
   const displayName = category?.name_mn || category?.name_en || category?.name_ru || internalId;
 
   return (
@@ -214,7 +218,7 @@ export default function OtCategoryBrowse() {
         <>
           <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
             {products.map((product) => (
-              <OtProductCardComponent key={product.id} product={product} />
+              <OtProductCardComponent key={product.id} product={product} translatedTitle={browseTranslations[product.title]} />
             ))}
           </div>
           {/* Pagination for item_ids-based categories */}

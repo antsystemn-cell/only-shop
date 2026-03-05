@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { searchItems } from "@/services/otApi";
@@ -5,6 +6,7 @@ import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import type { ProductDetail } from "@/services/otApi";
+import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
 
 interface SimilarProductsProps {
   product: ProductDetail;
@@ -42,6 +44,8 @@ export function SimilarProducts({ product }: SimilarProductsProps) {
     enabled,
     staleTime: 1000 * 60 * 10,
   });
+  const titlesList = useMemo(() => (data || []).map(p => p.title), [(data || []).map(p => p.id).join(",")]);
+  const translations = useTranslatedTitles(titlesList);
 
   if (!enabled) return null;
 
@@ -86,7 +90,7 @@ export function SimilarProducts({ product }: SimilarProductsProps) {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
         {data.map((item) => (
-          <OtProductCardComponent key={item.id} product={item} />
+          <OtProductCardComponent key={item.id} product={item} translatedTitle={translations[item.title]} />
         ))}
       </div>
       {data.length >= 10 && (
