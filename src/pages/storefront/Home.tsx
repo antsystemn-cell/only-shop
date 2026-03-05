@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from "react";
+import { useMemo, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Shield, ShoppingBag } from "lucide-react";
@@ -64,10 +64,7 @@ const ProviderShowcase = memo(function ProviderShowcase({
 }) {
   const navigate = useNavigate();
   const { setSelectedProvider } = useProviderSafe();
-  // Unique seed per mount so guaranteed items are re-shuffled on every page visit
-  const [shuffleSeed] = useState(() => Date.now());
-
-  // Fetch category IDs: use provided list or fetch all root categories
+  // Fetch category IDs: use provided list or fetch up to 4 root categories
   const { data: resolvedCatIds } = useQuery({
     queryKey: ["home-cat-ids", providerType, categoryIds],
     queryFn: async () => {
@@ -78,23 +75,23 @@ const ProviderShowcase = memo(function ProviderShowcase({
         .is("parent_internal_id", null)
         .eq("is_active", true)
         .eq("provider_type", providerType)
-        .order("display_order");
+        .order("display_order")
+        .limit(4); // Only top 4 categories, not all 20+
       return data?.map((c) => c.internal_id) || [];
     },
     staleTime: 1000 * 60 * 60,
   });
 
-  // Fetch products from categories and shuffle
+  // Fetch products — max 3 OTAPI calls total (guaranteed + limited non-guaranteed)
   const { data: items, isLoading } = useQuery({
-    queryKey: ["home-showcase", providerType, resolvedCatIds, pageSize, guaranteedCategoryIds, guaranteedPerCategory, shuffleSeed],
+    queryKey: ["home-showcase", providerType, resolvedCatIds, pageSize, guaranteedCategoryIds, guaranteedPerCategory],
     queryFn: async () => {
       if (!resolvedCatIds || resolvedCatIds.length === 0) return [];
 
       const guaranteedSet = new Set(guaranteedCategoryIds.filter((id) => resolvedCatIds.includes(id)));
       const targetGuaranteed = Math.max(0, guaranteedPerCategory);
 
-      // For guaranteed categories, fetch item_ids from DB and use fetchItemsByIds
-      // (these are parent categories with curated item_ids, searchItems returns 0 for them)
+      // Fetch guaranteed items from DB item_ids
       const guaranteedItemIdsMap = new Map<string, string[]>();
       if (guaranteedSet.size > 0) {
         const { data: catRows } = await supabase
@@ -108,58 +105,37 @@ const ProviderShowcase = memo(function ProviderShowcase({
         }
       }
 
-      // Non-guaranteed category IDs for searchItems
-      const nonGuaranteedCatIds = resolvedCatIds.filter((id) => !guaranteedSet.has(id));
+      // Non-guaranteed: pick at most 2 categories to search (not all 20!)
+      const nonGuaranteedCatIds = resolvedCatIds.filter((id) => !guaranteedSet.has(id)).slice(0, 2);
 
       const results = await Promise.allSettled(
         nonGuaranteedCatIds.map(async (catId) => {
-          const perCat = Math.max(Math.ceil((pageSize * 3) / Math.max(nonGuaranteedCatIds.length, 1)), 6);
           const result = await searchItems({
             categoryId: catId,
             provider: providerType,
             page: 0,
-            pageSize: perCat,
+            pageSize: Math.min(pageSize, 24),
             orderBy: "Volume:Desc",
           });
           return result.items;
         })
       );
 
-      // Fetch guaranteed items via fetchItemsByIds (pick random subset from item_ids)
+      // Fetch guaranteed items
       const guaranteedFetchResults = await Promise.allSettled(
         [...guaranteedSet].map(async (catId) => {
           const allIds = guaranteedItemIdsMap.get(catId) || [];
           if (allIds.length === 0) return [] as OtProductCard[];
-          // Pick a random subset to fetch (more than needed, then shuffle & slice)
           const poolSize = Math.min(allIds.length, targetGuaranteed * 4);
           const shuffledIds = shuffle(allIds).slice(0, poolSize);
-          const fetched = await fetchItemsByIds(shuffledIds, 6);
-          return fetched;
+          return fetchItemsByIds(shuffledIds, 6);
         })
       );
 
-      // Collect items per non-guaranteed category
-      const perCatItems: Map<string, OtProductCard[]> = new Map();
-      nonGuaranteedCatIds.forEach((catId, idx) => {
-        const r = results[idx];
-        if (r.status === "fulfilled") {
-          const localSeen = new Set<string>();
-          const catList: OtProductCard[] = [];
-          for (const item of r.value) {
-            if (!localSeen.has(item.id)) {
-              localSeen.add(item.id);
-              catList.push(item);
-            }
-          }
-          perCatItems.set(catId, catList);
-        }
-      });
-
-      // Pick guaranteed items from fetchItemsByIds results
+      // Collect guaranteed
       const guaranteed: OtProductCard[] = [];
       const guaranteedIds = new Set<string>();
-      const guaranteedCatList = [...guaranteedSet];
-      guaranteedCatList.forEach((catId, idx) => {
+      [...guaranteedSet].forEach((catId, idx) => {
         const r = guaranteedFetchResults[idx];
         if (r.status === "fulfilled" && r.value.length > 0) {
           const picked = shuffle(r.value).slice(0, targetGuaranteed);
@@ -172,18 +148,22 @@ const ProviderShowcase = memo(function ProviderShowcase({
         }
       });
 
-      // Collect remaining items (excluding guaranteed ones)
+      // Collect rest from non-guaranteed
       const rest: OtProductCard[] = [];
       const restSeen = new Set<string>();
-      for (const [, catItems] of perCatItems) {
-        for (const item of catItems) {
-          if (guaranteedIds.has(item.id) || restSeen.has(item.id)) continue;
-          restSeen.add(item.id);
-          rest.push(item);
+      nonGuaranteedCatIds.forEach((catId, idx) => {
+        const r = results[idx];
+        if (r.status === "fulfilled") {
+          for (const item of r.value) {
+            if (!guaranteedIds.has(item.id) && !restSeen.has(item.id)) {
+              restSeen.add(item.id);
+              rest.push(item);
+            }
+          }
         }
-      }
+      });
 
-      // Filter out warehouse items (wh- prefix or providerType "warehouse")
+      // Filter warehouse items
       const isWarehouse = (item: OtProductCard) =>
         item.id.startsWith("wh-") || item.providerType?.toLowerCase() === "warehouse";
 
@@ -194,6 +174,8 @@ const ProviderShowcase = memo(function ProviderShowcase({
       return [...filteredGuaranteed, ...shuffle(filteredRest).slice(0, fillCount)];
     },
     staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     enabled: !!resolvedCatIds && resolvedCatIds.length > 0,
   });
 
