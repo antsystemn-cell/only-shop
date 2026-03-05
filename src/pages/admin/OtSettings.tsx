@@ -1,11 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, Globe, Shield, Settings, Users, CheckCircle2, XCircle } from "lucide-react";
+import { AlertTriangle, Globe, Shield, Settings, Users, Languages } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { callWithOperatorSession } from "@/services/otSession";
 import { normalizeOtResponse } from "@/utils/otNormalizer";
+import { supabase } from "@/integrations/supabase/client";
+import { resetTranslationMode } from "@/hooks/useTranslatedTitles";
 
 function ErrorAlert({ message }: { message: string }) {
   return (
@@ -73,13 +80,18 @@ export default function OtSettings() {
         <p className="text-muted-foreground mt-1">Геолокаци, нэвтрэлт, цуглуулга, эрхийн тохиргоо</p>
       </div>
 
-      <Tabs defaultValue="geolocation">
+      <Tabs defaultValue="translation">
         <TabsList className="flex-wrap">
+          <TabsTrigger value="translation">Орчуулга</TabsTrigger>
           <TabsTrigger value="geolocation">Геолокаци</TabsTrigger>
           <TabsTrigger value="common">Ерөнхий</TabsTrigger>
           <TabsTrigger value="collections">Цуглуулга</TabsTrigger>
           <TabsTrigger value="roles">OT эрхүүд</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="translation" className="mt-4">
+          <TranslationSettingsCard />
+        </TabsContent>
 
         <TabsContent value="geolocation" className="mt-4">
           <Card>
@@ -207,5 +219,117 @@ function RenderSettings({ data }: { data: any }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function TranslationSettingsCard() {
+  const queryClient = useQueryClient();
+
+  const { data: setting, isLoading } = useQuery({
+    queryKey: ["admin", "translation-mode"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("admin_settings")
+        .select("setting_value")
+        .eq("setting_key", "translation_mode")
+        .maybeSingle();
+      if (data?.setting_value) {
+        const val = typeof data.setting_value === "string" ? JSON.parse(data.setting_value) : data.setting_value;
+        return val === "default" ? "default" : "ai";
+      }
+      return "ai";
+    },
+  });
+
+  const [mode, setMode] = useState<"ai" | "default">("ai");
+
+  useEffect(() => {
+    if (setting) setMode(setting as "ai" | "default");
+  }, [setting]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (newMode: string) => {
+      // Upsert the setting
+      const { data: existing } = await supabase
+        .from("admin_settings")
+        .select("id")
+        .eq("setting_key", "translation_mode")
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from("admin_settings")
+          .update({ setting_value: JSON.stringify(newMode) })
+          .eq("setting_key", "translation_mode");
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("admin_settings")
+          .insert({
+            setting_key: "translation_mode",
+            setting_value: JSON.stringify(newMode),
+            category: "storefront",
+            description: "Барааны нэрийн орчуулгын горим",
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "translation-mode"] });
+      resetTranslationMode();
+      toast.success("Орчуулгын тохиргоо хадгалагдлаа");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Languages className="h-5 w-5 text-primary" />
+          Барааны нэрийн орчуулга
+        </CardTitle>
+        <CardDescription>
+          Барааны нэрийг хэрхэн орчуулахыг сонгоно уу. AI орчуулга нь Хятад/Англи нэрийг Монгол руу автоматаар хөрвүүлнэ.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <RadioGroup value={mode} onValueChange={(v) => setMode(v as "ai" | "default")}>
+          <div className="flex items-start gap-3 p-4 rounded-lg border hover:border-primary/50 transition-colors cursor-pointer" onClick={() => setMode("ai")}>
+            <RadioGroupItem value="ai" id="mode-ai" className="mt-0.5" />
+            <div className="space-y-1">
+              <Label htmlFor="mode-ai" className="text-sm font-semibold cursor-pointer">
+                🤖 AI Орчуулга ашиглах
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Gemini AI ашиглан барааны нэрийг Хятад/Англи хэлнээс Монгол руу автоматаар орчуулна. 
+                Орчуулсан нэрсийг кэшлэх тул нэг удаа орчуулагдсан нэр дахин орчуулагдахгүй.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-4 rounded-lg border hover:border-primary/50 transition-colors cursor-pointer" onClick={() => setMode("default")}>
+            <RadioGroupItem value="default" id="mode-default" className="mt-0.5" />
+            <div className="space-y-1">
+              <Label htmlFor="mode-default" className="text-sm font-semibold cursor-pointer">
+                📝 Үндсэн орчуулга ашиглах
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                OTAPI-ийн Англи хэл дээрх орчуулгыг шууд ашиглана. AI орчуулга хийхгүй.
+              </p>
+            </div>
+          </div>
+        </RadioGroup>
+
+        <Button 
+          onClick={() => saveMutation.mutate(mode)} 
+          disabled={saveMutation.isPending}
+          className="w-full sm:w-auto"
+        >
+          {saveMutation.isPending ? "Хадгалж байна..." : "Хадгалах"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

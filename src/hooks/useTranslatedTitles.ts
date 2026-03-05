@@ -8,12 +8,51 @@ let pendingTitles = new Set<string>();
 let batchTimer: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
 
+// Translation mode: "ai" or "default"
+let translationMode: "ai" | "default" | null = null;
+let modeLoading = false;
+
+async function loadTranslationMode() {
+  if (translationMode !== null || modeLoading) return;
+  modeLoading = true;
+  try {
+    const { data } = await supabase
+      .from("admin_settings")
+      .select("setting_value")
+      .eq("setting_key", "translation_mode")
+      .maybeSingle();
+    if (data?.setting_value) {
+      const val = typeof data.setting_value === "string" ? JSON.parse(data.setting_value) : data.setting_value;
+      translationMode = val === "ai" ? "ai" : "default";
+    } else {
+      translationMode = "ai"; // default to AI
+    }
+  } catch {
+    translationMode = "ai";
+  }
+  modeLoading = false;
+}
+
+// Allow external reset (e.g. when admin changes setting)
+export function resetTranslationMode() {
+  translationMode = null;
+  modeLoading = false;
+}
+
 function notifyListeners() {
   listeners.forEach((fn) => fn());
 }
 
 async function flushBatch() {
   if (pendingTitles.size === 0) return;
+  
+  // Ensure mode is loaded
+  await loadTranslationMode();
+  if (translationMode === "default") {
+    pendingTitles = new Set();
+    return;
+  }
+
   const titles = Array.from(pendingTitles);
   pendingTitles = new Set();
 
@@ -62,6 +101,10 @@ export function useTranslatedTitles(titles: string[]): Record<string, string> {
       if (mountedRef.current) forceUpdate((n) => n + 1);
     };
     listeners.add(listener);
+    
+    // Ensure translation mode is loaded
+    loadTranslationMode();
+    
     return () => {
       mountedRef.current = false;
       listeners.delete(listener);
@@ -70,6 +113,7 @@ export function useTranslatedTitles(titles: string[]): Record<string, string> {
 
   // Request translations for any uncached titles
   useEffect(() => {
+    if (translationMode === "default") return;
     for (const title of titles) {
       if (title) requestTranslation(title);
     }

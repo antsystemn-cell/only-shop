@@ -44,7 +44,8 @@ export function SimilarProducts({ product }: SimilarProductsProps) {
     enabled,
     staleTime: 1000 * 60 * 10,
   });
-  const titlesList = useMemo(() => (data || []).map(p => p.title), [(data || []).map(p => p.id).join(",")]);
+  const similarItemsKey = (data || []).map(p => p.id).join(",");
+  const titlesList = useMemo(() => (data || []).map(p => p.title), [similarItemsKey]);
   const translations = useTranslatedTitles(titlesList);
 
   if (!enabled) return null;

@@ -197,7 +197,8 @@ function HomeSection({ title, icon, iconBg, queryKey, searchParams, initialPageS
   });
 
   const allItems = data?.pages.flatMap(p => p.items) || [];
-  const titlesList = useMemo(() => allItems.map(p => p.title), [allItems.map(p => p.id).join(",")]);
+  const itemsKey = allItems.map(p => p.id).join(",");
+  const titlesList = useMemo(() => allItems.map(p => p.title), [itemsKey]);
   const translations = useTranslatedTitles(titlesList);
 
   if (!isLoading && allItems.length === 0) return null;
@@ -320,7 +321,8 @@ function SearchResultsSection({
 
   const firstPage = data?.pages[0];
   const allItems = data?.pages.flatMap(p => p.items) || [];
-  const searchTitlesList = useMemo(() => allItems.map(p => p.title), [allItems.map(p => p.id).join(",")]);
+  const searchItemsKey = allItems.map(p => p.id).join(",");
+  const searchTitlesList = useMemo(() => allItems.map(p => p.title), [searchItemsKey]);
   const searchTranslations = useTranslatedTitles(searchTitlesList);
   const totalCount = firstPage?.totalCount || 0;
 

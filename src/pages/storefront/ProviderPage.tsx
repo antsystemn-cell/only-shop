@@ -11,6 +11,7 @@ import HeaderSearch from "@/components/storefront/HeaderSearch";
 import { useProviderSafe, type ProviderFilter } from "@/contexts/ProviderContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { OtProductCard } from "@/types/otApi";
+import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   sparkles: <Sparkles className="h-4 w-4" />,
@@ -268,6 +269,10 @@ function InfiniteProductFeed({
   const isLoading = isCurated ? curatedLoading : apiLoading;
   const displayItems: OtProductCard[] = isCurated ? (curatedItems || []) : apiItems;
 
+  const feedItemsKey = displayItems.map(p => p.id).join(",");
+  const feedTitlesList = useMemo(() => displayItems.map(p => p.title), [feedItemsKey]);
+  const feedTranslations = useTranslatedTitles(feedTitlesList);
+
   return (
     <>
       {isLoading ? (
@@ -285,7 +290,7 @@ function InfiniteProductFeed({
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
           {displayItems.map((product) => (
-            <OtProductCardComponent key={product.id} product={product} />
+            <OtProductCardComponent key={product.id} product={product} translatedTitle={feedTranslations[product.title]} />
           ))}
         </div>
       )}
