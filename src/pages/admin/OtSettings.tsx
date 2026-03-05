@@ -9,8 +9,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { callWithOperatorSession } from "@/services/otSession";
 import { normalizeOtResponse } from "@/utils/otNormalizer";
+import { resetOtApiLanguageCache } from "@/services/otApi";
 import { supabase } from "@/integrations/supabase/client";
 import { resetTranslationMode } from "@/hooks/useTranslatedTitles";
 
@@ -340,6 +342,8 @@ function TranslationSettingsCard() {
 }
 
 function OtApiLanguageSettingsCard() {
+  const queryClient = useQueryClient();
+
   const { data: translationSettingsRaw, isLoading } = useQuery<any>({
     queryKey: ["admin", "ot-translation-settings"],
     queryFn: async () => {
@@ -358,10 +362,64 @@ function OtApiLanguageSettingsCard() {
     retry: false,
   });
 
+  const { data: languageSetting, isLoading: languageSettingLoading } = useQuery<string>({
+    queryKey: ["admin", "otapi-default-language"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("admin_settings")
+        .select("setting_value")
+        .eq("setting_key", "otapi_default_language")
+        .maybeSingle();
+
+      if (!data?.setting_value) return "mn";
+      const value = typeof data.setting_value === "string" ? JSON.parse(data.setting_value) : data.setting_value;
+      return typeof value === "string" && value.trim() ? value : "mn";
+    },
+  });
+
+  const [selectedLanguage, setSelectedLanguage] = useState("mn");
+
+  useEffect(() => {
+    if (languageSetting) setSelectedLanguage(languageSetting);
+  }, [languageSetting]);
+
+  const saveLanguageMutation = useMutation({
+    mutationFn: async (newLang: string) => {
+      const { data: existing } = await supabase
+        .from("admin_settings")
+        .select("id")
+        .eq("setting_key", "otapi_default_language")
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from("admin_settings")
+          .update({ setting_value: JSON.stringify(newLang) })
+          .eq("setting_key", "otapi_default_language");
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("admin_settings")
+          .insert({
+            setting_key: "otapi_default_language",
+            setting_value: JSON.stringify(newLang),
+            category: "storefront",
+            description: "OTAPI үндсэн хэл",
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      resetOtApiLanguageCache();
+      queryClient.invalidateQueries({ queryKey: ["admin", "otapi-default-language"] });
+      toast.success("OTAPI үндсэн хэл хадгалагдлаа");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const translationSettings = normalizeOtResponse<any>(translationSettingsRaw);
   const contentList = normalizeOtResponse<any>(contentListRaw);
 
-  // Extract content items
   const contentItems = (() => {
     const d = contentList.data;
     if (!d) return [];
@@ -372,6 +430,31 @@ function OtApiLanguageSettingsCard() {
     return [];
   })();
 
+  const languageOptions = (() => {
+    const fallback = [
+      { value: "mn", label: "Монгол (mn)" },
+      { value: "khk", label: "Mongolian KHK (khk)" },
+      { value: "en", label: "English (en)" },
+      { value: "ru", label: "Русский (ru)" },
+      { value: "zh-chs", label: "中文简体 (zh-chs)" },
+    ];
+
+    const rawLanguages = translationSettings.data?.Languages?.Content;
+    if (!Array.isArray(rawLanguages) || rawLanguages.length === 0) return fallback;
+
+    const mapped = rawLanguages
+      .map((lang: any) => ({
+        value: String(lang?.Name || "").trim(),
+        label: `${lang?.Description || lang?.Name || "Unknown"} (${lang?.Name || "-"})`,
+      }))
+      .filter((lang: { value: string }) => Boolean(lang.value));
+
+    return mapped.length > 0 ? mapped : fallback;
+  })();
+
+  const currentLanguageLabel =
+    languageOptions.find((option) => option.value === selectedLanguage)?.label || `Монгол (mn)`;
+
   return (
     <Card>
       <CardHeader>
@@ -380,36 +463,55 @@ function OtApiLanguageSettingsCard() {
           OTAPI олон хэлний тохиргоо
         </CardTitle>
         <CardDescription>
-          OTAPI-ийн орчуулгын тохиргоо болон боломжит контентийн жагсаалт. Энэ нь OTAPI серверийн тал дахь хэлний тохиргоог хянана.
-          Одоогоор систем нь <Badge variant="outline" className="mx-1">mn (Монгол)</Badge> хэлийг үндсэн хэлээр ашиглаж байна.
+          Энэ систем OTAPI үндсэн хэлийг дотоод тохиргооноос удирдаж байна (хуучин домэйнтэй хамааралгүй).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Current language info */}
-        <div className="p-4 rounded-lg border bg-primary/5">
-          <h4 className="text-sm font-semibold mb-2">🌐 Үндсэн хэлний тохиргоо</h4>
-          <p className="text-xs text-muted-foreground mb-3">
-            OTAPI руу илгээх бүх API дуудлагад <code className="bg-muted px-1 rounded">language=mn</code> параметр ашиглагдаж байна. 
-            Энэ нь барааны нэр, ангиллын нэр зэрэг бүх текстийг Монгол хэл дээр буцаана.
+        <div className="p-4 rounded-lg border bg-primary/5 space-y-3">
+          <h4 className="text-sm font-semibold">🌐 Үндсэн хэлний тохиргоо</h4>
+          <p className="text-xs text-muted-foreground">
+            OTAPI руу илгээх бүх API дуудлагын <code className="bg-muted px-1 rounded">language</code> параметр энэ сонголтоос удирдагдана.
           </p>
-          <div className="flex items-center gap-2">
-            <Badge className="bg-primary text-primary-foreground">Идэвхтэй: Монгол (mn)</Badge>
-          </div>
+
+          {languageSettingLoading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                <SelectTrigger className="w-full sm:w-[280px]">
+                  <SelectValue placeholder="Хэл сонгох" />
+                </SelectTrigger>
+                <SelectContent>
+                  {languageOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                onClick={() => saveLanguageMutation.mutate(selectedLanguage)}
+                disabled={saveLanguageMutation.isPending}
+                className="w-full sm:w-auto"
+              >
+                {saveLanguageMutation.isPending ? "Хадгалж байна..." : "Хэл хадгалах"}
+              </Button>
+            </div>
+          )}
+
+          <Badge className="bg-primary text-primary-foreground">Идэвхтэй: {currentLanguageLabel}</Badge>
         </div>
 
-        {/* OTAPI Translation Settings */}
         <div>
-          <h4 className="text-sm font-semibold mb-2">📋 OTAPI серверийн орчуулгын тохиргоо</h4>
+          <h4 className="text-sm font-semibold mb-2">📋 Серверийн орчуулгын мэдээлэл</h4>
           {isLoading ? (
             <Skeleton className="h-24 w-full" />
           ) : !translationSettings.success ? (
-            <ErrorAlert message={translationSettings.error || "Орчуулгын тохиргоо ачаалж чадсангүй"} />
+            <ErrorAlert message={translationSettings.error || "Орчуулгын мэдээлэл ачаалж чадсангүй"} />
           ) : (
             <RenderSettings data={translationSettings.data} />
           )}
         </div>
 
-        {/* Translatable Content List */}
         <div>
           <h4 className="text-sm font-semibold mb-2">📄 Орчуулах боломжтой контентийн жагсаалт</h4>
           {contentLoading ? (

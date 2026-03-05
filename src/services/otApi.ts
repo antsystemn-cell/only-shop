@@ -15,8 +15,40 @@ import {
   type PriceConfig,
 } from "@/utils/priceCalculator";
 
-const LANGUAGE = "mn";
+const DEFAULT_OTAPI_LANGUAGE = "mn";
+const LANGUAGE_SETTING_CACHE_TTL = 5 * 60 * 1000;
+let otApiLanguageCache: { value: string; expiresAt: number } | null = null;
 
+async function getOtApiLanguage(): Promise<string> {
+  if (otApiLanguageCache && otApiLanguageCache.expiresAt > Date.now()) {
+    return otApiLanguageCache.value;
+  }
+
+  try {
+    const { data } = await supabase
+      .from("admin_settings")
+      .select("setting_value")
+      .eq("setting_key", "otapi_default_language")
+      .maybeSingle();
+
+    const raw = data?.setting_value;
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const value = typeof parsed === "string" && parsed.trim() ? parsed.trim() : DEFAULT_OTAPI_LANGUAGE;
+
+    otApiLanguageCache = {
+      value,
+      expiresAt: Date.now() + LANGUAGE_SETTING_CACHE_TTL,
+    };
+
+    return value;
+  } catch {
+    return DEFAULT_OTAPI_LANGUAGE;
+  }
+}
+
+export function resetOtApiLanguageCache() {
+  otApiLanguageCache = null;
+}
 async function callProxy<T = unknown>(action: string, params: Record<string, unknown> = {}): Promise<T> {
   // Validate required parameters for critical actions
   const requiredParams: Record<string, string[]> = {
@@ -41,7 +73,7 @@ async function callProxy<T = unknown>(action: string, params: Record<string, unk
 
   // Filter out undefined/null params before sending
   // Note: empty strings are kept for params like configurationId, fieldParameters that OTAPI requires
-  const cleanParams: Record<string, unknown> = { language: LANGUAGE };
+  const cleanParams: Record<string, unknown> = { language: await getOtApiLanguage() };
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null) {
       cleanParams[k] = v;
