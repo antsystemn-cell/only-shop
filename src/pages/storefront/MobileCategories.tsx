@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Folder, Search } from "lucide-react";
+import { ChevronRight, Folder, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -100,40 +100,38 @@ export default function MobileCategories() {
         </div>
       </div>
 
-      {/* Category grid */}
-      <div className="px-3 pt-4">
+      {/* Category list */}
+      <div className="px-3 pt-3">
         {isLoading ? (
-          <div className="grid grid-cols-4 gap-3">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
-                <div className="w-16 h-16 rounded-2xl bg-muted" />
-                <div className="w-12 h-3 rounded bg-muted" />
-              </div>
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-14 rounded-xl bg-muted animate-pulse" />
             ))}
           </div>
         ) : filtered && filtered.length > 0 ? (
-          <div className="grid grid-cols-4 gap-y-5 gap-x-2">
+          <div className="flex flex-col gap-1.5">
             {filtered.map((cat) => (
               <Link
                 key={cat.internal_id}
                 to={`/ot/browse/${cat.internal_id}`}
-                className="group flex flex-col items-center gap-2"
+                className="group flex items-center gap-3 px-3 py-3 rounded-xl bg-muted/50 hover:bg-muted active:scale-[0.98] transition-all"
               >
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center group-active:scale-95 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center shrink-0">
                   {cat.icon_url ? (
                     <img
                       src={cat.icon_url}
                       alt={cat.name_mn || cat.name_en || ""}
-                      className="w-10 h-10 object-contain"
+                      className="w-7 h-7 object-contain"
                       loading="lazy"
                     />
                   ) : (
-                    <Folder className="h-6 w-6 text-muted-foreground" />
+                    <Folder className="h-5 w-5 text-muted-foreground" />
                   )}
                 </div>
-                <span className="text-[11px] font-medium text-center text-foreground leading-tight line-clamp-2 max-w-[72px]">
+                <span className="text-sm font-medium text-foreground truncate">
                   {cat.name_mn || cat.name_en || cat.internal_id}
                 </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
               </Link>
             ))}
           </div>
