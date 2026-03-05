@@ -190,18 +190,19 @@ export function ImageZoomModal({ images, initialIndex, open, onOpenChange }: Ima
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          onDoubleClick={toggleZoom}
-          style={{ cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "pointer" }}
+          style={{ cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "default" }}
         >
           <img
             ref={imageRef}
             src={images[currentIndex]}
             alt=""
-            className="max-w-full max-h-full object-contain transition-transform duration-200 pointer-events-none"
+            className="max-w-full max-h-full object-contain transition-transform duration-200"
             style={{
               transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
             }}
             draggable={false}
+            onDoubleClick={(e) => { e.stopPropagation(); toggleZoom(); }}
+            onClick={(e) => e.stopPropagation()}
             onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
           />
         </div>
