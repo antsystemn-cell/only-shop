@@ -70,13 +70,15 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a product title translator. Translate product titles to Mongolian (Монгол хэл).
+            content: `You are a product title translator. Translate Chinese text in product titles to Mongolian (Монгол хэл).
 Rules:
+- ONLY translate Chinese characters to Mongolian
+- Keep ALL English words exactly as they are - do NOT translate English to Mongolian
 - Keep brand names in original language (Nike, Adidas, Apple, etc.)
 - Keep model numbers/codes as-is
-- Translate descriptive words to natural Mongolian
+- If a title is entirely in English, return it unchanged
+- If a title mixes Chinese and English, translate only the Chinese parts
 - Keep it concise - product title style, not a sentence
-- If the title is already in English, translate the descriptive parts to Mongolian
 - Return ONLY the numbered translations, one per line, matching the input numbering
 - Format: "1. translated title" (one per line)
 - Do NOT add any explanation or extra text`,

@@ -17,6 +17,11 @@ function isLikelyMongolian(text: string): boolean {
   return /[\u0400-\u04FFӨөҮүЁё]/.test(text);
 }
 
+function containsChinese(text: string): boolean {
+  // CJK Unified Ideographs
+  return /[\u4E00-\u9FFF\u3400-\u4DBF]/.test(text);
+}
+
 async function loadTranslationMode() {
   if (translationMode !== null || modeLoading) return;
   modeLoading = true;
@@ -60,10 +65,15 @@ async function flushBatch() {
   // In "default" mode, OTAPI title is preferred.
   // But many providers return Chinese title even for khk, so we only fallback-translate
   // titles that don't look Mongolian.
-  const titlesToTranslate =
-    translationMode === "default"
-      ? titles.filter((title) => title && !isLikelyMongolian(title))
-      : titles.filter(Boolean);
+  // In "default" mode: only translate titles containing Chinese characters
+  // (skip English-only or already-Mongolian titles)
+  // In "ai" mode: translate everything that has Chinese; skip already-Mongolian
+  const titlesToTranslate = titles.filter((title) => {
+    if (!title) return false;
+    if (isLikelyMongolian(title)) return false;
+    if (!containsChinese(title)) return false;
+    return true;
+  });
 
   if (titlesToTranslate.length === 0) return;
 
