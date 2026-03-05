@@ -34,6 +34,7 @@ import { ProductReviews } from "@/components/storefront/ProductReviews";
 import { ImageZoomModal } from "@/components/storefront/ImageZoomModal";
 import { SimilarProducts } from "@/components/storefront/SimilarProducts";
 import { useTranslatedTitle } from "@/hooks/useTranslatedTitles";
+import { useWishlist } from "@/contexts/WishlistContext";
 import { toast } from "sonner";
 
 function ensureArray<T>(value: T | T[] | undefined | null): T[] {
@@ -474,14 +475,7 @@ export default function OtProductDetail() {
                     </a>
                   </Button>
                 )}
-                {user && (
-                  <FavouriteVendorButton
-                    userId={user.id}
-                    vendorId={product.vendor.id}
-                    vendorName={product.vendor.name}
-                    vendorScore={product.vendor.score}
-                  />
-                )}
+                <WishlistHeartButton productId={itemId!} />
               </div>
             </div>
           )}
@@ -671,59 +665,22 @@ export default function OtProductDetail() {
   );
 }
 
-// ─── Favourite Vendor Button ─────────────────────────────────
+// ─── Wishlist Heart Button ─────────────────────────────────
 
-function FavouriteVendorButton({ userId, vendorId, vendorName, vendorScore }: {
-  userId: string;
-  vendorId: string;
-  vendorName?: string;
-  vendorScore?: number;
-}) {
-  const queryClient = useQueryClient();
-
-  const { data: isFav } = useQuery({
-    queryKey: ["fav-vendor", userId, vendorId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("favourite_vendors")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("vendor_id", vendorId)
-        .maybeSingle();
-      return !!data;
-    },
-  });
-
-  const toggleMutation = useMutation({
-    mutationFn: async () => {
-      if (isFav) {
-        await supabase.from("favourite_vendors").delete().eq("user_id", userId).eq("vendor_id", vendorId);
-      } else {
-        await supabase.from("favourite_vendors").insert({
-          user_id: userId,
-          vendor_id: vendorId,
-          vendor_name: vendorName,
-          vendor_score: vendorScore,
-        });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fav-vendor", userId, vendorId] });
-      queryClient.invalidateQueries({ queryKey: ["favourite-vendors"] });
-      toast(isFav ? "Борлуулагч хасагдлаа" : "Борлуулагч нэмэгдлээ");
-    },
-  });
+function WishlistHeartButton({ productId }: { productId: string }) {
+  const { isInWishlist, toggleWishlist, isLoading } = useWishlist();
+  const inWishlist = isInWishlist(productId);
 
   return (
     <Button
       variant="ghost"
       size="icon"
       className="h-8 w-8"
-      onClick={() => toggleMutation.mutate()}
-      disabled={toggleMutation.isPending}
-      title={isFav ? "Дуртайгаас хасах" : "Дуртайд нэмэх"}
+      onClick={() => toggleWishlist(productId)}
+      disabled={isLoading}
+      title={inWishlist ? "Хүслийн жагсаалтаас хасах" : "Хүслийн жагсаалтад нэмэх"}
     >
-      <Heart className={`h-4 w-4 ${isFav ? "fill-red-500 text-red-500" : ""}`} />
+      <Heart className={`h-4 w-4 ${inWishlist ? "fill-red-500 text-red-500" : ""}`} />
     </Button>
   );
 }
