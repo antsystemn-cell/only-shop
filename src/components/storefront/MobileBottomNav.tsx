@@ -71,7 +71,7 @@ export function MobileBottomNav() {
                     <div className="relative h-6 w-6 flex items-center justify-center">
                       <Icon className={cn("h-6 w-6 transition-colors text-muted-foreground")} />
                       {item.badge && item.badge > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                        <span className="absolute -top-1 -right-2 min-w-[14px] h-[14px] rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center px-0.5">
                           {item.badge > 99 ? "99+" : item.badge}
                         </span>
                       )}
@@ -101,7 +101,7 @@ export function MobileBottomNav() {
                   item.href === "/wishlist" && wishlistCount > 0 && "text-red-500 fill-red-500"
                 )} />
                 {item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                  <span className="absolute -top-1 -right-2 min-w-[14px] h-[14px] rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center px-0.5">
                     {item.badge > 99 ? "99+" : item.badge}
                   </span>
                 )}
