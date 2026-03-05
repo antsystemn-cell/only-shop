@@ -1,5 +1,8 @@
 project_id = "pczjwunwitxnhhtxltph"
 
+[functions.translate-titles]
+verify_jwt = false
+
 [functions.omniway]
 verify_jwt = false
 

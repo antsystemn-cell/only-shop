@@ -4,6 +4,7 @@ import { Shield } from "lucide-react";
 
 interface OtProductCardComponentProps {
   product: OtProductCard;
+  translatedTitle?: string;
 }
 
 function formatMntPrice(price: number, currency: string) {
@@ -34,7 +35,8 @@ function getProviderLabel(providerType?: string) {
   return providerType;
 }
 
-export function OtProductCardComponent({ product }: OtProductCardComponentProps) {
+export function OtProductCardComponent({ product, translatedTitle }: OtProductCardComponentProps) {
+  const displayTitle = translatedTitle || product.title;
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
   const discountPercent = hasDiscount
     ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
@@ -86,7 +88,7 @@ export function OtProductCardComponent({ product }: OtProductCardComponentProps)
       {/* Info */}
       <div className="p-1.5 md:p-3">
         <h3 className="text-[11px] md:text-sm font-medium line-clamp-2 min-h-[2rem] md:min-h-[2.5rem] text-foreground group-hover:text-primary transition-colors">
-          {product.title}
+          {displayTitle}
         </h3>
 
         <div className="mt-1 md:mt-2 flex items-baseline gap-1 md:gap-2">

@@ -1128,6 +1128,27 @@ export type Database = {
         }
         Relationships: []
       }
+      title_translations: {
+        Row: {
+          created_at: string
+          id: string
+          original_text: string
+          translated_text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          original_text: string
+          translated_text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          original_text?: string
+          translated_text?: string
+        }
+        Relationships: []
+      }
       user_addresses: {
         Row: {
           apartment: string | null

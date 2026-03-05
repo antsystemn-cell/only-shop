@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Shield, ShoppingBag } from "lucide-react";
@@ -12,6 +12,7 @@ import HeaderSearch from "@/components/storefront/HeaderSearch";
 import { useProviderSafe } from "@/contexts/ProviderContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { OtProductCard } from "@/types/otApi";
+import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
 
 // Shuffle array helper
 function shuffle<T>(arr: T[]): T[] {
@@ -196,6 +197,9 @@ function ProviderShowcase({
     enabled: !!resolvedCatIds && resolvedCatIds.length > 0,
   });
 
+  const homeTitlesList = useMemo(() => (items || []).map(p => p.title), [(items || []).map(p => p.id).join(",")]);
+  const homeTranslations = useTranslatedTitles(homeTitlesList);
+
   const handleViewAll = () => {
     const filter = providerType === "Poizon" ? ("Poizon" as const) : ("Taobao" as const);
     setSelectedProvider(filter);
@@ -239,7 +243,7 @@ function ProviderShowcase({
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
             {(items || []).map((product) => (
-              <OtProductCardComponent key={product.id} product={product} />
+              <OtProductCardComponent key={product.id} product={product} translatedTitle={homeTranslations[product.title]} />
             ))}
           </div>
           {items && items.length > 0 && (

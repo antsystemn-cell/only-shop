@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
 import {
@@ -38,6 +38,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useProviderSafe } from "@/contexts/ProviderContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { OtProductCard } from "@/types/otApi";
+import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
 
 // ─── Category sidebar component ─────────────────────────────
 
@@ -196,6 +197,8 @@ function HomeSection({ title, icon, iconBg, queryKey, searchParams, initialPageS
   });
 
   const allItems = data?.pages.flatMap(p => p.items) || [];
+  const titlesList = useMemo(() => allItems.map(p => p.title), [allItems.map(p => p.id).join(",")]);
+  const translations = useTranslatedTitles(titlesList);
 
   if (!isLoading && allItems.length === 0) return null;
 
@@ -223,7 +226,7 @@ function HomeSection({ title, icon, iconBg, queryKey, searchParams, initialPageS
         <>
           <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-1.5 md:gap-4">
             {allItems.map((product) => (
-              <OtProductCardComponent key={product.id} product={product} />
+              <OtProductCardComponent key={product.id} product={product} translatedTitle={translations[product.title]} />
             ))}
           </div>
           {hasNextPage && (
@@ -317,6 +320,8 @@ function SearchResultsSection({
 
   const firstPage = data?.pages[0];
   const allItems = data?.pages.flatMap(p => p.items) || [];
+  const searchTitlesList = useMemo(() => allItems.map(p => p.title), [allItems.map(p => p.id).join(",")]);
+  const searchTranslations = useTranslatedTitles(searchTitlesList);
   const totalCount = firstPage?.totalCount || 0;
 
   const activeFilterCount = [minPrice, maxPrice, effectiveProvider, imageUrl].filter(Boolean).length + Object.keys(selectedProperties).length;
@@ -428,7 +433,7 @@ function SearchResultsSection({
           <>
             <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-1.5 md:gap-4">
               {allItems.map((product) => (
-                <OtProductCardComponent key={product.id} product={product} />
+                <OtProductCardComponent key={product.id} product={product} translatedTitle={searchTranslations[product.title]} />
               ))}
             </div>
             {hasNextPage && (

@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ProductReviews } from "@/components/storefront/ProductReviews";
 import { ImageZoomModal } from "@/components/storefront/ImageZoomModal";
 import { SimilarProducts } from "@/components/storefront/SimilarProducts";
+import { useTranslatedTitle } from "@/hooks/useTranslatedTitles";
 import { toast } from "sonner";
 
 function ensureArray<T>(value: T | T[] | undefined | null): T[] {
@@ -100,6 +101,8 @@ export default function OtProductDetail() {
     staleTime: 1000 * 60 * 10,
     retry: 1,
   });
+
+  const translatedTitle = useTranslatedTitle(product?.title);
 
   const { data: description } = useQuery({
     queryKey: ["ot-product-desc", itemId],
@@ -358,9 +361,12 @@ export default function OtProductDetail() {
           {/* Title */}
           <div>
             <h1 className="text-xl md:text-2xl font-bold leading-tight">
-              {product.title}
+              {translatedTitle || product.title}
             </h1>
-            {product.externalTitle && product.externalTitle !== product.title && (
+            {translatedTitle && translatedTitle !== product.title && (
+              <p className="text-xs text-muted-foreground mt-1">{product.title}</p>
+            )}
+            {!translatedTitle && product.externalTitle && product.externalTitle !== product.title && (
               <p className="text-sm text-muted-foreground mt-1">{product.externalTitle}</p>
             )}
           </div>
