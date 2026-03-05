@@ -60,10 +60,21 @@ export default function OtProductDetail() {
   const [selectedConfigs, setSelectedConfigs] = useState<Record<string, string>>({});
   const [zoomOpen, setZoomOpen] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
+  const [gallerySlide, setGallerySlide] = useState<"left" | "right" | null>(null);
 
   // Touch swipe state for image gallery
   const touchStartX = useRef(0);
   const imageCountRef = useRef(0);
+
+  const animateGallery = useCallback((newIndex: number | ((p: number) => number), dir: "left" | "right") => {
+    setGallerySlide(dir);
+    setTimeout(() => {
+      setSelectedImage(newIndex);
+      setGallerySlide(dir === "left" ? "right" : "left");
+      setTimeout(() => setGallerySlide(null), 200);
+    }, 120);
+  }, []);
+
   const handleGalleryTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   }, []);
@@ -72,10 +83,10 @@ export default function OtProductDetail() {
     if (count <= 1) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     if (Math.abs(dx) > 50) {
-      if (dx > 0) setSelectedImage((p) => (p - 1 + count) % count);
-      else setSelectedImage((p) => (p + 1) % count);
+      if (dx > 0) animateGallery((p) => (p - 1 + count) % count, "right");
+      else animateGallery((p) => (p + 1) % count, "left");
     }
-  }, []);
+  }, [animateGallery]);
 
   // Check if current user is admin
   const { data: isAdmin } = useQuery({
@@ -285,7 +296,11 @@ export default function OtProductDetail() {
             <img
               src={effectiveImage}
               alt={product.title}
-              className="w-full h-full object-contain max-w-full max-h-full"
+              className={`w-full h-full object-contain max-w-full max-h-full transition-all duration-200 ease-out ${
+                gallerySlide === "left" ? "translate-x-[-30px] opacity-0" :
+                gallerySlide === "right" ? "translate-x-[30px] opacity-0" :
+                "translate-x-0 opacity-100"
+              }`}
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/placeholder.svg";
               }}
@@ -298,7 +313,7 @@ export default function OtProductDetail() {
                   className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedImage((p) => (p - 1 + product.images.length) % product.images.length);
+                    animateGallery((p) => (p - 1 + product.images.length) % product.images.length, "right");
                   }}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -309,7 +324,7 @@ export default function OtProductDetail() {
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedImage((p) => (p + 1) % product.images.length);
+                    animateGallery((p) => (p + 1) % product.images.length, "left");
                   }}
                 >
                   <ChevronRight className="h-4 w-4" />
