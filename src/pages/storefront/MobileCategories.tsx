@@ -22,16 +22,25 @@ export default function MobileCategories() {
   const [activeTab, setActiveTab] = useState<ProviderTab>("Poizon");
   const [search, setSearch] = useState("");
 
+  // Poizon: show subcategories of otc-1465 directly; Taobao: show root categories
+  const POIZON_ROOT_ID = "otc-1465";
+
   const { data: categories, isLoading } = useQuery({
     queryKey: ["mobile-categories", activeTab],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("ot_categories")
         .select("id, internal_id, name_mn, name_en, icon_url, provider_type, parent_internal_id")
-        .eq("provider_type", activeTab)
-        .is("parent_internal_id", null)
         .eq("is_active", true)
         .order("display_order");
+
+      if (activeTab === "Poizon") {
+        query = query.eq("parent_internal_id", POIZON_ROOT_ID);
+      } else {
+        query = query.eq("provider_type", activeTab).is("parent_internal_id", null);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as OtCat[];
     },
