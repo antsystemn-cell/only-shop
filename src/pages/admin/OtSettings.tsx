@@ -284,7 +284,8 @@ function TranslationSettingsCard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "translation-mode"] });
       resetTranslationMode();
-      toast.success("Орчуулгын тохиргоо хадгалагдлаа");
+      resetOtApiLanguageCache();
+      toast.success("Орчуулгын тохиргоо хадгалагдлаа. Хуудсыг дахин ачаалахад өөрчлөлт хэрэгжинэ.");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -323,7 +324,8 @@ function TranslationSettingsCard() {
                 📝 Үндсэн орчуулга ашиглах
               </Label>
               <p className="text-xs text-muted-foreground">
-                OTAPI-ийн Монгол хэл дээрх орчуулгыг шууд ашиглана. AI орчуулга хийхгүй.
+                OTAPI-ийн Монгол (khk) хэл дээрх орчуулгыг шууд ашиглана. 
+                Барааны нэр, ангиллын нэр зэрэг бүх текстийг OTAPI серверийн өөрийн орчуулгаар харуулна. AI орчуулга хийхгүй.
               </p>
             </div>
           </div>
@@ -371,13 +373,13 @@ function OtApiLanguageSettingsCard() {
         .eq("setting_key", "otapi_default_language")
         .maybeSingle();
 
-      if (!data?.setting_value) return "mn";
+      if (!data?.setting_value) return "khk";
       const value = typeof data.setting_value === "string" ? JSON.parse(data.setting_value) : data.setting_value;
-      return typeof value === "string" && value.trim() ? value : "mn";
+      return typeof value === "string" && value.trim() ? value : "khk";
     },
   });
 
-  const [selectedLanguage, setSelectedLanguage] = useState("mn");
+  const [selectedLanguage, setSelectedLanguage] = useState("khk");
 
   useEffect(() => {
     if (languageSetting) setSelectedLanguage(languageSetting);

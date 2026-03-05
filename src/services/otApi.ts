@@ -15,7 +15,7 @@ import {
   type PriceConfig,
 } from "@/utils/priceCalculator";
 
-const DEFAULT_OTAPI_LANGUAGE = "mn";
+const DEFAULT_OTAPI_LANGUAGE = "khk";
 const LANGUAGE_SETTING_CACHE_TTL = 5 * 60 * 1000;
 let otApiLanguageCache: { value: string; expiresAt: number } | null = null;
 
