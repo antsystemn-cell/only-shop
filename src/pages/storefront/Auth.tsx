@@ -371,7 +371,7 @@ export default function Auth() {
           <CardFooter className="flex justify-center text-sm text-muted-foreground">
             <p>
               Бүртгүүлснээр та манай{" "}
-              <Link to="/terms_of_use" className="text-primary hover:underline">
+              <Link to="/page/terms_of_use" className="text-primary hover:underline">
                 үйлчилгээний нөхцөл
               </Link>
               -ийг зөвшөөрч байна.
