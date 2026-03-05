@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useParams, Link } from "react-router-dom";
-import { Loader2, Package, FolderTree, ArrowLeft, ChevronRight, Home } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { Loader2, Package, FolderTree, ChevronRight, Home, ChevronDown, Folder, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { searchItems, fetchItemsByIds } from "@/services/otApi";
 import { useProviderSafe } from "@/contexts/ProviderContext";
@@ -69,6 +71,7 @@ function CategoryBreadcrumbs({ category, allCategories }: { category: OtCat; all
 
 export default function OtCategoryBrowse() {
   const { internalId } = useParams<{ internalId: string }>();
+  const navigate = useNavigate();
   const { apiProvider } = useProviderSafe();
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 20;
@@ -183,30 +186,13 @@ export default function OtCategoryBrowse() {
         )}
       </div>
 
-      {/* Subcategories */}
+      {/* Subcategories dropdown */}
       {subcategories && subcategories.length > 0 && (
-        <div className="px-3 md:container mb-8">
-          <h2 className="text-lg font-semibold mb-4">Дэд ангилалууд</h2>
-          <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3">
-            {subcategories.map((sub) => (
-              <Link
-                key={sub.internal_id}
-                to={`/ot/browse/${sub.internal_id}`}
-                className="group flex flex-col items-center gap-2"
-              >
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                  {sub.icon_url ? (
-                    <img src={sub.icon_url} alt="" className="w-10 h-10 object-contain" />
-                  ) : (
-                    <FolderTree className="h-6 w-6 text-muted-foreground" />
-                  )}
-                </div>
-                <span className="text-xs md:text-sm text-center line-clamp-2 group-hover:text-primary transition-colors">
-                  {sub.name_mn || sub.name_en || sub.internal_id}
-                </span>
-              </Link>
-            ))}
-          </div>
+        <div className="px-3 md:container mb-4">
+          <SubcategoryDropdownBrowse
+            subcategories={subcategories}
+            onSelect={(id) => navigate(`/ot/browse/${id}`)}
+          />
         </div>
       )}
 
@@ -257,6 +243,84 @@ export default function OtCategoryBrowse() {
           <FolderTree className="h-12 w-12 mx-auto mb-3 opacity-50" />
           <p>Энэ ангилалд бараа хуваарилагдаагүй байна</p>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Subcategory dropdown for browse page ──────────────────
+function SubcategoryDropdownBrowse({
+  subcategories,
+  onSelect,
+}: {
+  subcategories: OtCat[];
+  onSelect: (internalId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = subcategories.filter((c) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return c.name_mn?.toLowerCase().includes(q) || c.name_en?.toLowerCase().includes(q);
+  });
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-muted text-sm font-medium"
+      >
+        <span>Дэд ангилал сонгох ({subcategories.length})</span>
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => { setOpen(false); setSearch(""); }} />
+          <div className="absolute left-0 right-0 top-full mt-1 bg-background border rounded-xl shadow-lg max-h-[50vh] overflow-y-auto z-20">
+            {subcategories.length > 6 && (
+              <div className="sticky top-0 bg-background p-2 border-b">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Хайх..."
+                    className="pl-9 h-9 rounded-lg bg-muted border-0 text-sm"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+            <div className="py-1">
+              {filtered.map((sub) => (
+                <button
+                  key={sub.internal_id}
+                  onClick={() => {
+                    onSelect(sub.internal_id);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/70 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    {sub.icon_url ? (
+                      <img src={sub.icon_url} alt="" className="w-5 h-5 object-contain" />
+                    ) : (
+                      <Folder className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <span className="text-sm truncate">
+                    {sub.name_mn || sub.name_en || sub.internal_id}
+                  </span>
+                </button>
+              ))}
+              {filtered.length === 0 && (
+                <div className="p-3 text-center text-sm text-muted-foreground">Олдсонгүй</div>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

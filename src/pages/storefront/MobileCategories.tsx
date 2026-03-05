@@ -1,10 +1,16 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ChevronRight, Folder, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ChevronDown, Folder, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
+import { searchItems, fetchItemsByIds } from "@/services/otApi";
+import { useProviderSafe } from "@/contexts/ProviderContext";
+import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
+import { Loader2, Package } from "lucide-react";
+import { useMemo } from "react";
 
 type ProviderTab = "Poizon" | "Taobao";
 
@@ -16,21 +22,27 @@ interface OtCat {
   icon_url: string | null;
   provider_type: string | null;
   parent_internal_id: string | null;
+  external_id?: string | null;
+  item_ids?: string[] | null;
 }
 
 export default function MobileCategories() {
+  const navigate = useNavigate();
+  const { apiProvider } = useProviderSafe();
   const [activeTab, setActiveTab] = useState<ProviderTab>("Poizon");
   const [search, setSearch] = useState("");
+  const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Poizon: show subcategories of otc-1465 directly; Taobao: show root categories
   const POIZON_ROOT_ID = "otc-1465";
 
+  // Fetch top-level categories for the dropdown
   const { data: categories, isLoading } = useQuery({
     queryKey: ["mobile-categories", activeTab],
     queryFn: async () => {
       let query = supabase
         .from("ot_categories")
-        .select("id, internal_id, name_mn, name_en, icon_url, provider_type, parent_internal_id")
+        .select("id, internal_id, name_mn, name_en, icon_url, provider_type, parent_internal_id, external_id, item_ids")
         .eq("is_active", true)
         .order("display_order");
 
@@ -47,13 +59,56 @@ export default function MobileCategories() {
     staleTime: 1000 * 60 * 30,
   });
 
+  const selectedCategory = categories?.find((c) => c.internal_id === selectedCatId);
+
+  // Fetch subcategories of selected category
+  const { data: subcategories } = useQuery({
+    queryKey: ["mobile-subcategories", selectedCatId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ot_categories")
+        .select("id, internal_id, name_mn, name_en, icon_url, provider_type, parent_internal_id, external_id, item_ids")
+        .eq("parent_internal_id", selectedCatId!)
+        .eq("is_active", true)
+        .order("display_order");
+      if (error) throw error;
+      return data as OtCat[];
+    },
+    enabled: !!selectedCatId,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  // Fetch products for selected category
+  const { data: products, isLoading: loadingProducts } = useQuery({
+    queryKey: ["mobile-cat-products", selectedCatId, selectedCategory?.external_id, apiProvider],
+    queryFn: async () => {
+      if (!selectedCategory) return [];
+      if (selectedCategory.external_id && selectedCategory.provider_type) {
+        const result = await searchItems({
+          categoryId: selectedCategory.internal_id,
+          provider: apiProvider || selectedCategory.provider_type,
+          pageSize: 40,
+          page: 0,
+        });
+        return result.items;
+      }
+      if (selectedCategory.item_ids?.length) {
+        const pageItems = selectedCategory.item_ids.slice(0, 20);
+        return fetchItemsByIds(pageItems);
+      }
+      return [];
+    },
+    enabled: !!selectedCategory && (!!selectedCategory.external_id || (selectedCategory.item_ids?.length || 0) > 0),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const productTitles = useMemo(() => (products || []).map(p => p.title), [products]);
+  const translations = useTranslatedTitles(productTitles);
+
   const filtered = categories?.filter((c) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return (
-      c.name_mn?.toLowerCase().includes(q) ||
-      c.name_en?.toLowerCase().includes(q)
-    );
+    return c.name_mn?.toLowerCase().includes(q) || c.name_en?.toLowerCase().includes(q);
   });
 
   const tabs: { key: ProviderTab; label: string }[] = [
@@ -61,10 +116,14 @@ export default function MobileCategories() {
     { key: "Taobao", label: "Taobao" },
   ];
 
+  const hasSubcats = subcategories && subcategories.length > 0;
+  const hasProducts = products && products.length > 0;
+  const showNoProducts = selectedCategory && !hasSubcats && !hasProducts && !loadingProducts && (!!selectedCategory.external_id || (selectedCategory.item_ids?.length || 0) > 0);
+
   return (
     <div className="pb-6 animate-fade-in">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background border-b">
+      <div className="sticky top-0 z-20 bg-background border-b">
         <div className="px-4 pt-4 pb-3">
           <h1 className="text-xl font-bold mb-3">Ангилал</h1>
           {/* Provider tabs */}
@@ -75,6 +134,8 @@ export default function MobileCategories() {
                 onClick={() => {
                   setActiveTab(tab.key);
                   setSearch("");
+                  setSelectedCatId(null);
+                  setDropdownOpen(false);
                 }}
                 className={cn(
                   "flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all",
@@ -87,64 +148,208 @@ export default function MobileCategories() {
               </button>
             ))}
           </div>
-          {/* Search */}
+
+          {/* Category dropdown selector */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Ангилал хайх..."
-              className="pl-9 h-10 rounded-xl bg-muted border-0"
-            />
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-muted text-sm font-medium text-foreground"
+            >
+              <div className="flex items-center gap-2 truncate">
+                {selectedCategory?.icon_url && (
+                  <img src={selectedCategory.icon_url} alt="" className="w-5 h-5 object-contain shrink-0" />
+                )}
+                <span className="truncate">
+                  {selectedCategory
+                    ? (selectedCategory.name_mn || selectedCategory.name_en || selectedCategory.internal_id)
+                    : "Ангилал сонгох..."}
+                </span>
+              </div>
+              <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", dropdownOpen && "rotate-180")} />
+            </button>
+
+            {/* Dropdown list */}
+            {dropdownOpen && (
+              <div className="absolute left-0 right-0 top-full mt-1 bg-background border rounded-xl shadow-lg max-h-[50vh] overflow-y-auto z-30">
+                {/* Search inside dropdown */}
+                <div className="sticky top-0 bg-background p-2 border-b">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Ангилал хайх..."
+                      className="pl-9 h-9 rounded-lg bg-muted border-0 text-sm"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                {isLoading ? (
+                  <div className="p-4 flex justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filtered && filtered.length > 0 ? (
+                  <div className="py-1">
+                    {filtered.map((cat) => (
+                      <button
+                        key={cat.internal_id}
+                        onClick={() => {
+                          setSelectedCatId(cat.internal_id);
+                          setDropdownOpen(false);
+                          setSearch("");
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/70 transition-colors",
+                          selectedCatId === cat.internal_id && "bg-primary/10"
+                        )}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          {cat.icon_url ? (
+                            <img src={cat.icon_url} alt="" className="w-5 h-5 object-contain" />
+                          ) : (
+                            <Folder className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <span className="text-sm font-medium truncate">
+                          {cat.name_mn || cat.name_en || cat.internal_id}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Олдсонгүй
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Category list */}
+      {/* Close dropdown overlay */}
+      {dropdownOpen && (
+        <div className="fixed inset-0 z-10" onClick={() => { setDropdownOpen(false); setSearch(""); }} />
+      )}
+
+      {/* Content area */}
       <div className="px-3 pt-3">
-        {isLoading ? (
-          <div className="flex flex-col gap-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-14 rounded-xl bg-muted animate-pulse" />
-            ))}
-          </div>
-        ) : filtered && filtered.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            {filtered.map((cat) => (
-              <Link
-                key={cat.internal_id}
-                to={`/ot/browse/${cat.internal_id}`}
-                className="group flex items-center gap-3 px-3 py-3 rounded-xl bg-muted/50 hover:bg-muted active:scale-[0.98] transition-all"
-              >
-                <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center shrink-0">
-                  {cat.icon_url ? (
-                    <img
-                      src={cat.icon_url}
-                      alt={cat.name_mn || cat.name_en || ""}
-                      className="w-7 h-7 object-contain"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <Folder className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-                <span className="text-sm font-medium text-foreground truncate">
-                  {cat.name_mn || cat.name_en || cat.internal_id}
-                </span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
-              </Link>
-            ))}
+        {!selectedCatId ? (
+          <div className="text-center py-16">
+            <Folder className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+            <p className="text-sm text-muted-foreground">Дээрээс ангилалаа сонгоно уу</p>
           </div>
         ) : (
-          <div className="text-center py-16">
-            <Folder className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground">
-              {search ? "Хайлтад тохирох ангилал олдсонгүй" : "Ангилал олдсонгүй"}
-            </p>
-          </div>
+          <>
+            {/* Subcategory dropdown if exists */}
+            {hasSubcats && (
+              <SubcategoryDropdown
+                subcategories={subcategories!}
+                onSelect={(id) => navigate(`/ot/browse/${id}`)}
+              />
+            )}
+
+            {/* Products */}
+            {loadingProducts ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : hasProducts ? (
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                {products!.map((product) => (
+                  <OtProductCardComponent key={product.id} product={product} translatedTitle={translations[product.title]} />
+                ))}
+              </div>
+            ) : showNoProducts ? (
+              <div className="text-center py-12">
+                <Package className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground">Бараа олдсонгүй</p>
+              </div>
+            ) : !hasSubcats ? (
+              <div className="text-center py-12">
+                <Package className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground">Дэд ангилалуудыг сонгоно уу</p>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
+    </div>
+  );
+}
 
+// ─── Subcategory dropdown (reusable for nested levels) ──────
+function SubcategoryDropdown({
+  subcategories,
+  onSelect,
+}: {
+  subcategories: OtCat[];
+  onSelect: (internalId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = subcategories.filter((c) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return c.name_mn?.toLowerCase().includes(q) || c.name_en?.toLowerCase().includes(q);
+  });
+
+  return (
+    <div className="relative mb-3">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-muted/70 text-sm font-medium"
+      >
+        <span>Дэд ангилал сонгох ({subcategories.length})</span>
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => { setOpen(false); setSearch(""); }} />
+          <div className="absolute left-0 right-0 top-full mt-1 bg-background border rounded-xl shadow-lg max-h-[40vh] overflow-y-auto z-20">
+            <div className="sticky top-0 bg-background p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Хайх..."
+                  className="pl-9 h-9 rounded-lg bg-muted border-0 text-sm"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="py-1">
+              {filtered.map((sub) => (
+                <button
+                  key={sub.internal_id}
+                  onClick={() => {
+                    onSelect(sub.internal_id);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/70 transition-colors"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    {sub.icon_url ? (
+                      <img src={sub.icon_url} alt="" className="w-4 h-4 object-contain" />
+                    ) : (
+                      <Folder className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <span className="text-sm truncate">
+                    {sub.name_mn || sub.name_en || sub.internal_id}
+                  </span>
+                </button>
+              ))}
+              {filtered.length === 0 && (
+                <div className="p-3 text-center text-sm text-muted-foreground">Олдсонгүй</div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
