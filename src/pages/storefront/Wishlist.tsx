@@ -1,12 +1,38 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Heart, ShoppingBag, Loader2 } from "lucide-react";
+import { Heart, ShoppingBag, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { fetchItemsByIds } from "@/services/otApi";
+
+function RemoveButton({ productId }: { productId: string }) {
+  const { toggleWishlist, isLoading } = useWishlist();
+  const queryClient = useQueryClient();
+
+  const handleRemove = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await toggleWishlist(productId);
+    queryClient.invalidateQueries({ queryKey: ["wishlist-products"] });
+  };
+
+  return (
+    <Button
+      variant="destructive"
+      size="sm"
+      className="w-full gap-1.5 text-xs mt-1"
+      onClick={handleRemove}
+      disabled={isLoading}
+    >
+      <X className="h-3.5 w-3.5" />
+      Хасах
+    </Button>
+  );
+}
 
 export default function Wishlist() {
   const { user } = useAuth();
@@ -85,10 +111,16 @@ export default function Wishlist() {
       ) : totalCount > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
           {(data?.localProducts || []).map((product) => (
-            <ProductCard key={`local-${product.id}`} product={product} />
+            <div key={`local-${product.id}`}>
+              <ProductCard product={product} />
+              <RemoveButton productId={product.id} />
+            </div>
           ))}
           {(data?.otProducts || []).map((product) => (
-            <OtProductCardComponent key={`ot-${product.id}`} product={product} />
+            <div key={`ot-${product.id}`}>
+              <OtProductCardComponent product={product} />
+              <RemoveButton productId={product.id} />
+            </div>
           ))}
         </div>
       ) : (
