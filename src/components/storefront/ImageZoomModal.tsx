@@ -19,12 +19,45 @@ export function ImageZoomModal({ images, initialIndex, open, onOpenChange }: Ima
   const posStart = useRef({ x: 0, y: 0 });
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     setCurrentIndex(initialIndex);
     setScale(1);
     setPosition({ x: 0, y: 0 });
   }, [initialIndex, open]);
+
+  // Push history state when modal opens so back button closes modal
+  useEffect(() => {
+    if (!open) return;
+    const handlePop = () => {
+      onOpenChange(false);
+    };
+    window.history.pushState({ imageZoom: true }, "");
+    window.addEventListener("popstate", handlePop);
+    return () => {
+      window.removeEventListener("popstate", handlePop);
+    };
+  }, [open, onOpenChange]);
+
+  const closeModal = useCallback(() => {
+    // Pop the history entry we pushed
+    if (window.history.state?.imageZoom) {
+      window.history.back();
+    } else {
+      onOpenChange(false);
+    }
+  }, [onOpenChange]);
+
+  // Click on backdrop (not on image/buttons) closes modal
+  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
+    if (scale > 1) return; // don't close while zoomed
+    const target = e.target as HTMLElement;
+    // Only close if clicking the backdrop div itself, not children like image
+    if (target === e.currentTarget) {
+      closeModal();
+    }
+  }, [scale, closeModal]);
 
   const resetZoom = useCallback(() => {
     setScale(1);
@@ -58,11 +91,11 @@ export function ImageZoomModal({ images, initialIndex, open, onOpenChange }: Ima
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") goPrev();
       else if (e.key === "ArrowRight") goNext();
-      else if (e.key === "Escape") onOpenChange(false);
+      else if (e.key === "Escape") closeModal();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, goPrev, goNext, onOpenChange]);
+  }, [open, goPrev, goNext, closeModal]);
 
   // Mouse drag for panning when zoomed
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -119,10 +152,10 @@ export function ImageZoomModal({ images, initialIndex, open, onOpenChange }: Ima
   if (!images.length) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) closeModal(); }}>
       <DialogContent className="max-w-[100vw] max-h-[100vh] w-screen h-screen p-0 border-0 bg-black/95 [&>button]:hidden">
         {/* Top bar */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-3">
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-3 safe-area-top">
           <span className="text-white/70 text-sm bg-black/40 px-3 py-1 rounded-full">
             {currentIndex + 1} / {images.length}
           </span>
@@ -139,16 +172,17 @@ export function ImageZoomModal({ images, initialIndex, open, onOpenChange }: Ima
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/20 h-9 w-9"
-              onClick={() => onOpenChange(false)}
+              onClick={closeModal}
             >
               <X className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
-        {/* Image */}
+        {/* Image + backdrop click */}
         <div
           className="flex items-center justify-center w-full h-full select-none"
+          onClick={handleBackdropClick}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -157,12 +191,13 @@ export function ImageZoomModal({ images, initialIndex, open, onOpenChange }: Ima
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onDoubleClick={toggleZoom}
-          style={{ cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "zoom-in" }}
+          style={{ cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "pointer" }}
         >
           <img
+            ref={imageRef}
             src={images[currentIndex]}
             alt=""
-            className="max-w-full max-h-full object-contain transition-transform duration-200"
+            className="max-w-full max-h-full object-contain transition-transform duration-200 pointer-events-none"
             style={{
               transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
             }}
