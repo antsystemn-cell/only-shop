@@ -41,7 +41,7 @@ export function Header() {
       label: "Хятадаас захиалах",
     },
     {
-      href: "/ot/allcats",
+      href: "/categories",
       label: "Бүх ангилал",
     },
     {

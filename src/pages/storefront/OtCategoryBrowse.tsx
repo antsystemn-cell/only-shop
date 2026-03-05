@@ -41,7 +41,7 @@ function CategoryBreadcrumbs({ category, allCategories }: { category: OtCat; all
         <Home className="h-3.5 w-3.5" />
       </Link>
       <ChevronRight className="h-3 w-3 text-muted-foreground" />
-      <Link to="/ot/allcats" className="text-muted-foreground hover:text-foreground transition-colors">
+      <Link to="/categories" className="text-muted-foreground hover:text-foreground transition-colors">
         Ангилалууд
       </Link>
       {chain.map((crumb, i) => {
