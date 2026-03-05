@@ -106,10 +106,6 @@ const App = () => (
                 <Route path="/ot/allcats" element={<OtAllCategories />} />
                 <Route path="/ot/provider/:slug" element={<ProviderPage />} />
               <Route path="/ot/product/:itemId" element={<OtProductDetail />} />
-              <Route path="/terms_of_use" element={<DynamicContentPage slug="terms_of_use" />} />
-              <Route path="/faq" element={<DynamicContentPage slug="faq" />} />
-              <Route path="/size-guide" element={<DynamicContentPage slug="size-guide" />} />
-              <Route path="/order-guide" element={<DynamicContentPage slug="order-guide" />} />
               <Route path="/page/:slug" element={<DynamicContentPage />} />
               </Route>
               
