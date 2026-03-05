@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProviderSafe, type ProviderFilter } from "@/contexts/ProviderContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { User, LogOut } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -134,52 +134,77 @@ export function ProviderStrip() {
           })}
         </div>
 
-        {/* Mobile profile dropdown - same as desktop behavior */}
+        {/* Mobile menu dropdown */}
         {isMobile && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex items-center justify-center h-[30px] w-[30px] rounded-full shrink-0 bg-secondary-foreground/10 text-secondary-foreground hover:bg-secondary-foreground/20 transition-colors mr-1.5"
-                aria-label="Профайл"
-              >
-                <User className="w-3.5 h-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              {user ? (
-                <>
-                  <div className="px-2 py-1.5 text-sm font-medium truncate">{user.email}</div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile">Миний профайл</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/orders">Миний захиалгууд</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/wallet">Данс / Wallet</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/favourite-vendors">Дуртай борлуулагчид</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/support">Тусламж</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Гарах
-                  </DropdownMenuItem>
-                </>
-              ) : (
-                <DropdownMenuItem asChild>
-                  <Link to="/auth">Нэвтрэх / Бүртгүүлэх</Link>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <MobileMenuDropdown user={user} onSignOut={handleSignOut} />
         )}
       </div>
     </div>
+  );
+}
+
+function MobileMenuDropdown({ user, onSignOut }: { user: any; onSignOut: () => void }) {
+  // Fetch profile for display name/phone
+  const { data: profile } = useQuery({
+    queryKey: ["profile-display", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("user_id", user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Show name > phone > email
+  const displayName = profile?.full_name || profile?.phone || user?.email || user?.user_metadata?.full_name || "Хэрэглэгч";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="flex items-center justify-center h-[30px] w-[30px] rounded-full shrink-0 bg-secondary-foreground/10 text-secondary-foreground hover:bg-secondary-foreground/20 transition-colors mr-1.5"
+          aria-label="Цэс"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        {user ? (
+          <>
+            <div className="px-2 py-1.5 text-sm font-medium truncate">{displayName}</div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/profile">Миний профайл</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/orders">Миний захиалгууд</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/wallet">Данс / Wallet</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/favourite-vendors">Дуртай борлуулагчид</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/support">Тусламж</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onSignOut} className="text-destructive">
+              <LogOut className="h-4 w-4 mr-2" />
+              Гарах
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <DropdownMenuItem asChild>
+            <Link to="/auth">Нэвтрэх / Бүртгүүлэх</Link>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
