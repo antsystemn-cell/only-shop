@@ -78,7 +78,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-secondary-foreground/10 mt-8 pt-8 text-center text-sm text-secondary-foreground/50">
-          <p>&copy; {new Date().getFullYear()} Only. Бүх эрх хуулиар хамгаалагдсан.</p>
+          <p>&copy; {new Date().getFullYear()} Only. Бүх эрх хуулиар хамгаалагдсан. Powered by &copy; <a href="https://otcommerce.com/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors underline">OT Commerce</a></p>
         </div>
       </div>
     </footer>;
