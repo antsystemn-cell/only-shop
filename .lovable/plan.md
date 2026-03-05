@@ -1,120 +1,50 @@
 
-# OTAPI Full Integration — Comprehensive Audit & Plan
 
-## Одоогийн байдал (2026-02-11)
+## Барааны нэрийг AI ашиглан Монгол хэл рүү орчуулах
 
-Бүх 7 фаз дууссан. Одоо OTAPI docs-той харьцуулсан бүрэн audit хийгдэж, дутуу хэсгүүдийг нөхөх шинэ төлөвлөгөө гарсан.
+### Асуудал
+OTAPI-аас ирж буй барааны нэрүүд Хятад хэлээр (эсвэл шууд орчуулагдаагүй) ирж байгаа бөгөөд одоогийн `language: "en"` тохиргоо нь зарим барааны нэрийг Англи руу хөрвүүлдэг боловч ихэнхдээ Хятад хэлээр үлддэг. Монгол руу шууд орчуулах боломжгүй.
 
----
+### Шийдэл
+Gemini Flash AI модель ашиглан барааны Хятад/Англи нэрийг Монгол хэл рүү орчуулж, DB-д кэшлэнэ.
 
-## AUDIT: Одоогийн хэрэгжүүлэлт vs OTAPI Docs
+### Бүтэц
 
-### ✅ Бүрэн хэрэгжсэн модулиуд
+**1. DB: Орчуулгын кэш хүснэгт үүсгэх**
+- `title_translations` хүснэгт: `original_text` (unique), `translated_text`, `created_at`
+- RLS: публик уншилт, зөвхөн service role бичилт
+- Давтан орчуулахаас сэргийлж кэш болгон ажиллана
 
-| Модуль | Edge Actions | Frontend Service | UI |
-|--------|-------------|------------------|-----|
-| Sessions (Anonymous + Operator) | ✅ | ✅ | ✅ |
-| Categories (Root, Sub, Search Props) | ✅ | ✅ | ✅ |
-| Search (BatchSearchItemsFrame, filters, image search) | ✅ | ✅ | ✅ |
-| Product Detail (BatchGetItemFullInfo, Description) | ✅ | ✅ | ✅ |
-| Basket (Add, Edit, Remove, Clear, Checking) | ✅ | ✅ | ✅ |
-| Orders (Search, Details, Cancel, Create, Recreate) | ✅ | ✅ | ✅ |
-| User Profiles (CRUD, SearchCities) | ✅ | ✅ | ✅ |
-| Delivery (Countries, Modes, External Rates) | ✅ | ✅ | ✅ |
-| Currency (List, Rate History) | ✅ | ✅ | ✅ |
-| Reviews (Add, Approve, Settings) | ✅ | ✅ | ✅ |
-| Content (MenuTree, Banners) | ✅ | ✅ | ✅ |
-| Roles & Permissions (RoleList, RightTree) | ✅ | ✅ | ✅ |
-| System Tools (CallStats, Reset Caches, BlackList, Errors) | ✅ | ✅ | ✅ |
-| Pricing (PriceFormationGroup, Settings, Discounts) | ✅ | ✅ | ✅ |
-| Rating Lists (BatchSearch, Add, AddElements) | ✅ | ✅ | ✅ |
-| Warehouse (Search Items, Categories, Create) | ✅ | ✅ | ✅ |
-| Design (GetApplicationDesignSettings) | ✅ | ✅ | ✅ |
-| OT Categories (XML import, DB, Admin, Storefront) | ✅ | ✅ | ✅ |
+**2. Edge Function: `translate-titles`**
+- Оролт: `{ titles: string[] }` (20 хүртэл нэрийг нэг дор)
+- Эхлээд DB кэшээс шалгана, байвал шууд буцаана
+- Байхгүй бол Gemini 2.5 Flash Lite ашиглан batch орчуулга хийнэ (хамгийн хурдан, хямд модель — энгийн орчуулгад хангалттай)
+- Орчуулсан текстүүдийг DB-д хадгална
+- Буцаах: `{ translations: Record<string, string> }` (original → translated)
 
-### ❌ Дутуу / Хэрэгжүүлэх шаардлагатай
+**3. Frontend: `useTranslatedTitles` hook**
+- Бараануудын жагсаалт ачаалагдсаны дараа нэрүүдийг batch-ээр орчуулгын edge function руу илгээнэ
+- Орчуулга ирэх хооронд анхны нэрийг харуулна (progressive — эхлээд original, дараа нь translated)
+- `OtProductCard` болон `ProductDetail` хуудсуудад ашиглана
 
-#### Шат 1: Edge Function + Service Layer (Суурь)
+**4. Компонентүүдэд нэмэх**
+- `OtProductCardComponent`: орчуулсан нэрийг `title` оронд харуулна
+- `OtProductDetail`: дэлгэрэнгүй хуудасны гарчигт орчуулсан нэр + анхны нэрийг жижгээр доор нь харуулна
+- `OtCategoryBrowse`, `SimilarProducts`: бараа жагсаалтад орчуулга ашиглана
+- Хайлтын үр дүнд (`OtShop`) мөн адил
 
-| Method | Төрөл | Тайлбар |
-|--------|-------|---------|
-| ChangeEmail | Auth | Имэйл өөрчлөх |
-| ChangePhone | Auth | Утас өөрчлөх |
-| ConfirmEmail | Auth | Имэйл баталгаажуулах |
-| ConfirmPhone | Auth | Утас баталгаажуулах |
-| ExternalAuthentication | Auth | OAuth нэвтрэлт |
-| SearchUsers / FindBaseUserInfoListFrame | Users | Хэрэглэгч хайх (admin) — edge байгаа, frontend дутуу |
-| GetUserPreferences | Users | Хэрэглэгчийн тохиргоо |
-| BatchSimplifiedAddItemsToBasket | Basket | Олон бараа нэг дор нэмэх |
-| MoveItemsBetweenBasketAndNote | Basket | Бараа тэмдэглэл рүү шилжүүлэх |
-| UpdateOrderLineInfo | Orders | Захиалгын мөр мэдээлэл засах |
-| GetOrderStatusList | Orders | Статусын жагсаалт |
-| ConfirmOrderPackaging | Orders | Боодлын баталгаажуулалт (edge байгаа, frontend дутуу) |
-| CreateBalanceChargingBill | Payment | Данс цэнэглэх нэхэмжлэх |
-| SalesPaymentReserve | Payment | Төлбөр нөөцлөх |
-| AddUserToDiscountGroup | Discounts | Хэрэглэгч хөнгөлөлтөд нэмэх |
-| RemoveUserFromDiscountGroup | Discounts | Хэрэглэгч хөнгөлөлтөөс хасах |
-| GetUserDiscountGroups | Discounts | Хэрэглэгчийн хөнгөлөлтүүд |
-| CreateContentMenuItem | Content | Контент үүсгэх |
-| UpdateContentMenuItem | Content | Контент засах |
-| DeleteContentMenuItem | Content | Контент устгах |
-| SearchContentMenuItems | Content | Контент хайх |
-| UpdateApplicationDesignSettings | Design | Дизайн тохиргоо хадгалах |
-| RewardItemReview | Reviews | Сэтгэгдэл шагнах |
-| SearchInstanceUserLogEntries | Reporting | Хэрэглэгчийн лог |
-| CreateInstanceRole | Roles | Эрх үүсгэх |
-| AttachRightsToRole | Roles | Эрх холбох |
-| DeleteInstanceRole | Roles | Эрх устгах |
-| GetProviderInfoList | Providers | Нийлүүлэгчийн жагсаалт |
-| GetProviderCommonSettings | Providers | Нийлүүлэгчийн ерөнхий тохиргоо |
-| SearchDeliveryPickupPoints | Delivery | Авах цэгүүд (edge байгаа, frontend дутуу) |
+### Ажиллагааны урсгал
 
-#### Шат 2: Admin UI Сайжруулалт
+```text
+Бараа ачаалагдсан → titles цуглуулах → translate-titles edge fn дуудах
+  ├─ DB кэшэд байвал → шууд буцаана (хурдан)  
+  └─ Байхгүй бол → Gemini Flash Lite → орчуулаад DB-д хадгалаад буцаана
+Frontend → орчуулсан нэрийг харуулна
+```
 
-- Users хуудас: OT API SearchUsers + Discount group management
-- Content CRUD хуудас: CreateContentMenuItem, UpdateContentMenuItem
-- Roles хуудас: CreateInstanceRole, AttachRightsToRole
-- Orders: ConfirmOrderPackaging UI, UpdateOrderLineInfo
-- Providers: GetProviderInfoList, GetProviderCommonSettings UI
+### Давуу тал
+- Нэг удаа орчуулсан нэр дахин орчуулагдахгүй (DB кэш)
+- Хэрэглэгч эхлээд анхны нэрийг харж, дараа нь Монгол нэр гарч ирнэ (UX сайжирна)
+- Gemini Flash Lite — хамгийн хурдан, хямд модель, орчуулгад тохиромжтой
+- API key шаардлагагүй (Lovable AI built-in)
 
-#### Шат 3: Frontend UX Сайжруулалт
-
-- Delivery: Pickup points UI
-- Basket: BatchSimplifiedAdd, MoveItemsBetween
-- Payment: Balance charging, Payment reserve
-- User: ChangeEmail/Phone/Confirm flows
-
-#### Шат 4: Reporting & Analytics
-
-- API call logging (edge function middleware)
-- SearchInstanceUserLogEntries UI
-- Enhanced error handling with retry mechanism
-
----
-
-## Global Requirements
-
-### A. OTAPI Service Wrapper ✅
-Edge function `ot-api/index.ts` already implements:
-- Method routing with signature
-- instanceKey, timestamp, sessionId injection
-- Normalized responses via proxy pattern
-- Console logging for debugging
-
-### B. Parameter Validation ✅
-- XML parameters properly built with escapeXml
-- includeMetaInfo explicitly set where needed
-- Clean params filtering in frontend callProxy
-
-### C. Error Handling ⚠️ (Partially)
-- Proxy always returns 200 OK with {success, data, error}
-- normalizeOtResponse utility exists
-- TODO: Add UI retry mechanism, better fallback states
-
-### D. Pagination & Search ✅
-- framePosition/frameSize used in all list APIs
-- URL-synced filters in search
-
-### E. UI Normalization ✅
-- Raw JSON never shown
-- All data mapped to user-friendly structures
