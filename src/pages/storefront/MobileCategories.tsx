@@ -138,15 +138,6 @@ export default function MobileCategories() {
         )}
       </div>
 
-      {/* "All categories" link */}
-      <div className="px-4 mt-6">
-        <Link
-          to="/ot/allcats"
-          className="block w-full text-center py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
-        >
-          Бүх ангилал дэлгэрэнгүй →
-        </Link>
-      </div>
     </div>
   );
 }

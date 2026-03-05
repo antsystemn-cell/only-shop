@@ -69,7 +69,7 @@ import OtRoles from "./pages/admin/OtRoles";
 import UserActivityLog from "./pages/admin/UserActivityLog";
 import InstanceLogs from "./pages/admin/InstanceLogs";
 import OtCategoryBrowse from "./pages/storefront/OtCategoryBrowse";
-import OtAllCategories from "./pages/storefront/OtAllCategories";
+
 import ProviderPage from "./pages/storefront/ProviderPage";
 import MobileCategories from "./pages/storefront/MobileCategories";
 import ProviderSectionsAdmin from "./pages/admin/ProviderSections";
@@ -104,7 +104,7 @@ const App = () => (
                 <Route path="/ot" element={<OtShop />} />
                 <Route path="/ot/category/:categoryId" element={<OtCategory />} />
                 <Route path="/ot/browse/:internalId" element={<OtCategoryBrowse />} />
-                <Route path="/ot/allcats" element={<OtAllCategories />} />
+                <Route path="/ot/allcats" element={<Navigate to="/categories" replace />} />
                 <Route path="/ot/provider/:slug" element={<ProviderPage />} />
               <Route path="/ot/product/:itemId" element={<OtProductDetail />} />
               <Route path="/page/:slug" element={<DynamicContentPage />} />
