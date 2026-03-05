@@ -1,9 +1,11 @@
 import { memo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import type { OtProductCard } from "@/types/otApi";
-import { Shield } from "lucide-react";
+import { Heart, Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { getGridImageUrl } from "@/utils/imageOptimizer";
 import { prefetchProductDetail } from "@/services/otApi";
+import { useWishlist } from "@/contexts/WishlistContext";
 
 interface OtProductCardComponentProps {
   product: OtProductCard;
@@ -39,6 +41,7 @@ function getProviderLabel(providerType?: string) {
 }
 
 export const OtProductCardComponent = memo(function OtProductCardComponent({ product, translatedTitle }: OtProductCardComponentProps) {
+  const { isInWishlist, toggleWishlist, isLoading } = useWishlist();
   const displayTitle = translatedTitle || product.title;
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
   const discountPercent = hasDiscount
@@ -48,11 +51,18 @@ export const OtProductCardComponent = memo(function OtProductCardComponent({ pro
   const poizon = isPoizon(product.providerType);
   const taobao = isTaobaoOrTmall(product.providerType);
   const warehouse = isWarehouse(product.providerType);
+  const inWishlist = isInWishlist(product.id);
   
   // Prefetch product detail on hover/touch for instant navigation
   const handlePrefetch = useCallback(() => {
     prefetchProductDetail(product.id);
   }, [product.id]);
+
+  const handleToggleWishlist = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void toggleWishlist(product.id);
+  }, [product.id, toggleWishlist]);
 
   // Use optimized thumbnail URL for grid
   const gridImageUrl = getGridImageUrl(product.imageUrl);
@@ -66,6 +76,17 @@ export const OtProductCardComponent = memo(function OtProductCardComponent({ pro
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-white">
+        <Button
+          variant="secondary"
+          size="icon"
+          className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full"
+          onClick={handleToggleWishlist}
+          disabled={isLoading}
+          aria-label={inWishlist ? "Хүслийн жагсаалтаас хасах" : "Хүслийн жагсаалтад нэмэх"}
+        >
+          <Heart className={`h-4 w-4 ${inWishlist ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
+        </Button>
+
         <img
           src={gridImageUrl}
           alt={product.title}

@@ -705,6 +705,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ot_wishlists: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          provider_type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          provider_type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          provider_type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_intents: {
         Row: {
           amount: number
