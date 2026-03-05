@@ -269,10 +269,10 @@ function SubcategoryDropdownBrowse({
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-muted text-sm font-medium"
+        className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-muted text-xs font-medium"
       >
         <span>Дэд ангилал сонгох ({subcategories.length})</span>
-        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open && (
         <>
