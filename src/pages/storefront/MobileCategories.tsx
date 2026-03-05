@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronDown, Folder, Search } from "lucide-react";
+import { ChevronDown, Folder, Search, Loader2, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { searchItems, fetchItemsByIds } from "@/services/otApi";
 import { useProviderSafe } from "@/contexts/ProviderContext";
 import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
-import { Loader2, Package } from "lucide-react";
+import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
 
 type ProviderTab = "Poizon" | "Taobao";
 
@@ -29,6 +29,7 @@ const CAT_FIELDS = "id, internal_id, name_mn, name_en, icon_url, provider_type, 
 
 export default function MobileCategories() {
   const { apiProvider } = useProviderSafe();
+  const { data: providerLogos } = useProviderLogos();
   const [activeTab, setActiveTab] = useState<ProviderTab>("Poizon");
   const [search, setSearch] = useState("");
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
@@ -150,26 +151,32 @@ export default function MobileCategories() {
           <h1 className="text-xl font-bold mb-3">Ангилал</h1>
           {/* Provider tabs */}
           <div className="flex gap-2 mb-3">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => {
-                  setActiveTab(tab.key);
-                  setSearch("");
-                  setSelectedCatId(null);
-                  setSelectedSubCatId(null);
-                  setDropdownOpen(false);
-                }}
-                className={cn(
-                  "flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                  activeTab === tab.key
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "bg-muted text-muted-foreground"
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {tabs.map((tab) => {
+              const logoUrl = getProviderLogo(providerLogos, tab.key);
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => {
+                    setActiveTab(tab.key);
+                    setSearch("");
+                    setSelectedCatId(null);
+                    setSelectedSubCatId(null);
+                    setDropdownOpen(false);
+                  }}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all",
+                    activeTab === tab.key
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {logoUrl && (
+                    <img src={logoUrl} alt="" className="w-4 h-4 rounded-full object-contain" />
+                  )}
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Category dropdown selector */}
