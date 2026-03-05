@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Shield, ShoppingBag } from "lucide-react";
@@ -38,8 +38,8 @@ function toPositiveInt(value: unknown, fallback: number) {
   return Math.floor(num);
 }
 
-// ─── Static Provider Section ────────────────────────────────
-function ProviderShowcase({
+// ─── Static Provider Section (memoized) ────────────────────
+const ProviderShowcase = memo(function ProviderShowcase({
   title,
   subtitle,
   icon,
@@ -258,7 +258,7 @@ function ProviderShowcase({
       )}
     </section>
   );
-}
+});
 
 export default function Home() {
   const isMobile = useIsMobile();
