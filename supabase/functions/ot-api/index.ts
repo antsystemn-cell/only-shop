@@ -85,7 +85,7 @@ serve(async (req) => {
 // ─── Action Router ───────────────────────────────────────────
 
 async function routeAction(action: string, apiKey: string, params: Record<string, any>) {
-  const lang = params.language || "en";
+  const lang = params.language || "khk";
   const base: Record<string, string> = { instanceKey: apiKey, language: lang };
   if (params.sessionId) base.sessionId = params.sessionId;
 
@@ -540,7 +540,7 @@ async function getTranslationSettingsWithFallback(baseMeta: Record<string, strin
 // ─── Create Order (with XML + element validation) ───────────
 
 async function createOrder(apiKey: string, params: Record<string, any>) {
-  const base = { instanceKey: apiKey, language: params.language || "en" };
+  const base = { instanceKey: apiKey, language: params.language || "khk" };
 
   // Build XML parameters
   const xmlParts: string[] = [];
@@ -578,7 +578,7 @@ function registerUser(apiKey: string, params: Record<string, any>) {
 
   return callOtApi("RegisterUser", {
     instanceKey: apiKey,
-    language: params.language || "en",
+    language: params.language || "khk",
     sessionId: params.sessionId,
     userParameters: `<UserRegistrationData>${xmlParts.join("")}</UserRegistrationData>`,
   });
@@ -610,7 +610,7 @@ function searchItems(apiKey: string, params: Record<string, any>) {
 
   return callOtApi("BatchSearchItemsFrame", {
     instanceKey: apiKey,
-    language: params.language || "en",
+    language: params.language || "khk",
     framePosition: String(page * pageSize),
     frameSize: String(pageSize),
     blockList: "SubCategories,SearchProperties",
@@ -626,7 +626,7 @@ function searchAllOrders(apiKey: string, params: Record<string, any>) {
 
   return callOtApi("SearchSalesOrdersForOperator", {
     instanceKey: apiKey,
-    language: params.language || "en",
+    language: params.language || "khk",
     framePosition: String(params.page || 0),
     frameSize: String(params.pageSize || 20),
     xmlSearchParameters: `<SalesOrderSearchParameters>${xmlParts.join("")}</SalesOrderSearchParameters>`,
@@ -643,7 +643,7 @@ function searchItemsFrame(apiKey: string, params: Record<string, any>) {
 
   return callOtApi("SearchItemsFrame", {
     instanceKey: apiKey,
-    language: params.language || "en",
+    language: params.language || "khk",
     framePosition: String(page * pageSize),
     frameSize: String(pageSize),
     xmlParameters: `<SearchItemsParameters>${xmlParts.join("")}</SearchItemsParameters>`,
