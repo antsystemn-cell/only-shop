@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { Loader2, ChevronDown, Sparkles, Star, Footprints, Droplets, Shirt, Home, Baby, Smartphone, Heart, Dumbbell, ShoppingBag, TrendingUp, Package, Folder } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { searchItems, fetchItemsByIds } from "@/services/otApi";
+import { cn } from "@/lib/utils";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -93,18 +94,25 @@ function CategoryTabs({
   );
 }
 
-// ─── Featured Subcategories ─────────────────────────────────
-function FeaturedSubcategories({ parentId }: { parentId: string }) {
+// ─── Subcategory Dropdown ───────────────────────────────────
+function SubcategoryDropdown({
+  parentId,
+  onSelect,
+}: {
+  parentId: string;
+  onSelect: (catId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
   const { data: subcategories } = useQuery({
-    queryKey: ["ot-subcategories-featured", parentId],
+    queryKey: ["ot-subcategories-dropdown", parentId],
     queryFn: async () => {
       const { data } = await supabase
         .from("ot_categories")
         .select("id, internal_id, name_mn, name_en, icon_url")
         .eq("parent_internal_id", parentId)
         .eq("is_active", true)
-        .order("display_order")
-        .limit(8);
+        .order("display_order");
       return data || [];
     },
     staleTime: 1000 * 60 * 30,
@@ -114,24 +122,38 @@ function FeaturedSubcategories({ parentId }: { parentId: string }) {
   if (!subcategories || subcategories.length === 0) return null;
 
   return (
-    <div className="mt-4 mb-2">
-      <h3 className="text-xs font-semibold text-muted-foreground mb-2 px-1">Онцлох дэд ангилалууд</h3>
-      <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
-        {subcategories.map((sub) => (
-          <Link key={sub.internal_id} to={`/ot/browse/${sub.internal_id}`} className="flex flex-col items-center gap-1.5 group">
-            <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-muted/50 border flex items-center justify-center overflow-hidden group-hover:border-primary/30 transition-colors">
-              {sub.icon_url ? (
-                <img src={sub.icon_url} alt="" className="w-10 h-10 md:w-12 md:h-12 object-contain" />
-              ) : (
-                <Folder className="h-5 w-5 text-muted-foreground" />
-              )}
-            </div>
-            <span className="text-[10px] md:text-xs text-center text-muted-foreground group-hover:text-foreground line-clamp-2 leading-tight max-w-[70px]">
-              {sub.name_mn || sub.name_en || sub.internal_id}
-            </span>
-          </Link>
-        ))}
-      </div>
+    <div className="relative mb-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-muted text-xs font-medium"
+      >
+        <span>Дэд ангилал сонгох ({subcategories.length})</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-background border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            {subcategories.map((sub) => (
+              <button
+                key={sub.internal_id}
+                onClick={() => {
+                  onSelect(sub.internal_id);
+                  setOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-left"
+              >
+                {sub.icon_url ? (
+                  <img src={sub.icon_url} alt="" className="w-5 h-5 object-contain shrink-0" />
+                ) : (
+                  <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
+                <span className="truncate">{sub.name_mn || sub.name_en || sub.internal_id}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -476,7 +498,10 @@ export default function ProviderPage() {
         onTouchStart={isMobile ? handleTouchStart : undefined}
         onTouchEnd={isMobile ? handleTouchEnd : undefined}
       >
-        {activeCategoryId && <FeaturedSubcategories parentId={activeCategoryId} />}
+        {activeCategoryId && <SubcategoryDropdown parentId={activeCategoryId} onSelect={(id) => {
+          // Navigate to browse page for the selected subcategory
+          window.location.href = `/ot/browse/${id}`;
+        }} />}
 
         <InfiniteProductFeed
           categoryId={activeCategoryId}
