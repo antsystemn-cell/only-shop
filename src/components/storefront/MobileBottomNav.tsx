@@ -3,6 +3,7 @@ import { Home, Heart, LayoutGrid, ShoppingCart, User } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { UnifiedCartDrawer } from "@/components/storefront/UnifiedCartDrawer";
@@ -12,6 +13,7 @@ export function MobileBottomNav() {
   const { getItemCount } = useCart();
   const { itemCount: otItemCount } = useOtCartSafe();
   const { wishlistIds } = useWishlist();
+  const { user } = useAuth();
   
   const cartCount = getItemCount() + otItemCount;
   const wishlistCount = wishlistIds.length;
@@ -21,7 +23,7 @@ export function MobileBottomNav() {
     { href: "/wishlist", label: "Таалагдсан", icon: Heart, badge: wishlistCount },
     { href: "/categories", label: "Ангилал", icon: LayoutGrid, isCenter: true },
     { href: "cart-drawer", label: "Сагс", icon: ShoppingCart, badge: cartCount, isCartDrawer: true },
-    { href: "/profile", label: "Профайл", icon: User },
+    { href: user ? "/profile" : "/auth", label: "Профайл", icon: User },
   ];
 
   const isActive = (href: string) => {

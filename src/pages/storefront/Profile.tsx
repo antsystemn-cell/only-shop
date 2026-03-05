@@ -57,20 +57,7 @@ import {
 import { ChangeContactInfo } from "@/components/storefront/ChangeContactInfo";
 
 export default function Profile() {
-  const navigate = useNavigate();
-  const { user, isLoading: authLoading } = useAuth();
-
-  useEffect(() => {
-    if (!authLoading && !user) navigate("/auth");
-  }, [user, authLoading, navigate]);
-
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const { user } = useAuth();
 
   return (
     <div className="container py-8 max-w-4xl">

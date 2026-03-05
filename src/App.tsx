@@ -10,6 +10,7 @@ import { WishlistProvider } from "@/contexts/WishlistContext";
 import { ProviderProvider } from "@/contexts/ProviderContext";
 import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { RequireAuth } from "./components/storefront/RequireAuth";
 
 // Storefront imports
 import { StorefrontLayout } from "./components/storefront/StorefrontLayout";
@@ -115,12 +116,12 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/ot/checkout" element={<OtCheckout />} />
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
-              <Route path="/orders" element={<MyOrders />} />
+              <Route path="/orders" element={<RequireAuth><MyOrders /></RequireAuth>} />
               {/* Redirect old OT orders route */}
               <Route path="/ot/orders" element={<Navigate to="/orders" replace />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/wallet" element={<Wallet />} />
-              <Route path="/favourite-vendors" element={<FavouriteVendors />} />
+              <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+              <Route path="/wallet" element={<RequireAuth><Wallet /></RequireAuth>} />
+              <Route path="/favourite-vendors" element={<RequireAuth><FavouriteVendors /></RequireAuth>} />
               <Route path="/support" element={<Support />} />
               
               {/* Admin routes */}
