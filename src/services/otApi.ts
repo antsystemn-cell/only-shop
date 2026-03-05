@@ -83,7 +83,7 @@ async function callProxy<T = unknown>(action: string, params: Record<string, unk
 
   const invoke = async (p: Record<string, unknown>) => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s network timeout
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s hard timeout
     
     try {
       const { data, error } = await supabase.functions.invoke("ot-api", {
@@ -100,7 +100,7 @@ async function callProxy<T = unknown>(action: string, params: Record<string, unk
     } catch (e: any) {
       clearTimeout(timeoutId);
       if (e?.name === "AbortError") {
-        throw new Error("OT API timeout: request took longer than 8 seconds");
+        throw new Error("OT API timeout: request took longer than 6 seconds");
       }
       throw e;
     }

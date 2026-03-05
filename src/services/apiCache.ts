@@ -1,7 +1,7 @@
-// ─── Multi-level API Cache with Request Deduplication ─────────
-// Level 1: In-memory TTL cache
-// Level 2: Request deduplication (inflight tracking)
-// Level 3: Stale-while-revalidate
+// ─── Ultra-Fast Marketplace Gateway Cache ─────────────────────
+// L1: In-memory TTL cache with SWR
+// L2: Request deduplication (single-flight)
+// L3: Concurrency control + performance monitoring
 
 interface CacheEntry<T> {
   data: T;
@@ -9,65 +9,136 @@ interface CacheEntry<T> {
   ttl: number;
 }
 
+interface PerfEntry {
+  key: string;
+  duration: number;
+  timestamp: number;
+  cacheHit: boolean;
+}
+
 const cache = new Map<string, CacheEntry<unknown>>();
 const inflight = new Map<string, Promise<unknown>>();
 
-// Performance monitoring
-const slowRequests: Array<{ key: string; duration: number; timestamp: number }> = [];
+// ─── Concurrency Limiter ────────────────────────────────────
+const MAX_CONCURRENT = 4;
+let activeRequests = 0;
+const waitQueue: Array<() => void> = [];
 
-export function getCacheStats() {
+function acquireSlot(): Promise<void> {
+  if (activeRequests < MAX_CONCURRENT) {
+    activeRequests++;
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    waitQueue.push(() => {
+      activeRequests++;
+      resolve();
+    });
+  });
+}
+
+function releaseSlot(): void {
+  activeRequests--;
+  if (waitQueue.length > 0) {
+    const next = waitQueue.shift()!;
+    next();
+  }
+}
+
+// ─── Performance Monitoring ─────────────────────────────────
+const perfLog: PerfEntry[] = [];
+const MAX_PERF_LOG = 100;
+let totalRequests = 0;
+let cacheHits = 0;
+
+export function getPerformanceStats() {
+  const hitRate = totalRequests > 0 ? Math.round((cacheHits / totalRequests) * 100) : 0;
+  const recentSlow = perfLog.filter((e) => e.duration > 1500).slice(-20);
+  const avgDuration = perfLog.length > 0
+    ? Math.round(perfLog.reduce((s, e) => s + e.duration, 0) / perfLog.length)
+    : 0;
+
   return {
     cacheSize: cache.size,
     inflightSize: inflight.size,
-    slowRequests: slowRequests.slice(-20),
+    activeRequests,
+    queuedRequests: waitQueue.length,
+    totalRequests,
+    cacheHits,
+    cacheHitRate: `${hitRate}%`,
+    avgResponseTime: `${avgDuration}ms`,
+    recentRequests: perfLog.slice(-20),
+    slowRequests: recentSlow,
   };
 }
+
+function logPerf(key: string, duration: number, cacheHit: boolean) {
+  totalRequests++;
+  if (cacheHit) cacheHits++;
+  
+  perfLog.push({ key, duration, timestamp: Date.now(), cacheHit });
+  if (perfLog.length > MAX_PERF_LOG) perfLog.splice(0, perfLog.length - MAX_PERF_LOG);
+  
+  if (!cacheHit && duration > 1500) {
+    console.warn(`[Gateway] SLOW: ${key} took ${duration}ms`);
+  }
+}
+
+// ─── Cache Logic ────────────────────────────────────────────
+
+// SWR window: serve stale data for up to 5 minutes beyond TTL
+const SWR_WINDOW = 5 * 60 * 1000;
 
 function isStale<T>(entry: CacheEntry<T>): boolean {
   return Date.now() - entry.createdAt > entry.ttl;
 }
 
 function isExpired<T>(entry: CacheEntry<T>): boolean {
-  // Allow stale data for up to 2x TTL (stale-while-revalidate window)
-  return Date.now() - entry.createdAt > entry.ttl * 2;
+  return Date.now() - entry.createdAt > entry.ttl + SWR_WINDOW;
 }
 
 /**
- * Cached fetch with deduplication and stale-while-revalidate.
- * 
- * @param key - Unique cache key
- * @param fetcher - Async function to fetch data
- * @param ttl - Time-to-live in milliseconds
- * @returns Cached or fresh data
+ * Gateway cached fetch with:
+ * - L1 in-memory TTL cache
+ * - Stale-while-revalidate (5min window)
+ * - Request deduplication (single-flight)
+ * - Concurrency limiting (max 4 concurrent OTAPI calls)
+ * - Performance monitoring
  */
 export async function cachedFetch<T>(
   key: string,
   fetcher: () => Promise<T>,
   ttl: number
 ): Promise<T> {
-  // Level 1: Check in-memory cache
+  const start = Date.now();
+
+  // L1: Check in-memory cache
   const existing = cache.get(key) as CacheEntry<T> | undefined;
-  
+
   if (existing && !isExpired(existing)) {
     if (isStale(existing)) {
-      // Stale-while-revalidate: return stale data, refresh in background
+      // SWR: return stale data immediately, refresh in background
       revalidateInBackground(key, fetcher, ttl);
     }
+    logPerf(key, Date.now() - start, true);
     return existing.data;
   }
 
-  // Level 2: Request deduplication
+  // L2: Request deduplication
   const existingRequest = inflight.get(key);
   if (existingRequest) {
-    return existingRequest as Promise<T>;
+    const result = await (existingRequest as Promise<T>);
+    logPerf(key, Date.now() - start, false);
+    return result;
   }
 
-  // Execute fetch with deduplication
+  // Execute with concurrency control
   const promise = executeFetch(key, fetcher, ttl);
   inflight.set(key, promise);
-  
+
   try {
     const result = await promise;
+    logPerf(key, Date.now() - start, false);
     return result;
   } finally {
     inflight.delete(key);
@@ -79,31 +150,23 @@ async function executeFetch<T>(
   fetcher: () => Promise<T>,
   ttl: number
 ): Promise<T> {
-  const start = Date.now();
+  // Wait for concurrency slot
+  await acquireSlot();
+  
   try {
     const data = await fetcher();
-    const duration = Date.now() - start;
-    
-    // Store in cache
     cache.set(key, { data, createdAt: Date.now(), ttl });
-    
-    // Performance monitoring
-    if (duration > 1500) {
-      slowRequests.push({ key, duration, timestamp: Date.now() });
-      console.warn(`[apiCache] Slow request: ${key} took ${duration}ms`);
-      // Keep only last 50 slow requests
-      if (slowRequests.length > 50) slowRequests.splice(0, slowRequests.length - 50);
-    }
-    
     return data;
   } catch (error) {
-    // On error, return stale data if available
+    // On error, return stale data if available (any age)
     const stale = cache.get(key) as CacheEntry<T> | undefined;
     if (stale) {
-      console.warn(`[apiCache] Fetch failed for ${key}, returning stale data`);
+      console.warn(`[Gateway] Fetch failed for ${key}, returning stale data`);
       return stale.data;
     }
     throw error;
+  } finally {
+    releaseSlot();
   }
 }
 
@@ -112,20 +175,21 @@ function revalidateInBackground<T>(
   fetcher: () => Promise<T>,
   ttl: number
 ): void {
-  // Don't revalidate if already in-flight
   if (inflight.has(key)) return;
-  
-  const promise = fetcher()
-    .then((data) => {
+
+  const promise = (async () => {
+    await acquireSlot();
+    try {
+      const data = await fetcher();
       cache.set(key, { data, createdAt: Date.now(), ttl });
-    })
-    .catch((err) => {
-      console.warn(`[apiCache] Background revalidation failed for ${key}:`, err);
-    })
-    .finally(() => {
+    } catch (err) {
+      console.warn(`[Gateway] Background revalidation failed for ${key}:`, err);
+    } finally {
+      releaseSlot();
       inflight.delete(key);
-    });
-  
+    }
+  })();
+
   inflight.set(key, promise);
 }
 
@@ -141,9 +205,7 @@ export function invalidateCache(key: string): void {
  */
 export function invalidateCacheByPrefix(prefix: string): void {
   for (const key of cache.keys()) {
-    if (key.startsWith(prefix)) {
-      cache.delete(key);
-    }
+    if (key.startsWith(prefix)) cache.delete(key);
   }
 }
 
@@ -152,13 +214,18 @@ export function invalidateCacheByPrefix(prefix: string): void {
  */
 export function clearAllCache(): void {
   cache.clear();
+  totalRequests = 0;
+  cacheHits = 0;
+  perfLog.length = 0;
 }
 
 // Cache TTL constants (milliseconds)
 export const CACHE_TTL = {
-  SEARCH_RESULTS: 60 * 1000,        // 60s for search/category lists
-  PRODUCT_DETAIL: 2 * 60 * 1000,    // 120s for product details
-  CATEGORIES: 30 * 60 * 1000,       // 30min for categories
-  PRICE_CONFIG: 5 * 60 * 1000,      // 5min for price config
-  BLOCKED_VENDORS: 10 * 60 * 1000,  // 10min for blocked vendors
+  SEARCH_RESULTS: 60 * 1000,         // 60s for search/category lists
+  PRODUCT_DETAIL: 3 * 60 * 1000,     // 180s for product details
+  CATEGORIES: 10 * 60 * 1000,        // 10min for category metadata
+  CATEGORY_MENU: 30 * 60 * 1000,     // 30min for category menu/tree
+  PRICE_CONFIG: 5 * 60 * 1000,       // 5min for price config
+  BLOCKED_VENDORS: 10 * 60 * 1000,   // 10min for blocked vendors
+  STATIC_CONFIG: 30 * 60 * 1000,     // 30min for static configs
 } as const;
