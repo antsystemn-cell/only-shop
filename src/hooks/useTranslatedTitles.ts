@@ -12,6 +12,11 @@ const listeners = new Set<() => void>();
 let translationMode: "ai" | "default" | null = null;
 let modeLoading = false;
 
+function isLikelyMongolian(text: string): boolean {
+  // Cyrillic block + Mongolian-specific letters
+  return /[\u0400-\u04FFӨөҮүЁё]/.test(text);
+}
+
 async function loadTranslationMode() {
   if (translationMode !== null || modeLoading) return;
   modeLoading = true;
@@ -45,20 +50,26 @@ function notifyListeners() {
 
 async function flushBatch() {
   if (pendingTitles.size === 0) return;
-  
+
   // Ensure mode is loaded
   await loadTranslationMode();
-  if (translationMode === "default") {
-    pendingTitles = new Set();
-    return;
-  }
 
   const titles = Array.from(pendingTitles);
   pendingTitles = new Set();
 
+  // In "default" mode, OTAPI title is preferred.
+  // But many providers return Chinese title even for khk, so we only fallback-translate
+  // titles that don't look Mongolian.
+  const titlesToTranslate =
+    translationMode === "default"
+      ? titles.filter((title) => title && !isLikelyMongolian(title))
+      : titles.filter(Boolean);
+
+  if (titlesToTranslate.length === 0) return;
+
   try {
     const { data, error } = await supabase.functions.invoke("translate-titles", {
-      body: { titles },
+      body: { titles: titlesToTranslate },
     });
 
     if (error) {
@@ -101,19 +112,19 @@ export function useTranslatedTitles(titles: string[]): Record<string, string> {
       if (mountedRef.current) forceUpdate((n) => n + 1);
     };
     listeners.add(listener);
-    
+
     // Ensure translation mode is loaded
     loadTranslationMode();
-    
+
     return () => {
       mountedRef.current = false;
       listeners.delete(listener);
     };
   }, []);
 
-  // Request translations for any uncached titles
+  // Request translations for any uncached titles.
+  // Mode-specific filtering is handled inside flushBatch().
   useEffect(() => {
-    if (translationMode === "default") return;
     for (const title of titles) {
       if (title) requestTranslation(title);
     }
