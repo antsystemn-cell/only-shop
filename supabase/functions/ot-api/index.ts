@@ -347,7 +347,7 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 
     // ── Translation & Language Settings ──
     case "getTranslationSettings":
-      return callOtApi("GetTranslationSettings", { ...baseMeta, sessionId: params.sessionId });
+      return getTranslationSettingsWithFallback(baseMeta, params.sessionId);
     case "updateTranslationSettings":
       return callOtApi("UpdateTranslationSettings", { ...base, sessionId: params.sessionId, xmlUpdateData: params.xmlUpdateData });
     case "getTranslatableContentList":
@@ -511,6 +511,29 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 
     default:
       throw new Error(`Unknown action: ${action}`);
+  }
+}
+
+async function getTranslationSettingsWithFallback(baseMeta: Record<string, string>, sessionId?: string) {
+  try {
+    return await callOtApi("GetTranslationSettings", { ...baseMeta, ...(sessionId ? { sessionId } : {}) });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("InternalError") || message.includes("GetTranslationSettings")) {
+      const common = await callOtApi("GetCommonInstanceOptionsInfo", baseMeta);
+      return {
+        ErrorCode: "Ok",
+        RequestId: (common as any)?.RequestId,
+        RequestTime: (common as any)?.RequestTime,
+        Result: {
+          Source: "fallback:GetCommonInstanceOptionsInfo",
+          Languages: (common as any)?.Result?.Languages ?? null,
+          Features: (common as any)?.Result?.Features ?? null,
+          TranslatableOptions: (common as any)?.Result?.TranslatableOptions ?? null,
+        },
+      };
+    }
+    throw error;
   }
 }
 
