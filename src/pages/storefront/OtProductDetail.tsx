@@ -360,15 +360,22 @@ export default function OtProductDetail() {
         <div className="space-y-5">
           {/* Title */}
           <div>
-            <h1 className="text-xl md:text-2xl font-bold leading-tight">
-              {translatedTitle || product.title}
-            </h1>
-            {translatedTitle && translatedTitle !== product.title && (
-              <p className="text-xs text-muted-foreground mt-1">{product.title}</p>
-            )}
-            {!translatedTitle && product.externalTitle && product.externalTitle !== product.title && (
-              <p className="text-sm text-muted-foreground mt-1">{product.externalTitle}</p>
-            )}
+            {(() => {
+              const hasCJK = /[\u4e00-\u9fff\u3400-\u4dbf]/.test(product.title);
+              const mainTitle = translatedTitle || (hasCJK ? null : product.title);
+              return (
+                <>
+                  {mainTitle ? (
+                    <h1 className="text-xl md:text-2xl font-bold leading-tight">{mainTitle}</h1>
+                  ) : (
+                    <Skeleton className="h-7 w-3/4 mb-1" />
+                  )}
+                  {translatedTitle && translatedTitle !== product.title && (
+                    <p className="text-xs text-muted-foreground mt-1">{product.externalTitle || product.title}</p>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Price section */}

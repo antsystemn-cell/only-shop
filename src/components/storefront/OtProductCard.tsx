@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { OtProductCard } from "@/types/otApi";
 import { Shield } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface OtProductCardComponentProps {
   product: OtProductCard;
@@ -35,8 +36,16 @@ function getProviderLabel(providerType?: string) {
   return providerType;
 }
 
+// Detect if title contains CJK characters (Chinese/Japanese/Korean)
+function hasCJK(text: string) {
+  return /[\u4e00-\u9fff\u3400-\u4dbf]/.test(text);
+}
+
 export function OtProductCardComponent({ product, translatedTitle }: OtProductCardComponentProps) {
-  const displayTitle = translatedTitle || product.title;
+  const titleIsChinese = hasCJK(product.title);
+  // If AI translation is available, use it. Otherwise show OTAPI title (unless it's Chinese - then show skeleton)
+  const displayTitle = translatedTitle || (titleIsChinese ? null : product.title);
+  const showTitleSkeleton = !displayTitle;
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
   const discountPercent = hasDiscount
     ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
@@ -87,9 +96,16 @@ export function OtProductCardComponent({ product, translatedTitle }: OtProductCa
 
       {/* Info */}
       <div className="p-1.5 md:p-3">
-        <h3 className="text-[11px] md:text-sm font-medium line-clamp-2 min-h-[2rem] md:min-h-[2.5rem] text-foreground group-hover:text-primary transition-colors">
-          {displayTitle}
-        </h3>
+        {showTitleSkeleton ? (
+          <div className="min-h-[2rem] md:min-h-[2.5rem] space-y-1">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-2/3" />
+          </div>
+        ) : (
+          <h3 className="text-[11px] md:text-sm font-medium line-clamp-2 min-h-[2rem] md:min-h-[2.5rem] text-foreground group-hover:text-primary transition-colors">
+            {displayTitle}
+          </h3>
+        )}
 
         <div className="mt-1 md:mt-2 flex items-baseline gap-1 md:gap-2">
           <span className="text-xs md:text-base font-bold text-primary">
