@@ -2,15 +2,15 @@ import { Link } from "react-router-dom";
 import { Phone, Mail, MapPin, Facebook, Instagram } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 export function Footer() {
-  return <footer className="bg-secondary text-secondary-foreground pb-20 md:pb-0">
+  return (
+    <footer className="bg-secondary text-secondary-foreground pb-20 md:pb-0">
       <div className="container py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
               <img src={onlyLogo} alt="Only" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-primary">
-            </span>
+              <span className="text-xl font-bold text-primary"></span>
             </Link>
             <p className="text-sm text-secondary-foreground/70">
               Монголын шилдэг онлайн дэлгүүр. Чанартай бүтээгдэхүүн, хурдан хүргэлт.
@@ -27,7 +27,10 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/page/terms_of_use" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                <Link
+                  to="/page/terms_of_use"
+                  className="text-secondary-foreground/70 hover:text-primary transition-colors"
+                >
                   Үйлчилгээний нөхцөл
                 </Link>
               </li>
@@ -37,12 +40,18 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/page/size-guide" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                <Link
+                  to="/page/size-guide"
+                  className="text-secondary-foreground/70 hover:text-primary transition-colors"
+                >
                   Размерын хүснэгт
                 </Link>
               </li>
               <li>
-                <Link to="/page/order-guide" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                <Link
+                  to="/page/order-guide"
+                  className="text-secondary-foreground/70 hover:text-primary transition-colors"
+                >
                   Захиалга хийх заавар
                 </Link>
               </li>
@@ -63,7 +72,7 @@ export function Footer() {
               </li>
               <li className="flex items-start gap-2 text-secondary-foreground/70">
                 <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <span>Улаанбаатар хот, Хан-Уул дүүрэг 4р хороо Хонгор апарт</span>
+                <span>Улаанбаатар хот, Хан-Уул дүүрэг 3-р хороо Хонгор апартмент, Б Блок, 201 тоот.</span>
               </li>
             </ul>
           </div>
@@ -72,10 +81,20 @@ export function Footer() {
           <div className="space-y-4">
             <h3 className="font-semibold text-primary">Сошиал</h3>
             <div className="flex gap-4">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-secondary-foreground/10 hover:bg-primary hover:text-primary-foreground transition-colors">
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-secondary-foreground/10 hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-secondary-foreground/10 hover:bg-primary hover:text-primary-foreground transition-colors">
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-secondary-foreground/10 hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
                 <Instagram className="h-5 w-5" />
               </a>
             </div>
@@ -83,8 +102,19 @@ export function Footer() {
         </div>
 
         <div className="border-t border-secondary-foreground/10 mt-8 pt-8 text-center text-sm text-secondary-foreground/50">
-          <p>&copy; {new Date().getFullYear()} Only. Бүх эрх хуулиар хамгаалагдсан. Powered by &copy; <a href="https://otcommerce.com/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors underline">OT Commerce</a></p>
+          <p>
+            &copy; {new Date().getFullYear()} Only. Бүх эрх хуулиар хамгаалагдсан. Powered by &copy;{" "}
+            <a
+              href="https://otcommerce.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-primary transition-colors underline"
+            >
+              OT Commerce
+            </a>
+          </p>
         </div>
       </div>
-    </footer>;
+    </footer>
+  );
 }
