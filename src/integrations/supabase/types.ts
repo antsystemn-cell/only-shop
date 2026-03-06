@@ -185,6 +185,33 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_item_overrides: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          title_override: string | null
+          updated_at: string
+          variant_overrides: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          title_override?: string | null
+          updated_at?: string
+          variant_overrides?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          title_override?: string | null
+          updated_at?: string
+          variant_overrides?: Json | null
+        }
+        Relationships: []
+      }
       catalog_restrictions: {
         Row: {
           created_at: string
