@@ -16,6 +16,49 @@ import {
 } from "@/utils/priceCalculator";
 import { cachedFetch, CACHE_TTL, invalidateCacheByPrefix } from "@/services/apiCache";
 
+// ─── Catalog Item Overrides ─────────────────────────────────
+interface CatalogItemOverride {
+  item_id: string;
+  title_override: string | null;
+  variant_overrides: Record<string, string> | null; // { "vid": "new text", ... }
+}
+
+async function fetchItemOverride(itemId: string): Promise<CatalogItemOverride | null> {
+  const { data } = await supabase
+    .from("catalog_item_overrides")
+    .select("item_id, title_override, variant_overrides")
+    .eq("item_id", itemId)
+    .maybeSingle();
+  return data as CatalogItemOverride | null;
+}
+
+async function fetchItemOverrides(itemIds: string[]): Promise<Map<string, CatalogItemOverride>> {
+  if (!itemIds.length) return new Map();
+  const { data } = await supabase
+    .from("catalog_item_overrides")
+    .select("item_id, title_override, variant_overrides")
+    .in("item_id", itemIds);
+  const map = new Map<string, CatalogItemOverride>();
+  (data || []).forEach((d: any) => map.set(d.item_id, d));
+  return map;
+}
+
+function applyOverrideToDetail(detail: ProductDetail, override: CatalogItemOverride | null): ProductDetail {
+  if (!override) return detail;
+  const result = { ...detail };
+  if (override.title_override) result.title = override.title_override;
+  if (override.variant_overrides) {
+    result.configurators = result.configurators.map(c => ({
+      ...c,
+      values: c.values.map(v => ({
+        ...v,
+        value: override.variant_overrides?.[v.id] || v.value,
+      })),
+    }));
+  }
+  return result;
+}
+
 const DEFAULT_OTAPI_LANGUAGE = "khk";
 const LANGUAGE_SETTING_CACHE_TTL = 5 * 60 * 1000;
 let otApiLanguageCache: { value: string; expiresAt: number } | null = null;
@@ -287,6 +330,8 @@ export interface ProductDetail {
     id: string;
     quantity?: number;
     price?: number;
+    originalSourcePrice?: number;
+    originalSourceCurrency?: string;
     imageUrl?: string;
     configuratorIds: string[];
   }>;
@@ -401,7 +446,7 @@ async function fetchProductDetailUncached(itemId: string): Promise<ProductDetail
   const rawPath = data?.Result?.RootPath;
   const rootPath = Array.isArray(rawPath) ? rawPath : rawPath ? [rawPath] : [];
 
-  return {
+  const rawDetail: ProductDetail = {
     id: item.Id,
     title: item.Title || item.ExternalTitle || "",
     externalTitle: item.ExternalTitle,
@@ -441,6 +486,8 @@ async function fetchProductDetailUncached(itemId: string): Promise<ProductDetail
         item.ProviderType,
         priceConfig
       ) : undefined,
+      originalSourcePrice: ci.Price ? getOriginalPriceValue(ci.Price) : undefined,
+      originalSourceCurrency: ci.Price ? (getOriginalCurrencyCode(ci.Price) === "CNY" ? "¥" : getOriginalCurrencyCode(ci.Price) === "USD" ? "$" : getOriginalCurrencyCode(ci.Price)) : undefined,
       imageUrl: ci.ImageUrl,
       configuratorIds: (Array.isArray(ci.Configurators) ? ci.Configurators : ci.Configurators ? [ci.Configurators] : []).map((c: any) => c.Vid),
     })),
@@ -461,6 +508,10 @@ async function fetchProductDetailUncached(itemId: string): Promise<ProductDetail
     externalUrl: item.TaobaoItemUrl || item.ExternalItemUrl,
     providerType: item.ProviderType,
   };
+
+  // Apply catalog overrides
+  const override = await fetchItemOverride(itemId);
+  return applyOverrideToDetail(rawDetail, override);
 }
 
 export async function fetchProductDescription(itemId: string): Promise<string> {
@@ -576,6 +627,16 @@ export async function fetchItemsByIds(
           byRequestedId.set(String(r.value.id), r.value);
         }
       }
+    }
+  }
+
+  // Apply catalog overrides to titles
+  const allIds = Array.from(byRequestedId.keys());
+  const overrides = await fetchItemOverrides(allIds);
+  for (const [id, override] of overrides) {
+    const item = byRequestedId.get(id);
+    if (item && override.title_override) {
+      byRequestedId.set(id, { ...item, title: override.title_override });
     }
   }
 

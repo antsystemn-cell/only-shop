@@ -99,11 +99,6 @@ const menuGroups: MenuGroup[] = [
       { title: "OT Контент", url: "/admin/ot-content", icon: Palette },
       { title: "OT Роль & Эрх", url: "/admin/ot-roles", icon: Globe },
       { title: "OT тохиргоо", url: "/admin/ot-settings", icon: Settings },
-    ],
-  },
-  {
-    label: "Каталог & Маркетинг",
-    items: [
       { title: "Цуглуулга", url: "/admin/collections", icon: Library },
       { title: "Хязгаарлалт", url: "/admin/restrictions", icon: Package },
       { title: "Бараа засах", url: "/admin/catalog-items", icon: Package },
