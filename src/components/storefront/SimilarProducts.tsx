@@ -56,7 +56,7 @@ export function SimilarProducts({ product }: SimilarProductsProps) {
     if (poizon && categoryId) {
       navigate(`/ot/category/${categoryId}`);
     } else if (vendorId) {
-      navigate(`/ot/shop?vendorId=${vendorId}&vendorName=${encodeURIComponent(product.vendorName || "")}`);
+      navigate(`/ot?vendorId=${vendorId}&vendorName=${encodeURIComponent(product.vendorName || "")}`);
     }
   };
 
