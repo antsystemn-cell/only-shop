@@ -123,7 +123,11 @@ export default function AmazonProducts() {
           <h1 className="text-2xl font-bold">Amazon импортлогдсон бараа</h1>
           <p className="text-muted-foreground">Импортлогдсон бүх бараануудыг удирдах</p>
         </div>
-        {isSandbox && <Badge className="bg-amber-500 text-white"><FlaskConical className="h-3 w-3 mr-1" /> Sandbox</Badge>}
+        {isSandbox && (
+          <Badge variant="secondary">
+            <FlaskConical className="h-3 w-3 mr-1" /> Sandbox
+          </Badge>
+        )}
       </div>
 
       <Card>
