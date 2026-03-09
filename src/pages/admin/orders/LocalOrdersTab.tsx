@@ -310,16 +310,32 @@ export default function LocalOrdersTab() {
                                 )}
                                 <div>
                                   <div className="text-sm font-medium">{snapshot.title || snapshot.name || snapshot.name_mn || "Бараа"}</div>
-                                  <div className="text-xs text-muted-foreground">x{item.quantity}</div>
-                                  {isOtapi && (
-                                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 mt-1">
-                                      {snapshot.providerType || "OT"}
-                                    </Badge>
+                                  {snapshot.configurators && (
+                                    <div className="text-xs text-muted-foreground mt-0.5">🏷️ {snapshot.configurators}</div>
                                   )}
-                                  {!isOtapi && (
-                                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 mt-1">
-                                      Бэлэн бараа
-                                    </Badge>
+                                  <div className="text-xs text-muted-foreground">x{item.quantity}</div>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {isOtapi ? (
+                                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                        {snapshot.providerType || "OT"}
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                        Бэлэн бараа
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {isOtapi && (snapshot.externalUrl || snapshot.itemId) && (
+                                    <a
+                                      href={snapshot.externalUrl || (snapshot.providerType === "Poizon"
+                                        ? `https://www.dewu.com/product-detail.html?productId=${snapshot.itemId}`
+                                        : `https://item.taobao.com/item.htm?id=${snapshot.itemId}`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-blue-500 hover:underline mt-0.5 block"
+                                    >
+                                      🔗 Эх сурвалж линк
+                                    </a>
                                   )}
                                 </div>
                               </div>

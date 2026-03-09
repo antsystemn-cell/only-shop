@@ -526,6 +526,12 @@ export default function OtOrdersTab() {
                               ))}
                             </div>
                           )}
+                          {/* Vendor info */}
+                          {item.vendorName && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              🏪 Дэлгүүр: {item.vendorName}
+                            </p>
+                          )}
                           {/* Price info */}
                           <p className="text-xs text-muted-foreground mt-1">
                             {item.quantity} × {formatPrice(item.price)}
@@ -533,27 +539,31 @@ export default function OtOrdersTab() {
                               <span className="ml-1">(Эх үнэ: {item.originalCnyCurrency || "¥"}{Number(item.originalCnyPrice).toFixed(2)})</span>
                             )}
                           </p>
-                          {/* Source link */}
-                          {item.externalUrl && (
-                            <a
-                              href={item.externalUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-blue-500 hover:underline mt-1 block truncate"
-                            >
-                              🔗 Эх сурвалж линк
-                            </a>
-                          )}
-                          {item.itemId && (
-                            <a
-                              href={`/product/otapi/${item.itemId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-green-600 hover:underline mt-0.5 block"
-                            >
-                              🏠 Манай сайтын линк
-                            </a>
-                          )}
+                          {/* Source links */}
+                          <div className="flex flex-wrap gap-3 mt-1.5">
+                            {(item.externalUrl || item.itemId) && (
+                              <a
+                                href={item.externalUrl || (item.providerType === "Poizon"
+                                  ? `https://www.dewu.com/product-detail.html?productId=${item.itemId}`
+                                  : `https://item.taobao.com/item.htm?id=${item.itemId}`)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-500 hover:underline inline-flex items-center gap-1"
+                              >
+                                🔗 Эх сурвалж линк
+                              </a>
+                            )}
+                            {item.itemId && (
+                              <a
+                                href={`/product/otapi/${item.itemId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-green-600 hover:underline inline-flex items-center gap-1"
+                              >
+                                🏠 Манай сайтын линк
+                              </a>
+                            )}
+                          </div>
                         </div>
                         <span className="text-sm font-bold shrink-0">{formatPrice(item.totalPrice)}</span>
                       </div>

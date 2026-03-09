@@ -335,6 +335,9 @@ export default function OtCheckout() {
         configurators: item.configurators,
         originalCnyPrice: item.originalCnyPrice,
         originalCnyCurrency: item.originalCnyCurrency,
+        externalUrl: item.providerType === "Poizon"
+          ? `https://www.dewu.com/product-detail.html?productId=${item.itemId}`
+          : `https://item.taobao.com/item.htm?id=${item.itemId}`,
       }));
 
       const commentText = comment
