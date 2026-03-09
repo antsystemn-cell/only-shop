@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle, XCircle, Wifi, RefreshCw, Settings, Shield } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Wifi, RefreshCw, Settings, Shield, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const REGIONS = [
@@ -19,6 +19,7 @@ const REGIONS = [
 export default function AmazonConnection() {
   const queryClient = useQueryClient();
   const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
 
   const { data: connection, isLoading } = useQuery({
     queryKey: ["amazon-connection"],
@@ -38,12 +39,26 @@ export default function AmazonConnection() {
     seller_id: "",
   });
 
+  // Sync form state when connection data loads
+  useEffect(() => {
+    if (connection) {
+      setForm({
+        region: connection.region || "us-east-1",
+        seller_id: connection.seller_id || "",
+      });
+    }
+  }, [connection]);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (connection) {
         const { error } = await supabase
           .from("amazon_connections")
-          .update({ region: form.region, seller_id: form.seller_id, updated_at: new Date().toISOString() })
+          .update({
+            region: form.region,
+            seller_id: form.seller_id,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", connection.id);
         if (error) throw error;
       } else {
@@ -57,44 +72,92 @@ export default function AmazonConnection() {
       queryClient.invalidateQueries({ queryKey: ["amazon-connection"] });
       toast({ title: "Тохиргоо хадгалагдлаа" });
     },
-    onError: () => toast({ title: "Алдаа гарлаа", variant: "destructive" }),
+    onError: () =>
+      toast({ title: "Алдаа гарлаа", variant: "destructive" }),
   });
 
   const testConnection = async () => {
     setTesting(true);
+    setTestResult(null);
     try {
       const { data, error } = await supabase.functions.invoke("amazon-api", {
         body: { action: "testConnection" },
       });
-      if (error || !data?.success) {
-        toast({ title: "Холболт амжилтгүй", description: data?.error || error?.message, variant: "destructive" });
+      if (error) {
+        setTestResult({ success: false, error: error.message });
+        toast({
+          title: "Холболт амжилтгүй",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else if (data && !data.success) {
+        setTestResult(data);
+        toast({
+          title: "Холболт амжилтгүй",
+          description: data.error || "Unknown error",
+          variant: "destructive",
+        });
       } else {
-        toast({ title: "Холболт амжилттай!", description: "Amazon SP-API-тай холбогдлоо" });
+        setTestResult(data);
+        toast({
+          title: "Холболт амжилттай!",
+          description: data?.message || "Amazon SP-API-тай холбогдлоо",
+        });
         queryClient.invalidateQueries({ queryKey: ["amazon-connection"] });
       }
     } catch (e: any) {
+      setTestResult({ success: false, error: e.message });
       toast({ title: "Алдаа", description: e.message, variant: "destructive" });
     } finally {
       setTesting(false);
     }
   };
 
-  // Initialize form when data loads
-  useState(() => {
-    if (connection) {
-      setForm({ region: connection.region || "us-east-1", seller_id: connection.seller_id || "" });
+  const getAuthStatusBadge = () => {
+    const status = connection?.auth_status;
+    switch (status) {
+      case "authorized":
+        return (
+          <Badge className="bg-green-600">
+            <CheckCircle className="h-3 w-3 mr-1" /> Зөвшөөрөгдсөн
+          </Badge>
+        );
+      case "token_only":
+        return (
+          <Badge className="bg-yellow-600">
+            <AlertTriangle className="h-3 w-3 mr-1" /> Токен OK, API эрх дутуу
+          </Badge>
+        );
+      case "failed":
+        return (
+          <Badge variant="destructive">
+            <XCircle className="h-3 w-3 mr-1" /> Амжилтгүй
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary">
+            <XCircle className="h-3 w-3 mr-1" /> Тохируулаагүй
+          </Badge>
+        );
     }
-  });
+  };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Amazon холболтын тохиргоо</h1>
-        <p className="text-muted-foreground">Amazon SP-API холболтын мэдээлэл, статус</p>
+        <p className="text-muted-foreground">
+          Amazon SP-API холболтын мэдээлэл, статус
+        </p>
       </div>
 
       {/* Status Card */}
@@ -109,27 +172,29 @@ export default function AmazonConnection() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Зөвшөөрлийн статус</p>
-              <Badge variant={connection?.auth_status === "authorized" ? "default" : "secondary"}>
-                {connection?.auth_status === "authorized" ? (
-                  <><CheckCircle className="h-3 w-3 mr-1" /> Зөвшөөрөгдсөн</>
-                ) : (
-                  <><XCircle className="h-3 w-3 mr-1" /> Тохируулаагүй</>
-                )}
-              </Badge>
+              {getAuthStatusBadge()}
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Сүүлийн токен шинэчлэл</p>
+              <p className="text-sm text-muted-foreground">
+                Сүүлийн токен шинэчлэл
+              </p>
               <p className="text-sm font-medium">
                 {connection?.last_token_refresh_at
-                  ? new Date(connection.last_token_refresh_at).toLocaleString("mn-MN")
+                  ? new Date(connection.last_token_refresh_at).toLocaleString(
+                      "mn-MN"
+                    )
                   : "—"}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Сүүлийн амжилттай дуудлага</p>
+              <p className="text-sm text-muted-foreground">
+                Сүүлийн амжилттай дуудлага
+              </p>
               <p className="text-sm font-medium">
                 {connection?.last_successful_api_call_at
-                  ? new Date(connection.last_successful_api_call_at).toLocaleString("mn-MN")
+                  ? new Date(
+                      connection.last_successful_api_call_at
+                    ).toLocaleString("mn-MN")
                   : "—"}
               </p>
             </div>
@@ -143,6 +208,41 @@ export default function AmazonConnection() {
         </CardContent>
       </Card>
 
+      {/* Test Result Detail */}
+      {testResult && !testResult.success && (
+        <Card className="border-destructive/50">
+          <CardContent className="pt-4 space-y-2">
+            <div className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-5 w-5" />
+              <span className="font-semibold">Холболтын алдаа</span>
+            </div>
+            <p className="text-sm">{testResult.error}</p>
+            {testResult.step && (
+              <p className="text-xs text-muted-foreground">
+                Алхам: {testResult.step}
+                {testResult.errorType && ` (${testResult.errorType})`}
+              </p>
+            )}
+            {testResult.details && (
+              <div className="text-xs space-y-1 mt-2">
+                <p>
+                  AMAZON_LWA_CLIENT_ID:{" "}
+                  {testResult.details.hasClientId ? "✅" : "❌ тохируулаагүй"}
+                </p>
+                <p>
+                  AMAZON_LWA_CLIENT_SECRET:{" "}
+                  {testResult.details.hasClientSecret ? "✅" : "❌ тохируулаагүй"}
+                </p>
+                <p>
+                  AMAZON_REFRESH_TOKEN:{" "}
+                  {testResult.details.hasRefreshToken ? "✅" : "❌ тохируулаагүй"}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Credentials Info */}
       <Card>
         <CardHeader>
@@ -151,33 +251,32 @@ export default function AmazonConnection() {
             API нууц түлхүүрүүд
           </CardTitle>
           <CardDescription>
-            Нууц түлхүүрүүд серверт аюулгүй хадгалагдсан. Тохиргоо хийгдсэн эсэхийг шалгана уу.
+            Нууц түлхүүрүүд серверт аюулгүй хадгалагдсан. "Холболт шалгах" товч
+            дарж тохируулагдсан эсэхийг шалгана уу.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center gap-2 p-3 rounded-lg border">
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">LWA Client ID</p>
-                <p className="text-xs text-muted-foreground">Edge Function secret-д тохируулна</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 p-3 rounded-lg border">
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">LWA Client Secret</p>
-                <p className="text-xs text-muted-foreground">Edge Function secret-д тохируулна</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 p-3 rounded-lg border">
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Refresh Token</p>
-                <p className="text-xs text-muted-foreground">Edge Function secret-д тохируулна</p>
-              </div>
-            </div>
+            {["LWA Client ID", "LWA Client Secret", "Refresh Token"].map(
+              (label) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-2 p-3 rounded-lg border"
+                >
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Серверийн secret-д хадгалагдана
+                    </p>
+                  </div>
+                </div>
+              )
+            )}
           </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Тохируулагдсан эсэхийг "Холболт шалгах" товч дарж баталгаажуулна уу.
+          </p>
         </CardContent>
       </Card>
 
@@ -193,11 +292,18 @@ export default function AmazonConnection() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Бүс нутаг (Region)</Label>
-              <Select value={form.region} onValueChange={(v) => setForm({ ...form, region: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={form.region}
+                onValueChange={(v) => setForm({ ...form, region: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {REGIONS.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -213,12 +319,21 @@ export default function AmazonConnection() {
           </div>
 
           <div className="flex gap-3">
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-              {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending}
+            >
+              {saveMutation.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
               Хадгалах
             </Button>
             <Button variant="outline" onClick={testConnection} disabled={testing}>
-              {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              {testing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
               Холболт шалгах
             </Button>
           </div>

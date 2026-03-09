@@ -21,11 +21,41 @@ interface TokenResponse {
   expires_in: number;
 }
 
-// In-memory token cache
+// In-memory token cache (per isolate)
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
+/**
+ * Check which Amazon secrets are configured.
+ * Returns an object with presence flags - does NOT expose values.
+ */
+function checkSecrets(): {
+  hasClientId: boolean;
+  hasClientSecret: boolean;
+  hasRefreshToken: boolean;
+  missing: string[];
+} {
+  const clientId = Deno.env.get("AMAZON_LWA_CLIENT_ID");
+  const clientSecret = Deno.env.get("AMAZON_LWA_CLIENT_SECRET");
+  const refreshToken = Deno.env.get("AMAZON_REFRESH_TOKEN");
+
+  const missing: string[] = [];
+  if (!clientId) missing.push("AMAZON_LWA_CLIENT_ID");
+  if (!clientSecret) missing.push("AMAZON_LWA_CLIENT_SECRET");
+  if (!refreshToken) missing.push("AMAZON_REFRESH_TOKEN");
+
+  return {
+    hasClientId: !!clientId,
+    hasClientSecret: !!clientSecret,
+    hasRefreshToken: !!refreshToken,
+    missing,
+  };
+}
+
+/**
+ * Get LWA access token via refresh token grant.
+ * Caches token in memory with 60s safety margin.
+ */
 async function getAccessToken(): Promise<string> {
-  // Check cache
   if (cachedToken && Date.now() < cachedToken.expiresAt - 60000) {
     return cachedToken.token;
   }
@@ -35,7 +65,10 @@ async function getAccessToken(): Promise<string> {
   const refreshToken = Deno.env.get("AMAZON_REFRESH_TOKEN");
 
   if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error("Amazon LWA credentials not configured");
+    const secrets = checkSecrets();
+    throw new Error(
+      `Amazon LWA credentials not configured. Missing: ${secrets.missing.join(", ")}`
+    );
   }
 
   const response = await fetch(LWA_TOKEN_URL, {
@@ -49,12 +82,26 @@ async function getAccessToken(): Promise<string> {
     }),
   });
 
+  const body = await response.text();
+
   if (!response.ok) {
-    const errBody = await response.text();
-    throw new Error(`LWA token refresh failed [${response.status}]: ${errBody}`);
+    // Parse specific LWA error types
+    let errorType = "unknown";
+    try {
+      const parsed = JSON.parse(body);
+      errorType = parsed.error || "unknown";
+    } catch {}
+
+    if (errorType === "invalid_client") {
+      throw new Error("LWA_INVALID_CLIENT: Client ID or Client Secret is invalid.");
+    }
+    if (errorType === "invalid_grant") {
+      throw new Error("LWA_INVALID_GRANT: Refresh token is invalid or expired.");
+    }
+    throw new Error(`LWA token refresh failed [${response.status}]: ${body}`);
   }
 
-  const data: TokenResponse = await response.json();
+  const data: TokenResponse = JSON.parse(body);
   cachedToken = {
     token: data.access_token,
     expiresAt: Date.now() + data.expires_in * 1000,
@@ -63,6 +110,17 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+/**
+ * Make an authenticated SP-API request.
+ * Uses LWA access token in x-amz-access-token header.
+ * Logs all calls to amazon_api_logs.
+ *
+ * Note on AWS SigV4: As of 2024, SP-API grantless and restricted operations
+ * require only the x-amz-access-token header for most Catalog/ProductType endpoints.
+ * AWS SigV4 is needed for Seller-specific APIs (Orders, Feeds, Reports) which
+ * this catalog-import integration does not use. If SigV4 is needed in the future,
+ * it should be added here using AWS access key + secret key.
+ */
 async function spApiRequest(
   path: string,
   region: string,
@@ -83,41 +141,52 @@ async function spApiRequest(
   const response = await fetch(url.toString(), {
     method,
     headers: {
-      Authorization: `Bearer ${token}`,
       "x-amz-access-token": token,
       "Content-Type": "application/json",
+      "User-Agent": "OnlyMN/1.0 (Lovable; +https://onlymn.lovable.app)",
     },
   });
 
   const duration = Date.now() - startTime;
   const rateLimitHeader = response.headers.get("x-amzn-ratelimit-limit");
+  const responseBody = await response.text();
 
   // Log the API call
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const adminClient = createClient(supabaseUrl, supabaseKey);
-
+  const adminClient = getAdminClient();
   await adminClient.from("amazon_api_logs").insert({
     operation_name: path,
     marketplace_id: params?.marketplaceIds || null,
-    request_summary: { path, params },
+    request_summary: { path, params, method },
     response_code: response.status,
     rate_limit_header: rateLimitHeader,
     status: response.ok ? "success" : "error",
-    error_message: response.ok ? null : `HTTP ${response.status}`,
+    error_message: response.ok ? null : `HTTP ${response.status}: ${responseBody.substring(0, 500)}`,
     duration_ms: duration,
   });
+
+  // Update connection last_successful_api_call_at on success
+  if (response.ok) {
+    await adminClient
+      .from("amazon_connections")
+      .update({ last_successful_api_call_at: new Date().toISOString() })
+      .eq("is_active", true);
+  }
 
   if (response.status === 429) {
     throw new Error("THROTTLED: Rate limit exceeded. Retry later.");
   }
 
-  if (!response.ok) {
-    const errBody = await response.text();
-    throw new Error(`SP-API error [${response.status}]: ${errBody}`);
+  if (response.status === 403) {
+    throw new Error(
+      `SP_API_FORBIDDEN: Access denied. Check that your SP-API app has Catalog Items API role authorized. Response: ${responseBody.substring(0, 300)}`
+    );
   }
 
-  return response.json();
+  if (!response.ok) {
+    throw new Error(`SP-API error [${response.status}]: ${responseBody.substring(0, 500)}`);
+  }
+
+  return JSON.parse(responseBody);
 }
 
 function getAdminClient() {
@@ -140,23 +209,97 @@ async function getConnectionRegion(): Promise<string> {
 
 // ==================== HANDLERS ====================
 
+/**
+ * Test connection by:
+ * 1. Checking all required secrets are present
+ * 2. Refreshing LWA token (validates credentials)
+ * 3. Making a real SP-API call to verify API access
+ */
 async function handleTestConnection() {
-  const region = await getConnectionRegion();
-  // Simple test: try to get a token
-  await getAccessToken();
-
-  // Update connection status
   const client = getAdminClient();
+
+  // Step 1: Check secrets presence
+  const secrets = checkSecrets();
+  if (secrets.missing.length > 0) {
+    return {
+      success: false,
+      error: `Missing credentials: ${secrets.missing.join(", ")}`,
+      step: "credentials_check",
+      details: {
+        hasClientId: secrets.hasClientId,
+        hasClientSecret: secrets.hasClientSecret,
+        hasRefreshToken: secrets.hasRefreshToken,
+      },
+    };
+  }
+
+  // Step 2: Test LWA token refresh
+  let tokenSuccess = false;
+  try {
+    cachedToken = null; // Force fresh token
+    await getAccessToken();
+    tokenSuccess = true;
+
+    await client
+      .from("amazon_connections")
+      .update({ last_token_refresh_at: new Date().toISOString() })
+      .eq("is_active", true);
+  } catch (e: any) {
+    // Determine specific error type
+    let errorType = "lwa_unknown";
+    if (e.message.includes("LWA_INVALID_CLIENT")) errorType = "lwa_invalid_client";
+    else if (e.message.includes("LWA_INVALID_GRANT")) errorType = "lwa_invalid_grant";
+
+    await client
+      .from("amazon_connections")
+      .update({ auth_status: "failed" })
+      .eq("is_active", true);
+
+    return {
+      success: false,
+      error: e.message,
+      step: "lwa_token_refresh",
+      errorType,
+    };
+  }
+
+  // Step 3: Make a real SP-API call (lightweight: get product type definitions)
+  const region = await getConnectionRegion();
+  try {
+    await spApiRequest(
+      "/definitions/2020-09-01/productTypes",
+      region,
+      { marketplaceIds: "ATVPDKIKX0DER", itemName: "PRODUCT" }
+    );
+  } catch (e: any) {
+    let errorType = "sp_api_unknown";
+    if (e.message.includes("SP_API_FORBIDDEN")) errorType = "sp_api_forbidden";
+    else if (e.message.includes("THROTTLED")) errorType = "sp_api_throttled";
+
+    await client
+      .from("amazon_connections")
+      .update({ auth_status: "token_only" })
+      .eq("is_active", true);
+
+    return {
+      success: false,
+      error: e.message,
+      step: "sp_api_verification",
+      errorType,
+      tokenRefreshWorked: true,
+    };
+  }
+
+  // All passed
   await client
     .from("amazon_connections")
     .update({
       auth_status: "authorized",
-      last_token_refresh_at: new Date().toISOString(),
       last_successful_api_call_at: new Date().toISOString(),
     })
     .eq("is_active", true);
 
-  return { success: true, message: "Connection successful" };
+  return { success: true, message: "Connection verified: LWA token + SP-API access confirmed." };
 }
 
 async function handleSearchCatalog(params: any) {
@@ -176,6 +319,7 @@ async function handleSearchCatalog(params: any) {
     apiParams.identifiers = params.query;
     apiParams.identifiersType = "UPC";
   } else {
+    // keyword and brand both use keywords param
     apiParams.keywords = params.query;
   }
 
@@ -189,7 +333,8 @@ async function handleSearchCatalog(params: any) {
   const items = (result.items || []).map((item: any) => {
     const summary = item.summaries?.[0] || {};
     const mainImage = item.images?.[0]?.images?.[0]?.link || null;
-    const classification = item.classifications?.[0]?.classifications?.[0]?.displayName || null;
+    const classification =
+      item.classifications?.[0]?.classifications?.[0]?.displayName || null;
 
     return {
       asin: item.asin,
@@ -201,7 +346,11 @@ async function handleSearchCatalog(params: any) {
     };
   });
 
-  return { success: true, items, totalResults: result.numberOfResults || items.length };
+  return {
+    success: true,
+    items,
+    totalResults: result.numberOfResults || items.length,
+  };
 }
 
 async function handleImportProducts(params: any) {
@@ -210,14 +359,19 @@ async function handleImportProducts(params: any) {
   const asins: string[] = params.asins || [];
   const client = getAdminClient();
   let imported = 0;
+  const errors: Array<{ asin: string; error: string }> = [];
 
   // Create sync job
-  const { data: job } = await client.from("amazon_sync_jobs").insert({
-    job_type: "product_import",
-    status: "running",
-    payload: { asins, marketplaceId },
-    started_at: new Date().toISOString(),
-  }).select().single();
+  const { data: job } = await client
+    .from("amazon_sync_jobs")
+    .insert({
+      job_type: "product_import",
+      status: "running",
+      payload: { asins, marketplaceId },
+      started_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
 
   try {
     for (const asin of asins) {
@@ -228,15 +382,18 @@ async function handleImportProducts(params: any) {
           region,
           {
             marketplaceIds: marketplaceId,
-            includedData: "summaries,images,identifiers,attributes,dimensions,relationships,classifications",
+            includedData:
+              "summaries,images,identifiers,attributes,dimensions,relationships,classifications",
           }
         );
 
         const summary = result.summaries?.[0] || {};
         const allImages = result.images?.[0]?.images || [];
         const mainImage = allImages[0]?.link || null;
-        const gallery = allImages.slice(1).map((img: any) => img.link).filter(Boolean);
-        const classification = result.classifications?.[0]?.classifications?.[0] || {};
+        const gallery = allImages
+          .slice(1)
+          .map((img: any) => img.link)
+          .filter(Boolean);
         const identifiers = result.identifiers?.[0]?.identifiers || [];
 
         // Upsert product
@@ -261,9 +418,11 @@ async function handleImportProducts(params: any) {
           { onConflict: "asin,marketplace_id" }
         );
 
-        if (!error) {
+        if (error) {
+          errors.push({ asin, error: error.message });
+        } else {
           imported++;
-          // Also ensure store settings exist
+          // Ensure store settings exist (one-to-one)
           const { data: prod } = await client
             .from("amazon_products")
             .select("id")
@@ -284,63 +443,65 @@ async function handleImportProducts(params: any) {
         }
       } catch (itemError: any) {
         console.error(`Failed to import ${asin}:`, itemError.message);
+        errors.push({ asin, error: itemError.message });
       }
     }
 
     // Update job
-    await client.from("amazon_sync_jobs").update({
-      status: "completed",
-      finished_at: new Date().toISOString(),
-      result: { imported, total: asins.length },
-    }).eq("id", job!.id);
+    await client
+      .from("amazon_sync_jobs")
+      .update({
+        status: errors.length === asins.length ? "failed" : "completed",
+        finished_at: new Date().toISOString(),
+        result: { imported, total: asins.length, errors },
+      })
+      .eq("id", job!.id);
 
-    // Update connection last API call
-    await client.from("amazon_connections").update({
-      last_successful_api_call_at: new Date().toISOString(),
-    }).eq("is_active", true);
-
-    return { success: true, imported };
+    return { success: true, imported, errors };
   } catch (e: any) {
-    await client.from("amazon_sync_jobs").update({
-      status: "failed",
-      finished_at: new Date().toISOString(),
-      error_message: e.message,
-    }).eq("id", job!.id);
+    await client
+      .from("amazon_sync_jobs")
+      .update({
+        status: "failed",
+        finished_at: new Date().toISOString(),
+        error_message: e.message,
+      })
+      .eq("id", job!.id);
     throw e;
   }
 }
 
-async function handleSyncCategories() {
-  // Note: SP-API uses Product Type Definitions for categories
+async function handleSyncCategories(params: any) {
   const region = await getConnectionRegion();
   const client = getAdminClient();
+  const marketplaceId = params?.marketplaceId || "ATVPDKIKX0DER";
 
   try {
     const result = await spApiRequest(
       "/definitions/2020-09-01/productTypes",
       region,
-      { marketplaceIds: "ATVPDKIKX0DER" }
+      { marketplaceIds: marketplaceId }
     );
 
     const productTypes = result.productTypes || [];
     let count = 0;
 
     for (const pt of productTypes) {
-      await client.from("amazon_categories").upsert(
+      const { error } = await client.from("amazon_categories").upsert(
         {
           amazon_category_key: pt.name,
           product_type: pt.name,
           name: pt.displayName || pt.name,
-          marketplace_id: "ATVPDKIKX0DER",
+          marketplace_id: marketplaceId,
           raw_payload: pt,
           last_synced_at: new Date().toISOString(),
         },
         { onConflict: "amazon_category_key,marketplace_id" }
       );
-      count++;
+      if (!error) count++;
     }
 
-    return { success: true, count };
+    return { success: true, count, total: productTypes.length };
   } catch (e: any) {
     return { success: false, error: e.message, count: 0 };
   }
@@ -369,7 +530,7 @@ Deno.serve(async (req) => {
         result = await handleImportProducts(params);
         break;
       case "syncCategories":
-        result = await handleSyncCategories();
+        result = await handleSyncCategories(params);
         break;
       default:
         result = { success: false, error: `Unknown action: ${action}` };
@@ -382,7 +543,10 @@ Deno.serve(async (req) => {
     console.error("Amazon API error:", error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   }
 });
