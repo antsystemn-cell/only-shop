@@ -463,40 +463,51 @@ export default function OtProductDetail() {
 
           {/* Vendor */}
           {product.vendor && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="p-1.5 rounded-full bg-muted">
-                  <Store className="h-4 w-4 text-muted-foreground" />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="p-1.5 rounded-full bg-muted">
+                    <Store className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <span className="font-medium">{product.vendor.name}</span>
+                    {product.vendor.score != null && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        {product.vendor.score}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <span className="font-medium">{product.vendor.name}</span>
-                  {product.vendor.score != null && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      {product.vendor.score}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleShare}>
-                  <Share2 className="h-4 w-4" />
-                </Button>
-                {isAdmin && product.externalUrl && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    asChild
-                    title="Эх линк руу очих"
-                  >
-                    <a href={product.externalUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleShare}>
+                    <Share2 className="h-4 w-4" />
                   </Button>
-                )}
-                <WishlistHeartButton productId={itemId!} />
+                  {isAdmin && product.externalUrl && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      asChild
+                      title="Эх линк руу очих"
+                    >
+                      <a href={product.externalUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
+                  <WishlistHeartButton productId={itemId!} />
+                </div>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs"
+                onClick={() => navigate(`/ot/shop?vendorId=${product.vendor!.id}&vendorName=${encodeURIComponent(product.vendor!.name || "")}`)}
+              >
+                <Store className="h-3.5 w-3.5 mr-1.5" />
+                Энэ дэлгүүрийн бүх барааг үзэх
+              </Button>
             </div>
           )}
 
