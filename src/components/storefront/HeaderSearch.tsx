@@ -109,12 +109,12 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
       } else {
         navigate(`/ot?q=${encodeURIComponent(text)}`);
       }
-    } else if (provider === "local") {
+    } else if (effectiveProvider === "local") {
       navigate(`/shop?q=${encodeURIComponent(text)}`);
     } else {
       const params = new URLSearchParams();
       params.set("q", text);
-      if (provider) params.set("provider", provider);
+      if (effectiveProvider) params.set("provider", effectiveProvider);
       navigate(`/ot?${params.toString()}`);
     }
     onSearchComplete?.();
