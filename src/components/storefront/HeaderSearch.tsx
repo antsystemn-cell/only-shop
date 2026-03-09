@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Camera, ImagePlus, Link2, Loader2, ChevronDown, Globe, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,15 +62,38 @@ interface HeaderSearchProps {
 export default function HeaderSearch({ className, autoFocus, onSearchComplete }: HeaderSearchProps) {
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState("");
-  const [provider, setProvider] = useState("Taobao");
+  const [provider, setProvider] = useState<string | null>(null); // null = not yet loaded
   const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: stripItems } = useProviderLogos();
 
+  // Fetch default provider from admin settings
+  const { data: adminDefault } = useQuery({
+    queryKey: ["admin_settings", "search_default_provider"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("admin_settings")
+        .select("setting_value")
+        .eq("setting_key", "search_default_provider")
+        .maybeSingle();
+      return data?.setting_value != null ? String(data.setting_value) : "Taobao";
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Set provider once admin default loads (only if not yet initialized)
+  useEffect(() => {
+    if (provider === null && adminDefault != null) {
+      setProvider(adminDefault);
+    }
+  }, [adminDefault, provider]);
+
+  const effectiveProvider = provider ?? "Taobao";
+
   const providers = DEFAULT_PROVIDERS;
-  const selectedProvider = providers.find((p) => p.value === provider) || providers[0];
+  const selectedProvider = providers.find((p) => p.value === effectiveProvider) || providers[0];
   const SelectedIcon = selectedProvider.icon;
   const selectedLogo = getProviderLogo(stripItems, selectedProvider.value);
 
