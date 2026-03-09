@@ -79,15 +79,30 @@ function checkSecrets() {
   const clientId = Deno.env.get("AMAZON_LWA_CLIENT_ID");
   const clientSecret = Deno.env.get("AMAZON_LWA_CLIENT_SECRET");
   const refreshToken = Deno.env.get("AMAZON_REFRESH_TOKEN");
-  const missing: string[] = [];
-  if (!clientId) missing.push("AMAZON_LWA_CLIENT_ID");
-  if (!clientSecret) missing.push("AMAZON_LWA_CLIENT_SECRET");
-  if (!refreshToken) missing.push("AMAZON_REFRESH_TOKEN");
+
+  const awsAccessKeyId = Deno.env.get("AMAZON_AWS_ACCESS_KEY_ID");
+  const awsSecretAccessKey = Deno.env.get("AMAZON_AWS_SECRET_ACCESS_KEY");
+  const awsSessionToken = Deno.env.get("AMAZON_AWS_SESSION_TOKEN");
+
+  const missingLwa: string[] = [];
+  if (!clientId) missingLwa.push("AMAZON_LWA_CLIENT_ID");
+  if (!clientSecret) missingLwa.push("AMAZON_LWA_CLIENT_SECRET");
+  if (!refreshToken) missingLwa.push("AMAZON_REFRESH_TOKEN");
+
+  const missingAws: string[] = [];
+  if (!awsAccessKeyId) missingAws.push("AMAZON_AWS_ACCESS_KEY_ID");
+  if (!awsSecretAccessKey) missingAws.push("AMAZON_AWS_SECRET_ACCESS_KEY");
+
   return {
     hasClientId: !!clientId,
     hasClientSecret: !!clientSecret,
     hasRefreshToken: !!refreshToken,
-    missing,
+    hasAwsAccessKeyId: !!awsAccessKeyId,
+    hasAwsSecretAccessKey: !!awsSecretAccessKey,
+    hasAwsSessionToken: !!awsSessionToken,
+    missingLwa,
+    missingAws,
+    missing: [...missingLwa, ...missingAws],
   };
 }
 
