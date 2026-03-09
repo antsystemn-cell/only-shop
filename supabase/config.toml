@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.import-users-xml]
 verify_jwt = false
+
+[functions.amazon-api]
+verify_jwt = false
