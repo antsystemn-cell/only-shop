@@ -76,6 +76,17 @@ import ProviderSectionsAdmin from "./pages/admin/ProviderSections";
 import Migration from "./pages/admin/Migration";
 import DynamicContentPage from "./pages/storefront/DynamicContentPage";
 
+// Amazon imports
+import AmazonConnection from "./pages/admin/AmazonConnection";
+import AmazonMarketplaces from "./pages/admin/AmazonMarketplaces";
+import AmazonCategories from "./pages/admin/AmazonCategories";
+import AmazonImport from "./pages/admin/AmazonImport";
+import AmazonProducts from "./pages/admin/AmazonProducts";
+import AmazonPricing from "./pages/admin/AmazonPricing";
+import AmazonSync from "./pages/admin/AmazonSync";
+import AmazonShop from "./pages/storefront/AmazonShop";
+import AmazonProductDetail from "./pages/storefront/AmazonProductDetail";
+
 // Redirect component for old OT Orders route
 const OtOrdersRedirect = () => <Navigate to="/admin/orders?source=ot" replace />;
 
