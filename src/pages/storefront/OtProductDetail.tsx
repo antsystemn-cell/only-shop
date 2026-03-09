@@ -503,7 +503,7 @@ export default function OtProductDetail() {
                 variant="outline"
                 size="sm"
                 className="w-full text-xs"
-                onClick={() => navigate(`/ot/shop?vendorId=${product.vendor!.id}&vendorName=${encodeURIComponent(product.vendor!.name || "")}`)}
+                onClick={() => navigate(`/ot?vendorId=${product.vendor!.id}&vendorName=${encodeURIComponent(product.vendor!.name || "")}`)}
               >
                 <Store className="h-3.5 w-3.5 mr-1.5" />
                 Энэ дэлгүүрийн бүх барааг үзэх
