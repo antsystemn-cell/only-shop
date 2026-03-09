@@ -78,7 +78,11 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
         .select("setting_value")
         .eq("setting_key", "search_default_provider")
         .maybeSingle();
-      return data?.setting_value != null ? String(data.setting_value) : "Taobao";
+      if (!data?.setting_value) return "Taobao";
+      // setting_value is jsonb — could be a JSON string with quotes
+      const val = data.setting_value;
+      const str = typeof val === "string" ? val.replace(/^"|"$/g, "") : String(val);
+      return str || "Taobao";
     },
     staleTime: 5 * 60 * 1000,
   });
