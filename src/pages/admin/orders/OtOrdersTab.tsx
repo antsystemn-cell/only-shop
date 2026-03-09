@@ -106,7 +106,22 @@ export default function OtOrdersTab() {
 
       const { data, error, count } = await query;
       if (error) throw error;
-      return { orders: data || [], count: count || 0 };
+
+      // Fetch user profiles
+      const userIds = [...new Set(data?.map(o => o.user_id).filter(Boolean))] as string[];
+      let profilesMap: Record<string, any> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, email, phone")
+          .in("user_id", userIds);
+        profiles?.forEach(p => { profilesMap[p.user_id] = p; });
+      }
+
+      return {
+        orders: (data || []).map(o => ({ ...o, profile: profilesMap[o.user_id || ""] || null })),
+        count: count || 0,
+      };
     },
   });
 
@@ -266,6 +281,7 @@ export default function OtOrdersTab() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Дугаар</TableHead>
+                      <TableHead>Хэрэглэгч</TableHead>
                       <TableHead className="text-center">Бараа</TableHead>
                       <TableHead className="text-right">Дүн</TableHead>
                       <TableHead className="text-center">Хүргэлт</TableHead>
@@ -279,6 +295,13 @@ export default function OtOrdersTab() {
                       <TableRow key={order.id} className="hover:bg-muted/50">
                         <TableCell>
                           <div className="font-mono text-sm font-medium">{order.order_number}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-medium">{order.profile?.full_name || "—"}</div>
+                          <div className="text-xs text-muted-foreground">{order.profile?.email}</div>
+                          {order.profile?.phone && (
+                            <div className="text-xs text-muted-foreground">{order.profile.phone}</div>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge variant="secondary">{order.item_count}</Badge>
@@ -368,6 +391,20 @@ export default function OtOrdersTab() {
           </SheetHeader>
           {selectedOrder && (
             <div className="space-y-4 mt-4">
+              {/* User Info */}
+              {selectedOrder.profile && (
+                <div className="p-3 rounded-lg border bg-muted/30">
+                  <Label className="text-muted-foreground text-xs">Хэрэглэгч</Label>
+                  <p className="font-medium mt-1">{selectedOrder.profile.full_name || "—"}</p>
+                  {selectedOrder.profile.email && (
+                    <p className="text-sm text-muted-foreground">{selectedOrder.profile.email}</p>
+                  )}
+                  {selectedOrder.profile.phone && (
+                    <p className="text-sm text-muted-foreground">{selectedOrder.profile.phone}</p>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <Label className="text-muted-foreground">Дугаар</Label>
