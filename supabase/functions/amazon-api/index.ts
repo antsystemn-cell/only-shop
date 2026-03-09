@@ -117,7 +117,7 @@ async function getAccessToken(): Promise<string> {
 
   if (!clientId || !clientSecret || !refreshToken) {
     const secrets = checkSecrets();
-    throw new Error(`Missing credentials: ${secrets.missing.join(", ")}`);
+    throw new Error(`Missing credentials: ${secrets.missingLwa.join(", ")}`);
   }
 
   const response = await fetch(LWA_TOKEN_URL, {
