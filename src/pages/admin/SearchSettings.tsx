@@ -139,7 +139,7 @@ export default function SearchSettings() {
               {providerOptions.map((p) => {
                 const Icon = getIconComponent(p.icon);
                 return (
-                  <SelectItem key={p.id} value={p.value}>
+                  <SelectItem key={p.id} value={p.value || "__all__"}>
                     <span className="flex items-center gap-2">
                       <Icon className="h-4 w-4" />
                       {p.label}
