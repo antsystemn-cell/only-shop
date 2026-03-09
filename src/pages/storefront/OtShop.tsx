@@ -525,7 +525,8 @@ export default function OtShop() {
   const imageUrl = searchParams.get("imageUrl") || "";
   const provider = searchParams.get("provider") || "";
 
-  const isSearchMode = !!(query || categoryId || imageUrl);
+  const vendorId = searchParams.get("vendorId") || "";
+  const isSearchMode = !!(query || categoryId || imageUrl || vendorId);
 
   const updateParam = useCallback((key: string, value: string | null) => {
     const newParams = new URLSearchParams(searchParams);
