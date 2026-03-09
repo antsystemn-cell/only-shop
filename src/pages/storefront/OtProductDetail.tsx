@@ -1,5 +1,5 @@
 import DOMPurify from "dompurify";
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
@@ -113,6 +113,26 @@ export default function OtProductDetail() {
     staleTime: 1000 * 60 * 10,
     retry: 1,
   });
+
+  // Auto-select configurator groups that have only one option
+  useEffect(() => {
+    if (!product?.configurators?.length) return;
+    const autoSelections: Record<string, string> = {};
+    for (const config of product.configurators) {
+      const values = ensureArray(config.values);
+      if (values.length === 1) {
+        autoSelections[config.pid] = values[0].id;
+      }
+    }
+    if (Object.keys(autoSelections).length > 0) {
+      setSelectedConfigs((prev) => {
+        const merged = { ...autoSelections, ...prev };
+        // Only update if something actually changed
+        const changed = Object.keys(autoSelections).some((k) => prev[k] !== autoSelections[k]);
+        return changed ? merged : prev;
+      });
+    }
+  }, [product]);
 
   const translatedTitle = useTranslatedTitle(product?.title);
 
