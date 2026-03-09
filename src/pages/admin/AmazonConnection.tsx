@@ -240,7 +240,7 @@ export default function AmazonConnection() {
               return (
                 <div key={item.label} className="flex items-center gap-2 p-3 rounded-lg border">
                   {verified === true ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-primary" />
                   ) : verified === false ? (
                     <XCircle className="h-4 w-4 text-destructive" />
                   ) : (

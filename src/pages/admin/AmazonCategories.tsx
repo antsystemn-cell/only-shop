@@ -169,7 +169,9 @@ export default function AmazonCategories() {
                     </TableCell>
                     <TableCell>
                       {mapping ? (
-                        <Badge className="bg-green-600"><Link2 className="h-3 w-3 mr-1" />Холбогдсон</Badge>
+                        <Badge>
+                          <Link2 className="h-3 w-3 mr-1" />Холбогдсон
+                        </Badge>
                       ) : (
                         <Badge variant="secondary">Холбогдоогүй</Badge>
                       )}

@@ -176,7 +176,7 @@ export default function AmazonProducts() {
                   <TableCell className="max-w-xs truncate font-medium">
                     {product.title || "—"}
                     {isSandboxProduct(product) && (
-                      <Badge variant="outline" className="ml-2 text-amber-600 border-amber-400 text-[10px]">sandbox</Badge>
+                      <Badge variant="secondary" className="ml-2 text-[10px]">sandbox</Badge>
                     )}
                   </TableCell>
                   <TableCell><Badge variant="outline">{product.asin}</Badge></TableCell>

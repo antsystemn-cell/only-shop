@@ -192,7 +192,11 @@ export default function AmazonImport() {
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
                 Үр дүн ({results.length})
-                {lastSearchSandbox && <Badge variant="outline" className="ml-2 text-amber-600 border-amber-500">Sandbox data</Badge>}
+                {lastSearchSandbox && (
+                  <Badge variant="secondary" className="ml-2">
+                    Sandbox data
+                  </Badge>
+                )}
               </CardTitle>
               <Button onClick={handleImport} disabled={importing || selected.size === 0}>
                 {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}

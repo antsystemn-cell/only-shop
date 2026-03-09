@@ -133,9 +133,9 @@ export default function AmazonShop() {
                         <ShoppingBag className="h-12 w-12 text-muted-foreground/30" />
                       </div>
                     )}
-                    <Badge className="absolute top-2 left-2 bg-orange-500 text-white text-[10px]">Amazon</Badge>
+                    <Badge className="absolute top-2 left-2 text-[10px]">Amazon</Badge>
                     {isSandboxProduct && (
-                      <Badge className="absolute top-2 right-2 bg-amber-500 text-white text-[10px]">Sandbox</Badge>
+                      <Badge variant="secondary" className="absolute top-2 right-2 text-[10px]">Sandbox</Badge>
                     )}
                   </div>
                   <CardContent className="p-3">

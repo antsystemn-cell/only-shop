@@ -577,7 +577,7 @@ async function handleImportProducts(params: any) {
             title: fixture?.title || `[Sandbox] Product ${asin}`,
             brand: fixture?.brand || "SandboxBrand",
             short_description: fixture?.short_description || "Sandbox test product",
-            main_image: fixture?.mainImage || `https://via.placeholder.com/300x300.png?text=${asin}`,
+            main_image: fixture?.mainImage || "/placeholder.svg",
             image_gallery: [],
             attributes: { sandbox: true, generated_at: new Date().toISOString() },
             dimensions: {},
