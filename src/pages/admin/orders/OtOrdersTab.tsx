@@ -281,6 +281,7 @@ export default function OtOrdersTab() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Дугаар</TableHead>
+                      <TableHead>Хэрэглэгч</TableHead>
                       <TableHead className="text-center">Бараа</TableHead>
                       <TableHead className="text-right">Дүн</TableHead>
                       <TableHead className="text-center">Хүргэлт</TableHead>
