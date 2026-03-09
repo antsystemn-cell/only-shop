@@ -929,12 +929,12 @@ export default function OtCheckout() {
                     <p className="text-muted-foreground">
                       Таны захиалга баталгаажлаа. Удахгүй тантай холбогдох болно.
                     </p>
-                    <div className="flex gap-3 justify-center pt-4">
-                      <Link to="/ot/orders">
-                        <Button>Захиалгууд харах</Button>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4 w-full px-4">
+                      <Link to="/ot/orders" className="w-full sm:w-auto">
+                        <Button className="w-full sm:w-auto">Захиалгууд харах</Button>
                       </Link>
-                      <Link to="/ot">
-                        <Button variant="outline">Маркетплэйс руу буцах</Button>
+                      <Link to="/" className="w-full sm:w-auto">
+                        <Button variant="outline" className="w-full sm:w-auto">Дэлгүүр рүү буцах</Button>
                       </Link>
                     </div>
                   </CardContent>
