@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const QPAY_BASE = "https://merchant.qpay.mn/v2";
@@ -102,7 +102,22 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { action, params } = await req.json();
+    const url = new URL(req.url);
+    let action: string;
+    let params: Record<string, any>;
+
+    // QPay sends GET callback requests — handle them separately
+    if (req.method === "GET") {
+      action = url.searchParams.get("action") || "callback";
+      params = Object.fromEntries(url.searchParams.entries());
+      console.log("[qpay] GET callback received, params:", JSON.stringify(params));
+    } else {
+      // POST requests from our frontend
+      const body = await req.json();
+      action = body.action;
+      params = body.params || {};
+    }
+
     const supabase = getSupabaseAdmin();
 
     // Callback from QPay does not require user auth
@@ -112,13 +127,15 @@ Deno.serve(async (req) => {
       if (!authHeader?.startsWith("Bearer ")) {
         return jsonResponse({ error: "Unauthorized" }, 401);
       }
+      const token = authHeader.replace("Bearer ", "");
       const userClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_ANON_KEY")!,
         { global: { headers: { Authorization: authHeader } } }
       );
-      const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
-      if (claimsErr || !claimsData?.claims?.sub) {
+      const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+      if (userErr || !userData?.user?.id) {
+        console.error("[qpay] Auth error:", userErr?.message);
         return jsonResponse({ error: "Invalid authentication" }, 401);
       }
     }
@@ -187,9 +204,9 @@ Deno.serve(async (req) => {
         callback_url: callbackUrl,
       };
 
-      console.log("Creating QPay invoice:", JSON.stringify(invoicePayload));
+      console.log("[qpay] Creating invoice:", JSON.stringify(invoicePayload));
       const invoiceResult = await qpayRequest("/invoice", "POST", invoicePayload);
-      console.log("QPay invoice created:", JSON.stringify({
+      console.log("[qpay] Invoice created:", JSON.stringify({
         invoice_id: invoiceResult.invoice_id,
         has_qr: !!invoiceResult.qr_image,
         urls_count: invoiceResult.urls?.length || 0,
@@ -249,62 +266,86 @@ Deno.serve(async (req) => {
         return jsonResponse({ status: "PAID" });
       }
 
-      const checkResult = await qpayRequest("/payment/check", "POST", {
-        object_type: "INVOICE",
-        object_id: pi.invoice_id,
-        offset: { page_number: 1, page_limit: 100 },
-      });
+      try {
+        const checkResult = await qpayRequest("/payment/check", "POST", {
+          object_type: "INVOICE",
+          object_id: pi.invoice_id,
+          offset: { page_number: 1, page_limit: 100 },
+        });
 
-      console.log("QPay payment check result:", JSON.stringify(checkResult));
+        console.log("[qpay] Payment check result:", JSON.stringify(checkResult));
 
-      const payments = checkResult.rows || [];
-      const paidPayment = payments.find((p: any) => p.payment_status === "PAID");
+        // QPay returns count and rows for payment check
+        const payments = checkResult.rows || [];
+        const paidPayment = payments.find((p: any) => p.payment_status === "PAID");
 
-      if (paidPayment) {
-        await finalizePayment(supabase, pi, paidPayment.payment_id);
-        return jsonResponse({ status: "PAID", payment_id: paidPayment.payment_id });
+        if (paidPayment) {
+          await finalizePayment(supabase, pi, String(paidPayment.payment_id));
+          return jsonResponse({ status: "PAID", payment_id: paidPayment.payment_id });
+        }
+
+        return jsonResponse({ 
+          status: "PENDING", 
+          count: checkResult.count || payments.length,
+          paid_amount: checkResult.paid_amount || 0,
+        });
+      } catch (checkErr: any) {
+        console.error("[qpay] Payment check error:", checkErr.message);
+        // Don't throw — return PENDING so polling continues
+        return jsonResponse({ status: "PENDING", error: checkErr.message });
       }
-
-      return jsonResponse({ status: "PENDING", count: payments.length });
     }
 
     // ===========================
-    // CALLBACK from QPay
+    // CALLBACK from QPay (GET request)
     // ===========================
     if (action === "callback") {
-      const paymentIntentId = params?.paymentIntentId || new URL(req.url).searchParams.get("paymentIntentId");
-      if (!paymentIntentId) throw new Error("paymentIntentId is required in callback");
+      const paymentIntentId = params?.paymentIntentId;
+      console.log("[qpay] Callback for paymentIntentId:", paymentIntentId);
 
-      const { data: pi } = await supabase
+      if (!paymentIntentId) {
+        console.error("[qpay] Callback missing paymentIntentId");
+        return jsonResponse({ error: "paymentIntentId is required" }, 400);
+      }
+
+      const { data: pi, error: piErr } = await supabase
         .from("payment_intents")
         .select("*")
         .eq("id", paymentIntentId)
         .single();
 
-      if (!pi?.invoice_id) {
-        return new Response(JSON.stringify({ error: "Payment intent not found" }), {
-          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (piErr || !pi?.invoice_id) {
+        console.error("[qpay] Callback: PI not found or no invoice_id", piErr?.message);
+        return jsonResponse({ error: "Payment intent not found" }, 404);
       }
 
       if (pi.status === "paid") {
+        console.log("[qpay] Callback: already paid");
         return jsonResponse({ status: "already_paid" });
       }
 
-      const checkResult = await qpayRequest("/payment/check", "POST", {
-        object_type: "INVOICE",
-        object_id: pi.invoice_id,
-        offset: { page_number: 1, page_limit: 100 },
-      });
+      try {
+        const checkResult = await qpayRequest("/payment/check", "POST", {
+          object_type: "INVOICE",
+          object_id: pi.invoice_id,
+          offset: { page_number: 1, page_limit: 100 },
+        });
 
-      const payments = checkResult.rows || [];
-      const paidPayment = payments.find((p: any) => p.payment_status === "PAID");
+        console.log("[qpay] Callback check result:", JSON.stringify(checkResult));
 
-      if (paidPayment) {
-        await finalizePayment(supabase, pi, paidPayment.payment_id);
+        const payments = checkResult.rows || [];
+        const paidPayment = payments.find((p: any) => p.payment_status === "PAID");
+
+        if (paidPayment) {
+          await finalizePayment(supabase, pi, String(paidPayment.payment_id));
+          console.log("[qpay] Callback: payment finalized successfully");
+        }
+
+        return jsonResponse({ status: paidPayment ? "PAID" : "PENDING" });
+      } catch (callbackErr: any) {
+        console.error("[qpay] Callback check error:", callbackErr.message);
+        return jsonResponse({ error: callbackErr.message }, 500);
       }
-
-      return jsonResponse({ status: paidPayment ? "PAID" : "PENDING" });
     }
 
     // ===========================
@@ -374,7 +415,7 @@ Deno.serve(async (req) => {
 
     throw new Error(`Unknown action: ${action}`);
   } catch (error) {
-    console.error("QPay edge function error:", error);
+    console.error("[qpay] Edge function error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(JSON.stringify({ error: message }), {
       status: 400,
@@ -387,6 +428,8 @@ Deno.serve(async (req) => {
 // FINALIZE PAYMENT HELPER
 // ===========================
 async function finalizePayment(supabase: any, pi: any, qpayPaymentId: string) {
+  console.log("[qpay] Finalizing payment:", { piId: pi.id, type: pi.type, qpayPaymentId });
+
   // Update payment intent
   await supabase
     .from("payment_intents")
@@ -409,10 +452,16 @@ async function finalizePayment(supabase: any, pi: any, qpayPaymentId: string) {
       .eq("id", pi.reference_id);
   } else if (pi.type === "wallet_topup") {
     // Credit wallet
-    await supabase.rpc("credit_wallet", {
+    const { data: walletResult, error: walletErr } = await supabase.rpc("credit_wallet", {
       p_user_id: pi.user_id,
       p_amount: Number(pi.amount),
     });
+    
+    if (walletErr) {
+      console.error("[qpay] credit_wallet error:", walletErr.message);
+    } else {
+      console.log("[qpay] Wallet credited, new balance:", walletResult);
+    }
 
     // Mark topup as completed
     await supabase
