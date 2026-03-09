@@ -556,11 +556,18 @@ export default function OtProductDetail() {
                       disabled={isOutOfStock}
                       onClick={() => {
                         if (isOutOfStock) return;
+                        const newVal = isSelected ? "" : val.id;
                         setSelectedConfigs((prev) => ({
                           ...prev,
-                          [config.pid]: isSelected ? "" : val.id,
+                          [config.pid]: newVal,
                         }));
-                      }}
+                        // Show configurator image in main gallery
+                        if (newVal && val.imageUrl) {
+                          setConfigImageOverride(val.imageUrl);
+                        } else {
+                          setConfigImageOverride(null);
+                        }
+                      }
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
                         isOutOfStock
                           ? "border-border opacity-40 cursor-not-allowed line-through"
