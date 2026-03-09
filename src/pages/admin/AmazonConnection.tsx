@@ -212,9 +212,9 @@ export default function AmazonConnection() {
       )}
 
       {testResult?.success && (
-        <Card className="border-green-500/50 bg-green-500/5">
+        <Card className="border-primary/30 bg-primary/5">
           <CardContent className="pt-4 flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-600" />
+            <CheckCircle className="h-5 w-5 text-primary" />
             <span className="text-sm font-medium">{testResult.message}</span>
             {testResult.sandbox && <Badge variant="outline" className="ml-2">Sandbox</Badge>}
           </CardContent>
