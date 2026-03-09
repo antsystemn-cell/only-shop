@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Package, MoreHorizontal, Eye, Pencil, RefreshCw, Globe, Archive, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Package, MoreHorizontal, RefreshCw, Globe, Archive, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function AmazonProducts() {
@@ -19,32 +19,43 @@ export default function AmazonProducts() {
   const { data: products, isLoading } = useQuery({
     queryKey: ["amazon-products", statusFilter],
     queryFn: async () => {
+      // Use left join to get all products with optional store settings
       let query = supabase
         .from("amazon_products")
         .select("*, amazon_product_store_settings(*)")
         .order("created_at", { ascending: false })
         .limit(100);
 
-      if (statusFilter !== "all") {
-        // Filter by publish_status through the store settings
-      }
-
       const { data, error } = await query;
       if (error) throw error;
+
+      // Filter by publish_status client-side since it's in the related table
+      if (statusFilter !== "all" && data) {
+        return data.filter((p) => {
+          const settings = Array.isArray(p.amazon_product_store_settings)
+            ? p.amazon_product_store_settings[0]
+            : p.amazon_product_store_settings;
+          const status = settings?.publish_status || "draft";
+          return status === statusFilter;
+        });
+      }
+
       return data;
     },
   });
 
   const updatePublishMutation = useMutation({
     mutationFn: async ({ productId, status }: { productId: string; status: string }) => {
-      // Upsert store settings
       const { error } = await supabase
         .from("amazon_product_store_settings")
-        .upsert({
-          amazon_product_id: productId,
-          publish_status: status,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "amazon_product_id" });
+        .upsert(
+          {
+            amazon_product_id: productId,
+            publish_status: status,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "amazon_product_id" }
+        );
       if (error) throw error;
     },
     onSuccess: () => {
@@ -70,21 +81,45 @@ export default function AmazonProducts() {
     },
   });
 
-  const filtered = products?.filter((p) =>
-    !search || (p.title || "").toLowerCase().includes(search.toLowerCase()) || p.asin.includes(search)
+  const filtered = products?.filter(
+    (p) =>
+      !search ||
+      (p.title || "").toLowerCase().includes(search.toLowerCase()) ||
+      p.asin.includes(search)
   );
 
-  const getPublishBadge = (settings: any) => {
-    const status = settings?.[0]?.publish_status || "draft";
+  const getPublishBadge = (product: any) => {
+    // amazon_product_store_settings is one-to-one, so it could be object or single-element array
+    const settings = Array.isArray(product.amazon_product_store_settings)
+      ? product.amazon_product_store_settings[0]
+      : product.amazon_product_store_settings;
+    const status = settings?.publish_status || "draft";
     switch (status) {
-      case "published": return <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Нийтлэгдсэн</Badge>;
-      case "archived": return <Badge variant="secondary"><Archive className="h-3 w-3 mr-1" />Архивлагдсан</Badge>;
-      default: return <Badge variant="outline">Ноорог</Badge>;
+      case "published":
+        return (
+          <Badge className="bg-green-600">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Нийтлэгдсэн
+          </Badge>
+        );
+      case "archived":
+        return (
+          <Badge variant="secondary">
+            <Archive className="h-3 w-3 mr-1" />
+            Архивлагдсан
+          </Badge>
+        );
+      default:
+        return <Badge variant="outline">Ноорог</Badge>;
     }
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -110,7 +145,9 @@ export default function AmazonProducts() {
               className="max-w-sm"
             />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Бүгд</SelectItem>
                 <SelectItem value="published">Нийтлэгдсэн</SelectItem>
@@ -138,18 +175,29 @@ export default function AmazonProducts() {
                 <TableRow key={product.id}>
                   <TableCell>
                     {product.main_image ? (
-                      <img src={product.main_image} alt="" className="w-12 h-12 object-cover rounded" />
+                      <img
+                        src={product.main_image}
+                        alt=""
+                        className="w-12 h-12 object-cover rounded"
+                      />
                     ) : (
                       <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
                         <Package className="h-6 w-6 text-muted-foreground" />
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate font-medium">{product.title || "—"}</TableCell>
-                  <TableCell><Badge variant="outline">{product.asin}</Badge></TableCell>
+                  <TableCell className="max-w-xs truncate font-medium">
+                    {product.title || "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{product.asin}</Badge>
+                  </TableCell>
                   <TableCell>{product.brand || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary"><Globe className="h-3 w-3 mr-1" />{product.marketplace_id}</Badge>
+                    <Badge variant="secondary">
+                      <Globe className="h-3 w-3 mr-1" />
+                      {product.marketplace_id}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <p className="text-xs text-muted-foreground">
@@ -158,23 +206,48 @@ export default function AmazonProducts() {
                         : "—"}
                     </p>
                   </TableCell>
-                  <TableCell>{getPublishBadge(product.amazon_product_store_settings)}</TableCell>
+                  <TableCell>{getPublishBadge(product)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => updatePublishMutation.mutate({ productId: product.id, status: "published" })}>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            updatePublishMutation.mutate({
+                              productId: product.id,
+                              status: "published",
+                            })
+                          }
+                        >
                           <CheckCircle className="h-4 w-4 mr-2" /> Нийтлэх
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updatePublishMutation.mutate({ productId: product.id, status: "draft" })}>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            updatePublishMutation.mutate({
+                              productId: product.id,
+                              status: "draft",
+                            })
+                          }
+                        >
                           <XCircle className="h-4 w-4 mr-2" /> Ноорог болгох
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => resyncMutation.mutate(product.asin)}>
+                        <DropdownMenuItem
+                          onClick={() => resyncMutation.mutate(product.asin)}
+                        >
                           <RefreshCw className="h-4 w-4 mr-2" /> Дахин синк
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updatePublishMutation.mutate({ productId: product.id, status: "archived" })}>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            updatePublishMutation.mutate({
+                              productId: product.id,
+                              status: "archived",
+                            })
+                          }
+                        >
                           <Archive className="h-4 w-4 mr-2" /> Архивлах
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -184,7 +257,10 @@ export default function AmazonProducts() {
               ))}
               {(!filtered || filtered.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell
+                    colSpan={8}
+                    className="text-center text-muted-foreground py-8"
+                  >
                     Импортлогдсон бараа байхгүй байна
                   </TableCell>
                 </TableRow>

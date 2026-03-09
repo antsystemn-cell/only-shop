@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -39,18 +39,38 @@ export default function AmazonProductDetail() {
       <div className="container mx-auto px-4 py-16 text-center">
         <ShoppingBag className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
         <h1 className="text-xl font-bold mb-2">Бараа олдсонгүй</h1>
-        <Link to="/amazon"><Button variant="outline"><ArrowLeft className="h-4 w-4 mr-2" />Буцах</Button></Link>
+        <Link to="/amazon">
+          <Button variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Буцах
+          </Button>
+        </Link>
       </div>
     );
   }
 
-  const settings = product.amazon_product_store_settings?.[0];
+  // Handle one-to-one relationship (may come as array or object)
+  const settings = Array.isArray(product.amazon_product_store_settings)
+    ? product.amazon_product_store_settings[0]
+    : product.amazon_product_store_settings;
+
   const displayTitle = settings?.local_title_override || product.title;
-  const displayDescription = settings?.local_description_override || product.full_description || product.short_description;
-  const displayPrice = settings?.manual_price_override || product.source_price;
+  const displayDescription =
+    settings?.local_description_override ||
+    product.full_description ||
+    product.short_description;
+  const displayPrice =
+    settings?.manual_price_override || product.source_price;
+
+  // Build image gallery from main_image + image_gallery JSON array
+  const galleryRaw = (product.image_gallery as any[]) || [];
+  const galleryLinks = galleryRaw
+    .map((i: any) => (typeof i === "string" ? i : i?.link || i?.url))
+    .filter(Boolean);
   const images: string[] = product.main_image
-    ? [product.main_image, ...((product.image_gallery as any[]) || []).map((i: any) => typeof i === "string" ? i : i.url).filter(Boolean)]
-    : [];
+    ? [product.main_image, ...galleryLinks]
+    : galleryLinks;
+
   const attributes = (product.attributes || {}) as Record<string, any>;
   const dimensions = (product.dimensions || {}) as Record<string, any>;
   const category = product.amazon_categories;
@@ -59,15 +79,24 @@ export default function AmazonProductDetail() {
     <div className="container mx-auto px-4 py-6 space-y-6">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-1 text-sm text-muted-foreground">
-        <Link to="/amazon" className="hover:text-foreground">Amazon</Link>
+        <Link to="/amazon" className="hover:text-foreground">
+          Amazon
+        </Link>
         <ChevronRight className="h-3 w-3" />
         {category && (
           <>
-            <Link to={`/amazon?category=${category.id}`} className="hover:text-foreground">{category.name}</Link>
+            <Link
+              to={`/amazon?category=${category.id}`}
+              className="hover:text-foreground"
+            >
+              {category.name}
+            </Link>
             <ChevronRight className="h-3 w-3" />
           </>
         )}
-        <span className="text-foreground truncate max-w-xs">{displayTitle}</span>
+        <span className="text-foreground truncate max-w-xs">
+          {displayTitle}
+        </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -75,7 +104,11 @@ export default function AmazonProductDetail() {
         <div className="space-y-3">
           <div className="aspect-square rounded-lg overflow-hidden bg-muted">
             {images[selectedImage] ? (
-              <img src={images[selectedImage]} alt={displayTitle || ""} className="w-full h-full object-contain" />
+              <img
+                src={images[selectedImage]}
+                alt={displayTitle || ""}
+                className="w-full h-full object-contain"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <ShoppingBag className="h-20 w-20 text-muted-foreground/20" />
@@ -92,7 +125,11 @@ export default function AmazonProductDetail() {
                     i === selectedImage ? "border-primary" : "border-transparent"
                   }`}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={img}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -103,7 +140,9 @@ export default function AmazonProductDetail() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Badge className="bg-orange-500 text-white">Amazon</Badge>
-            {product.brand && <Badge variant="outline">{product.brand}</Badge>}
+            {product.brand && (
+              <Badge variant="outline">{product.brand}</Badge>
+            )}
           </div>
 
           <h1 className="text-2xl font-bold">{displayTitle}</h1>
@@ -116,7 +155,9 @@ export default function AmazonProductDetail() {
           {displayPrice && (
             <div className="text-3xl font-bold text-primary">
               {Number(displayPrice).toLocaleString()}
-              <span className="text-lg font-normal ml-1">{product.source_currency || "USD"}</span>
+              <span className="text-lg font-normal ml-1">
+                {product.source_currency || "USD"}
+              </span>
             </div>
           )}
 

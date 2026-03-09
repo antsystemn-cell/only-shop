@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Search, ShoppingBag, SlidersHorizontal } from "lucide-react";
 
@@ -18,11 +17,11 @@ export default function AmazonShop() {
   const { data: products, isLoading } = useQuery({
     queryKey: ["amazon-storefront-products", categoryFilter, sortBy],
     queryFn: async () => {
+      // Inner join: only products with published store settings
       let query = supabase
         .from("amazon_products")
         .select("*, amazon_product_store_settings!inner(*)")
         .eq("amazon_product_store_settings.publish_status", "published")
-        .eq("source_status", "active")
         .limit(48);
 
       if (categoryFilter) {
@@ -32,7 +31,7 @@ export default function AmazonShop() {
       if (sortBy === "newest") {
         query = query.order("created_at", { ascending: false });
       } else if (sortBy === "price_asc") {
-        query = query.order("source_price", { ascending: true });
+        query = query.order("source_price", { ascending: true, nullsFirst: false });
       } else if (sortBy === "price_desc") {
         query = query.order("source_price", { ascending: false });
       }
@@ -59,7 +58,9 @@ export default function AmazonShop() {
   });
 
   const filtered = search
-    ? products?.filter((p) => (p.title || "").toLowerCase().includes(search.toLowerCase()))
+    ? products?.filter((p) =>
+        (p.title || "").toLowerCase().includes(search.toLowerCase())
+      )
     : products;
 
   return (
@@ -69,7 +70,9 @@ export default function AmazonShop() {
         <ShoppingBag className="h-7 w-7 text-primary" />
         <div>
           <h1 className="text-2xl font-bold">Amazon бараанууд</h1>
-          <p className="text-sm text-muted-foreground">Amazon-оос импортлогдсон бараанууд</p>
+          <p className="text-sm text-muted-foreground">
+            Amazon-оос импортлогдсон бараанууд
+          </p>
         </div>
       </div>
 
@@ -85,7 +88,7 @@ export default function AmazonShop() {
           />
         </div>
         <Select
-          value={categoryFilter}
+          value={categoryFilter || "all"}
           onValueChange={(v) => {
             const params = new URLSearchParams(searchParams);
             if (v === "all") params.delete("category");
@@ -100,7 +103,9 @@ export default function AmazonShop() {
           <SelectContent>
             <SelectItem value="all">Бүх ангилал</SelectItem>
             {categories?.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name} ({c.product_count})</SelectItem>
+              <SelectItem key={c.id} value={c.id}>
+                {c.name} ({c.product_count})
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -125,14 +130,22 @@ export default function AmazonShop() {
 
       {/* Products Grid */}
       {isLoading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin" /></div>
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
       ) : filtered?.length ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {filtered.map((product) => {
-            const settings = product.amazon_product_store_settings?.[0];
-            const displayTitle = settings?.local_title_override || product.title;
-            const displayPrice = settings?.manual_price_override || product.source_price;
-            const slug = settings?.local_slug || product.asin;
+            // amazon_product_store_settings is one-to-one but returned as object or array
+            const settings = Array.isArray(
+              product.amazon_product_store_settings
+            )
+              ? product.amazon_product_store_settings[0]
+              : product.amazon_product_store_settings;
+            const displayTitle =
+              settings?.local_title_override || product.title;
+            const displayPrice =
+              settings?.manual_price_override || product.source_price;
 
             return (
               <Link key={product.id} to={`/amazon/product/${product.asin}`}>
@@ -150,17 +163,25 @@ export default function AmazonShop() {
                         <ShoppingBag className="h-12 w-12 text-muted-foreground/30" />
                       </div>
                     )}
-                    <Badge className="absolute top-2 left-2 bg-orange-500 text-white text-[10px]">Amazon</Badge>
+                    <Badge className="absolute top-2 left-2 bg-orange-500 text-white text-[10px]">
+                      Amazon
+                    </Badge>
                   </div>
                   <CardContent className="p-3">
-                    <h3 className="text-sm font-medium line-clamp-2 mb-1">{displayTitle}</h3>
+                    <h3 className="text-sm font-medium line-clamp-2 mb-1">
+                      {displayTitle}
+                    </h3>
                     {product.brand && (
-                      <p className="text-xs text-muted-foreground mb-1">{product.brand}</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {product.brand}
+                      </p>
                     )}
                     {displayPrice && (
                       <p className="text-sm font-bold text-primary">
                         {Number(displayPrice).toLocaleString()}
-                        <span className="text-xs font-normal ml-0.5">{product.source_currency || "USD"}</span>
+                        <span className="text-xs font-normal ml-0.5">
+                          {product.source_currency || "USD"}
+                        </span>
                       </p>
                     )}
                   </CardContent>
