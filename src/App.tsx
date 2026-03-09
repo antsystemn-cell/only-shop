@@ -76,6 +76,17 @@ import ProviderSectionsAdmin from "./pages/admin/ProviderSections";
 import Migration from "./pages/admin/Migration";
 import DynamicContentPage from "./pages/storefront/DynamicContentPage";
 
+// Amazon imports
+import AmazonConnection from "./pages/admin/AmazonConnection";
+import AmazonMarketplaces from "./pages/admin/AmazonMarketplaces";
+import AmazonCategories from "./pages/admin/AmazonCategories";
+import AmazonImport from "./pages/admin/AmazonImport";
+import AmazonProducts from "./pages/admin/AmazonProducts";
+import AmazonPricing from "./pages/admin/AmazonPricing";
+import AmazonSync from "./pages/admin/AmazonSync";
+import AmazonShop from "./pages/storefront/AmazonShop";
+import AmazonProductDetail from "./pages/storefront/AmazonProductDetail";
+
 // Redirect component for old OT Orders route
 const OtOrdersRedirect = () => <Navigate to="/admin/orders?source=ot" replace />;
 
@@ -108,6 +119,8 @@ const App = () => (
                 <Route path="/ot/provider/:slug" element={<ProviderPage />} />
               <Route path="/ot/product/:itemId" element={<OtProductDetail />} />
               <Route path="/page/:slug" element={<DynamicContentPage />} />
+              <Route path="/amazon" element={<AmazonShop />} />
+              <Route path="/amazon/product/:asin" element={<AmazonProductDetail />} />
               </Route>
               
               {/* Auth and checkout routes - outside layout */}
@@ -169,6 +182,13 @@ const App = () => (
                 <Route path="instance-logs" element={<InstanceLogs />} />
                 <Route path="provider-sections" element={<ProviderSectionsAdmin />} />
                 <Route path="migration" element={<Migration />} />
+                <Route path="amazon/connection" element={<AmazonConnection />} />
+                <Route path="amazon/marketplaces" element={<AmazonMarketplaces />} />
+                <Route path="amazon/categories" element={<AmazonCategories />} />
+                <Route path="amazon/import" element={<AmazonImport />} />
+                <Route path="amazon/products" element={<AmazonProducts />} />
+                <Route path="amazon/pricing" element={<AmazonPricing />} />
+                <Route path="amazon/sync" element={<AmazonSync />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -107,6 +107,18 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: "Amazon",
+    items: [
+      { title: "Холболт", url: "/admin/amazon/connection", icon: Settings },
+      { title: "Marketplace", url: "/admin/amazon/marketplaces", icon: Globe },
+      { title: "Ангилал маппинг", url: "/admin/amazon/categories", icon: FolderTree },
+      { title: "Бараа импорт", url: "/admin/amazon/import", icon: Package },
+      { title: "Импорт бараа", url: "/admin/amazon/products", icon: Package },
+      { title: "Үнийн дүрэм", url: "/admin/amazon/pricing", icon: DollarSign },
+      { title: "Синк & Лог", url: "/admin/amazon/sync", icon: Activity },
+    ],
+  },
+  {
     label: "Контент",
     items: [
       { title: "Хуудсууд", url: "/admin/content", icon: FileText },
