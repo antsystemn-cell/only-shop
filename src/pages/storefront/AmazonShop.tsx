@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,6 @@ export default function AmazonShop() {
   const { data: products, isLoading } = useQuery({
     queryKey: ["amazon-storefront-products", categoryFilter, sortBy],
     queryFn: async () => {
-      // Inner join: only products with published store settings
       let query = supabase
         .from("amazon_products")
         .select("*, amazon_product_store_settings!inner(*)")
@@ -50,7 +49,6 @@ export default function AmazonShop() {
         .select("*")
         .eq("is_active", true)
         .eq("is_hidden", false)
-        .gt("product_count", 0)
         .order("name");
       if (error) throw error;
       return data;
@@ -58,41 +56,29 @@ export default function AmazonShop() {
   });
 
   const filtered = search
-    ? products?.filter((p) =>
-        (p.title || "").toLowerCase().includes(search.toLowerCase())
-      )
+    ? products?.filter((p) => (p.title || "").toLowerCase().includes(search.toLowerCase()))
     : products;
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <ShoppingBag className="h-7 w-7 text-primary" />
         <div>
           <h1 className="text-2xl font-bold">Amazon бараанууд</h1>
-          <p className="text-sm text-muted-foreground">
-            Amazon-оос импортлогдсон бараанууд
-          </p>
+          <p className="text-sm text-muted-foreground">Amazon-оос импортлогдсон бараанууд</p>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Бараа хайх..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+          <Input placeholder="Бараа хайх..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select
           value={categoryFilter || "all"}
           onValueChange={(v) => {
             const params = new URLSearchParams(searchParams);
-            if (v === "all") params.delete("category");
-            else params.set("category", v);
+            if (v === "all") params.delete("category"); else params.set("category", v);
             setSearchParams(params);
           }}
         >
@@ -103,9 +89,7 @@ export default function AmazonShop() {
           <SelectContent>
             <SelectItem value="all">Бүх ангилал</SelectItem>
             {categories?.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name} ({c.product_count})
-              </SelectItem>
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -117,9 +101,7 @@ export default function AmazonShop() {
             setSearchParams(params);
           }}
         >
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="newest">Шинэ</SelectItem>
             <SelectItem value="price_asc">Үнэ: Бага → Их</SelectItem>
@@ -128,60 +110,41 @@ export default function AmazonShop() {
         </Select>
       </div>
 
-      {/* Products Grid */}
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin" /></div>
       ) : filtered?.length ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {filtered.map((product) => {
-            // amazon_product_store_settings is one-to-one but returned as object or array
-            const settings = Array.isArray(
-              product.amazon_product_store_settings
-            )
+            const settings = Array.isArray(product.amazon_product_store_settings)
               ? product.amazon_product_store_settings[0]
               : product.amazon_product_store_settings;
-            const displayTitle =
-              settings?.local_title_override || product.title;
-            const displayPrice =
-              settings?.manual_price_override || product.source_price;
+            const displayTitle = settings?.local_title_override || product.title;
+            const displayPrice = settings?.manual_price_override || product.source_price;
+            const isSandboxProduct = (product.raw_payload as any)?.sandbox === true;
 
             return (
               <Link key={product.id} to={`/amazon/product/${product.asin}`}>
                 <Card className="group hover:shadow-lg transition-shadow overflow-hidden h-full">
                   <div className="aspect-square relative overflow-hidden bg-muted">
                     {product.main_image ? (
-                      <img
-                        src={product.main_image}
-                        alt={displayTitle || ""}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        loading="lazy"
-                      />
+                      <img src={product.main_image} alt={displayTitle || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <ShoppingBag className="h-12 w-12 text-muted-foreground/30" />
                       </div>
                     )}
-                    <Badge className="absolute top-2 left-2 bg-orange-500 text-white text-[10px]">
-                      Amazon
-                    </Badge>
+                    <Badge className="absolute top-2 left-2 bg-orange-500 text-white text-[10px]">Amazon</Badge>
+                    {isSandboxProduct && (
+                      <Badge className="absolute top-2 right-2 bg-amber-500 text-white text-[10px]">Sandbox</Badge>
+                    )}
                   </div>
                   <CardContent className="p-3">
-                    <h3 className="text-sm font-medium line-clamp-2 mb-1">
-                      {displayTitle}
-                    </h3>
-                    {product.brand && (
-                      <p className="text-xs text-muted-foreground mb-1">
-                        {product.brand}
-                      </p>
-                    )}
+                    <h3 className="text-sm font-medium line-clamp-2 mb-1">{displayTitle}</h3>
+                    {product.brand && <p className="text-xs text-muted-foreground mb-1">{product.brand}</p>}
                     {displayPrice && (
                       <p className="text-sm font-bold text-primary">
                         {Number(displayPrice).toLocaleString()}
-                        <span className="text-xs font-normal ml-0.5">
-                          {product.source_currency || "USD"}
-                        </span>
+                        <span className="text-xs font-normal ml-0.5">{product.source_currency || "USD"}</span>
                       </p>
                     )}
                   </CardContent>
@@ -194,6 +157,7 @@ export default function AmazonShop() {
         <div className="text-center py-16 text-muted-foreground">
           <ShoppingBag className="h-16 w-16 mx-auto mb-4 opacity-20" />
           <p className="text-lg">Бараа олдсонгүй</p>
+          <p className="text-sm mt-1">Нийтлэгдсэн бараа байхгүй байна</p>
         </div>
       )}
     </div>
