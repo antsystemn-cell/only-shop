@@ -151,7 +151,7 @@ export default function AmazonConnection() {
           <p className="text-muted-foreground">Amazon SP-API холболтын мэдээлэл, статус</p>
         </div>
         {isSandbox && (
-          <Badge className="bg-amber-500 text-white text-sm px-3 py-1">
+          <Badge variant="secondary" className="text-sm px-3 py-1">
             <FlaskConical className="h-4 w-4 mr-1" /> Sandbox Mode
           </Badge>
         )}
