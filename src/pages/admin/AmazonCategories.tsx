@@ -83,7 +83,7 @@ export default function AmazonCategories() {
   );
 
   const unmappedCount = categories?.filter(
-    (c) => !c.amazon_category_mappings || c.amazon_category_mappings.length === 0
+    (c) => !c.amazon_category_mappings || (Array.isArray(c.amazon_category_mappings) ? c.amazon_category_mappings.length === 0 : !c.amazon_category_mappings)
   ).length;
 
   if (isLoading) {

@@ -182,6 +182,13 @@ const App = () => (
                 <Route path="instance-logs" element={<InstanceLogs />} />
                 <Route path="provider-sections" element={<ProviderSectionsAdmin />} />
                 <Route path="migration" element={<Migration />} />
+                <Route path="amazon/connection" element={<AmazonConnection />} />
+                <Route path="amazon/marketplaces" element={<AmazonMarketplaces />} />
+                <Route path="amazon/categories" element={<AmazonCategories />} />
+                <Route path="amazon/import" element={<AmazonImport />} />
+                <Route path="amazon/products" element={<AmazonProducts />} />
+                <Route path="amazon/pricing" element={<AmazonPricing />} />
+                <Route path="amazon/sync" element={<AmazonSync />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
