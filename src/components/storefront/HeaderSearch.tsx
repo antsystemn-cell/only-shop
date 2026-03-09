@@ -213,7 +213,7 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={
-              provider === "local"
+              effectiveProvider === "local"
                 ? "Бэлэн бараа хайх..."
                 : "Бараа хайх эсвэл линк оруулах..."
             }
