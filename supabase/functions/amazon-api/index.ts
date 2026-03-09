@@ -376,16 +376,34 @@ async function handleTestConnection() {
 
   // Step 1: Check secrets
   const secrets = checkSecrets();
-  if (secrets.missing.length > 0) {
+  if (secrets.missingLwa.length > 0) {
     return {
       success: false,
-      error: `Missing credentials: ${secrets.missing.join(", ")}`,
+      error: `Missing credentials: ${secrets.missingLwa.join(", ")}`,
       step: "config_missing",
       sandbox,
       details: {
         hasClientId: secrets.hasClientId,
         hasClientSecret: secrets.hasClientSecret,
         hasRefreshToken: secrets.hasRefreshToken,
+        hasAwsAccessKeyId: secrets.hasAwsAccessKeyId,
+        hasAwsSecretAccessKey: secrets.hasAwsSecretAccessKey,
+      },
+    };
+  }
+
+  if (secrets.missingAws.length > 0) {
+    return {
+      success: false,
+      error: `Missing AWS signing config: ${secrets.missingAws.join(", ")}`,
+      step: "missing_aws_signing_config",
+      sandbox,
+      details: {
+        hasClientId: secrets.hasClientId,
+        hasClientSecret: secrets.hasClientSecret,
+        hasRefreshToken: secrets.hasRefreshToken,
+        hasAwsAccessKeyId: secrets.hasAwsAccessKeyId,
+        hasAwsSecretAccessKey: secrets.hasAwsSecretAccessKey,
       },
     };
   }
