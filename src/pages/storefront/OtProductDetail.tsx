@@ -62,6 +62,7 @@ export default function OtProductDetail() {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [gallerySlide, setGallerySlide] = useState<"left" | "right" | null>(null);
+  const [configImageOverride, setConfigImageOverride] = useState<string | null>(null);
 
   // Touch swipe state for image gallery
   const touchStartX = useRef(0);
