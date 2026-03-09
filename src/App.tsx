@@ -119,6 +119,8 @@ const App = () => (
                 <Route path="/ot/provider/:slug" element={<ProviderPage />} />
               <Route path="/ot/product/:itemId" element={<OtProductDetail />} />
               <Route path="/page/:slug" element={<DynamicContentPage />} />
+              <Route path="/amazon" element={<AmazonShop />} />
+              <Route path="/amazon/product/:asin" element={<AmazonProductDetail />} />
               </Route>
               
               {/* Auth and checkout routes - outside layout */}
