@@ -173,7 +173,7 @@ export default function OtProductDetail() {
 
   const effectivePrice = matchedConfig?.price ?? product?.price ?? 0;
   const effectiveQuantity = matchedConfig?.quantity ?? product?.quantity;
-  const effectiveImage = matchedConfig?.imageUrl || product?.images?.[selectedImage] || product?.imageUrl;
+  const effectiveImage = configImageOverride || matchedConfig?.imageUrl || product?.images?.[selectedImage] || product?.imageUrl;
 
   const handleAddToCart = async (): Promise<boolean> => {
     if (!product) return false;
