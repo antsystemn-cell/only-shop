@@ -318,9 +318,13 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
         </Popover>
 
         {/* Submit */}
-        <Button type="submit" className="shrink-0 rounded-l-none h-10 px-4">
-          <Search className="h-4 w-4 sm:mr-1.5" />
-          <span className="hidden sm:inline text-sm">Хайх</span>
+        <Button type="submit" className="shrink-0 rounded-l-none h-10 px-4" disabled={translating}>
+          {translating ? (
+            <Loader2 className="h-4 w-4 animate-spin sm:mr-1.5" />
+          ) : (
+            <Search className="h-4 w-4 sm:mr-1.5" />
+          )}
+          <span className="hidden sm:inline text-sm">{translating ? "Орчуулж байна..." : "Хайх"}</span>
         </Button>
       </form>
     </div>
