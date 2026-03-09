@@ -44,6 +44,506 @@ export type Database = {
         }
         Relationships: []
       }
+      amazon_api_logs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          marketplace_id: string | null
+          operation_name: string
+          rate_limit_header: string | null
+          request_summary: Json | null
+          response_code: number | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          marketplace_id?: string | null
+          operation_name: string
+          rate_limit_header?: string | null
+          request_summary?: Json | null
+          response_code?: number | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          marketplace_id?: string | null
+          operation_name?: string
+          rate_limit_header?: string | null
+          request_summary?: Json | null
+          response_code?: number | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      amazon_categories: {
+        Row: {
+          amazon_category_key: string
+          browse_node_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          is_hidden: boolean | null
+          last_synced_at: string | null
+          marketplace_id: string | null
+          name: string
+          parent_id: string | null
+          product_count: number | null
+          product_type: string | null
+          raw_payload: Json | null
+          updated_at: string
+        }
+        Insert: {
+          amazon_category_key: string
+          browse_node_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_hidden?: boolean | null
+          last_synced_at?: string | null
+          marketplace_id?: string | null
+          name: string
+          parent_id?: string | null
+          product_count?: number | null
+          product_type?: string | null
+          raw_payload?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          amazon_category_key?: string
+          browse_node_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_hidden?: boolean | null
+          last_synced_at?: string | null
+          marketplace_id?: string | null
+          name?: string
+          parent_id?: string | null
+          product_count?: number | null
+          product_type?: string | null
+          raw_payload?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amazon_categories_marketplace_id_fkey"
+            columns: ["marketplace_id"]
+            isOneToOne: false
+            referencedRelation: "amazon_marketplaces"
+            referencedColumns: ["marketplace_id"]
+          },
+          {
+            foreignKeyName: "amazon_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "amazon_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      amazon_category_mappings: {
+        Row: {
+          amazon_category_id: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          local_category_id: string | null
+          mapping_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          amazon_category_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          local_category_id?: string | null
+          mapping_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amazon_category_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          local_category_id?: string | null
+          mapping_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amazon_category_mappings_amazon_category_id_fkey"
+            columns: ["amazon_category_id"]
+            isOneToOne: true
+            referencedRelation: "amazon_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "amazon_category_mappings_local_category_id_fkey"
+            columns: ["local_category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      amazon_connections: {
+        Row: {
+          auth_status: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          last_successful_api_call_at: string | null
+          last_token_refresh_at: string | null
+          marketplace_ids: string[] | null
+          region: string
+          seller_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_status?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_successful_api_call_at?: string | null
+          last_token_refresh_at?: string | null
+          marketplace_ids?: string[] | null
+          region?: string
+          seller_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_status?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_successful_api_call_at?: string | null
+          last_token_refresh_at?: string | null
+          marketplace_ids?: string[] | null
+          region?: string
+          seller_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      amazon_marketplaces: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          currency: string | null
+          endpoint_url: string | null
+          id: string
+          is_default_import: boolean | null
+          is_default_storefront: boolean | null
+          is_enabled: boolean | null
+          locale: string | null
+          marketplace_id: string
+          name: string
+          region: string
+          updated_at: string
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          currency?: string | null
+          endpoint_url?: string | null
+          id?: string
+          is_default_import?: boolean | null
+          is_default_storefront?: boolean | null
+          is_enabled?: boolean | null
+          locale?: string | null
+          marketplace_id: string
+          name: string
+          region: string
+          updated_at?: string
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          currency?: string | null
+          endpoint_url?: string | null
+          id?: string
+          is_default_import?: boolean | null
+          is_default_storefront?: boolean | null
+          is_enabled?: boolean | null
+          locale?: string | null
+          marketplace_id?: string
+          name?: string
+          region?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      amazon_pricing_rules: {
+        Row: {
+          brand: string | null
+          category_id: string | null
+          created_at: string
+          formula_type: string
+          formula_value: number
+          id: string
+          is_active: boolean | null
+          marketplace_id: string | null
+          min_margin: number | null
+          name: string
+          priority: number | null
+          rounding_rule: string | null
+          source_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          category_id?: string | null
+          created_at?: string
+          formula_type?: string
+          formula_value?: number
+          id?: string
+          is_active?: boolean | null
+          marketplace_id?: string | null
+          min_margin?: number | null
+          name: string
+          priority?: number | null
+          rounding_rule?: string | null
+          source_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          category_id?: string | null
+          created_at?: string
+          formula_type?: string
+          formula_value?: number
+          id?: string
+          is_active?: boolean | null
+          marketplace_id?: string | null
+          min_margin?: number | null
+          name?: string
+          priority?: number | null
+          rounding_rule?: string | null
+          source_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amazon_pricing_rules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "amazon_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "amazon_pricing_rules_marketplace_id_fkey"
+            columns: ["marketplace_id"]
+            isOneToOne: false
+            referencedRelation: "amazon_marketplaces"
+            referencedColumns: ["marketplace_id"]
+          },
+        ]
+      }
+      amazon_product_store_settings: {
+        Row: {
+          amazon_product_id: string
+          created_at: string
+          featured_sort_order: number | null
+          id: string
+          local_description_override: string | null
+          local_meta_description: string | null
+          local_meta_title: string | null
+          local_slug: string | null
+          local_title_override: string | null
+          manual_price_override: number | null
+          pricing_rule_id: string | null
+          publish_status: string | null
+          updated_at: string
+          visibility_status: string | null
+        }
+        Insert: {
+          amazon_product_id: string
+          created_at?: string
+          featured_sort_order?: number | null
+          id?: string
+          local_description_override?: string | null
+          local_meta_description?: string | null
+          local_meta_title?: string | null
+          local_slug?: string | null
+          local_title_override?: string | null
+          manual_price_override?: number | null
+          pricing_rule_id?: string | null
+          publish_status?: string | null
+          updated_at?: string
+          visibility_status?: string | null
+        }
+        Update: {
+          amazon_product_id?: string
+          created_at?: string
+          featured_sort_order?: number | null
+          id?: string
+          local_description_override?: string | null
+          local_meta_description?: string | null
+          local_meta_title?: string | null
+          local_slug?: string | null
+          local_title_override?: string | null
+          manual_price_override?: number | null
+          pricing_rule_id?: string | null
+          publish_status?: string | null
+          updated_at?: string
+          visibility_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amazon_product_store_settings_amazon_product_id_fkey"
+            columns: ["amazon_product_id"]
+            isOneToOne: true
+            referencedRelation: "amazon_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      amazon_products: {
+        Row: {
+          amazon_category_id: string | null
+          asin: string
+          attributes: Json | null
+          brand: string | null
+          browse_classifications: Json | null
+          created_at: string
+          dimensions: Json | null
+          full_description: string | null
+          id: string
+          identifiers: Json | null
+          image_gallery: Json | null
+          last_synced_at: string | null
+          main_image: string | null
+          marketplace_id: string
+          raw_payload: Json | null
+          relationships: Json | null
+          short_description: string | null
+          source_currency: string | null
+          source_price: number | null
+          source_status: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          amazon_category_id?: string | null
+          asin: string
+          attributes?: Json | null
+          brand?: string | null
+          browse_classifications?: Json | null
+          created_at?: string
+          dimensions?: Json | null
+          full_description?: string | null
+          id?: string
+          identifiers?: Json | null
+          image_gallery?: Json | null
+          last_synced_at?: string | null
+          main_image?: string | null
+          marketplace_id: string
+          raw_payload?: Json | null
+          relationships?: Json | null
+          short_description?: string | null
+          source_currency?: string | null
+          source_price?: number | null
+          source_status?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amazon_category_id?: string | null
+          asin?: string
+          attributes?: Json | null
+          brand?: string | null
+          browse_classifications?: Json | null
+          created_at?: string
+          dimensions?: Json | null
+          full_description?: string | null
+          id?: string
+          identifiers?: Json | null
+          image_gallery?: Json | null
+          last_synced_at?: string | null
+          main_image?: string | null
+          marketplace_id?: string
+          raw_payload?: Json | null
+          relationships?: Json | null
+          short_description?: string | null
+          source_currency?: string | null
+          source_price?: number | null
+          source_status?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amazon_products_amazon_category_id_fkey"
+            columns: ["amazon_category_id"]
+            isOneToOne: false
+            referencedRelation: "amazon_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "amazon_products_marketplace_id_fkey"
+            columns: ["marketplace_id"]
+            isOneToOne: false
+            referencedRelation: "amazon_marketplaces"
+            referencedColumns: ["marketplace_id"]
+          },
+        ]
+      }
+      amazon_sync_jobs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          job_type: string
+          max_retries: number | null
+          payload: Json | null
+          result: Json | null
+          retry_count: number | null
+          started_at: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type: string
+          max_retries?: number | null
+          payload?: Json | null
+          result?: Json | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type?: string
+          max_retries?: number | null
+          payload?: Json | null
+          result?: Json | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
