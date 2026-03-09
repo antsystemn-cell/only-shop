@@ -517,12 +517,20 @@ export default function OtProductDetail() {
                 {ensureArray(config.values).map((val) => {
                   const isSelected = selectedConfigs[config.pid] === val.id;
                   // Check if this variant combination is out of stock
+                  // considering other already-selected configurator values
                   const isOutOfStock = (() => {
                     if (!product.configuredItems?.length) return false;
-                    // Find all configured items that include this value
-                    const matchingConfigs = product.configuredItems.filter((ci) =>
-                      ci.configuratorIds.includes(val.id)
-                    );
+                    // Get selected values from OTHER configurator groups
+                    const otherSelectedVids = Object.entries(selectedConfigs)
+                      .filter(([pid, vid]) => pid !== config.pid && vid)
+                      .map(([, vid]) => vid);
+                    // Find configured items that include this value AND all other selected values
+                    const matchingConfigs = product.configuredItems.filter((ci) => {
+                      if (!ci.configuratorIds.includes(val.id)) return false;
+                      return otherSelectedVids.every((vid) => ci.configuratorIds.includes(vid));
+                    });
+                    // If no matching configs found but there are configured items, it's unavailable
+                    if (matchingConfigs.length === 0 && otherSelectedVids.length > 0) return true;
                     // If all matching configs have 0 quantity, it's out of stock
                     if (matchingConfigs.length > 0 && matchingConfigs.every((ci) => ci.quantity === 0)) {
                       return true;
