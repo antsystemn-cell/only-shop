@@ -131,7 +131,7 @@ export default function SearchSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Select value={defaultProvider} onValueChange={setDefaultProvider}>
+          <Select value={defaultProvider || "__all__"} onValueChange={(v) => setDefaultProvider(v === "__all__" ? "" : v)}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Сонгох..." />
             </SelectTrigger>
