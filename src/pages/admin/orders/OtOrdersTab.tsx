@@ -106,7 +106,22 @@ export default function OtOrdersTab() {
 
       const { data, error, count } = await query;
       if (error) throw error;
-      return { orders: data || [], count: count || 0 };
+
+      // Fetch user profiles
+      const userIds = [...new Set(data?.map(o => o.user_id).filter(Boolean))] as string[];
+      let profilesMap: Record<string, any> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, email, phone")
+          .in("user_id", userIds);
+        profiles?.forEach(p => { profilesMap[p.user_id] = p; });
+      }
+
+      return {
+        orders: (data || []).map(o => ({ ...o, profile: profilesMap[o.user_id || ""] || null })),
+        count: count || 0,
+      };
     },
   });
 
