@@ -62,6 +62,7 @@ export default function OtProductDetail() {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [gallerySlide, setGallerySlide] = useState<"left" | "right" | null>(null);
+  const [configImageOverride, setConfigImageOverride] = useState<string | null>(null);
 
   // Touch swipe state for image gallery
   const touchStartX = useRef(0);
@@ -172,7 +173,7 @@ export default function OtProductDetail() {
 
   const effectivePrice = matchedConfig?.price ?? product?.price ?? 0;
   const effectiveQuantity = matchedConfig?.quantity ?? product?.quantity;
-  const effectiveImage = matchedConfig?.imageUrl || product?.images?.[selectedImage] || product?.imageUrl;
+  const effectiveImage = configImageOverride || matchedConfig?.imageUrl || product?.images?.[selectedImage] || product?.imageUrl;
 
   const handleAddToCart = async (): Promise<boolean> => {
     if (!product) return false;
@@ -555,10 +556,17 @@ export default function OtProductDetail() {
                       disabled={isOutOfStock}
                       onClick={() => {
                         if (isOutOfStock) return;
+                        const newVal = isSelected ? "" : val.id;
                         setSelectedConfigs((prev) => ({
                           ...prev,
-                          [config.pid]: isSelected ? "" : val.id,
+                          [config.pid]: newVal,
                         }));
+                        // Show configurator image in main gallery
+                        if (newVal && val.imageUrl) {
+                          setConfigImageOverride(val.imageUrl);
+                        } else {
+                          setConfigImageOverride(null);
+                        }
                       }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
                         isOutOfStock
