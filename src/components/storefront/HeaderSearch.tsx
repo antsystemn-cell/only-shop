@@ -193,7 +193,7 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
                   onClick={() => setProvider(p.value)}
                   className={cn(
                     "gap-2 cursor-pointer",
-                    provider === p.value && "bg-accent"
+                    effectiveProvider === p.value && "bg-accent"
                   )}
                 >
                   {logo ? (
