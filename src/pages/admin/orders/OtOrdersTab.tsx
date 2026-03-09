@@ -391,6 +391,20 @@ export default function OtOrdersTab() {
           </SheetHeader>
           {selectedOrder && (
             <div className="space-y-4 mt-4">
+              {/* User Info */}
+              {selectedOrder.profile && (
+                <div className="p-3 rounded-lg border bg-muted/30">
+                  <Label className="text-muted-foreground text-xs">Хэрэглэгч</Label>
+                  <p className="font-medium mt-1">{selectedOrder.profile.full_name || "—"}</p>
+                  {selectedOrder.profile.email && (
+                    <p className="text-sm text-muted-foreground">{selectedOrder.profile.email}</p>
+                  )}
+                  {selectedOrder.profile.phone && (
+                    <p className="text-sm text-muted-foreground">{selectedOrder.profile.phone}</p>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <Label className="text-muted-foreground">Дугаар</Label>
