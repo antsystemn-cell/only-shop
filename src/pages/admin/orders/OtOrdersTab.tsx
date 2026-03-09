@@ -296,6 +296,13 @@ export default function OtOrdersTab() {
                         <TableCell>
                           <div className="font-mono text-sm font-medium">{order.order_number}</div>
                         </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-medium">{order.profile?.full_name || "—"}</div>
+                          <div className="text-xs text-muted-foreground">{order.profile?.email}</div>
+                          {order.profile?.phone && (
+                            <div className="text-xs text-muted-foreground">{order.profile.phone}</div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-center">
                           <Badge variant="secondary">{order.item_count}</Badge>
                         </TableCell>
