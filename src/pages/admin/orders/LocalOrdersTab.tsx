@@ -498,6 +498,26 @@ function LocalOrderDetailSheet({
                         <div className="text-sm font-medium truncate">
                           {snapshot.title || snapshot.name || snapshot.name_mn || "Бараа"}
                         </div>
+                        {/* Configurators / Variants */}
+                        {snapshot.configurators && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            🏷️ Сонголт: {snapshot.configurators}
+                          </p>
+                        )}
+                        {snapshot.selectedConfigurators && Array.isArray(snapshot.selectedConfigurators) && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {snapshot.selectedConfigurators.map((cfg: any, ci: number) => (
+                              <Badge key={ci} variant="outline" className="text-xs">
+                                {cfg.name || cfg.title}: {cfg.value || cfg.selectedValue}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        {snapshot.variant && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            🏷️ {snapshot.variant}
+                          </p>
+                        )}
                         {/* Source badge */}
                         <div className="flex flex-wrap items-center gap-2 mt-1">
                           {isOtapi ? (
