@@ -111,13 +111,29 @@ export default function AmazonConnection() {
     const status = connection?.auth_status;
     switch (status) {
       case "authorized":
-        return <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" /> Зөвшөөрөгдсөн</Badge>;
+        return (
+          <Badge>
+            <CheckCircle className="h-3 w-3 mr-1" /> Зөвшөөрөгдсөн
+          </Badge>
+        );
       case "token_only":
-        return <Badge className="bg-yellow-600"><AlertTriangle className="h-3 w-3 mr-1" /> Токен OK, API эрх дутуу</Badge>;
+        return (
+          <Badge variant="secondary">
+            <AlertTriangle className="h-3 w-3 mr-1" /> Токен OK, API эрх дутуу
+          </Badge>
+        );
       case "failed":
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> Амжилтгүй</Badge>;
+        return (
+          <Badge variant="destructive">
+            <XCircle className="h-3 w-3 mr-1" /> Амжилтгүй
+          </Badge>
+        );
       default:
-        return <Badge variant="secondary"><XCircle className="h-3 w-3 mr-1" /> Тохируулаагүй</Badge>;
+        return (
+          <Badge variant="secondary">
+            <XCircle className="h-3 w-3 mr-1" /> Тохируулаагүй
+          </Badge>
+        );
     }
   };
 

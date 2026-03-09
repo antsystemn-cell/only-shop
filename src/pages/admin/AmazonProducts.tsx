@@ -91,9 +91,17 @@ export default function AmazonProducts() {
     const status = settings?.publish_status || "draft";
     switch (status) {
       case "published":
-        return <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Нийтлэгдсэн</Badge>;
+        return (
+          <Badge>
+            <CheckCircle className="h-3 w-3 mr-1" />Нийтлэгдсэн
+          </Badge>
+        );
       case "archived":
-        return <Badge variant="secondary"><Archive className="h-3 w-3 mr-1" />Архивлагдсан</Badge>;
+        return (
+          <Badge variant="secondary">
+            <Archive className="h-3 w-3 mr-1" />Архивлагдсан
+          </Badge>
+        );
       default:
         return <Badge variant="outline">Ноорог</Badge>;
     }

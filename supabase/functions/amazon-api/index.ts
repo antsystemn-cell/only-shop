@@ -9,7 +9,7 @@ const corsHeaders = {
 // ==================== CONFIG ====================
 
 function isSandbox(): boolean {
-  const val = Deno.env.get("AMAZON_SANDBOX");
+  const val = (Deno.env.get("AMAZON_SANDBOX") || "").toLowerCase().trim();
   return val === "true" || val === "1" || val === "yes";
 }
 
