@@ -385,100 +385,182 @@ export default function OtOrdersTab() {
 
       {/* Order Detail Sheet */}
       <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Захиалгын дэлгэрэнгүй</SheetTitle>
+            <SheetTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              Захиалга: {selectedOrder?.order_number}
+            </SheetTitle>
           </SheetHeader>
           {selectedOrder && (
-            <div className="space-y-4 mt-4">
-              {/* User Info */}
-              {selectedOrder.profile && (
-                <div className="p-3 rounded-lg border bg-muted/30">
-                  <Label className="text-muted-foreground text-xs">Хэрэглэгч</Label>
-                  <p className="font-medium mt-1">{selectedOrder.profile.full_name || "—"}</p>
-                  {selectedOrder.profile.email && (
-                    <p className="text-sm text-muted-foreground">{selectedOrder.profile.email}</p>
-                  )}
-                  {selectedOrder.profile.phone && (
-                    <p className="text-sm text-muted-foreground">{selectedOrder.profile.phone}</p>
-                  )}
-                </div>
-              )}
-
+            <div className="space-y-5 mt-4">
+              {/* Status & Delivery summary */}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <Label className="text-muted-foreground">Дугаар</Label>
+                  <Label className="text-muted-foreground text-xs">Дугаар</Label>
                   <p className="font-mono font-semibold">{selectedOrder.order_number}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Төлөв</Label>
-                  <p><Badge className={getStatusColor(selectedOrder.status)}>{STATUS_LABELS[selectedOrder.status] || selectedOrder.status}</Badge></p>
+                  <Label className="text-muted-foreground text-xs">Төлөв</Label>
+                  <p className="mt-1">
+                    <Badge className={getStatusColor(selectedOrder.status)}>
+                      {STATUS_LABELS[selectedOrder.status] || selectedOrder.status}
+                    </Badge>
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Хүргэлт</Label>
+                  <Label className="text-muted-foreground text-xs">Хүргэлт</Label>
                   <p>{selectedOrder.delivery_type === "delivery" ? "Хүргэлтээр" : "Өөрөө авна"}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Огноо</Label>
+                  <Label className="text-muted-foreground text-xs">Огноо</Label>
                   <p>{new Date(selectedOrder.created_at).toLocaleString("mn-MN")}</p>
                 </div>
               </div>
 
+              {/* Customer Info */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Globe className="h-4 w-4" /> Хэрэглэгчийн мэдээлэл
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {selectedOrder.profile ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground w-20 shrink-0">Нэр:</span>
+                        <span className="font-medium">{selectedOrder.profile.full_name || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground w-20 shrink-0">Имэйл:</span>
+                        <span>{selectedOrder.profile.email || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground w-20 shrink-0">Утас:</span>
+                        <span>{selectedOrder.profile.phone || "—"}</span>
+                      </div>
+                      {selectedOrder.user_id && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground w-20 shrink-0">User ID:</span>
+                          <span className="font-mono text-xs text-muted-foreground">{selectedOrder.user_id}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">Зочин хэрэглэгч (нэвтрээгүй)</p>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Delivery Address */}
               {selectedOrder.delivery_address && (
-                <div>
-                  <Label className="text-muted-foreground">Хаяг</Label>
-                  <p className="text-sm mt-1">
-                    {selectedOrder.delivery_address.fullName} — {selectedOrder.delivery_address.address}
-                    {selectedOrder.delivery_address.phone && ` (${selectedOrder.delivery_address.phone})`}
-                  </p>
-                </div>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Package className="h-4 w-4" /> Хүргэлтийн хаяг
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-1">
+                    {selectedOrder.delivery_address.fullName && (
+                      <p className="font-medium">{selectedOrder.delivery_address.fullName}</p>
+                    )}
+                    <p>{selectedOrder.delivery_address.address || "—"}</p>
+                    {selectedOrder.delivery_address.phone && (
+                      <p className="text-muted-foreground">Утас: {selectedOrder.delivery_address.phone}</p>
+                    )}
+                  </CardContent>
+                </Card>
               )}
 
               {/* Cancel Reason */}
               {selectedOrder.cancel_reason && (
-                <div>
-                  <Label className="text-muted-foreground">Цуцалсан шалтгаан</Label>
+                <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                  <Label className="text-muted-foreground text-xs">Цуцалсан шалтгаан</Label>
                   <p className="text-sm mt-1 text-destructive">{selectedOrder.cancel_reason}</p>
                 </div>
               )}
 
               {/* Comment */}
               {selectedOrder.comment && (
-                <div>
-                  <Label className="text-muted-foreground">Тэмдэглэл</Label>
+                <div className="p-3 rounded-lg border bg-muted/30">
+                  <Label className="text-muted-foreground text-xs">Хэрэглэгчийн тэмдэглэл</Label>
                   <p className="text-sm mt-1">{selectedOrder.comment}</p>
                 </div>
               )}
 
               {/* Items */}
-              <div>
-                <Label className="text-muted-foreground mb-2 block">Бараанууд ({selectedOrder.item_count})</Label>
-                <div className="space-y-2">
-                  {(selectedOrder.items as any[] || []).map((item: any, i: number) => (
-                    <div key={i} className="flex items-center gap-3 p-2 rounded-lg border">
-                      <div className="w-12 h-12 rounded bg-muted overflow-hidden shrink-0">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        )}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Package className="h-4 w-4" /> Бараанууд ({selectedOrder.item_count})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {(selectedOrder.items as any[] || []).map((item: any, i: number) => (
+                      <div key={i} className="flex items-start gap-3 p-3 rounded-lg border">
+                        <div className="w-14 h-14 rounded bg-muted overflow-hidden shrink-0">
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium line-clamp-2">{item.title}</p>
+                          {/* Configurators / Variants */}
+                          {item.configurators && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              🏷️ Сонголт: {item.configurators}
+                            </p>
+                          )}
+                          {item.selectedConfigurators && Array.isArray(item.selectedConfigurators) && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {item.selectedConfigurators.map((cfg: any, ci: number) => (
+                                <Badge key={ci} variant="outline" className="text-xs">
+                                  {cfg.name || cfg.title}: {cfg.value || cfg.selectedValue}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          {/* Price info */}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {item.quantity} × {formatPrice(item.price)}
+                            {item.originalCnyPrice && (
+                              <span className="ml-1">(Эх үнэ: {item.originalCnyCurrency || "¥"}{Number(item.originalCnyPrice).toFixed(2)})</span>
+                            )}
+                          </p>
+                          {/* Source link */}
+                          {item.externalUrl && (
+                            <a
+                              href={item.externalUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-500 hover:underline mt-1 block truncate"
+                            >
+                              🔗 Эх сурвалж линк
+                            </a>
+                          )}
+                          {item.itemId && (
+                            <a
+                              href={`/product/otapi/${item.itemId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-green-600 hover:underline mt-0.5 block"
+                            >
+                              🏠 Манай сайтын линк
+                            </a>
+                          )}
+                        </div>
+                        <span className="text-sm font-bold shrink-0">{formatPrice(item.totalPrice)}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm line-clamp-2">{item.title}</p>
-                        {item.configurators && <p className="text-xs text-muted-foreground">{item.configurators}</p>}
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {item.quantity} × {formatPrice(item.price)}
-                          {item.originalCnyPrice && ` (${item.originalCnyCurrency || "¥"}${item.originalCnyPrice})`}
-                        </p>
-                      </div>
-                      <span className="text-sm font-medium shrink-0">{formatPrice(item.totalPrice)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Total */}
               <div className="flex justify-between font-bold text-lg pt-2 border-t">
