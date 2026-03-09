@@ -102,7 +102,27 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
   const SelectedIcon = selectedProvider.icon;
   const selectedLogo = getProviderLogo(stripItems, selectedProvider.value);
 
-  const handleSearch = (e?: React.FormEvent) => {
+  // Detect Cyrillic (Mongolian) text
+  const CYRILLIC_RE = /[\u0400-\u04FF]/;
+
+  const translateIfMongolian = useCallback(async (text: string): Promise<string> => {
+    if (!CYRILLIC_RE.test(text)) return text;
+    try {
+      setTranslating(true);
+      const { data, error } = await supabase.functions.invoke("translate-search", {
+        body: { query: text },
+      });
+      if (error) throw error;
+      return data?.translated || text;
+    } catch (err) {
+      console.error("Translation failed, using original:", err);
+      return text;
+    } finally {
+      setTranslating(false);
+    }
+  }, []);
+
+  const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const text = searchInput.trim();
     if (!text) return;
@@ -117,8 +137,10 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
     } else if (effectiveProvider === "local") {
       navigate(`/shop?q=${encodeURIComponent(text)}`);
     } else {
+      // Translate Mongolian to Chinese for OT search
+      const translatedQuery = await translateIfMongolian(text);
       const params = new URLSearchParams();
-      params.set("q", text);
+      params.set("q", translatedQuery);
       if (effectiveProvider) params.set("provider", effectiveProvider);
       navigate(`/ot?${params.toString()}`);
     }
