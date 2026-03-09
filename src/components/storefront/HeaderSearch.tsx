@@ -66,6 +66,7 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
   const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: stripItems } = useProviderLogos();
 
