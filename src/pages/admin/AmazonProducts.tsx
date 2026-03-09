@@ -91,9 +91,17 @@ export default function AmazonProducts() {
     const status = settings?.publish_status || "draft";
     switch (status) {
       case "published":
-        return <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Нийтлэгдсэн</Badge>;
+        return (
+          <Badge>
+            <CheckCircle className="h-3 w-3 mr-1" />Нийтлэгдсэн
+          </Badge>
+        );
       case "archived":
-        return <Badge variant="secondary"><Archive className="h-3 w-3 mr-1" />Архивлагдсан</Badge>;
+        return (
+          <Badge variant="secondary">
+            <Archive className="h-3 w-3 mr-1" />Архивлагдсан
+          </Badge>
+        );
       default:
         return <Badge variant="outline">Ноорог</Badge>;
     }
@@ -115,7 +123,11 @@ export default function AmazonProducts() {
           <h1 className="text-2xl font-bold">Amazon импортлогдсон бараа</h1>
           <p className="text-muted-foreground">Импортлогдсон бүх бараануудыг удирдах</p>
         </div>
-        {isSandbox && <Badge className="bg-amber-500 text-white"><FlaskConical className="h-3 w-3 mr-1" /> Sandbox</Badge>}
+        {isSandbox && (
+          <Badge variant="secondary">
+            <FlaskConical className="h-3 w-3 mr-1" /> Sandbox
+          </Badge>
+        )}
       </div>
 
       <Card>
@@ -164,7 +176,7 @@ export default function AmazonProducts() {
                   <TableCell className="max-w-xs truncate font-medium">
                     {product.title || "—"}
                     {isSandboxProduct(product) && (
-                      <Badge variant="outline" className="ml-2 text-amber-600 border-amber-400 text-[10px]">sandbox</Badge>
+                      <Badge variant="secondary" className="ml-2 text-[10px]">sandbox</Badge>
                     )}
                   </TableCell>
                   <TableCell><Badge variant="outline">{product.asin}</Badge></TableCell>

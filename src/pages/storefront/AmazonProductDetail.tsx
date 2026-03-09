@@ -139,7 +139,7 @@ export default function AmazonProductDetail() {
         {/* Info */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Badge className="bg-orange-500 text-white">Amazon</Badge>
+            <Badge>Amazon</Badge>
             {product.brand && (
               <Badge variant="outline">{product.brand}</Badge>
             )}

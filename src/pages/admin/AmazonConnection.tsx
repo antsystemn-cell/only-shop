@@ -111,13 +111,29 @@ export default function AmazonConnection() {
     const status = connection?.auth_status;
     switch (status) {
       case "authorized":
-        return <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" /> Зөвшөөрөгдсөн</Badge>;
+        return (
+          <Badge>
+            <CheckCircle className="h-3 w-3 mr-1" /> Зөвшөөрөгдсөн
+          </Badge>
+        );
       case "token_only":
-        return <Badge className="bg-yellow-600"><AlertTriangle className="h-3 w-3 mr-1" /> Токен OK, API эрх дутуу</Badge>;
+        return (
+          <Badge variant="secondary">
+            <AlertTriangle className="h-3 w-3 mr-1" /> Токен OK, API эрх дутуу
+          </Badge>
+        );
       case "failed":
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> Амжилтгүй</Badge>;
+        return (
+          <Badge variant="destructive">
+            <XCircle className="h-3 w-3 mr-1" /> Амжилтгүй
+          </Badge>
+        );
       default:
-        return <Badge variant="secondary"><XCircle className="h-3 w-3 mr-1" /> Тохируулаагүй</Badge>;
+        return (
+          <Badge variant="secondary">
+            <XCircle className="h-3 w-3 mr-1" /> Тохируулаагүй
+          </Badge>
+        );
     }
   };
 
@@ -135,7 +151,7 @@ export default function AmazonConnection() {
           <p className="text-muted-foreground">Amazon SP-API холболтын мэдээлэл, статус</p>
         </div>
         {isSandbox && (
-          <Badge className="bg-amber-500 text-white text-sm px-3 py-1">
+          <Badge variant="secondary" className="text-sm px-3 py-1">
             <FlaskConical className="h-4 w-4 mr-1" /> Sandbox Mode
           </Badge>
         )}
@@ -196,9 +212,9 @@ export default function AmazonConnection() {
       )}
 
       {testResult?.success && (
-        <Card className="border-green-500/50 bg-green-500/5">
+        <Card className="border-primary/30 bg-primary/5">
           <CardContent className="pt-4 flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-600" />
+            <CheckCircle className="h-5 w-5 text-primary" />
             <span className="text-sm font-medium">{testResult.message}</span>
             {testResult.sandbox && <Badge variant="outline" className="ml-2">Sandbox</Badge>}
           </CardContent>
@@ -224,7 +240,7 @@ export default function AmazonConnection() {
               return (
                 <div key={item.label} className="flex items-center gap-2 p-3 rounded-lg border">
                   {verified === true ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-primary" />
                   ) : verified === false ? (
                     <XCircle className="h-4 w-4 text-destructive" />
                   ) : (

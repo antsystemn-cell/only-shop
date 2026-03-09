@@ -122,14 +122,16 @@ export default function AmazonImport() {
           <p className="text-muted-foreground">Amazon каталогоос бараа хайж, импортлох</p>
         </div>
         {isSandbox && (
-          <Badge className="bg-amber-500 text-white"><FlaskConical className="h-3 w-3 mr-1" /> Sandbox</Badge>
+          <Badge variant="secondary">
+            <FlaskConical className="h-3 w-3 mr-1" /> Sandbox
+          </Badge>
         )}
       </div>
 
       {isSandbox && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
+        <Card className="border-secondary/40 bg-secondary/10">
           <CardContent className="py-3 flex items-center gap-2 text-sm">
-            <FlaskConical className="h-4 w-4 text-amber-600" />
+            <FlaskConical className="h-4 w-4" />
             Sandbox горимд тест бараанууд буцаагдана. Бодит Amazon каталог биш.
           </CardContent>
         </Card>
@@ -190,7 +192,11 @@ export default function AmazonImport() {
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
                 Үр дүн ({results.length})
-                {lastSearchSandbox && <Badge variant="outline" className="ml-2 text-amber-600 border-amber-500">Sandbox data</Badge>}
+                {lastSearchSandbox && (
+                  <Badge variant="secondary" className="ml-2">
+                    Sandbox data
+                  </Badge>
+                )}
               </CardTitle>
               <Button onClick={handleImport} disabled={importing || selected.size === 0}>
                 {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
