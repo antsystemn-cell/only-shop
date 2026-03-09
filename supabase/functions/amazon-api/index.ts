@@ -145,18 +145,157 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-// ==================== SP-API REQUEST ====================
+// ==================== SP-API REQUEST (AWS SigV4 + LWA) ====================
 
 function getEndpoint(region: string): string {
   const endpoints = isSandbox() ? SANDBOX_ENDPOINTS : PROD_ENDPOINTS;
   return endpoints[region] || endpoints["us-east-1"];
 }
 
+const encoder = new TextEncoder();
+
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function sha256(data: string | Uint8Array): Promise<ArrayBuffer> {
+  const bytes = typeof data === "string" ? encoder.encode(data) : data;
+  return await crypto.subtle.digest("SHA-256", bytes);
+}
+
+async function sha256Hex(data: string | Uint8Array): Promise<string> {
+  return toHex(await sha256(data));
+}
+
+async function hmacSha256(keyBytes: Uint8Array, data: string): Promise<ArrayBuffer> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyBytes,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  return await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(data));
+}
+
+function rfc3986Encode(str: string): string {
+  return encodeURIComponent(str).replace(/[!'()*]/g, (c) =>
+    `%${c.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+}
+
+function canonicalQueryString(url: URL): string {
+  const pairs: Array<[string, string]> = [];
+  for (const [k, v] of url.searchParams.entries()) pairs.push([k, v]);
+  pairs.sort((a, b) => (a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0])));
+  return pairs
+    .map(([k, v]) => `${rfc3986Encode(k)}=${rfc3986Encode(v)}`)
+    .join("&");
+}
+
+function canonicalHeadersAndSignedHeaders(headers: Record<string, string>) {
+  const entries = Object.entries(headers)
+    .map(([k, v]) => [k.toLowerCase().trim(), v.trim().replace(/\s+/g, " ")] as const)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+
+  const canonicalHeaders = entries.map(([k, v]) => `${k}:${v}\n`).join("");
+  const signedHeaders = entries.map(([k]) => k).join(";");
+  return { canonicalHeaders, signedHeaders };
+}
+
+async function getSigningKey(secretAccessKey: string, dateStamp: string, region: string, service: string) {
+  const kSecret = encoder.encode(`AWS4${secretAccessKey}`);
+  const kDate = new Uint8Array(await hmacSha256(kSecret, dateStamp));
+  const kRegion = new Uint8Array(await hmacSha256(kDate, region));
+  const kService = new Uint8Array(await hmacSha256(kRegion, service));
+  const kSigning = new Uint8Array(await hmacSha256(kService, "aws4_request"));
+  return kSigning;
+}
+
+function amzDateNow() {
+  const d = new Date();
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mi = String(d.getUTCMinutes()).padStart(2, "0");
+  const ss = String(d.getUTCSeconds()).padStart(2, "0");
+  const dateStamp = `${yyyy}${mm}${dd}`;
+  const amzDate = `${dateStamp}T${hh}${mi}${ss}Z`;
+  return { amzDate, dateStamp };
+}
+
+async function signRequest(opts: {
+  method: string;
+  url: URL;
+  region: string;
+  lwaAccessToken: string;
+  payload: string;
+}): Promise<Record<string, string>> {
+  const accessKeyId = Deno.env.get("AMAZON_AWS_ACCESS_KEY_ID");
+  const secretAccessKey = Deno.env.get("AMAZON_AWS_SECRET_ACCESS_KEY");
+  const sessionToken = Deno.env.get("AMAZON_AWS_SESSION_TOKEN");
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error("AWS_SIGNING_CONFIG_MISSING: AMAZON_AWS_ACCESS_KEY_ID/AMAZON_AWS_SECRET_ACCESS_KEY not configured.");
+  }
+
+  const { amzDate, dateStamp } = amzDateNow();
+  const service = "execute-api";
+  const host = opts.url.host;
+
+  const payloadHash = await sha256Hex(opts.payload || "");
+
+  const headersToSign: Record<string, string> = {
+    host,
+    "content-type": "application/json",
+    "x-amz-date": amzDate,
+    "x-amz-access-token": opts.lwaAccessToken,
+  };
+  if (sessionToken) headersToSign["x-amz-security-token"] = sessionToken;
+
+  const { canonicalHeaders, signedHeaders } = canonicalHeadersAndSignedHeaders(headersToSign);
+  const canonicalRequest = [
+    opts.method.toUpperCase(),
+    opts.url.pathname,
+    canonicalQueryString(opts.url),
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join("\n");
+
+  const scope = `${dateStamp}/${opts.region}/${service}/aws4_request`;
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    scope,
+    await sha256Hex(canonicalRequest),
+  ].join("\n");
+
+  const signingKey = await getSigningKey(secretAccessKey, dateStamp, opts.region, service);
+  const signature = toHex(await hmacSha256(signingKey, stringToSign));
+
+  const authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  // Return headers for actual request (keep same header values as signed)
+  const out: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Amz-Date": amzDate,
+    "x-amz-access-token": opts.lwaAccessToken,
+    Authorization: authorization,
+  };
+  if (sessionToken) out["X-Amz-Security-Token"] = sessionToken;
+  return out;
+}
+
 async function spApiRequest(
   path: string,
   region: string,
   params?: Record<string, string>,
-  method = "GET"
+  method = "GET",
+  body?: any
 ): Promise<any> {
   const token = await getAccessToken();
   const endpoint = getEndpoint(region);
@@ -167,14 +306,17 @@ async function spApiRequest(
     }
   }
 
+  const payload = body ? JSON.stringify(body) : "";
+  const signed = await signRequest({ method, url, region, lwaAccessToken: token, payload });
+
   const startTime = Date.now();
   const response = await fetch(url.toString(), {
     method,
     headers: {
-      "x-amz-access-token": token,
-      "Content-Type": "application/json",
+      ...signed,
       "User-Agent": "OnlyMN/1.0 (Lovable; +https://onlymn.lovable.app)",
     },
+    body: method.toUpperCase() === "GET" ? undefined : payload,
   });
 
   const duration = Date.now() - startTime;
