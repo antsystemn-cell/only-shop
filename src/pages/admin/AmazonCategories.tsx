@@ -104,9 +104,9 @@ export default function AmazonCategories() {
       </div>
 
       {unmappedCount && unmappedCount > 0 && (
-        <Card className="border-yellow-500/50 bg-yellow-500/5">
+        <Card className="border-border bg-secondary/20">
           <CardContent className="flex items-center gap-3 py-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+            <AlertTriangle className="h-5 w-5 text-muted-foreground" />
             <p className="text-sm">{unmappedCount} маппинг хийгдээгүй ангилал байна</p>
           </CardContent>
         </Card>
