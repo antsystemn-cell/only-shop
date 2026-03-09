@@ -567,7 +567,7 @@ export default function OtProductDetail() {
                         } else {
                           setConfigImageOverride(null);
                         }
-                      }
+                      }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
                         isOutOfStock
                           ? "border-border opacity-40 cursor-not-allowed line-through"
