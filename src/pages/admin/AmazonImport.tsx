@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Search, Download, Eye, Package } from "lucide-react";
+import { Loader2, Search, Download, Eye, Package, FlaskConical } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface SearchResult {
@@ -29,6 +29,15 @@ export default function AmazonImport() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
+  const [lastSearchSandbox, setLastSearchSandbox] = useState(false);
+
+  const { data: serverConfig } = useQuery({
+    queryKey: ["amazon-config"],
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke("amazon-api", { body: { action: "getConfig" } });
+      return data;
+    },
+  });
 
   const { data: marketplaces } = useQuery({
     queryKey: ["amazon-marketplaces-enabled"],
@@ -44,6 +53,7 @@ export default function AmazonImport() {
   });
 
   const [marketplace, setMarketplace] = useState("");
+  const isSandbox = serverConfig?.sandbox === true;
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -62,9 +72,8 @@ export default function AmazonImport() {
       });
       if (error) throw error;
       setResults(data?.items || []);
-      if (!data?.items?.length) {
-        toast({ title: "Бараа олдсонгүй" });
-      }
+      setLastSearchSandbox(data?.sandbox === true);
+      if (!data?.items?.length) toast({ title: "Бараа олдсонгүй" });
     } catch (e: any) {
       toast({ title: "Хайлтын алдаа", description: e.message, variant: "destructive" });
     } finally {
@@ -80,10 +89,7 @@ export default function AmazonImport() {
       const { data, error } = await supabase.functions.invoke("amazon-api", {
         body: {
           action: "importProducts",
-          params: {
-            asins,
-            marketplaceId: marketplace || marketplaces?.[0]?.marketplace_id,
-          },
+          params: { asins, marketplaceId: marketplace || marketplaces?.[0]?.marketplace_id },
         },
       });
       if (error) throw error;
@@ -99,8 +105,7 @@ export default function AmazonImport() {
 
   const toggleSelect = (asin: string) => {
     const next = new Set(selected);
-    if (next.has(asin)) next.delete(asin);
-    else next.add(asin);
+    if (next.has(asin)) next.delete(asin); else next.add(asin);
     setSelected(next);
   };
 
@@ -111,18 +116,29 @@ export default function AmazonImport() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Amazon бараа импорт</h1>
-        <p className="text-muted-foreground">Amazon каталогоос бараа хайж, импортлох</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Amazon бараа импорт</h1>
+          <p className="text-muted-foreground">Amazon каталогоос бараа хайж, импортлох</p>
+        </div>
+        {isSandbox && (
+          <Badge className="bg-amber-500 text-white"><FlaskConical className="h-3 w-3 mr-1" /> Sandbox</Badge>
+        )}
       </div>
+
+      {isSandbox && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="py-3 flex items-center gap-2 text-sm">
+            <FlaskConical className="h-4 w-4 text-amber-600" />
+            Sandbox горимд тест бараанууд буцаагдана. Бодит Amazon каталог биш.
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Хайлт
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2"><Search className="h-5 w-5" /> Хайлт</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -141,7 +157,7 @@ export default function AmazonImport() {
             <div className="space-y-2 md:col-span-2">
               <Label>Хайлтын утга</Label>
               <Input
-                placeholder={searchType === "asin" ? "B08N5WRWNW" : "wireless headphones..."}
+                placeholder={isSandbox ? "sandbox, headphones, cable..." : (searchType === "asin" ? "B08N5WRWNW" : "wireless headphones...")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -174,6 +190,7 @@ export default function AmazonImport() {
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
                 Үр дүн ({results.length})
+                {lastSearchSandbox && <Badge variant="outline" className="ml-2 text-amber-600 border-amber-500">Sandbox data</Badge>}
               </CardTitle>
               <Button onClick={handleImport} disabled={importing || selected.size === 0}>
                 {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
@@ -186,27 +203,20 @@ export default function AmazonImport() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
-                    <Checkbox
-                      checked={selected.size === results.length && results.length > 0}
-                      onCheckedChange={toggleAll}
-                    />
+                    <Checkbox checked={selected.size === results.length && results.length > 0} onCheckedChange={toggleAll} />
                   </TableHead>
                   <TableHead>Зураг</TableHead>
                   <TableHead>Нэр</TableHead>
                   <TableHead>ASIN</TableHead>
                   <TableHead>Брэнд</TableHead>
                   <TableHead>Ангилал</TableHead>
-                  <TableHead>Үйлдэл</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {results.map((item) => (
                   <TableRow key={item.asin}>
                     <TableCell>
-                      <Checkbox
-                        checked={selected.has(item.asin)}
-                        onCheckedChange={() => toggleSelect(item.asin)}
-                      />
+                      <Checkbox checked={selected.has(item.asin)} onCheckedChange={() => toggleSelect(item.asin)} />
                     </TableCell>
                     <TableCell>
                       {item.mainImage ? (
@@ -221,11 +231,6 @@ export default function AmazonImport() {
                     <TableCell><Badge variant="outline">{item.asin}</Badge></TableCell>
                     <TableCell>{item.brand || "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{item.browseClassification || "—"}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
