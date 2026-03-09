@@ -61,7 +61,7 @@ interface HeaderSearchProps {
 export default function HeaderSearch({ className, autoFocus, onSearchComplete }: HeaderSearchProps) {
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState("");
-  const [provider, setProvider] = useState("");
+  const [provider, setProvider] = useState("Taobao");
   const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [uploading, setUploading] = useState(false);
