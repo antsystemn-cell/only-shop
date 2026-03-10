@@ -103,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         signUp,
         signIn,
+        signInWithPhone,
         signOut,
       }}
     >
