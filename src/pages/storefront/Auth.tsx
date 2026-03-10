@@ -185,8 +185,16 @@ function LoginForm({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotIdentifier, setForgotIdentifier] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
+  // Phone reset OTP state
+  const [resetOtpStep, setResetOtpStep] = useState(false);
+  const [resetOtpCode, setResetOtpCode] = useState("");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [resetPasswordStep, setResetPasswordStep] = useState(false);
+  const [resetOtpCooldown, setResetOtpCooldown] = useState(0);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   // OTP state
   const [otpStep, setOtpStep] = useState(false);
