@@ -8,12 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  ArrowLeft, Package, Loader2, Calendar, ShoppingBag, ChevronRight, Eye, RefreshCw,
-} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Package, Loader2, Calendar, ShoppingBag, ChevronRight, Eye, RefreshCw } from "lucide-react";
 
 // ---- Local order types ----
 interface OrderItem {
@@ -72,14 +68,21 @@ export default function MyOrders() {
       if (error) throw error;
       return (data || []).map((o: any) => ({
         ...o,
-        order_items: o.order_items.map((i: any) => ({ ...i, product_snapshot: i.product_snapshot as OrderItem["product_snapshot"] })),
+        order_items: o.order_items.map((i: any) => ({
+          ...i,
+          product_snapshot: i.product_snapshot as OrderItem["product_snapshot"],
+        })),
       })) as LocalOrder[];
     },
     enabled: !!user,
   });
 
   // OT orders
-  const { data: otOrders, isLoading: otLoading, refetch: refetchOt } = useQuery({
+  const {
+    data: otOrders,
+    isLoading: otLoading,
+    refetch: refetchOt,
+  } = useQuery({
     queryKey: ["my-ot-orders", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -116,18 +119,16 @@ export default function MyOrders() {
 
       <Tabs defaultValue="ot" className="w-full">
         <TabsList className="w-full grid grid-cols-2">
-          <TabsTrigger value="ot">
-            Маркетплэйс ({otOrders?.length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="local">
-            Дотоод ({localOrders?.length || 0})
-          </TabsTrigger>
+          <TabsTrigger value="ot">Гадаад захиалга ({otOrders?.length || 0})</TabsTrigger>
+          <TabsTrigger value="local">Бэлэн бараа захиалга ({localOrders?.length || 0})</TabsTrigger>
         </TabsList>
 
         {/* OT Orders Tab */}
         <TabsContent value="ot" className="mt-4">
           {otLoading ? (
-            <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+            <div className="flex justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
           ) : otOrders && otOrders.length > 0 ? (
             <div className="space-y-4">
               {otOrders.map((order: any) => {
@@ -160,20 +161,30 @@ export default function MyOrders() {
                           <div className="flex items-center gap-3">
                             <div className="flex -space-x-2">
                               {items.slice(0, 3).map((item: any, i: number) => (
-                                <div key={i} className="w-10 h-10 rounded bg-muted border-2 border-background overflow-hidden" style={{ zIndex: 3 - i }}>
+                                <div
+                                  key={i}
+                                  className="w-10 h-10 rounded bg-muted border-2 border-background overflow-hidden"
+                                  style={{ zIndex: 3 - i }}
+                                >
                                   {item.imageUrl ? (
                                     <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                                   ) : (
-                                    <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="h-3 w-3 text-muted-foreground" /></div>
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <ShoppingBag className="h-3 w-3 text-muted-foreground" />
+                                    </div>
                                   )}
                                 </div>
                               ))}
                               {items.length > 3 && (
-                                <div className="w-10 h-10 rounded bg-muted border-2 border-background flex items-center justify-center text-xs font-medium">+{items.length - 3}</div>
+                                <div className="w-10 h-10 rounded bg-muted border-2 border-background flex items-center justify-center text-xs font-medium">
+                                  +{items.length - 3}
+                                </div>
                               )}
                             </div>
                             <span className="text-sm text-muted-foreground flex-1">{order.item_count} бараа</span>
-                            <span className="font-bold text-primary">{new Intl.NumberFormat("mn-MN").format(Math.round(order.subtotal))}₮</span>
+                            <span className="font-bold text-primary">
+                              {new Intl.NumberFormat("mn-MN").format(Math.round(order.subtotal))}₮
+                            </span>
                           </div>
                         </>
                       )}
@@ -200,7 +211,9 @@ export default function MyOrders() {
         {/* Local Orders Tab */}
         <TabsContent value="local" className="mt-4">
           {localLoading ? (
-            <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+            <div className="flex justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
           ) : localOrders && localOrders.length > 0 ? (
             <div className="space-y-4">
               {localOrders.map((order) => {
@@ -213,12 +226,18 @@ export default function MyOrders() {
                         <div className="p-4 sm:p-6">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                             <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-lg bg-primary/10"><Package className="h-5 w-5 text-primary" /></div>
+                              <div className="p-2 rounded-lg bg-primary/10">
+                                <Package className="h-5 w-5 text-primary" />
+                              </div>
                               <div>
                                 <p className="font-mono font-semibold">{order.order_number}</p>
                                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  {new Date(order.created_at).toLocaleDateString("mn-MN", { year: "numeric", month: "long", day: "numeric" })}
+                                  {new Date(order.created_at).toLocaleDateString("mn-MN", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  })}
                                 </p>
                               </div>
                             </div>
@@ -231,20 +250,36 @@ export default function MyOrders() {
                           <div className="flex items-center gap-4">
                             <div className="flex -space-x-2">
                               {order.order_items.slice(0, 3).map((item, idx) => (
-                                <div key={item.id} className="w-12 h-12 rounded-lg bg-muted border-2 border-background overflow-hidden" style={{ zIndex: 3 - idx }}>
+                                <div
+                                  key={item.id}
+                                  className="w-12 h-12 rounded-lg bg-muted border-2 border-background overflow-hidden"
+                                  style={{ zIndex: 3 - idx }}
+                                >
                                   {item.product_snapshot.images?.[0] ? (
-                                    <img src={item.product_snapshot.images[0]} alt={item.product_snapshot.name_mn} className="w-full h-full object-cover" />
+                                    <img
+                                      src={item.product_snapshot.images[0]}
+                                      alt={item.product_snapshot.name_mn}
+                                      className="w-full h-full object-cover"
+                                    />
                                   ) : (
-                                    <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="h-4 w-4 text-muted-foreground" /></div>
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                                    </div>
                                   )}
                                 </div>
                               ))}
                               {order.order_items.length > 3 && (
-                                <div className="w-12 h-12 rounded-lg bg-muted border-2 border-background flex items-center justify-center text-sm font-medium">+{order.order_items.length - 3}</div>
+                                <div className="w-12 h-12 rounded-lg bg-muted border-2 border-background flex items-center justify-center text-sm font-medium">
+                                  +{order.order_items.length - 3}
+                                </div>
                               )}
                             </div>
-                            <div className="flex-1 min-w-0"><p className="text-sm text-muted-foreground">{itemCount} бараа</p></div>
-                            <div className="text-right"><p className="font-bold text-lg text-primary">{order.total.toLocaleString()}₮</p></div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-muted-foreground">{itemCount} бараа</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-lg text-primary">{order.total.toLocaleString()}₮</p>
+                            </div>
                           </div>
                         </div>
                       </Link>
@@ -262,42 +297,80 @@ export default function MyOrders() {
       {/* OT Order Detail Dialog */}
       <Dialog open={!!selectedOtOrder} onOpenChange={(open) => !open && setSelectedOtOrder(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Захиалгын дэлгэрэнгүй</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Захиалгын дэлгэрэнгүй</DialogTitle>
+          </DialogHeader>
           {selectedOtOrder && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><span className="text-muted-foreground">Захиалгын №:</span><p className="font-mono font-semibold">{selectedOtOrder.order_number}</p></div>
-                <div><span className="text-muted-foreground">Статус:</span><p><Badge>{OT_STATUS[selectedOtOrder.status]?.label || selectedOtOrder.status}</Badge></p>
-                  {selectedOtOrder.status === "cancelled" && selectedOtOrder.cancel_reason && <p className="text-xs text-destructive mt-1">Шалтгаан: {selectedOtOrder.cancel_reason}</p>}
+                <div>
+                  <span className="text-muted-foreground">Захиалгын №:</span>
+                  <p className="font-mono font-semibold">{selectedOtOrder.order_number}</p>
                 </div>
-                <div><span className="text-muted-foreground">Огноо:</span><p>{new Date(selectedOtOrder.created_at).toLocaleString("mn-MN")}</p></div>
-                <div><span className="text-muted-foreground">Хүргэлт:</span><p>{selectedOtOrder.delivery_type === "delivery" ? "Хүргэлтээр" : "Өөрөө авна"}</p></div>
+                <div>
+                  <span className="text-muted-foreground">Статус:</span>
+                  <p>
+                    <Badge>{OT_STATUS[selectedOtOrder.status]?.label || selectedOtOrder.status}</Badge>
+                  </p>
+                  {selectedOtOrder.status === "cancelled" && selectedOtOrder.cancel_reason && (
+                    <p className="text-xs text-destructive mt-1">Шалтгаан: {selectedOtOrder.cancel_reason}</p>
+                  )}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Огноо:</span>
+                  <p>{new Date(selectedOtOrder.created_at).toLocaleString("mn-MN")}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Хүргэлт:</span>
+                  <p>{selectedOtOrder.delivery_type === "delivery" ? "Хүргэлтээр" : "Өөрөө авна"}</p>
+                </div>
               </div>
               {selectedOtOrder.delivery_address && (
-                <div className="text-sm"><span className="text-muted-foreground">Хаяг:</span><p>{selectedOtOrder.delivery_address.fullName} — {selectedOtOrder.delivery_address.address}{selectedOtOrder.delivery_address.phone && ` (${selectedOtOrder.delivery_address.phone})`}</p></div>
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Хаяг:</span>
+                  <p>
+                    {selectedOtOrder.delivery_address.fullName} — {selectedOtOrder.delivery_address.address}
+                    {selectedOtOrder.delivery_address.phone && ` (${selectedOtOrder.delivery_address.phone})`}
+                  </p>
+                </div>
               )}
-              {selectedOtOrder.comment && <div className="text-sm"><span className="text-muted-foreground">Тэмдэглэл:</span><p>{selectedOtOrder.comment}</p></div>}
+              {selectedOtOrder.comment && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Тэмдэглэл:</span>
+                  <p>{selectedOtOrder.comment}</p>
+                </div>
+              )}
               <Separator />
               <div className="space-y-3">
                 <h4 className="font-semibold">Бараанууд</h4>
                 {((selectedOtOrder.items as any[]) || []).map((item: any, i: number) => (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-lg border">
                     <div className="w-14 h-14 rounded bg-muted overflow-hidden shrink-0">
-                      {item.imageUrl ? <img src={item.imageUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="h-4 w-4 text-muted-foreground" /></div>}
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm line-clamp-2">{item.title}</p>
                       {item.configurators && <p className="text-xs text-muted-foreground">{item.configurators}</p>}
                       <span className="text-xs text-muted-foreground">Тоо: {item.quantity}</span>
                     </div>
-                    <span className="text-sm font-medium shrink-0">{new Intl.NumberFormat("mn-MN").format(Math.round(item.totalPrice))}₮</span>
+                    <span className="text-sm font-medium shrink-0">
+                      {new Intl.NumberFormat("mn-MN").format(Math.round(item.totalPrice))}₮
+                    </span>
                   </div>
                 ))}
               </div>
               <Separator />
               <div className="flex justify-between font-bold text-lg">
                 <span>Нийт:</span>
-                <span className="text-primary">{new Intl.NumberFormat("mn-MN").format(Math.round(selectedOtOrder.subtotal))}₮</span>
+                <span className="text-primary">
+                  {new Intl.NumberFormat("mn-MN").format(Math.round(selectedOtOrder.subtotal))}₮
+                </span>
               </div>
             </div>
           )}
@@ -311,10 +384,17 @@ function EmptyState({ text, linkTo, linkLabel }: { text: string; linkTo: string;
   return (
     <Card>
       <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="p-4 rounded-full bg-muted mb-4"><Package className="h-12 w-12 text-muted-foreground" /></div>
+        <div className="p-4 rounded-full bg-muted mb-4">
+          <Package className="h-12 w-12 text-muted-foreground" />
+        </div>
         <h3 className="font-semibold text-lg mb-2">Захиалга олдсонгүй</h3>
         <p className="text-muted-foreground mb-6">{text}</p>
-        <Button asChild><Link to={linkTo}><ShoppingBag className="h-4 w-4 mr-2" />{linkLabel}</Link></Button>
+        <Button asChild>
+          <Link to={linkTo}>
+            <ShoppingBag className="h-4 w-4 mr-2" />
+            {linkLabel}
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );
