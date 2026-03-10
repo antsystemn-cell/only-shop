@@ -329,6 +329,18 @@ Deno.serve(async (req) => {
           }
         }
 
+        // For reset_password, check user exists
+        if (purpose === "reset_password") {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("phone", phone)
+            .single();
+          if (!profile) {
+            return json({ error: "Энэ утасны дугаартай бүртгэл олдсонгүй" }, 404);
+          }
+        }
+
         // Rate limit: check cooldown
         const cooldown = parseInt(settings.otp_resend_cooldown_seconds) || 60;
         const { data: recentOtp } = await supabase

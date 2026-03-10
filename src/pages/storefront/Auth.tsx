@@ -336,76 +336,298 @@ function LoginForm({
     }
   };
 
+  // Reset OTP cooldown timer
+  useEffect(() => {
+    if (resetOtpCooldown <= 0) return;
+    const t = setTimeout(() => setResetOtpCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resetOtpCooldown]);
+
+  const forgotIsPhone = isPhoneNumber(forgotIdentifier);
+  const forgotIsEmail = isEmail(forgotIdentifier);
+
+  const handleForgotSendOtp = async () => {
+    if (!forgotIsPhone) return;
+    setIsLoading(true);
+    setError("");
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke("phone-auth", {
+        body: { action: "send-otp", phone: forgotIdentifier, purpose: "reset_password" },
+      });
+      if (fnErr || data?.error) {
+        setError(data?.error || "OTP илгээхэд алдаа гарлаа");
+        if (data?.cooldown_remaining) setResetOtpCooldown(data.cooldown_remaining);
+        return;
+      }
+      setResetOtpStep(true);
+      setResetOtpCooldown(data.cooldown || 60);
+      toast.success("Баталгаажуулах код илгээгдлээ");
+    } catch {
+      setError("Алдаа гарлаа");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotEmailSend = async () => {
+    if (!forgotIsEmail) return;
+    setIsLoading(true);
+    setError("");
+    try {
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
+        forgotIdentifier.trim(),
+        { redirectTo: `${window.location.origin}/reset-password` }
+      );
+      if (resetErr) {
+        setError(resetErr.message);
+        return;
+      }
+      setForgotSent(true);
+    } catch {
+      setError("Алдаа гарлаа");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setError("");
+    if (!resetOtpCode || resetOtpCode.length < 4) {
+      setError("OTP код оруулна уу");
+      return;
+    }
+    if (!resetNewPassword || resetNewPassword.length < 6) {
+      setError("Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой");
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      setError("Нууц үг таарахгүй байна");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke("phone-auth", {
+        body: {
+          action: "reset-password",
+          phone: forgotIdentifier,
+          code: resetOtpCode,
+          new_password: resetNewPassword,
+        },
+      });
+      if (fnErr || data?.error) {
+        setError(data?.error || "Нууц үг солиход алдаа гарлаа");
+        return;
+      }
+      setResetSuccess(true);
+      toast.success("Нууц үг амжилттай солигдлоо!");
+    } catch {
+      setError("Алдаа гарлаа");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetForgotState = () => {
+    setShowForgotPassword(false);
+    setForgotIdentifier("");
+    setForgotSent(false);
+    setResetOtpStep(false);
+    setResetOtpCode("");
+    setResetNewPassword("");
+    setResetConfirmPassword("");
+    setResetPasswordStep(false);
+    setResetSuccess(false);
+    setError("");
+  };
+
   // ── Forgot password ───────────────────────────────────────
   if (showForgotPassword) {
-    return (
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-center">Нууц үг сэргээх</h3>
-        <p className="text-sm text-muted-foreground text-center">
-          Бүртгэлтэй имэйл хаягаа оруулна уу.
-        </p>
-        {forgotSent ? (
-          <div className="text-center space-y-3 py-4">
-            <p className="text-sm text-primary font-medium">
-              ✓ Нууц үг сэргээх холбоос илгээгдлээ!
+    // Success state
+    if (resetSuccess) {
+      return (
+        <div className="space-y-4 text-center animate-fade-in">
+          <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+            <Phone className="h-7 w-7 text-primary" />
+          </div>
+          <h3 className="text-lg font-semibold">Нууц үг амжилттай солигдлоо!</h3>
+          <p className="text-sm text-muted-foreground">
+            Та шинэ нууц үгээрээ нэвтрэх боломжтой.
+          </p>
+          <Button className="w-full" onClick={resetForgotState}>
+            Нэвтрэх хуудас руу буцах
+          </Button>
+        </div>
+      );
+    }
+
+    // Email sent confirmation
+    if (forgotSent) {
+      return (
+        <div className="text-center space-y-3 py-4 animate-fade-in">
+          <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+            <Mail className="h-7 w-7 text-primary" />
+          </div>
+          <p className="text-sm text-primary font-medium">
+            ✓ Нууц үг сэргээх холбоос илгээгдлээ!
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {forgotIdentifier} руу илгээсэн холбоос дээр дарж нууц үгээ шинэчлэнэ үү.
+          </p>
+          <Button variant="outline" className="w-full" onClick={resetForgotState}>
+            Буцах
+          </Button>
+        </div>
+      );
+    }
+
+    // Phone OTP: new password step
+    if (resetOtpStep && resetPasswordStep) {
+      const otpLen = parseInt(String(authSettings.otp_length)) || 4;
+      return (
+        <div className="space-y-4 animate-fade-in">
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold">Шинэ нууц үг</h3>
+            <p className="text-sm text-muted-foreground">Шинэ нууц үгээ оруулна уу</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Шинэ нууц үг</Label>
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={resetNewPassword}
+              onChange={(e) => { setResetNewPassword(e.target.value); setError(""); }}
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Нууц үг давтах</Label>
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={resetConfirmPassword}
+              onChange={(e) => { setResetConfirmPassword(e.target.value); setError(""); }}
+              disabled={isLoading}
+            />
+          </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          <Button className="w-full" onClick={handleResetPassword} disabled={isLoading}>
+            {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Нууц үг солих
+          </Button>
+
+          <Button variant="ghost" className="w-full" onClick={() => setResetPasswordStep(false)}>
+            ← Буцах
+          </Button>
+        </div>
+      );
+    }
+
+    // Phone OTP: code entry step
+    if (resetOtpStep) {
+      const otpLen = parseInt(String(authSettings.otp_length)) || 4;
+      return (
+        <div className="space-y-6 animate-fade-in">
+          <div className="text-center space-y-2">
+            <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <Phone className="h-7 w-7 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold">Код баталгаажуулах</h3>
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium">{forgotIdentifier}</span> дугаар руу илгээсэн кодыг оруулна уу
             </p>
+          </div>
+
+          <div className="flex justify-center">
+            <InputOTP maxLength={otpLen} value={resetOtpCode} onChange={setResetOtpCode}>
+              <InputOTPGroup>
+                {Array.from({ length: otpLen }).map((_, i) => (
+                  <InputOTPSlot key={i} index={i} />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
+
+          {error && <p className="text-sm text-destructive text-center">{error}</p>}
+
+          <Button
+            className="w-full"
+            onClick={() => { setResetPasswordStep(true); setError(""); }}
+            disabled={resetOtpCode.length < otpLen}
+          >
+            Үргэлжлүүлэх
+          </Button>
+
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={() => { setResetOtpStep(false); setResetOtpCode(""); setError(""); }}>
+              ← Буцах
+            </Button>
             <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setShowForgotPassword(false);
-                setForgotSent(false);
-              }}
+              variant="ghost"
+              size="sm"
+              onClick={handleForgotSendOtp}
+              disabled={resetOtpCooldown > 0 || isLoading}
             >
-              Буцах
+              {resetOtpCooldown > 0 ? `Дахин авах (${resetOtpCooldown}с)` : "Дахин код авах"}
             </Button>
           </div>
-        ) : (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!forgotEmail.trim()) {
-                toast.error("Имэйл хаягаа оруулна уу");
-                return;
-              }
-              setIsLoading(true);
-              const { error } = await supabase.auth.resetPasswordForEmail(
-                forgotEmail.trim(),
-                { redirectTo: `${window.location.origin}/reset-password` }
-              );
-              setIsLoading(false);
-              if (error) {
-                toast.error(error.message);
-                return;
-              }
-              setForgotSent(true);
-            }}
-            className="space-y-4"
-          >
-            <div className="space-y-2">
-              <Label>Имэйл</Label>
-              <Input
-                type="email"
-                placeholder="example@email.com"
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                disabled={isLoading}
-              />
+        </div>
+      );
+    }
+
+    // Initial: enter phone or email
+    return (
+      <div className="space-y-4 animate-fade-in">
+        <div className="text-center space-y-2">
+          <h3 className="text-lg font-semibold">Нууц үг сэргээх</h3>
+          <p className="text-sm text-muted-foreground">
+            Бүртгэлтэй утасны дугаар эсвэл имэйл хаягаа оруулна уу
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Утасны дугаар эсвэл И-мэйл</Label>
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder="99112233 эсвэл email@example.com"
+              value={forgotIdentifier}
+              onChange={(e) => { setForgotIdentifier(e.target.value); setError(""); }}
+              disabled={isLoading}
+              className="pr-10"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              {forgotIsPhone ? <Phone className="h-4 w-4 text-primary" /> : forgotIsEmail ? <Mail className="h-4 w-4 text-primary" /> : null}
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Холбоос илгээх
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => setShowForgotPassword(false)}
-            >
-              Буцах
-            </Button>
-          </form>
+          </div>
+        </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {forgotIsPhone ? (
+          <Button className="w-full" onClick={handleForgotSendOtp} disabled={isLoading}>
+            {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Phone className="h-4 w-4 mr-2" />
+            SMS код илгээх
+          </Button>
+        ) : forgotIsEmail ? (
+          <Button className="w-full" onClick={handleForgotEmailSend} disabled={isLoading}>
+            {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Mail className="h-4 w-4 mr-2" />
+            Имэйл холбоос илгээх
+          </Button>
+        ) : (
+          <Button className="w-full" disabled>
+            Утас эсвэл имэйл оруулна уу
+          </Button>
         )}
+
+        <Button type="button" variant="ghost" className="w-full" onClick={resetForgotState}>
+          Буцах
+        </Button>
       </div>
     );
   }
