@@ -25,6 +25,8 @@ import {
   Palette,
   Search,
   DatabaseBackup,
+  Shield,
+  MessageSquare,
 } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
