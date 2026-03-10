@@ -80,15 +80,18 @@ export default function OtProductDetail() {
   const handleGalleryTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   }, []);
-  const handleGalleryTouchEnd = useCallback((e: React.TouchEvent) => {
-    const count = imageCountRef.current;
-    if (count <= 1) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) > 50) {
-      if (dx > 0) animateGallery((p) => (p - 1 + count) % count, "right");
-      else animateGallery((p) => (p + 1) % count, "left");
-    }
-  }, [animateGallery]);
+  const handleGalleryTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const count = imageCountRef.current;
+      if (count <= 1) return;
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      if (Math.abs(dx) > 50) {
+        if (dx > 0) animateGallery((p) => (p - 1 + count) % count, "right");
+        else animateGallery((p) => (p + 1) % count, "left");
+      }
+    },
+    [animateGallery],
+  );
 
   // Check if current user is admin
   const { data: isAdmin } = useQuery({
@@ -107,7 +110,11 @@ export default function OtProductDetail() {
     staleTime: 1000 * 60 * 30,
   });
 
-  const { data: product, isLoading, error } = useQuery({
+  const {
+    data: product,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["ot-product", itemId],
     queryFn: () => fetchProductDetail(itemId!),
     enabled: !!itemId,
@@ -149,17 +156,13 @@ export default function OtProductDetail() {
     if (!product?.configuredItems?.length || !Object.keys(selectedConfigs).length) return null;
     const selectedVids = Object.values(selectedConfigs).filter(Boolean);
     if (selectedVids.length === 0) return null;
-    return product.configuredItems.find((ci) =>
-      selectedVids.every((vid) => ci.configuratorIds.includes(vid))
-    );
+    return product.configuredItems.find((ci) => selectedVids.every((vid) => ci.configuratorIds.includes(vid)));
   }, [product, selectedConfigs]);
 
   // Price range from configured items
   const priceRange = useMemo(() => {
     if (!product?.configuredItems?.length) return null;
-    const prices = product.configuredItems
-      .map((ci) => ci.price)
-      .filter((p): p is number => p != null && p > 0);
+    const prices = product.configuredItems.map((ci) => ci.price).filter((p): p is number => p != null && p > 0);
     if (prices.length < 2) return null;
     const min = Math.min(...prices);
     const max = Math.max(...prices);
@@ -173,16 +176,15 @@ export default function OtProductDetail() {
 
   const effectivePrice = matchedConfig?.price ?? product?.price ?? 0;
   const effectiveQuantity = matchedConfig?.quantity ?? product?.quantity;
-  const effectiveImage = configImageOverride || matchedConfig?.imageUrl || product?.images?.[selectedImage] || product?.imageUrl;
+  const effectiveImage =
+    configImageOverride || matchedConfig?.imageUrl || product?.images?.[selectedImage] || product?.imageUrl;
 
   const handleAddToCart = async (): Promise<boolean> => {
     if (!product) return false;
 
     // If there are configurators, ALL must be selected
     if (product.configurators.length > 0) {
-      const allSelected = product.configurators.every(
-        (c) => selectedConfigs[c.pid] && selectedConfigs[c.pid] !== ""
-      );
+      const allSelected = product.configurators.every((c) => selectedConfigs[c.pid] && selectedConfigs[c.pid] !== "");
       if (!allSelected) {
         toast.error("Бүх хувилбараа сонгоно уу (өнгө, хэмжээ гэх мэт)");
         return false;
@@ -274,7 +276,7 @@ export default function OtProductDetail() {
             {error?.message || "Энэ бараа одоогоор боломжгүй эсвэл устгагдсан байна"}
           </p>
           <Link to="/ot">
-            <Button className="mt-2">Маркетплэйс руу буцах</Button>
+            <Button className="mt-2">Онлайн дэлгүүр руу буцах</Button>
           </Link>
         </div>
       </div>
@@ -294,7 +296,9 @@ export default function OtProductDetail() {
       {/* Breadcrumbs */}
       {ensureArray(product.breadcrumbs).length > 0 && (
         <nav className="flex items-center gap-1 text-xs text-muted-foreground mb-4 flex-wrap">
-          <Link to="/ot" className="hover:text-foreground transition-colors">Маркетплэйс</Link>
+          <Link to="/ot" className="hover:text-foreground transition-colors">
+            Маркетплэйс
+          </Link>
           {ensureArray(product.breadcrumbs).map((bc, i) => (
             <span key={bc.id || i} className="flex items-center gap-1">
               <span>/</span>
@@ -319,9 +323,11 @@ export default function OtProductDetail() {
               src={effectiveImage}
               alt={product.title}
               className={`w-full h-full object-contain max-w-full max-h-full transition-all duration-200 ease-out ${
-                gallerySlide === "left" ? "translate-x-[-30px] opacity-0" :
-                gallerySlide === "right" ? "translate-x-[30px] opacity-0" :
-                "translate-x-0 opacity-100"
+                gallerySlide === "left"
+                  ? "translate-x-[-30px] opacity-0"
+                  : gallerySlide === "right"
+                    ? "translate-x-[30px] opacity-0"
+                    : "translate-x-0 opacity-100"
               }`}
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/placeholder.svg";
@@ -378,17 +384,21 @@ export default function OtProductDetail() {
           {/* Thumbnails */}
           {product.images.length > 1 && (
             <div className="flex gap-2 mt-3 overflow-x-auto pb-2 scrollbar-hide">
-              {ensureArray(product.images).slice(0, 10).map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedImage(i)}
-                  className={`w-16 h-16 rounded-lg border-2 overflow-hidden shrink-0 transition-all ${
-                    selectedImage === i ? "border-primary ring-1 ring-primary/30" : "border-transparent hover:border-muted-foreground/30"
-                  }`}
-                >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
+              {ensureArray(product.images)
+                .slice(0, 10)
+                .map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedImage(i)}
+                    className={`w-16 h-16 rounded-lg border-2 overflow-hidden shrink-0 transition-all ${
+                      selectedImage === i
+                        ? "border-primary ring-1 ring-primary/30"
+                        : "border-transparent hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
             </div>
           )}
         </div>
@@ -397,9 +407,7 @@ export default function OtProductDetail() {
         <div className="space-y-5">
           {/* Title */}
           <div>
-            <h1 className="text-xl md:text-2xl font-bold leading-tight">
-              {translatedTitle || product.title}
-            </h1>
+            <h1 className="text-xl md:text-2xl font-bold leading-tight">{translatedTitle || product.title}</h1>
             {translatedTitle && translatedTitle !== product.title && (
               <p className="text-xs text-muted-foreground mt-1">{product.externalTitle || product.title}</p>
             )}
@@ -414,9 +422,7 @@ export default function OtProductDetail() {
                   {formatPrice(priceRange.min, product.currency)} – {formatPrice(priceRange.max, product.currency)}
                 </span>
               ) : (
-                <span className="text-3xl font-bold text-primary">
-                  {formatPrice(effectivePrice, product.currency)}
-                </span>
+                <span className="text-3xl font-bold text-primary">{formatPrice(effectivePrice, product.currency)}</span>
               )}
               {product.originalPrice && product.originalPrice > effectivePrice && allConfigsSelected && (
                 <span className="text-lg text-muted-foreground line-through">
@@ -433,10 +439,12 @@ export default function OtProductDetail() {
                   100% Оригинал
                 </span>
               </div>
-            ) : (product.providerType?.toLowerCase() === "taobao" || product.providerType?.toLowerCase() === "tmall") ? (
+            ) : product.providerType?.toLowerCase() === "taobao" || product.providerType?.toLowerCase() === "tmall" ? (
               <div className="mt-1">
                 <span className="inline-flex items-center bg-orange-500 text-white text-xs font-medium px-2 py-0.5 rounded">
-                  {product.providerType === "Tmall" || product.providerType?.toLowerCase() === "tmall" ? "Tmall" : "Taobao"}
+                  {product.providerType === "Tmall" || product.providerType?.toLowerCase() === "tmall"
+                    ? "Tmall"
+                    : "Taobao"}
                 </span>
               </div>
             ) : null}
@@ -485,13 +493,7 @@ export default function OtProductDetail() {
                     <Share2 className="h-4 w-4" />
                   </Button>
                   {isAdmin && product.externalUrl && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      asChild
-                      title="Эх линк руу очих"
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Эх линк руу очих">
                       <a href={product.externalUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="h-4 w-4" />
                       </a>
@@ -504,7 +506,11 @@ export default function OtProductDetail() {
                 variant="outline"
                 size="sm"
                 className="w-full text-xs"
-                onClick={() => navigate(`/ot?vendorId=${product.vendor!.id}&vendorName=${encodeURIComponent(product.vendor!.name || "")}`)}
+                onClick={() =>
+                  navigate(
+                    `/ot?vendorId=${product.vendor!.id}&vendorName=${encodeURIComponent(product.vendor!.name || "")}`,
+                  )
+                }
               >
                 <Store className="h-3.5 w-3.5 mr-1.5" />
                 Энэ дэлгүүрийн бүх барааг үзэх
@@ -521,7 +527,7 @@ export default function OtProductDetail() {
                 {config.propertyName}
                 {selectedConfigs[config.pid] && (
                   <span className="text-muted-foreground font-normal ml-2">
-                    — {ensureArray(config.values).find(v => v.id === selectedConfigs[config.pid])?.value}
+                    — {ensureArray(config.values).find((v) => v.id === selectedConfigs[config.pid])?.value}
                   </span>
                 )}
               </h3>
@@ -572,8 +578,8 @@ export default function OtProductDetail() {
                         isOutOfStock
                           ? "border-border opacity-40 cursor-not-allowed line-through"
                           : isSelected
-                          ? "border-primary bg-primary/10 text-primary shadow-sm"
-                          : "border-border hover:border-primary/50"
+                            ? "border-primary bg-primary/10 text-primary shadow-sm"
+                            : "border-border hover:border-primary/50"
                       }`}
                       title={isOutOfStock ? "Дууссан" : ""}
                     >
@@ -582,13 +588,13 @@ export default function OtProductDetail() {
                           src={val.imageUrl}
                           alt={val.value}
                           className={`w-8 h-8 rounded object-cover ${isOutOfStock ? "grayscale" : ""}`}
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
                         />
                       )}
                       <span className="line-clamp-1">{val.value}</span>
-                      {isOutOfStock && (
-                        <span className="text-[10px] text-destructive font-medium">Дууссан</span>
-                      )}
+                      {isOutOfStock && <span className="text-[10px] text-destructive font-medium">Дууссан</span>}
                     </button>
                   );
                 })}
@@ -609,12 +615,7 @@ export default function OtProductDetail() {
                   <Minus className="h-4 w-4" />
                 </Button>
                 <span className="w-12 text-center font-medium">{quantity}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10"
-                  onClick={() => setQuantity((q) => q + 1)}
-                >
+                <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setQuantity((q) => q + 1)}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
@@ -689,8 +690,40 @@ export default function OtProductDetail() {
               className="prose prose-sm max-w-none dark:prose-invert [&_img]:rounded-lg [&_img]:max-w-full"
               dangerouslySetInnerHTML={{
                 __html: DOMPurify.sanitize(description, {
-                  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'b', 'i', 'u', 'sub', 'sup', 'dl', 'dt', 'dd'],
-                  ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'width', 'height', 'target', 'rel'],
+                  ALLOWED_TAGS: [
+                    "p",
+                    "br",
+                    "strong",
+                    "em",
+                    "ul",
+                    "ol",
+                    "li",
+                    "a",
+                    "img",
+                    "table",
+                    "tr",
+                    "td",
+                    "th",
+                    "thead",
+                    "tbody",
+                    "div",
+                    "span",
+                    "h1",
+                    "h2",
+                    "h3",
+                    "h4",
+                    "h5",
+                    "h6",
+                    "b",
+                    "i",
+                    "u",
+                    "sub",
+                    "sup",
+                    "dl",
+                    "dt",
+                    "dd",
+                  ],
+                  ALLOWED_ATTR: ["href", "src", "alt", "title", "class", "style", "width", "height", "target", "rel"],
                 }),
               }}
             />
