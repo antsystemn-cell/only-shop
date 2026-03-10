@@ -204,7 +204,7 @@ export default function MyOrders() {
               })}
             </div>
           ) : (
-            <EmptyState text="Маркетплэйсээс захиалга өгөөгүй байна" linkTo="/ot" linkLabel="Маркетплэйс үзэх" />
+            <EmptyState text="Гадаадаас захиалга хийгээгүй байна" linkTo="/ot" linkLabel="Онлайн дэлгүүр үзэх" />
           )}
         </TabsContent>
 
