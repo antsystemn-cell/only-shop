@@ -53,6 +53,8 @@ import Seo from "./pages/admin/Seo";
 import Newsletter from "./pages/admin/Newsletter";
 import Permissions from "./pages/admin/Permissions";
 import GeneralSettings from "./pages/admin/GeneralSettings";
+import AuthSettings from "./pages/admin/AuthSettings";
+import SmsGateway from "./pages/admin/SmsGateway";
 import OrderSettings from "./pages/admin/OrderSettings";
 import SystemTools from "./pages/admin/SystemTools";
 import Reviews from "./pages/admin/Reviews";
@@ -165,6 +167,8 @@ const App = () => (
                 <Route path="newsletter" element={<Newsletter />} />
                 <Route path="permissions" element={<Permissions />} />
                 <Route path="settings" element={<GeneralSettings />} />
+                <Route path="auth-settings" element={<AuthSettings />} />
+                <Route path="sms-gateway" element={<SmsGateway />} />
                 <Route path="settings-orders" element={<OrderSettings />} />
                 <Route path="system-tools" element={<SystemTools />} />
                 <Route path="reviews" element={<Reviews />} />
