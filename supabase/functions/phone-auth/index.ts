@@ -481,6 +481,85 @@ Deno.serve(async (req) => {
         return json({ success: true, verified: true });
       }
 
+      // ── Public: reset password via phone OTP ─────────────
+      case "reset-password": {
+        const phone = normalizePhone(body.phone || "");
+        if (!phone || !isValidMnPhone(phone)) {
+          return json({ error: "Утасны дугаар буруу байна" }, 400);
+        }
+        if (!body.code) {
+          return json({ error: "OTP код оруулна уу" }, 400);
+        }
+        if (!body.new_password || body.new_password.length < 6) {
+          return json({ error: "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой" }, 400);
+        }
+
+        const codeHash = await hashCode(body.code);
+
+        // Find valid OTP for reset_password purpose
+        const { data: otpRecord, error: otpErr } = await supabase
+          .from("otp_codes")
+          .select("*")
+          .eq("phone_number", phone)
+          .eq("purpose", "reset_password")
+          .is("used_at", null)
+          .gt("expires_at", new Date().toISOString())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!otpRecord || otpErr) {
+          return json({ error: "Кодын хугацаа дууссан байна. Дахин код авна уу." }, 400);
+        }
+
+        if (otpRecord.attempts_count >= otpRecord.max_attempts) {
+          await supabase
+            .from("otp_codes")
+            .update({ used_at: new Date().toISOString() })
+            .eq("id", otpRecord.id);
+          return json({ error: "Оролдлогын тоо хэтэрсэн байна. Дахин код авна уу." }, 429);
+        }
+
+        await supabase
+          .from("otp_codes")
+          .update({ attempts_count: otpRecord.attempts_count + 1 })
+          .eq("id", otpRecord.id);
+
+        if (otpRecord.code_hash !== codeHash) {
+          const remaining = otpRecord.max_attempts - otpRecord.attempts_count - 1;
+          return json({ error: `OTP код буруу байна. ${remaining} оролдлого үлдлээ.` }, 400);
+        }
+
+        // Mark OTP as used
+        await supabase
+          .from("otp_codes")
+          .update({ used_at: new Date().toISOString() })
+          .eq("id", otpRecord.id);
+
+        // Find user by phone
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("phone", phone)
+          .single();
+
+        if (!profile) {
+          return json({ error: "Хэрэглэгч олдсонгүй" }, 404);
+        }
+
+        // Update password
+        const { error: updateErr } = await supabase.auth.admin.updateUserById(
+          profile.user_id,
+          { password: body.new_password }
+        );
+
+        if (updateErr) {
+          return json({ error: "Нууц үг солиход алдаа гарлаа: " + updateErr.message }, 500);
+        }
+
+        return json({ success: true, message: "Нууц үг амжилттай солигдлоо" });
+      }
+
       // ── Admin: send test SMS ──────────────────────────────
       case "send-test-sms": {
         const adminId = await requireAdmin(supabase, req);
