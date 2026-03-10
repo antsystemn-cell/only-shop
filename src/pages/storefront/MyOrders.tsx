@@ -119,7 +119,7 @@ export default function MyOrders() {
 
       <Tabs defaultValue="ot" className="w-full">
         <TabsList className="w-full grid grid-cols-2">
-          <TabsTrigger value="ot">Гадаад захиалга ({otOrders?.length || 0})</TabsTrigger>
+          <TabsTrigger value="ot">Гадаадаас захиалга ({otOrders?.length || 0})</TabsTrigger>
           <TabsTrigger value="local">Бэлэн бараа захиалга ({localOrders?.length || 0})</TabsTrigger>
         </TabsList>
 
