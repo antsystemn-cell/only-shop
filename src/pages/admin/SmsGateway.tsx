@@ -180,7 +180,7 @@ export default function SmsGateway() {
                   className="flex items-start gap-3 p-3 rounded-lg border text-sm"
                 >
                   {log.success ? (
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                    <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                   ) : (
                     <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                   )}
