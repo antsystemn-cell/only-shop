@@ -167,6 +167,8 @@ const App = () => (
                 <Route path="newsletter" element={<Newsletter />} />
                 <Route path="permissions" element={<Permissions />} />
                 <Route path="settings" element={<GeneralSettings />} />
+                <Route path="auth-settings" element={<AuthSettings />} />
+                <Route path="sms-gateway" element={<SmsGateway />} />
                 <Route path="settings-orders" element={<OrderSettings />} />
                 <Route path="system-tools" element={<SystemTools />} />
                 <Route path="reviews" element={<Reviews />} />

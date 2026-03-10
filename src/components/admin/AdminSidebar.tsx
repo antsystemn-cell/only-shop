@@ -145,6 +145,8 @@ const menuGroups: MenuGroup[] = [
     label: "Тохиргоо",
     items: [
       { title: "Ерөнхий тохиргоо", url: "/admin/settings", icon: Settings },
+      { title: "Нэвтрэлтийн тохиргоо", url: "/admin/auth-settings", icon: Shield },
+      { title: "SMS Gateway", url: "/admin/sms-gateway", icon: MessageSquare },
       { title: "Захиалгын тохиргоо", url: "/admin/settings-orders", icon: Settings },
       { title: "Хайлтын тохиргоо", url: "/admin/search-settings", icon: Search },
       { title: "Системийн хэрэгсэл", url: "/admin/system-tools", icon: Activity },
