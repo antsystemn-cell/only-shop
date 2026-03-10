@@ -8,6 +8,7 @@ interface AuthContextType {
   isLoading: boolean;
   signUp: (email: string, password: string, fullName?: string, phone?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithPhone: (phone: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
