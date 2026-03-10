@@ -1256,6 +1256,42 @@ export type Database = {
         }
         Relationships: []
       }
+      otp_codes: {
+        Row: {
+          attempts_count: number
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          max_attempts: number
+          phone_number: string
+          purpose: string
+          used_at: string | null
+        }
+        Insert: {
+          attempts_count?: number
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          max_attempts?: number
+          phone_number: string
+          purpose?: string
+          used_at?: string | null
+        }
+        Update: {
+          attempts_count?: number
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          max_attempts?: number
+          phone_number?: string
+          purpose?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       payment_intents: {
         Row: {
           amount: number
@@ -1605,6 +1641,39 @@ export type Database = {
           slug?: string
           text_color?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      sms_logs: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          provider_response: Json | null
+          provider_status: string | null
+          success: boolean | null
+          to_phone: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          provider_response?: Json | null
+          provider_status?: string | null
+          success?: boolean | null
+          to_phone: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          provider_response?: Json | null
+          provider_status?: string | null
+          success?: boolean | null
+          to_phone?: string
+          type?: string
         }
         Relationships: []
       }
