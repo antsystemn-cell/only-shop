@@ -79,6 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const signInWithPhone = async (phone: string, password: string) => {
+    try {
+      // Resolve phone to email via edge function
+      const { data, error: fnErr } = await supabase.functions.invoke("phone-auth", {
+        body: { action: "resolve-phone", phone },
+      });
+      if (fnErr || data?.error) {
+        return { error: new Error(data?.error || "Утасны дугаартай бүртгэл олдсонгүй") };
+      }
+      // Sign in with resolved email
+      return signIn(data.email, password);
+    } catch (err: any) {
+      return { error: err };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
