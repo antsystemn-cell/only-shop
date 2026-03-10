@@ -180,7 +180,7 @@ export default function SmsGateway() {
                   className="flex items-start gap-3 p-3 rounded-lg border text-sm"
                 >
                   {log.success ? (
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                    <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                   ) : (
                     <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                   )}
@@ -300,15 +300,15 @@ function TestSmsCard() {
           <div
             className={`p-4 rounded-lg border ${
               result.success
-                ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800"
-                : "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800"
+                ? "bg-primary/5 border-primary/20"
+                : "bg-destructive/5 border-destructive/20"
             }`}
           >
             <div className="flex items-center gap-2 mb-2">
               {result.success ? (
                 <>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="font-medium text-green-700 dark:text-green-400">
+                  <CheckCircle className="h-5 w-5 text-primary" />
+                  <span className="font-medium text-primary">
                     Амжилттай илгээлээ
                   </span>
                 </>
