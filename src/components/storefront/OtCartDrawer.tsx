@@ -46,7 +46,7 @@ export function OtCartDrawer() {
             <p className="text-sm text-muted-foreground">Бараа нэмж эхлээрэй</p>
           </div>
           <Link to="/ot">
-            <Button className="mt-4">Маркетплэйс үзэх</Button>
+            <Button className="mt-4">Онлайн дэлгүүр үзэх</Button>
           </Link>
         </div>
       </div>
@@ -66,9 +66,7 @@ export function OtCartDrawer() {
               <Badge variant="outline" className="text-xs">
                 {group.providerType}
               </Badge>
-              <span className="text-xs text-muted-foreground">
-                {group.items.length} бараа
-              </span>
+              <span className="text-xs text-muted-foreground">{group.items.length} бараа</span>
             </div>
 
             <div className="space-y-4">
@@ -93,9 +91,7 @@ export function OtCartDrawer() {
 
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-sm line-clamp-2">{item.title}</h4>
-                    <p className="text-primary font-semibold text-sm mt-0.5">
-                      {formatPrice(item.price)}
-                    </p>
+                    <p className="text-primary font-semibold text-sm mt-0.5">{formatPrice(item.price)}</p>
 
                     <div className="flex items-center gap-2 mt-1.5">
                       <Button
@@ -107,9 +103,7 @@ export function OtCartDrawer() {
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
-                      <span className="w-6 text-center text-xs font-medium">
-                        {item.quantity}
-                      </span>
+                      <span className="w-6 text-center text-xs font-medium">{item.quantity}</span>
                       <Button
                         variant="outline"
                         size="icon"
@@ -147,9 +141,7 @@ export function OtCartDrawer() {
       <div className="border-t pt-4 space-y-4">
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Нийт дүн:</span>
-          <span className="text-xl font-bold text-primary">
-            {formatPrice(subtotal)}
-          </span>
+          <span className="text-xl font-bold text-primary">{formatPrice(subtotal)}</span>
         </div>
         <Separator />
         <div className="space-y-2">
