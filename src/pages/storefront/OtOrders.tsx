@@ -6,29 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  Package,
-  Loader2,
-  Calendar,
-  Eye,
-  ShoppingBag,
-  RefreshCw,
-} from "lucide-react";
+import { ArrowLeft, Package, Loader2, Calendar, Eye, ShoppingBag, RefreshCw } from "lucide-react";
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "Төлбөр хүлээгдэж байна", variant: "secondary" },
@@ -110,7 +91,9 @@ export default function OtOrders() {
             <SelectContent>
               <SelectItem value="all">Бүгд</SelectItem>
               {Object.entries(STATUS_LABELS).map(([value, { label }]) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -131,11 +114,11 @@ export default function OtOrders() {
               <Package className="h-12 w-12 text-muted-foreground" />
             </div>
             <h3 className="font-semibold text-lg mb-2">Захиалга олдсонгүй</h3>
-            <p className="text-muted-foreground mb-6">Та маркетплэйсээс бараа захиалаагүй байна</p>
+            <p className="text-muted-foreground mb-6">Та гадаадаас бараа захиалаагүй байна</p>
             <Button asChild>
               <Link to="/ot">
                 <ShoppingBag className="h-4 w-4 mr-2" />
-                Маркетплэйс үзэх
+                Онлайн дэлгүүр үзэх
               </Link>
             </Button>
           </CardContent>
@@ -204,12 +187,17 @@ export default function OtOrders() {
                   <div className="flex justify-end mt-3 gap-2">
                     {order.status === "pending" && (
                       <Button size="sm" asChild>
-                        <Link to={`/ot/checkout?pay=${order.id}`}>
-                          💳 Төлбөр төлөх
-                        </Link>
+                        <Link to={`/ot/checkout?pay=${order.id}`}>💳 Төлбөр төлөх</Link>
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" onClick={() => { setSelectedOrder(order); setShowDetail(true); }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setShowDetail(true);
+                      }}
+                    >
                       <Eye className="h-4 w-4 mr-1" />
                       Дэлгэрэнгүй
                     </Button>
@@ -236,7 +224,9 @@ export default function OtOrders() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Статус:</span>
-                  <p><Badge>{STATUS_LABELS[selectedOrder.status]?.label || selectedOrder.status}</Badge></p>
+                  <p>
+                    <Badge>{STATUS_LABELS[selectedOrder.status]?.label || selectedOrder.status}</Badge>
+                  </p>
                   {selectedOrder.status === "cancelled" && selectedOrder.cancel_reason && (
                     <p className="text-xs text-destructive mt-1">Шалтгаан: {selectedOrder.cancel_reason}</p>
                   )}
@@ -254,7 +244,8 @@ export default function OtOrders() {
               {selectedOrder.delivery_address && (
                 <div className="text-sm">
                   <span className="text-muted-foreground">Хаяг:</span>
-                  <p>{selectedOrder.delivery_address.fullName} — {selectedOrder.delivery_address.address}
+                  <p>
+                    {selectedOrder.delivery_address.fullName} — {selectedOrder.delivery_address.address}
                     {selectedOrder.delivery_address.phone && ` (${selectedOrder.delivery_address.phone})`}
                   </p>
                 </div>
@@ -297,7 +288,9 @@ export default function OtOrders() {
               <Separator />
               <div className="flex justify-between font-bold text-lg">
                 <span>Нийт:</span>
-                <span className="text-primary">{new Intl.NumberFormat("mn-MN").format(Math.round(selectedOrder.subtotal))}₮</span>
+                <span className="text-primary">
+                  {new Intl.NumberFormat("mn-MN").format(Math.round(selectedOrder.subtotal))}₮
+                </span>
               </div>
             </div>
           )}
