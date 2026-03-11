@@ -22,10 +22,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Search, ShoppingCart, Eye, ChevronLeft, ChevronRight,
-  Package, XCircle, Loader2, Download, Filter,
-  RefreshCw, Globe,
+  Package, XCircle, Download, Filter,
+  RefreshCw, Globe, User, MapPin,
 } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -53,6 +54,17 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "Төлбөр хүлээгдэж байна",
   paid: "Төлбөр төлөгдсөн",
   foreign_ordered: "Гадаад захиалга хийгдсэн",
+  at_warehouse: "Гадаад агуулахад",
+  shipped_mn: "МН руу ачигдсан",
+  arrived_ub: "УБ-д ирсэн",
+  delivered: "Хүлээлгэн өгсөн",
+  cancelled: "Цуцлагдсан",
+};
+
+const STATUS_LABELS_FULL: Record<string, string> = {
+  pending: "Төлбөр хүлээгдэж байна",
+  paid: "Төлбөр төлөгдсөн",
+  foreign_ordered: "Гадаад захиалга хийгдсэн",
   at_warehouse: "Гадаад агуулахад хүлээн авсан",
   shipped_mn: "Монгол руу ачигдсан",
   arrived_ub: "Улаанбаатарт ирсэн",
@@ -62,14 +74,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_FILTERS = [
   { value: "all", label: "Бүгд" },
-  { value: "pending", label: "Төлбөр хүлээгдэж байна" },
-  { value: "paid", label: "Төлбөр төлөгдсөн" },
-  { value: "foreign_ordered", label: "Гадаад захиалга хийгдсэн" },
-  { value: "at_warehouse", label: "Гадаад агуулахад хүлээн авсан" },
-  { value: "shipped_mn", label: "Монгол руу ачигдсан" },
-  { value: "arrived_ub", label: "Улаанбаатарт ирсэн" },
-  { value: "delivered", label: "Хүлээлгэн өгсөн" },
-  { value: "cancelled", label: "Цуцлагдсан" },
+  ...Object.entries(STATUS_LABELS_FULL).map(([value, label]) => ({ value, label })),
 ];
 
 // ─── Main Component ──────────────────────────────────────────
@@ -83,11 +88,11 @@ export default function OtOrdersTab() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [cancelTarget, setCancelTarget] = useState<any>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const isMobile = useIsMobile();
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // ── Fetch orders from local DB ──
   const { data: ordersResult, isLoading, refetch } = useQuery({
     queryKey: ["admin", "ot-orders-local", searchOrderNumber, statusFilter, page],
     queryFn: async () => {
@@ -97,17 +102,12 @@ export default function OtOrdersTab() {
         .order("created_at", { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
-      }
-      if (searchOrderNumber.trim()) {
-        query = query.ilike("order_number", `%${searchOrderNumber.trim()}%`);
-      }
+      if (statusFilter !== "all") query = query.eq("status", statusFilter);
+      if (searchOrderNumber.trim()) query = query.ilike("order_number", `%${searchOrderNumber.trim()}%`);
 
       const { data, error, count } = await query;
       if (error) throw error;
 
-      // Fetch user profiles
       const userIds = [...new Set(data?.map(o => o.user_id).filter(Boolean))] as string[];
       let profilesMap: Record<string, any> = {};
       if (userIds.length > 0) {
@@ -129,10 +129,8 @@ export default function OtOrdersTab() {
   const totalCount = ordersResult?.count || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  // ── Update status mutation ──
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status, cancel_reason }: { id: string; status: string; cancel_reason?: string }) => {
-      // Get order first to check current status for refund logic
       const { data: order } = await supabase
         .from("ot_orders")
         .select("user_id, subtotal, status")
@@ -142,19 +140,12 @@ export default function OtOrdersTab() {
       const updateData: any = { status };
       if (cancel_reason) updateData.cancel_reason = cancel_reason;
 
-      const { error } = await supabase
-        .from("ot_orders")
-        .update(updateData)
-        .eq("id", id);
+      const { error } = await supabase.from("ot_orders").update(updateData).eq("id", id);
       if (error) throw error;
 
-      // Only refund if cancelling an order that was already paid
       const PAID_STATUSES = ["paid", "foreign_ordered", "at_warehouse", "shipped_mn", "arrived_ub", "delivered"];
       if (status === "cancelled" && order?.user_id && order.subtotal > 0 && PAID_STATUSES.includes(order.status)) {
-        await supabase.rpc("credit_wallet", {
-          p_user_id: order.user_id,
-          p_amount: order.subtotal,
-        });
+        await supabase.rpc("credit_wallet", { p_user_id: order.user_id, p_amount: order.subtotal });
       }
     },
     onSuccess: () => {
@@ -171,20 +162,10 @@ export default function OtOrdersTab() {
     setDetailOpen(true);
   };
 
-  // ── CSV Export ──
   const handleExportCsv = useCallback(() => {
     if (!orders.length) return;
     const headers = ["Order Number", "Status", "Items", "Subtotal", "Delivery", "Date"];
-    const rows = orders.map((order: any) => {
-      return [
-        order.order_number,
-        order.status,
-        order.item_count,
-        order.subtotal,
-        order.delivery_type,
-        order.created_at,
-      ].join(",");
-    });
+    const rows = orders.map((order: any) => [order.order_number, order.status, order.item_count, order.subtotal, order.delivery_type, order.created_at].join(","));
     const csv = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -193,26 +174,18 @@ export default function OtOrdersTab() {
     link.download = `ot-orders-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    toast({ title: "CSV татагдлаа", description: `${orders.length} захиалга экспортлогдлоо` });
+    toast({ title: "CSV татагдлаа" });
   }, [orders, toast]);
 
-  // ── Stats ──
-  const stats = {
-    total: totalCount,
-    displayed: orders.length,
-    pendingCount: orders.filter((o: any) => o.status === "pending").length,
-    processingCount: orders.filter((o: any) => o.status === "processing").length,
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
             <Globe className="h-3 w-3 mr-1" /> OT Commerce
           </Badge>
-          <span className="text-sm text-muted-foreground">Гадаад барааны захиалгууд</span>
+          <span className="text-sm text-muted-foreground hidden sm:inline">Гадаад барааны захиалгууд</span>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -224,29 +197,21 @@ export default function OtOrdersTab() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Нийт</p><p className="text-2xl font-bold">{stats.total}</p></CardContent></Card>
-        <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Харуулсан</p><p className="text-2xl font-bold">{stats.displayed}</p></CardContent></Card>
-        <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Хүлээгдэж</p><p className="text-2xl font-bold text-accent-foreground">{stats.pendingCount}</p></CardContent></Card>
-        <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Боловсруулж</p><p className="text-2xl font-bold text-primary">{stats.processingCount}</p></CardContent></Card>
-      </div>
-
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="relative">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Захиалгын дугаараар хайх..."
+                placeholder="Дугаараар хайх..."
                 value={searchOrderNumber}
                 onChange={(e) => { setSearchOrderNumber(e.target.value); setPage(0); }}
                 className="pl-10"
               />
             </div>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
                 <SelectValue placeholder="Төлөв" />
               </SelectTrigger>
@@ -260,92 +225,116 @@ export default function OtOrdersTab() {
         </CardContent>
       </Card>
 
-      {/* Orders Table */}
+      {/* Orders */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
             <ShoppingCart className="h-5 w-5 text-primary" />
-            OT Захиалгын жагсаалт
+            OT Захиалга
             {orders.length > 0 && <Badge variant="secondary">{totalCount}</Badge>}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6 sm:pt-0">
           {isLoading ? (
-            <div className="space-y-3">
+            <div className="space-y-3 p-4">
               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
             </div>
           ) : orders.length > 0 ? (
             <>
-              <div className="overflow-x-auto">
+              {/* Mobile: Card layout */}
+              {isMobile ? (
+                <div className="divide-y">
+                  {orders.map((order: any) => (
+                    <div key={order.id} className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-sm font-medium">{order.order_number}</span>
+                        <Badge className={`${getStatusColor(order.status)} text-[10px] px-1.5 py-0.5`}>
+                          {STATUS_LABELS[order.status] || order.status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{order.profile?.full_name || "—"}</span>
+                        <span className="font-medium">{formatPrice(order.subtotal)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          {order.item_count} бараа · {new Date(order.created_at).toLocaleDateString("mn-MN")}
+                        </span>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => openDetail(order)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {order.status !== "cancelled" && (
+                            <Button variant="ghost" size="sm" className="h-8 px-2 text-destructive" onClick={() => setCancelTarget(order)}>
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Desktop: Compact table */
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Дугаар</TableHead>
-                      <TableHead>Хэрэглэгч</TableHead>
-                      <TableHead className="text-center">Бараа</TableHead>
-                      <TableHead className="text-right">Дүн</TableHead>
-                      <TableHead className="text-center">Хүргэлт</TableHead>
-                      <TableHead className="text-center">Төлөв</TableHead>
-                      <TableHead className="text-center">Огноо</TableHead>
-                      <TableHead className="text-center">Үйлдэл</TableHead>
+                      <TableHead className="w-[130px]">Дугаар</TableHead>
+                      <TableHead className="w-[140px]">Хэрэглэгч</TableHead>
+                      <TableHead className="text-center w-[50px]">Бараа</TableHead>
+                      <TableHead className="text-right w-[100px]">Дүн</TableHead>
+                      <TableHead className="text-center w-[160px]">Төлөв</TableHead>
+                      <TableHead className="text-center w-[90px]">Огноо</TableHead>
+                      <TableHead className="text-center w-[70px]">Үйлдэл</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {orders.map((order: any) => (
                       <TableRow key={order.id} className="hover:bg-muted/50">
-                        <TableCell>
-                          <div className="font-mono text-sm font-medium">{order.order_number}</div>
+                        <TableCell className="py-2">
+                          <span className="font-mono text-xs font-medium">{order.order_number}</span>
                         </TableCell>
-                        <TableCell>
-                          <div className="text-sm font-medium">{order.profile?.full_name || "—"}</div>
-                          <div className="text-xs text-muted-foreground">{order.profile?.email}</div>
-                          {order.profile?.phone && (
-                            <div className="text-xs text-muted-foreground">{order.profile.phone}</div>
-                          )}
+                        <TableCell className="py-2">
+                          <div className="text-sm font-medium truncate max-w-[130px]">{order.profile?.full_name || "—"}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[130px]">{order.profile?.phone || order.profile?.email}</div>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="secondary">{order.item_count}</Badge>
+                        <TableCell className="text-center py-2">
+                          <Badge variant="secondary" className="text-xs">{order.item_count}</Badge>
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="text-right py-2 font-medium text-sm">
                           {formatPrice(order.subtotal)}
                         </TableCell>
-                        <TableCell className="text-center text-sm">
-                          {order.delivery_type === "delivery" ? "Хүргэлт" : "Өөрөө авна"}
-                        </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2" onClick={(e) => e.stopPropagation()}>
                           <Select
                             value={order.status}
-                            onValueChange={(v) => updateStatusMutation.mutate({ id: order.id, status: v })}
+                            onValueChange={(v) => {
+                              if (v === "cancelled") setCancelTarget(order);
+                              else updateStatusMutation.mutate({ id: order.id, status: v });
+                            }}
                           >
-                            <SelectTrigger className="h-7 w-[140px] text-xs">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                            <SelectTrigger className="h-7 w-[150px] text-xs">
+                              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(order.status)}`}>
                                 {STATUS_LABELS[order.status] || order.status}
                               </span>
                             </SelectTrigger>
                             <SelectContent>
-                              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                              {Object.entries(STATUS_LABELS_FULL).map(([value, label]) => (
                                 <SelectItem key={value} value={value}>{label}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell className="text-center text-sm text-muted-foreground">
+                        <TableCell className="text-center py-2 text-xs text-muted-foreground">
                           {new Date(order.created_at).toLocaleDateString("mn-MN")}
                         </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openDetail(order)} title="Дэлгэрэнгүй">
-                              <Eye className="h-4 w-4" />
+                        <TableCell className="text-center py-2">
+                          <div className="flex items-center justify-center gap-0.5">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDetail(order)}>
+                              <Eye className="h-3.5 w-3.5" />
                             </Button>
                             {order.status !== "cancelled" && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => setCancelTarget(order)}
-                                title="Цуцлах"
-                              >
-                                <XCircle className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setCancelTarget(order)}>
+                                <XCircle className="h-3.5 w-3.5" />
                               </Button>
                             )}
                           </div>
@@ -354,11 +343,11 @@ export default function OtOrdersTab() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              )}
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center justify-between p-4 pt-3">
                   <p className="text-sm text-muted-foreground">
                     {page * pageSize + 1}–{Math.min((page + 1) * pageSize, totalCount)} / {totalCount}
                   </p>
@@ -374,203 +363,174 @@ export default function OtOrdersTab() {
               )}
             </>
           ) : (
-            <div className="text-center py-12">
+            <div className="text-center py-12 px-4">
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-lg font-medium">Захиалга олдсонгүй</p>
-              <p className="text-sm text-muted-foreground">Шүүлтүүрээ өөрчилж дахин хайна уу</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Order Detail Sheet */}
+      {/* Order Detail Sheet - mobile-friendly */}
       <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              Захиалга: {selectedOrder?.order_number}
+        <SheetContent className={`${isMobile ? 'w-full' : 'w-full sm:max-w-lg'} overflow-y-auto p-0`}>
+          <SheetHeader className="p-4 pb-2 sticky top-0 bg-background z-10 border-b">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <ShoppingCart className="h-4 w-4" />
+              {selectedOrder?.order_number}
             </SheetTitle>
           </SheetHeader>
           {selectedOrder && (
-            <div className="space-y-5 mt-4">
-              {/* Status & Delivery summary */}
+            <div className="p-4 space-y-4">
+              {/* Status & summary */}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <Label className="text-muted-foreground text-xs">Дугаар</Label>
-                  <p className="font-mono font-semibold">{selectedOrder.order_number}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Төлөв</Label>
-                  <p className="mt-1">
+                  <span className="text-xs text-muted-foreground">Төлөв</span>
+                  <p className="mt-0.5">
                     <Badge className={getStatusColor(selectedOrder.status)}>
-                      {STATUS_LABELS[selectedOrder.status] || selectedOrder.status}
+                      {STATUS_LABELS_FULL[selectedOrder.status] || selectedOrder.status}
                     </Badge>
                   </p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground text-xs">Хүргэлт</Label>
-                  <p>{selectedOrder.delivery_type === "delivery" ? "Хүргэлтээр" : "Өөрөө авна"}</p>
+                  <span className="text-xs text-muted-foreground">Хүргэлт</span>
+                  <p className="text-sm mt-0.5">{selectedOrder.delivery_type === "delivery" ? "Хүргэлтээр" : "Өөрөө авна"}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground text-xs">Огноо</Label>
-                  <p>{new Date(selectedOrder.created_at).toLocaleString("mn-MN")}</p>
+                  <span className="text-xs text-muted-foreground">Огноо</span>
+                  <p className="text-sm mt-0.5">{new Date(selectedOrder.created_at).toLocaleString("mn-MN")}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Нийт дүн</span>
+                  <p className="text-sm font-bold text-primary mt-0.5">{formatPrice(selectedOrder.subtotal)}</p>
                 </div>
               </div>
 
-              {/* Customer Info */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Globe className="h-4 w-4" /> Хэрэглэгчийн мэдээлэл
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {selectedOrder.profile ? (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground w-20 shrink-0">Нэр:</span>
-                        <span className="font-medium">{selectedOrder.profile.full_name || "—"}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground w-20 shrink-0">Имэйл:</span>
-                        <span>{selectedOrder.profile.email || "—"}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground w-20 shrink-0">Утас:</span>
-                        <span>{selectedOrder.profile.phone || "—"}</span>
-                      </div>
-                      {selectedOrder.user_id && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground w-20 shrink-0">User ID:</span>
-                          <span className="font-mono text-xs text-muted-foreground">{selectedOrder.user_id}</span>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-muted-foreground">Зочин хэрэглэгч (нэвтрээгүй)</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Delivery Address */}
-              {selectedOrder.delivery_address && (
+              {/* Customer */}
+              {selectedOrder.profile && (
                 <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Package className="h-4 w-4" /> Хүргэлтийн хаяг
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm space-y-1">
-                    {selectedOrder.delivery_address.fullName && (
-                      <p className="font-medium">{selectedOrder.delivery_address.fullName}</p>
+                  <CardContent className="p-3 space-y-1.5 text-sm">
+                    <div className="flex items-center gap-2 font-medium">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      {selectedOrder.profile.full_name || "—"}
+                    </div>
+                    {selectedOrder.profile.email && (
+                      <div className="text-xs text-muted-foreground pl-5">{selectedOrder.profile.email}</div>
                     )}
-                    <p>{selectedOrder.delivery_address.address || "—"}</p>
-                    {selectedOrder.delivery_address.phone && (
-                      <p className="text-muted-foreground">Утас: {selectedOrder.delivery_address.phone}</p>
+                    {selectedOrder.profile.phone && (
+                      <div className="text-xs text-muted-foreground pl-5">{selectedOrder.profile.phone}</div>
                     )}
                   </CardContent>
                 </Card>
               )}
 
-              {/* Cancel Reason */}
-              {selectedOrder.cancel_reason && (
-                <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5">
-                  <Label className="text-muted-foreground text-xs">Цуцалсан шалтгаан</Label>
-                  <p className="text-sm mt-1 text-destructive">{selectedOrder.cancel_reason}</p>
-                </div>
+              {/* Delivery Address */}
+              {selectedOrder.delivery_address && (
+                <Card>
+                  <CardContent className="p-3 space-y-1 text-sm">
+                    <div className="flex items-center gap-2 font-medium text-xs">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" /> Хүргэлтийн хаяг
+                    </div>
+                    <p className="text-xs text-muted-foreground pl-5">
+                      {selectedOrder.delivery_address.fullName && <span>{selectedOrder.delivery_address.fullName}, </span>}
+                      {selectedOrder.delivery_address.address || "—"}
+                    </p>
+                    {selectedOrder.delivery_address.phone && (
+                      <p className="text-xs text-muted-foreground pl-5">Утас: {selectedOrder.delivery_address.phone}</p>
+                    )}
+                  </CardContent>
+                </Card>
               )}
 
-              {/* Comment */}
-              {selectedOrder.comment && (
-                <div className="p-3 rounded-lg border bg-muted/30">
-                  <Label className="text-muted-foreground text-xs">Хэрэглэгчийн тэмдэглэл</Label>
-                  <p className="text-sm mt-1">{selectedOrder.comment}</p>
+              {/* Cancel reason */}
+              {selectedOrder.cancel_reason && (
+                <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-sm">
+                  <span className="text-xs text-muted-foreground">Цуцалсан шалтгаан</span>
+                  <p className="text-destructive mt-0.5">{selectedOrder.cancel_reason}</p>
                 </div>
               )}
 
               {/* Items */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Package className="h-4 w-4" /> Бараанууд ({selectedOrder.item_count})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {(selectedOrder.items as any[] || []).map((item: any, i: number) => (
-                      <div key={i} className="flex items-start gap-3 p-3 rounded-lg border">
-                        <div className="w-14 h-14 rounded bg-muted overflow-hidden shrink-0">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium line-clamp-2">{item.title}</p>
-                          {/* Configurators / Variants */}
-                          {item.configurators && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              🏷️ Сонголт: {item.configurators}
-                            </p>
-                          )}
-                          {item.selectedConfigurators && Array.isArray(item.selectedConfigurators) && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {item.selectedConfigurators.map((cfg: any, ci: number) => (
-                                <Badge key={ci} variant="outline" className="text-xs">
+              <div>
+                <h4 className="text-sm font-medium mb-2">Бараанууд ({selectedOrder.item_count})</h4>
+                <div className="space-y-2">
+                  {(selectedOrder.items as any[] || []).map((item: any, i: number) => (
+                    <div key={i} className="flex gap-3 p-3 rounded-lg border">
+                      <div className="w-12 h-12 rounded bg-muted overflow-hidden shrink-0">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium line-clamp-2">{item.title}</p>
+                        {/* Show translated configurators */}
+                        {item.configurators && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            🏷️ {item.configurators}
+                          </p>
+                        )}
+                        {/* Show raw/original configurators (e.g. Chinese text) */}
+                        {item.rawConfigurators && item.rawConfigurators !== item.configurators && (
+                          <p className="text-xs text-muted-foreground/70 mt-0.5">
+                            📝 Эх: {item.rawConfigurators}
+                          </p>
+                        )}
+                        {item.selectedConfigurators && Array.isArray(item.selectedConfigurators) && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {item.selectedConfigurators.map((cfg: any, ci: number) => (
+                              <div key={ci} className="text-xs">
+                                <Badge variant="outline" className="text-[10px]">
                                   {cfg.name || cfg.title}: {cfg.value || cfg.selectedValue}
                                 </Badge>
-                              ))}
-                            </div>
-                          )}
-                          {/* Vendor info */}
-                          {item.vendorName && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              🏪 Дэлгүүр: {item.vendorName}
-                            </p>
-                          )}
-                          {/* Price info */}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {item.quantity} × {formatPrice(item.price)}
-                            {item.originalCnyPrice && (
-                              <span className="ml-1">(Эх үнэ: {item.originalCnyCurrency || "¥"}{Number(item.originalCnyPrice).toFixed(2)})</span>
-                            )}
-                          </p>
-                          {/* Source links */}
-                          <div className="flex flex-wrap gap-3 mt-1.5">
-                            {(item.externalUrl || item.itemId) && (
-                              <a
-                                href={item.externalUrl || (item.providerType === "Poizon"
-                                  ? `https://www.dewu.com/product-detail.html?productId=${item.itemId}`
-                                  : `https://item.taobao.com/item.htm?id=${item.itemId}`)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-500 hover:underline inline-flex items-center gap-1"
-                              >
-                                🔗 Эх сурвалж линк
-                              </a>
-                            )}
-                            {item.itemId && (
-                              <a
-                                href={`/product/otapi/${item.itemId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-green-600 hover:underline inline-flex items-center gap-1"
-                              >
-                                🏠 Манай сайтын линк
-                              </a>
-                            )}
+                                {/* Show original/raw values if different */}
+                                {(cfg.originalName || cfg.originalValue || cfg.rawName || cfg.rawValue) && (
+                                  <span className="text-muted-foreground/60 ml-1 text-[10px]">
+                                    ({cfg.originalName || cfg.rawName || cfg.name}: {cfg.originalValue || cfg.rawValue || cfg.value})
+                                  </span>
+                                )}
+                              </div>
+                            ))}
                           </div>
+                        )}
+                        {item.vendorName && (
+                          <p className="text-xs text-muted-foreground mt-0.5">🏪 {item.vendorName}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.quantity} × {formatPrice(item.price)}
+                          {item.originalCnyPrice && (
+                            <span className="ml-1">(Эх: {item.originalCnyCurrency || "¥"}{Number(item.originalCnyPrice).toFixed(2)})</span>
+                          )}
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {(item.externalUrl || item.itemId) && (
+                            <a
+                              href={item.externalUrl || (item.providerType === "Poizon"
+                                ? `https://www.dewu.com/product-detail.html?productId=${item.itemId}`
+                                : `https://item.taobao.com/item.htm?id=${item.itemId}`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-500 hover:underline"
+                            >
+                              🔗 Эх сурвалж
+                            </a>
+                          )}
+                          {item.itemId && (
+                            <a href={`/product/otapi/${item.itemId}`} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-green-600 hover:underline">
+                              🏠 Манай сайт
+                            </a>
+                          )}
                         </div>
-                        <span className="text-sm font-bold shrink-0">{formatPrice(item.totalPrice)}</span>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      <span className="text-sm font-bold shrink-0">{formatPrice(item.totalPrice)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* Total */}
               <div className="flex justify-between font-bold text-lg pt-2 border-t">
@@ -584,36 +544,24 @@ export default function OtOrdersTab() {
 
       {/* Cancel Confirmation */}
       <AlertDialog open={!!cancelTarget} onOpenChange={(open) => { if (!open) { setCancelTarget(null); setCancelReason(""); } }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[95vw] sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Захиалга цуцлах уу?</AlertDialogTitle>
             <AlertDialogDescription>
               Энэ захиалгыг цуцлахад төлбөрийн дүн хэрэглэгчийн хэтэвчинд буцаагдана.
               {cancelTarget && (
-                <span className="block mt-1 font-semibold">
-                  Буцаагдах дүн: {formatPrice(cancelTarget.subtotal)}
-                </span>
+                <span className="block mt-1 font-semibold">Буцаагдах: {formatPrice(cancelTarget.subtotal)}</span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="px-6 pb-2">
             <Label>Цуцлах шалтгаан *</Label>
-            <Textarea
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Цуцалж байгаа шалтгаанаа бичнэ үү..."
-              className="mt-1"
-              rows={3}
-            />
+            <Textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Шалтгаанаа бичнэ үү..." className="mt-1" rows={3} />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Буцах</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => cancelTarget && updateStatusMutation.mutate({ 
-                id: cancelTarget.id, 
-                status: "cancelled",
-                cancel_reason: cancelReason,
-              })}
+              onClick={() => cancelTarget && updateStatusMutation.mutate({ id: cancelTarget.id, status: "cancelled", cancel_reason: cancelReason })}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={!cancelReason.trim()}
             >
