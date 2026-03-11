@@ -374,14 +374,19 @@ async function finalizePayment(supabase: any, pi: any) {
     .eq("id", pi.id);
 
   if (pi.type === "order") {
-    await supabase
+    const { data: order } = await supabase
       .from("orders")
       .update({
         payment_status: "paid",
         payment_reference: pi.invoice_id,
         status: "processing",
       })
-      .eq("id", pi.reference_id);
+      .eq("id", pi.reference_id)
+      .select("order_number, total")
+      .single();
+
+    // Notify admin (fire-and-forget)
+    notifyAdminPayment(supabase, order?.order_number, order?.total, "OmniWay").catch(console.error);
   } else if (pi.type === "wallet_topup") {
     await supabase.rpc("credit_wallet", {
       p_user_id: pi.user_id,
@@ -392,5 +397,24 @@ async function finalizePayment(supabase: any, pi: any) {
       .from("wallet_topups")
       .update({ status: "completed", completed_at: new Date().toISOString() })
       .eq("id", pi.reference_id);
+  }
+}
+
+async function notifyAdminPayment(supabase: any, orderNumber?: string, amount?: number, method?: string) {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    await fetch(`${supabaseUrl}/functions/v1/phone-auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+      body: JSON.stringify({
+        action: "notify-admin-payment",
+        order_number: orderNumber || "—",
+        amount: amount ? new Intl.NumberFormat("mn-MN").format(Math.round(Number(amount))) + "₮" : "—",
+        method: method || "—",
+      }),
+    });
+  } catch (e: any) {
+    console.error("[omniway] Admin notification failed:", e.message);
   }
 }
