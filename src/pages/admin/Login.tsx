@@ -7,125 +7,121 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Lock, Mail, Loader2, User } from "lucide-react";
+import { Eye, EyeOff, Lock, Loader2, User, AtSign } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 
-const loginSchema = z.object({
-  email: z.string().trim().email("Зөв имэйл хаяг оруулна уу"),
-  password: z.string().min(6, "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой"),
-});
+const MN_PHONE_REGEX = /^[89]\d{7}$/;
 
-const signupSchema = z.object({
-  email: z.string().trim().email("Зөв имэйл хаяг оруулна уу"),
-  password: z.string().min(6, "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой"),
-  fullName: z.string().min(2, "Нэрээ оруулна уу"),
-});
+function detectIdentifierType(value: string): "phone" | "email" | "unknown" {
+  const trimmed = value.trim().replace(/[\s\-\+\(\)]/g, "");
+  if (/^976\d{8}$/.test(trimmed)) return "phone";
+  if (MN_PHONE_REGEX.test(trimmed)) return "phone";
+  if (value.includes("@")) return "email";
+  if (/^\d+$/.test(trimmed) && trimmed.length >= 8) return "phone";
+  return "unknown";
+}
+
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/[\s\-\+\(\)]/g, "");
+  if (/^976\d{8}$/.test(digits)) return digits.slice(3);
+  return digits;
+}
 
 export default function AdminLogin() {
   const [isSignup, setIsSignup] = useState(false);
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string }>({});
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string; fullName?: string }>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if already logged in
+  const identifierType = detectIdentifierType(identifier);
+
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Check if user is admin
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id)
           .eq("role", "admin")
           .single();
-        
-        if (roleData) {
-          navigate("/admin");
-        }
+        if (roleData) navigate("/admin");
       }
     };
     checkSession();
   }, [navigate]);
 
+  const resolveEmail = async (): Promise<string | null> => {
+    if (identifierType === "email") return identifier.trim();
+    if (identifierType === "phone") {
+      const phone = normalizePhone(identifier);
+      try {
+        const { data, error } = await supabase.functions.invoke("phone-auth", {
+          body: { action: "resolve-phone", phone },
+        });
+        if (error || data?.error) {
+          toast({ title: "Алдаа", description: data?.error || "Утасны дугаартай бүртгэл олдсонгүй", variant: "destructive" });
+          return null;
+        }
+        return data.email;
+      } catch {
+        toast({ title: "Алдаа", description: "Сервертэй холбогдох үед алдаа гарлаа", variant: "destructive" });
+        return null;
+      }
+    }
+    setErrors({ identifier: "Зөв утасны дугаар эсвэл имэйл оруулна уу" });
+    return null;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
-    // Validate input
-    const result = loginSchema.safeParse({ email, password });
-    if (!result.success) {
-      const fieldErrors: { email?: string; password?: string } = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0] === "email") fieldErrors.email = err.message;
-        if (err.path[0] === "password") fieldErrors.password = err.message;
-      });
-      setErrors(fieldErrors);
+    if (!identifier.trim()) {
+      setErrors({ identifier: "Утасны дугаар эсвэл имэйл оруулна уу" });
+      return;
+    }
+    if (password.length < 6) {
+      setErrors({ password: "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой" });
       return;
     }
 
     setIsLoading(true);
-
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      const email = await resolveEmail();
+      if (!email) return;
 
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
-          toast({
-            title: "Нэвтрэх амжилтгүй",
-            description: "Имэйл эсвэл нууц үг буруу байна",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Алдаа гарлаа",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Нэвтрэх амжилтгүй",
+          description: error.message.includes("Invalid login") ? "Нэвтрэх мэдээлэл буруу байна" : error.message,
+          variant: "destructive",
+        });
         return;
       }
-
       if (data.user) {
-        // Check if user has admin role
         const { data: roleData, error: roleError } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", data.user.id)
           .eq("role", "admin")
           .single();
-
         if (roleError || !roleData) {
-          // Not an admin - sign out and show error
           await supabase.auth.signOut();
-          toast({
-            title: "Хандах эрхгүй",
-            description: "Та админ эрхгүй байна. Админтай холбогдоно уу.",
-            variant: "destructive",
-          });
+          toast({ title: "Хандах эрхгүй", description: "Та админ эрхгүй байна.", variant: "destructive" });
           return;
         }
-
-        toast({
-          title: "Амжилттай нэвтэрлээ",
-          description: "Админ самбарт тавтай морил!",
-        });
+        toast({ title: "Амжилттай нэвтэрлээ", description: "Админ самбарт тавтай морил!" });
         navigate("/admin");
       }
-    } catch (error) {
-      toast({
-        title: "Алдаа гарлаа",
-        description: "Сервертэй холбогдох үед алдаа гарлаа",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: "Алдаа", description: "Сервертэй холбогдох үед алдаа гарлаа", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -134,67 +130,41 @@ export default function AdminLogin() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
-
-    // Validate input
-    const result = signupSchema.safeParse({ email, password, fullName });
-    if (!result.success) {
-      const fieldErrors: { email?: string; password?: string; fullName?: string } = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0] === "email") fieldErrors.email = err.message;
-        if (err.path[0] === "password") fieldErrors.password = err.message;
-        if (err.path[0] === "fullName") fieldErrors.fullName = err.message;
-      });
-      setErrors(fieldErrors);
+    const emailVal = identifier.trim();
+    if (!emailVal || !emailVal.includes("@")) {
+      setErrors({ identifier: "Зөв имэйл хаяг оруулна уу" });
       return;
     }
-
+    if (password.length < 6) {
+      setErrors({ password: "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой" });
+      return;
+    }
+    if (fullName.length < 2) {
+      setErrors({ fullName: "Нэрээ оруулна уу" });
+      return;
+    }
     setIsLoading(true);
-
     try {
-      const redirectUrl = `${window.location.origin}/admin`;
-      
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: emailVal,
         password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName,
-          },
-        },
+        options: { emailRedirectTo: `${window.location.origin}/admin`, data: { full_name: fullName } },
       });
-
       if (error) {
-        if (error.message.includes("already registered")) {
-          toast({
-            title: "Бүртгэл байна",
-            description: "Энэ имэйл хаягаар аль хэдийн бүртгэл үүссэн байна. Нэвтрэх хэсгийг ашиглана уу.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Алдаа гарлаа",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Алдаа",
+          description: error.message.includes("already registered") ? "Энэ имэйлээр бүртгэл үүссэн байна" : error.message,
+          variant: "destructive",
+        });
         return;
       }
-
       if (data.user) {
-        toast({
-          title: "Бүртгэл амжилттай",
-          description: "Таны бүртгэл үүслээ. Админ эрх авахын тулд админтай холбогдоно уу.",
-        });
+        toast({ title: "Бүртгэл амжилттай", description: "Админ эрх авахын тулд админтай холбогдоно уу." });
         setIsSignup(false);
         setPassword("");
       }
-    } catch (error) {
-      toast({
-        title: "Алдаа гарлаа",
-        description: "Сервертэй холбогдох үед алдаа гарлаа",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: "Алдаа", description: "Сервертэй холбогдох үед алдаа гарлаа", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -209,13 +179,8 @@ export default function AdminLogin() {
       
       <Card className="w-full max-w-md glass-card animate-scale-in relative z-10">
         <CardHeader className="text-center space-y-4">
-          {/* Logo */}
           <div className="mx-auto">
-            <img 
-              src={onlyLogo} 
-              alt="Only Logo" 
-              className="h-16 w-auto mx-auto"
-            />
+            <img src={onlyLogo} alt="Only Logo" className="h-16 w-auto mx-auto" />
           </div>
           <div>
             <CardTitle className="text-2xl">Only Admin</CardTitle>
@@ -241,29 +206,32 @@ export default function AdminLogin() {
                     disabled={isLoading}
                   />
                 </div>
-                {errors.fullName && (
-                  <p className="text-sm text-destructive">{errors.fullName}</p>
-                )}
+                {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Имэйл</Label>
+              <Label htmlFor="identifier">
+                {isSignup ? "Имэйл" : "Утасны дугаар эсвэл имэйл"}
+              </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@only.mn"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
+                  id="identifier"
+                  type="text"
+                  placeholder={isSignup ? "admin@only.mn" : "99112233 эсвэл admin@only.mn"}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className={`pl-10 ${errors.identifier ? "border-destructive" : ""}`}
                   disabled={isLoading}
                 />
               </div>
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
+              {!isSignup && identifier.trim() && identifierType !== "unknown" && (
+                <p className="text-xs text-muted-foreground">
+                  {identifierType === "phone" ? "📱 Утасны дугаараар нэвтрэнэ" : "📧 Имэйлээр нэвтрэнэ"}
+                </p>
               )}
+              {errors.identifier && <p className="text-sm text-destructive">{errors.identifier}</p>}
             </div>
 
             <div className="space-y-2">
@@ -287,21 +255,12 @@ export default function AdminLogin() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
+              {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
             </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isSignup ? "Бүртгэж байна..." : "Нэвтэрж байна..."}
-                </>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isSignup ? "Бүртгэж байна..." : "Нэвтэрж байна..."}</>
               ) : (
                 isSignup ? "Бүртгүүлэх" : "Нэвтрэх"
               )}
@@ -310,15 +269,10 @@ export default function AdminLogin() {
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => {
-                  setIsSignup(!isSignup);
-                  setErrors({});
-                }}
+                onClick={() => { setIsSignup(!isSignup); setErrors({}); }}
                 className="text-sm text-muted-foreground hover:text-primary transition-colors"
               >
-                {isSignup 
-                  ? "Бүртгэлтэй юу? Нэвтрэх" 
-                  : "Бүртгэлгүй юу? Бүртгүүлэх"}
+                {isSignup ? "Бүртгэлтэй юу? Нэвтрэх" : "Бүртгэлгүй юу? Бүртгүүлэх"}
               </button>
             </div>
           </form>

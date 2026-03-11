@@ -572,6 +572,57 @@ Deno.serve(async (req) => {
         return json({ success: true, message: "Нууц үг амжилттай солигдлоо" });
       }
 
+      // ── Internal: notify admin about payment ─────────────
+      case "notify-admin-payment": {
+        const settings = await getAuthSettings(supabase);
+
+        // Also get notification settings
+        const { data: notifSettings } = await supabase
+          .from("admin_settings")
+          .select("setting_key, setting_value")
+          .in("setting_key", ["order_payment_sms_enabled", "order_notification_phones", "order_notification_template"]);
+
+        const getNotifVal = (key: string) => {
+          const s = notifSettings?.find((s: any) => s.setting_key === key);
+          try { return s ? JSON.parse(String(s.setting_value)) : ""; }
+          catch { return s?.setting_value || ""; }
+        };
+
+        const enabled = getNotifVal("order_payment_sms_enabled") === "true" || getNotifVal("order_payment_sms_enabled") === true;
+        if (!enabled) {
+          return json({ success: false, reason: "notification_disabled" });
+        }
+
+        const phonesRaw = getNotifVal("order_notification_phones");
+        if (!phonesRaw) {
+          return json({ success: false, reason: "no_phones_configured" });
+        }
+
+        const phones = String(phonesRaw).split(",").map((p: string) => p.trim()).filter(Boolean);
+        if (phones.length === 0) {
+          return json({ success: false, reason: "no_valid_phones" });
+        }
+
+        const template = getNotifVal("order_notification_template") ||
+          "Шинэ төлбөр! {{ORDER_NUMBER}} захиалга {{AMOUNT}} төлөгдлөө. Арга: {{METHOD}}";
+
+        const message = template
+          .replace("{{ORDER_NUMBER}}", body.order_number || "—")
+          .replace("{{AMOUNT}}", body.amount || "—")
+          .replace("{{METHOD}}", body.method || "—");
+
+        const results: any[] = [];
+        for (const phone of phones) {
+          const normalized = normalizePhone(phone);
+          if (normalized && isValidMnPhone(normalized)) {
+            const result = await sendSms(supabase, normalized, message, "notification");
+            results.push({ phone: normalized, ...result });
+          }
+        }
+
+        return json({ success: true, results });
+      }
+
       // ── Admin: send test SMS ──────────────────────────────
       case "send-test-sms": {
         const adminId = await requireAdmin(supabase, req);

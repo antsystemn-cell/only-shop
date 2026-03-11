@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Save, Shield, Phone, Mail, Key } from "lucide-react";
+import { Save, Shield, Phone, Mail, Key, Bell } from "lucide-react";
 
 export default function AuthSettings() {
   const queryClient = useQueryClient();
@@ -29,11 +29,25 @@ export default function AuthSettings() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: any }) => {
-      const { error } = await supabase
+      // Try update first
+      const { data: existing } = await supabase
         .from("admin_settings")
-        .update({ setting_value: JSON.stringify(value) })
-        .eq("setting_key", key);
-      if (error) throw error;
+        .select("id")
+        .eq("setting_key", key)
+        .single();
+
+      if (existing) {
+        const { error } = await supabase
+          .from("admin_settings")
+          .update({ setting_value: JSON.stringify(value) })
+          .eq("setting_key", key);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("admin_settings")
+          .insert({ setting_key: key, setting_value: JSON.stringify(value), category: "auth" });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "settings", "auth"] });
@@ -44,11 +58,8 @@ export default function AuthSettings() {
 
   const getVal = (key: string, fallback: any = "") => {
     const s = settings?.find((s) => s.setting_key === key);
-    try {
-      return s ? JSON.parse(String(s.setting_value)) : fallback;
-    } catch {
-      return s?.setting_value || fallback;
-    }
+    try { return s ? JSON.parse(String(s.setting_value)) : fallback; }
+    catch { return s?.setting_value || fallback; }
   };
 
   const toggleSetting = (key: string) => {
@@ -65,9 +76,7 @@ export default function AuthSettings() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full" />
-        ))}
+        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
       </div>
     );
   }
@@ -79,9 +88,7 @@ export default function AuthSettings() {
           <Shield className="h-8 w-8 text-primary" />
           Нэвтрэлтийн тохиргоо
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Хэрэглэгчийн бүртгэл, нэвтрэлтийн тохиргоо
-        </p>
+        <p className="text-muted-foreground mt-1">Хэрэглэгчийн бүртгэл, нэвтрэлтийн тохиргоо</p>
       </div>
 
       {/* Registration methods */}
@@ -91,96 +98,64 @@ export default function AuthSettings() {
           <CardDescription>Хэрэглэгч бүртгүүлэх боломжтой аргуудыг тохируулах</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <ToggleRow
-            icon={<Phone className="h-5 w-5" />}
-            label="Утасны дугаараар бүртгүүлэх"
-            description="Хэрэглэгч утасны дугаараар бүртгэл үүсгэх боломж"
-            checked={isTruthy("phone_registration_enabled")}
-            onToggle={() => toggleSetting("phone_registration_enabled")}
-          />
+          <ToggleRow icon={<Phone className="h-5 w-5" />} label="Утасны дугаараар бүртгүүлэх" description="Хэрэглэгч утасны дугаараар бүртгэл үүсгэх боломж" checked={isTruthy("phone_registration_enabled")} onToggle={() => toggleSetting("phone_registration_enabled")} />
           <Separator />
-          <ToggleRow
-            icon={<Mail className="h-5 w-5" />}
-            label="Имэйлээр бүртгүүлэх"
-            description="Хэрэглэгч имэйлээр бүртгэл үүсгэх боломж"
-            checked={isTruthy("email_registration_enabled")}
-            onToggle={() => toggleSetting("email_registration_enabled")}
-          />
+          <ToggleRow icon={<Mail className="h-5 w-5" />} label="Имэйлээр бүртгүүлэх" description="Хэрэглэгч имэйлээр бүртгэл үүсгэх боломж" checked={isTruthy("email_registration_enabled")} onToggle={() => toggleSetting("email_registration_enabled")} />
           <Separator />
-          <ToggleRow
-            icon={<Phone className="h-5 w-5" />}
-            label="Утасны дугаарыг гол арга болгох"
-            description="Нэвтрэх хуудсанд утасны дугаарыг эхний сонголтоор харуулах"
-            checked={isTruthy("phone_primary_enabled")}
-            onToggle={() => toggleSetting("phone_primary_enabled")}
-          />
+          <ToggleRow icon={<Phone className="h-5 w-5" />} label="Утасны дугаарыг гол арга болгох" description="Нэвтрэх хуудсанд утасны дугаарыг эхний сонголтоор харуулах" checked={isTruthy("phone_primary_enabled")} onToggle={() => toggleSetting("phone_primary_enabled")} />
         </CardContent>
       </Card>
 
       {/* OTP settings */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Key className="h-5 w-5 text-primary" />
-            OTP тохиргоо
-          </CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2"><Key className="h-5 w-5 text-primary" /> OTP тохиргоо</CardTitle>
           <CardDescription>Нэг удаагийн нууц код (OTP) тохиргоо</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <ToggleRow icon={<Phone className="h-5 w-5" />} label="OTP кодоор нэвтрэх" description="Хэрэглэгч утасны дугаар + OTP кодоор нэвтрэх боломж" checked={isTruthy("phone_otp_login_enabled")} onToggle={() => toggleSetting("phone_otp_login_enabled")} />
+          <Separator />
+          <ToggleRow icon={<Shield className="h-5 w-5" />} label="Бүртгүүлэх үед OTP шаардах" description="Утасны дугаараар бүртгүүлэх үед OTP баталгаажуулалт шаардах" checked={isTruthy("phone_registration_otp_required")} onToggle={() => toggleSetting("phone_registration_otp_required")} />
+          <Separator />
+          <NumberSetting label="OTP кодын урт" settingKey="otp_length" value={getVal("otp_length", "4")} onSave={(v) => updateMutation.mutate({ key: "otp_length", value: v })} min={4} max={6} />
+          <NumberSetting label="OTP хугацаа (секунд)" settingKey="otp_expiry_seconds" value={getVal("otp_expiry_seconds", "180")} onSave={(v) => updateMutation.mutate({ key: "otp_expiry_seconds", value: v })} min={60} max={600} />
+          <NumberSetting label="Дахин илгээх хугацаа (секунд)" settingKey="otp_resend_cooldown_seconds" value={getVal("otp_resend_cooldown_seconds", "60")} onSave={(v) => updateMutation.mutate({ key: "otp_resend_cooldown_seconds", value: v })} min={30} max={300} />
+          <NumberSetting label="Оролдлогын дээд тоо" settingKey="otp_max_attempts" value={getVal("otp_max_attempts", "5")} onSave={(v) => updateMutation.mutate({ key: "otp_max_attempts", value: v })} min={3} max={10} />
+          <Separator />
+          <TemplateSetting label="OTP мессежийн загвар" description="{{CODE}} = OTP код, {{MINUTES}} = хугацаа минутаар" value={getVal("otp_message_template", "Таны баталгаажуулах код: {{CODE}}. Хугацаа: {{MINUTES}} минут.")} onSave={(v) => updateMutation.mutate({ key: "otp_message_template", value: v })} />
+        </CardContent>
+      </Card>
+
+      {/* Order notification settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Bell className="h-5 w-5 text-primary" />
+            Захиалгын мэдэгдэл
+          </CardTitle>
+          <CardDescription>Захиалгын төлбөр төлөгдөхөд админд SMS мэдэгдэл илгээх тохиргоо</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
           <ToggleRow
-            icon={<Phone className="h-5 w-5" />}
-            label="OTP кодоор нэвтрэх"
-            description="Хэрэглэгч утасны дугаар + OTP кодоор нэвтрэх боломж"
-            checked={isTruthy("phone_otp_login_enabled")}
-            onToggle={() => toggleSetting("phone_otp_login_enabled")}
+            icon={<Bell className="h-5 w-5" />}
+            label="Төлбөр төлөгдсөн мэдэгдэл"
+            description="Захиалгын төлбөр амжилттай төлөгдөхөд админд SMS мэдэгдэл илгээх"
+            checked={isTruthy("order_payment_sms_enabled")}
+            onToggle={() => toggleSetting("order_payment_sms_enabled")}
           />
           <Separator />
-          <ToggleRow
-            icon={<Shield className="h-5 w-5" />}
-            label="Бүртгүүлэх үед OTP шаардах"
-            description="Утасны дугаараар бүртгүүлэх үед OTP баталгаажуулалт шаардах"
-            checked={isTruthy("phone_registration_otp_required")}
-            onToggle={() => toggleSetting("phone_registration_otp_required")}
-          />
-          <Separator />
-          <NumberSetting
-            label="OTP кодын урт"
-            settingKey="otp_length"
-            value={getVal("otp_length", "4")}
-            onSave={(v) => updateMutation.mutate({ key: "otp_length", value: v })}
-            min={4}
-            max={6}
-          />
-          <NumberSetting
-            label="OTP хугацаа (секунд)"
-            settingKey="otp_expiry_seconds"
-            value={getVal("otp_expiry_seconds", "180")}
-            onSave={(v) => updateMutation.mutate({ key: "otp_expiry_seconds", value: v })}
-            min={60}
-            max={600}
-          />
-          <NumberSetting
-            label="Дахин илгээх хугацаа (секунд)"
-            settingKey="otp_resend_cooldown_seconds"
-            value={getVal("otp_resend_cooldown_seconds", "60")}
-            onSave={(v) => updateMutation.mutate({ key: "otp_resend_cooldown_seconds", value: v })}
-            min={30}
-            max={300}
-          />
-          <NumberSetting
-            label="Оролдлогын дээд тоо"
-            settingKey="otp_max_attempts"
-            value={getVal("otp_max_attempts", "5")}
-            onSave={(v) => updateMutation.mutate({ key: "otp_max_attempts", value: v })}
-            min={3}
-            max={10}
+          <TextSetting
+            label="Мэдэгдэл хүлээн авах утасны дугаарууд"
+            description="Таслалаар тусгаарлан олон дугаар оруулж болно. Жишээ: 99112233,88445566"
+            value={getVal("order_notification_phones", "")}
+            onSave={(v) => updateMutation.mutate({ key: "order_notification_phones", value: v })}
           />
           <Separator />
           <TemplateSetting
-            label="OTP мессежийн загвар"
-            description="{{CODE}} = OTP код, {{MINUTES}} = хугацаа минутаар"
-            value={getVal("otp_message_template", "Таны баталгаажуулах код: {{CODE}}. Хугацаа: {{MINUTES}} минут.")}
-            onSave={(v) => updateMutation.mutate({ key: "otp_message_template", value: v })}
+            label="Мэдэгдлийн мессежийн загвар"
+            description="{{ORDER_NUMBER}} = захиалгын дугаар, {{AMOUNT}} = төлсөн дүн, {{METHOD}} = төлбөрийн арга"
+            value={getVal("order_notification_template", "Шинэ төлбөр! {{ORDER_NUMBER}} захиалга {{AMOUNT}} төлөгдлөө. Арга: {{METHOD}}")}
+            onSave={(v) => updateMutation.mutate({ key: "order_notification_template", value: v })}
           />
         </CardContent>
       </Card>
@@ -190,18 +165,8 @@ export default function AuthSettings() {
 
 // ── Reusable components ──────────────────────────────────────
 
-function ToggleRow({
-  icon,
-  label,
-  description,
-  checked,
-  onToggle,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  description: string;
-  checked: boolean;
-  onToggle: () => void;
+function ToggleRow({ icon, label, description, checked, onToggle }: {
+  icon: React.ReactNode; label: string; description: string; checked: boolean; onToggle: () => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
@@ -217,42 +182,17 @@ function ToggleRow({
   );
 }
 
-function NumberSetting({
-  label,
-  settingKey,
-  value,
-  onSave,
-  min,
-  max,
-}: {
-  label: string;
-  settingKey: string;
-  value: string;
-  onSave: (v: string) => void;
-  min: number;
-  max: number;
+function NumberSetting({ label, settingKey, value, onSave, min, max }: {
+  label: string; settingKey: string; value: string; onSave: (v: string) => void; min: number; max: number;
 }) {
   const [val, setVal] = useState(String(value));
   useEffect(() => setVal(String(value)), [value]);
-
   return (
     <div className="flex items-center justify-between gap-4">
       <Label className="font-medium">{label}</Label>
       <div className="flex items-center gap-2">
-        <Input
-          type="number"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          className="w-24 text-center"
-          min={min}
-          max={max}
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onSave(val)}
-          disabled={val === String(value)}
-        >
+        <Input type="number" value={val} onChange={(e) => setVal(e.target.value)} className="w-24 text-center" min={min} max={max} />
+        <Button size="sm" variant="outline" onClick={() => onSave(val)} disabled={val === String(value)}>
           <Save className="h-3 w-3" />
         </Button>
       </div>
@@ -260,32 +200,37 @@ function NumberSetting({
   );
 }
 
-function TemplateSetting({
-  label,
-  description,
-  value,
-  onSave,
-}: {
-  label: string;
-  description: string;
-  value: string;
-  onSave: (v: string) => void;
+function TextSetting({ label, description, value, onSave }: {
+  label: string; description: string; value: string; onSave: (v: string) => void;
 }) {
   const [val, setVal] = useState(value);
   useEffect(() => setVal(value), [value]);
+  return (
+    <div className="space-y-2">
+      <Label className="font-medium">{label}</Label>
+      <p className="text-xs text-muted-foreground">{description}</p>
+      <div className="flex gap-2">
+        <Input value={val} onChange={(e) => setVal(e.target.value)} placeholder="99112233" />
+        <Button size="sm" onClick={() => onSave(val)} disabled={val === value}>
+          <Save className="h-4 w-4 mr-2" /> Хадгалах
+        </Button>
+      </div>
+    </div>
+  );
+}
 
+function TemplateSetting({ label, description, value, onSave }: {
+  label: string; description: string; value: string; onSave: (v: string) => void;
+}) {
+  const [val, setVal] = useState(value);
+  useEffect(() => setVal(value), [value]);
   return (
     <div className="space-y-2">
       <Label className="font-medium">{label}</Label>
       <p className="text-xs text-muted-foreground">{description}</p>
       <Textarea value={val} onChange={(e) => setVal(e.target.value)} rows={2} />
-      <Button
-        size="sm"
-        onClick={() => onSave(val)}
-        disabled={val === value}
-      >
-        <Save className="h-4 w-4 mr-2" />
-        Хадгалах
+      <Button size="sm" onClick={() => onSave(val)} disabled={val === value}>
+        <Save className="h-4 w-4 mr-2" /> Хадгалах
       </Button>
     </div>
   );
