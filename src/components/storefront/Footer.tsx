@@ -35,6 +35,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to="/page/privacy-policy" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                  Нууцлалын бодлого
+                </Link>
+              </li>
+              <li>
                 <Link to="/page/faq" className="text-secondary-foreground/70 hover:text-primary transition-colors">
                   Түгээмэл асуултууд
                 </Link>
