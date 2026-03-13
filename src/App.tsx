@@ -11,6 +11,7 @@ import { ProviderProvider } from "@/contexts/ProviderContext";
 import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { RequireAuth } from "./components/storefront/RequireAuth";
+import { RecentlyViewedLoginMerge } from "./components/storefront/RecentlyViewedLoginMerge";
 
 // Storefront imports
 import { StorefrontLayout } from "./components/storefront/StorefrontLayout";
