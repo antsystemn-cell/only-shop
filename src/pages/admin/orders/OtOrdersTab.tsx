@@ -253,7 +253,9 @@ export default function OtOrdersTab() {
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{order.profile?.full_name || "—"}</span>
+                        <span className="text-muted-foreground">
+                          {order.profile?.full_name || (order.delivery_address as any)?.guest_phone ? `📱 ${(order.delivery_address as any)?.guest_phone}` : "Зочин"}
+                        </span>
                         <span className="font-medium">{formatPrice(order.subtotal)}</span>
                       </div>
                       <div className="flex items-center justify-between">
