@@ -1644,6 +1644,54 @@ export type Database = {
         }
         Relationships: []
       }
+      recently_viewed: {
+        Row: {
+          canonical_key: string
+          currency: string | null
+          first_viewed_at: string
+          id: string
+          image_snapshot: string | null
+          last_viewed_at: string
+          price_snapshot: number | null
+          product_url: string | null
+          provider: string
+          provider_product_id: string
+          title_snapshot: string | null
+          user_id: string
+          view_count: number
+        }
+        Insert: {
+          canonical_key: string
+          currency?: string | null
+          first_viewed_at?: string
+          id?: string
+          image_snapshot?: string | null
+          last_viewed_at?: string
+          price_snapshot?: number | null
+          product_url?: string | null
+          provider?: string
+          provider_product_id: string
+          title_snapshot?: string | null
+          user_id: string
+          view_count?: number
+        }
+        Update: {
+          canonical_key?: string
+          currency?: string | null
+          first_viewed_at?: string
+          id?: string
+          image_snapshot?: string | null
+          last_viewed_at?: string
+          price_snapshot?: number | null
+          product_url?: string | null
+          provider?: string
+          provider_product_id?: string
+          title_snapshot?: string | null
+          user_id?: string
+          view_count?: number
+        }
+        Relationships: []
+      }
       sms_logs: {
         Row: {
           created_at: string
