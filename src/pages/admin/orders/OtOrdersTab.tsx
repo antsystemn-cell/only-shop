@@ -297,8 +297,12 @@ export default function OtOrdersTab() {
                           <span className="font-mono text-xs font-medium">{order.order_number}</span>
                         </TableCell>
                         <TableCell className="py-2">
-                          <div className="text-sm font-medium truncate max-w-[130px]">{order.profile?.full_name || "—"}</div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[130px]">{order.profile?.phone || order.profile?.email}</div>
+                          <div className="text-sm font-medium truncate max-w-[130px]">
+                            {order.profile?.full_name || ((order.delivery_address as any)?.guest_phone ? `📱 ${(order.delivery_address as any).guest_phone}` : "Зочин")}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[130px]">
+                            {order.profile?.phone || order.profile?.email || ((order.delivery_address as any)?.guest_phone && "Зочин хэрэглэгч")}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center py-2">
                           <Badge variant="secondary" className="text-xs">{order.item_count}</Badge>
