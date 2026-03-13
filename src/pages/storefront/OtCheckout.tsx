@@ -542,7 +542,6 @@ export default function OtCheckout() {
                           : checkError}
                       </p>
                     </div>
-                    </div>
                     {/* Show invalid items so user can identify and remove them */}
                     {invalidItems.length > 0 && (
                       <div className="space-y-2 border border-destructive/30 rounded-lg p-3">
