@@ -193,7 +193,7 @@ export default function OtCheckout() {
       if (msg === "EMPTY_BASKET") {
         setCheckError("Сагс хоосон байна. Бараа нэмнэ үү.");
       } else if (msg === "CHECK_TIMEOUT") {
-        setCheckError("Сагс шалгалт удааширлаа. Дахин оролдоно уу.");
+        setCheckError("TIMEOUT");
       } else if (msg.includes("SessionExpired")) {
         setCheckError("Сессийн хугацаа дууссан. Дахин оролдоно уу.");
       } else if (msg === "BASKET_CHECK_NO_ACTIVITY_ID") {
@@ -536,7 +536,11 @@ export default function OtCheckout() {
                   <div className="space-y-4 py-4">
                     <div className="flex items-center gap-2 text-destructive">
                       <AlertTriangle className="h-5 w-5 shrink-0" />
-                      <p className="text-sm">{checkError}</p>
+                      <p className="text-sm">
+                        {checkError === "TIMEOUT"
+                          ? "Сагс шалгалт удааширлаа. Дахин оролдох эсвэл шалгалтыг алгасаж үргэлжлүүлэх боломжтой."
+                          : checkError}
+                      </p>
                     </div>
                     {/* Show invalid items so user can identify and remove them */}
                     {invalidItems.length > 0 && (
@@ -571,8 +575,19 @@ export default function OtCheckout() {
                         </Button>
                       </div>
                     )}
-                    <div className="flex gap-2 justify-center">
+                    <div className="flex gap-2 justify-center flex-wrap">
                       <Button onClick={runCheck} disabled={checkingStatus.isRunning}>Дахин шалгах</Button>
+                      {checkError === "TIMEOUT" && (
+                        <Button
+                          variant="default"
+                          onClick={() => {
+                            setCheckError(null);
+                            setCheckResult({ _skipped: true });
+                          }}
+                        >
+                          Шалгалтыг алгасаад үргэлжлүүлэх
+                        </Button>
+                      )}
                       <Button variant="outline" onClick={() => navigate("/ot")}>Сагс руу буцах</Button>
                     </div>
                   </div>
