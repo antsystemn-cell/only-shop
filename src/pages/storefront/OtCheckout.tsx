@@ -105,6 +105,10 @@ export default function OtCheckout() {
   // Step 4 — comment
   const [comment, setComment] = useState("");
 
+  // Guest phone dialog
+  const [showGuestPhoneDialog, setShowGuestPhoneDialog] = useState(false);
+  const [guestPhone, setGuestPhone] = useState("");
+
   const [orderResult, setOrderResult] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("qpay");
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
