@@ -19,6 +19,7 @@ interface OtCat {
   provider_type: string | null;
   parent_internal_id: string | null;
   depth: number | null;
+  seo_alias: string | null;
 }
 
 // ─── Recursive Category Node ────────────────────────────────
