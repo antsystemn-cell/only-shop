@@ -204,7 +204,7 @@ export default function OtCategoryBrowse() {
         <div className="px-3 md:container mb-4">
           <SubcategoryDropdownBrowse
             subcategories={subcategories}
-            onSelect={(id) => navigate(`/ot/browse/${id}`)}
+            onSelect={(sub) => navigate(getCategoryPath(sub))}
           />
         </div>
       )}
