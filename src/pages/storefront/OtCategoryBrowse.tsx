@@ -310,7 +310,7 @@ function SubcategoryDropdownBrowse({
                 <button
                   key={sub.internal_id}
                   onClick={() => {
-                    onSelect(sub.internal_id);
+                    onSelect(sub);
                     setOpen(false);
                     setSearch("");
                   }}
