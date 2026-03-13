@@ -11,6 +11,7 @@ import { ProviderProvider } from "@/contexts/ProviderContext";
 import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { RequireAuth } from "./components/storefront/RequireAuth";
+import { RecentlyViewedLoginMerge } from "./components/storefront/RecentlyViewedLoginMerge";
 
 // Storefront imports
 import { StorefrontLayout } from "./components/storefront/StorefrontLayout";
@@ -31,6 +32,7 @@ import Profile from "./pages/storefront/Profile";
 import Wallet from "./pages/storefront/Wallet";
 import FavouriteVendors from "./pages/storefront/FavouriteVendors";
 import Support from "./pages/storefront/Support";
+import ViewHistory from "./pages/storefront/ViewHistory";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -106,6 +108,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
             <ScrollToTop />
+            <RecentlyViewedLoginMerge />
             <Routes>
               {/* Storefront routes */}
               <Route element={<StorefrontLayout />}>
@@ -138,6 +141,7 @@ const App = () => (
               <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
               <Route path="/wallet" element={<RequireAuth><Wallet /></RequireAuth>} />
               <Route path="/favourite-vendors" element={<RequireAuth><FavouriteVendors /></RequireAuth>} />
+              <Route path="/view-history" element={<ViewHistory />} />
               <Route path="/support" element={<Support />} />
               
               {/* Admin routes */}
