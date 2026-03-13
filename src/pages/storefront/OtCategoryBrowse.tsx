@@ -94,19 +94,28 @@ export default function OtCategoryBrowse() {
     staleTime: 1000 * 60 * 30,
   });
 
-  // Fetch current category
+  // Fetch current category - resolve by seo_alias OR internal_id
   const { data: category, isLoading: loadingCat } = useQuery({
-    queryKey: ["ot-category", internalId],
+    queryKey: ["ot-category", resolvedSlug],
     queryFn: async () => {
+      // Try seo_alias first, then internal_id
+      const { data: bySeo } = await supabase
+        .from("ot_categories")
+        .select("*")
+        .eq("seo_alias", resolvedSlug!)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (bySeo) return bySeo as OtCat;
+
       const { data, error } = await supabase
         .from("ot_categories")
         .select("*")
-        .eq("internal_id", internalId!)
+        .eq("internal_id", resolvedSlug!)
         .single();
       if (error) throw error;
       return data as OtCat;
     },
-    enabled: !!internalId,
+    enabled: !!resolvedSlug,
   });
 
   // Fetch subcategories
