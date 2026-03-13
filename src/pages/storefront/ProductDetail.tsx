@@ -116,6 +116,22 @@ export default function ProductDetail() {
     enabled: !!id,
   });
 
+  // Track recently viewed (fire-and-forget)
+  const trackView = useTrackRecentlyViewed();
+  useEffect(() => {
+    if (!product || !id) return;
+    trackView({
+      provider: "local",
+      provider_product_id: id,
+      canonical_key: `local:${id}`,
+      title_snapshot: product.name_mn || product.name,
+      image_snapshot: product.images?.[0] || "",
+      price_snapshot: product.price,
+      currency: "₮",
+      product_url: `/product/${id}`,
+    });
+  }, [product?.id]);
+
   // Fetch product variants
   const { data: variants = [] } = useQuery({
     queryKey: ["product-variants", id],
