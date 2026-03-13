@@ -140,6 +140,7 @@ const App = () => (
               <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
               <Route path="/wallet" element={<RequireAuth><Wallet /></RequireAuth>} />
               <Route path="/favourite-vendors" element={<RequireAuth><FavouriteVendors /></RequireAuth>} />
+              <Route path="/view-history" element={<ViewHistory />} />
               <Route path="/support" element={<Support />} />
               
               {/* Admin routes */}
