@@ -301,7 +301,31 @@ function HistoryCard({
   const config = PROVIDER_CONFIG[providerNorm];
 
   return (
-    <Card className="group overflow-hidden border-border/50 hover:shadow-md transition-shadow">
+    <Card className="relative group overflow-hidden border-border/50 hover:shadow-md transition-shadow">
+      {/* Remove button - outside Link to work on mobile */}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <button
+            className="absolute top-1.5 right-1.5 z-10 bg-background/80 backdrop-blur-sm rounded-full p-1.5"
+            aria-label="Устгах"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+          </button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Устгах уу?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Энэ барааг үзсэн түүхээсээ устгахдаа итгэлтэй байна уу?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Үгүй</AlertDialogCancel>
+            <AlertDialogAction onClick={onRemove}>Тийм</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Link to={item.product_url} className="block">
         <div className="relative aspect-square bg-muted overflow-hidden">
           <img
@@ -321,32 +345,6 @@ function HistoryCard({
               {config.label}
             </div>
           )}
-          {/* Remove button - always visible with confirmation */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                className="absolute top-1.5 right-1.5 bg-background/80 backdrop-blur-sm rounded-full p-1.5"
-              >
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Устгах уу?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Энэ барааг үзсэн түүхээсээ устгахдаа итгэлтэй байна уу?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Үгүй</AlertDialogCancel>
-                <AlertDialogAction onClick={onRemove}>Тийм</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
         <div className="p-2.5 space-y-1">
           <p className="text-xs text-foreground line-clamp-2 leading-tight min-h-[2rem]">
