@@ -413,7 +413,7 @@ export default function OtOrdersTab() {
               </div>
 
               {/* Customer */}
-              {selectedOrder.profile && (
+              {selectedOrder.profile ? (
                 <Card>
                   <CardContent className="p-3 space-y-1.5 text-sm">
                     <div className="flex items-center gap-2 font-medium">
@@ -428,7 +428,19 @@ export default function OtOrdersTab() {
                     )}
                   </CardContent>
                 </Card>
-              )}
+              ) : (selectedOrder.delivery_address as any)?.guest_phone ? (
+                <Card>
+                  <CardContent className="p-3 space-y-1.5 text-sm">
+                    <div className="flex items-center gap-2 font-medium">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      Зочин хэрэглэгч
+                    </div>
+                    <div className="text-xs text-muted-foreground pl-5">
+                      📱 {(selectedOrder.delivery_address as any).guest_phone}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
 
               {/* Delivery Address */}
               {selectedOrder.delivery_address && (
