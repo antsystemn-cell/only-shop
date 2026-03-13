@@ -36,6 +36,7 @@ import { SimilarProducts } from "@/components/storefront/SimilarProducts";
 import { useTranslatedTitle } from "@/hooks/useTranslatedTitles";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { toast } from "sonner";
+import { useTrackRecentlyViewed } from "@/hooks/useRecentlyViewed";
 
 function ensureArray<T>(value: T | T[] | undefined | null): T[] {
   if (!value) return [];
