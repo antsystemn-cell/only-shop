@@ -11,6 +11,7 @@ import { searchItems, fetchItemsByIds } from "@/services/otApi";
 import { useProviderSafe } from "@/contexts/ProviderContext";
 import type { OtProductCard } from "@/types/otApi";
 import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
+import { getCategoryPath } from "@/utils/categoryUrl";
 
 interface OtCat {
   id: string;
@@ -23,6 +24,7 @@ interface OtCat {
   provider_type: string | null;
   item_ids: string[];
   parent_internal_id: string | null;
+  seo_alias: string | null;
 }
 
 // ─── Breadcrumbs component ──────────────────────────────────
