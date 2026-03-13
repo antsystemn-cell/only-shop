@@ -85,7 +85,7 @@ export default function OtCategoryBrowse() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ot_categories")
-        .select("id, internal_id, external_id, name_mn, name_en, name_ru, icon_url, provider_type, item_ids, parent_internal_id")
+        .select("id, internal_id, external_id, name_mn, name_en, name_ru, icon_url, provider_type, item_ids, parent_internal_id, seo_alias")
         .eq("is_active", true)
         .order("display_order");
       if (error) throw error;
