@@ -147,7 +147,7 @@ function CategoryGrid({ categories, childrenMap }: { categories: OtCat[]; childr
         return (
           <Link
             key={cat.internal_id}
-            to={`/ot/browse/${cat.internal_id}`}
+            to={getCategoryPath(cat)}
             className="group border rounded-xl p-4 hover:border-primary/30 hover:shadow-sm transition-all bg-card"
           >
             <div className="flex items-start gap-3 mb-3">

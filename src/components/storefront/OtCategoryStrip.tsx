@@ -47,7 +47,7 @@ export function OtCategoryStrip() {
           {categories.map((cat) => (
             <Link
               key={cat.internal_id}
-              to={`/ot/browse/${cat.internal_id}`}
+              to={getCategoryPath(cat)}
               className="group flex flex-col items-center gap-2 md:gap-3 min-w-[70px] md:min-w-[110px] shrink-0"
             >
               <div className="w-14 h-14 md:w-20 md:h-20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
