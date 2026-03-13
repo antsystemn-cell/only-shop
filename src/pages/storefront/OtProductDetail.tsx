@@ -145,6 +145,23 @@ export default function OtProductDetail() {
 
   const translatedTitle = useTranslatedTitle(product?.title);
 
+  // Track recently viewed (fire-and-forget, non-blocking)
+  const trackView = useTrackRecentlyViewed();
+  useEffect(() => {
+    if (!product || !itemId) return;
+    const providerType = (product as any).providerType?.toLowerCase() || "taobao";
+    trackView({
+      provider: providerType,
+      provider_product_id: itemId,
+      canonical_key: `${providerType}:${itemId}`,
+      title_snapshot: translatedTitle || product.title || "",
+      image_snapshot: product.imageUrl || product.images?.[0] || "",
+      price_snapshot: product.price || 0,
+      currency: "₮",
+      product_url: `/ot/product/${itemId}`,
+    });
+  }, [product?.id]); // Only once per product load
+
   const { data: description } = useQuery({
     queryKey: ["ot-product-desc", itemId],
     queryFn: () => fetchProductDescription(itemId!),
