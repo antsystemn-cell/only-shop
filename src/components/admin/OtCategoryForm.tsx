@@ -193,8 +193,13 @@ export function OtCategoryForm({ open, onOpenChange, editingCategory, parentCate
             <Input value={iconUrl} onChange={e => setIconUrl(e.target.value)} placeholder="https://..." />
           </div>
           <div>
-            <Label>SEO Alias</Label>
-            <Input value={seoAlias} onChange={e => setSeoAlias(e.target.value)} placeholder="shoes" />
+            <Label>URL Slug</Label>
+            <Input value={seoAlias} onChange={e => setSeoAlias(e.target.value)} placeholder="fragrances" />
+            <p className="text-xs text-muted-foreground mt-1">
+              {seoAlias 
+                ? `only.mn/category/${seoAlias}` 
+                : `only.mn/category/${internalId || editingCategory?.internal_id || 'otc-xxx'}`}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Switch checked={isActive} onCheckedChange={setIsActive} />
