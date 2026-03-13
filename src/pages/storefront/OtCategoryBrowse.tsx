@@ -58,7 +58,7 @@ function CategoryBreadcrumbs({ category, allCategories }: { category: OtCat; all
               <span className="font-medium text-foreground">{name}</span>
             ) : (
               <Link
-                to={`/ot/browse/${crumb.internal_id}`}
+                to={getCategoryPath(crumb)}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 {name}
