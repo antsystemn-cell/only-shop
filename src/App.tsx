@@ -108,6 +108,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
             <ScrollToTop />
+            <RecentlyViewedLoginMerge />
             <Routes>
               {/* Storefront routes */}
               <Route element={<StorefrontLayout />}>
