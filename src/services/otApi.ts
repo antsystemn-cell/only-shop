@@ -584,47 +584,74 @@ export async function fetchItemsByIds(
     }
   }
 
-  // Fetch OT API items
+  // Per-item cached fetch helper with retry
+  const fetchSingleItem = async (requestedId: string): Promise<OtProductCard | null> => {
+    return cachedFetch(`item-card:${requestedId}`, async () => {
+      const data = await callProxy<any>("getItemFullInfo", { itemId: requestedId });
+      const item = data?.Result?.Item;
+      if (!item) return null;
+
+      const effectivePrice = item.PromotionPrice || item.Price;
+      const currencyCode = getOriginalCurrencyCode(effectivePrice);
+      const rawValue = getOriginalPriceValue(effectivePrice);
+      const price = calculateMntPrice(rawValue, currencyCode, item.ProviderType, priceConfig);
+
+      let originalPrice: number | undefined;
+      if (item.PromotionPrice && item.Price) {
+        const regValue = getOriginalPriceValue(item.Price);
+        if (regValue > rawValue) {
+          originalPrice = calculateMntPrice(regValue, getOriginalCurrencyCode(item.Price), item.ProviderType, priceConfig);
+        }
+      }
+
+      return {
+        id: requestedId,
+        title: item.Title || item.ExternalTitle || "",
+        imageUrl: item.MainPictureUrl || "",
+        price,
+        originalPrice,
+        currency: "₮",
+        vendorName: item.VendorName,
+        quantity: item.Quantity ?? item.MasterQuantity,
+        providerType: item.ProviderType,
+      } as OtProductCard;
+    }, CACHE_TTL.PRODUCT_DETAIL);
+  };
+
+  // Fetch OT API items in batches with retry for failed ones
+  const failedIds: string[] = [];
+
   for (let i = 0; i < otIds.length; i += batchSize) {
     const batch = otIds.slice(i, i + batchSize);
     const settled = await Promise.allSettled(
-      batch.map(async (id) => {
-        const requestedId = String(id).trim();
-        const data = await callProxy<any>("getItemFullInfo", { itemId: requestedId });
-        const item = data?.Result?.Item;
-        if (!item) return null;
-
-        const effectivePrice = item.PromotionPrice || item.Price;
-        const currencyCode = getOriginalCurrencyCode(effectivePrice);
-        const rawValue = getOriginalPriceValue(effectivePrice);
-        const price = calculateMntPrice(rawValue, currencyCode, item.ProviderType, priceConfig);
-
-        let originalPrice: number | undefined;
-        if (item.PromotionPrice && item.Price) {
-          const regValue = getOriginalPriceValue(item.Price);
-          if (regValue > rawValue) {
-            originalPrice = calculateMntPrice(regValue, getOriginalCurrencyCode(item.Price), item.ProviderType, priceConfig);
-          }
-        }
-
-        return {
-          id: requestedId,
-          title: item.Title || item.ExternalTitle || "",
-          imageUrl: item.MainPictureUrl || "",
-          price,
-          originalPrice,
-          currency: "₮",
-          vendorName: item.VendorName,
-          quantity: item.Quantity ?? item.MasterQuantity,
-          providerType: item.ProviderType,
-        } as OtProductCard;
-      })
+      batch.map((id) => fetchSingleItem(String(id).trim()))
     );
 
-    for (const r of settled) {
+    for (let j = 0; j < settled.length; j++) {
+      const r = settled[j];
       if (r.status === "fulfilled" && r.value) {
         if (includeUnavailable || isAvailableProduct(r.value)) {
           byRequestedId.set(String(r.value.id), r.value);
+        }
+      } else if (r.status === "rejected") {
+        failedIds.push(String(batch[j]).trim());
+      }
+    }
+  }
+
+  // Retry failed items once (often timeouts that succeed on second try)
+  if (failedIds.length > 0) {
+    console.log(`[fetchItemsByIds] Retrying ${failedIds.length} failed items...`);
+    for (let i = 0; i < failedIds.length; i += batchSize) {
+      const batch = failedIds.slice(i, i + batchSize);
+      const settled = await Promise.allSettled(
+        batch.map((id) => fetchSingleItem(id))
+      );
+      for (const r of settled) {
+        if (r.status === "fulfilled" && r.value) {
+          if (includeUnavailable || isAvailableProduct(r.value)) {
+            byRequestedId.set(String(r.value.id), r.value);
+          }
         }
       }
     }
