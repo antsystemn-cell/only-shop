@@ -108,6 +108,8 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <PWAUpdatePrompt />
+            <PWAInstallBanner />
             <BrowserRouter>
             <ScrollToTop />
             <RecentlyViewedLoginMerge />
