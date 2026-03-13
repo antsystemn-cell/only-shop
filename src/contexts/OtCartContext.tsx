@@ -402,10 +402,10 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
 
   // Extracted polling logic for reuse in retries
   const pollBasketCheckingResult = useCallback(async (sessionId: string, activityId: string, correlationId: string) => {
-    const backoffMs = [300, 600, 1000, 1500, 2000, 2000, 2000, 2000, 2000, 2000];
+    const backoffMs = [500, 1000, 1500, 2000, 2500, 3000, 3000, 3000, 3000, 3000, 3000, 3000];
     let attempts = 0;
-    const maxAttempts = 15;
-    const maxTotalMs = 25000;
+    const maxAttempts = 25;
+    const maxTotalMs = 60000;
     const startTime = Date.now();
 
     while (attempts < maxAttempts && (Date.now() - startTime) < maxTotalMs) {
