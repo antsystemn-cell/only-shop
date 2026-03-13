@@ -105,6 +105,10 @@ export default function OtCheckout() {
   // Step 4 — comment
   const [comment, setComment] = useState("");
 
+  // Guest phone dialog
+  const [showGuestPhoneDialog, setShowGuestPhoneDialog] = useState(false);
+  const [guestPhone, setGuestPhone] = useState("");
+
   const [orderResult, setOrderResult] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("qpay");
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
@@ -301,9 +305,18 @@ export default function OtCheckout() {
 
   // ─── Step 5: Create Order ─────────────────────────────────
 
-  const handleCreateOrder = async () => {
+  const handleCreateOrder = async (overrideGuestPhone?: string) => {
     try {
       setIsProcessing(true);
+
+      // If guest user and no phone provided, show dialog
+      if (!user && !overrideGuestPhone && !guestPhone) {
+        setShowGuestPhoneDialog(true);
+        setIsProcessing(false);
+        return;
+      }
+
+      const effectiveGuestPhone = overrideGuestPhone || guestPhone;
 
       if (items.length === 0) {
         toast.error("Сагс хоосон байна. Бараа нэмнэ үү.");
@@ -318,6 +331,8 @@ export default function OtCheckout() {
         district: selectedAddr.district,
         city: selectedAddr.city,
         label: selectedAddr.label,
+      } : !user && effectiveGuestPhone ? {
+        guest_phone: effectiveGuestPhone,
       } : null;
 
       // Build items snapshot
@@ -875,7 +890,7 @@ export default function OtCheckout() {
                 <Button
                   size="lg"
                   className="w-full mt-4"
-                  onClick={handleCreateOrder}
+                  onClick={() => handleCreateOrder()}
                   disabled={isProcessing}
                 >
                   {isProcessing ? (
@@ -1031,6 +1046,35 @@ export default function OtCheckout() {
           )}
         </div>
       </div>
+
+      {/* Guest Phone Dialog */}
+      <Dialog open={showGuestPhoneDialog} onOpenChange={setShowGuestPhoneDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Утасны дугаар оруулна уу</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Захиалгын мэдэгдэл хүлээн авахын тулд утасны дугаараа оруулна уу.
+          </p>
+          <Input
+            placeholder="Утасны дугаар (8 оронтой)"
+            value={guestPhone}
+            onChange={(e) => setGuestPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
+            maxLength={8}
+            type="tel"
+          />
+          <Button
+            className="w-full"
+            disabled={guestPhone.length !== 8}
+            onClick={() => {
+              setShowGuestPhoneDialog(false);
+              handleCreateOrder(guestPhone);
+            }}
+          >
+            Баталгаажуулах
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

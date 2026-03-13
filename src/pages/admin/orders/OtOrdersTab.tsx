@@ -253,7 +253,9 @@ export default function OtOrdersTab() {
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{order.profile?.full_name || "—"}</span>
+                        <span className="text-muted-foreground">
+                          {order.profile?.full_name || (order.delivery_address as any)?.guest_phone ? `📱 ${(order.delivery_address as any)?.guest_phone}` : "Зочин"}
+                        </span>
                         <span className="font-medium">{formatPrice(order.subtotal)}</span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -295,8 +297,12 @@ export default function OtOrdersTab() {
                           <span className="font-mono text-xs font-medium">{order.order_number}</span>
                         </TableCell>
                         <TableCell className="py-2">
-                          <div className="text-sm font-medium truncate max-w-[130px]">{order.profile?.full_name || "—"}</div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[130px]">{order.profile?.phone || order.profile?.email}</div>
+                          <div className="text-sm font-medium truncate max-w-[130px]">
+                            {order.profile?.full_name || ((order.delivery_address as any)?.guest_phone ? `📱 ${(order.delivery_address as any).guest_phone}` : "Зочин")}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[130px]">
+                            {order.profile?.phone || order.profile?.email || ((order.delivery_address as any)?.guest_phone && "Зочин хэрэглэгч")}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center py-2">
                           <Badge variant="secondary" className="text-xs">{order.item_count}</Badge>
@@ -407,7 +413,7 @@ export default function OtOrdersTab() {
               </div>
 
               {/* Customer */}
-              {selectedOrder.profile && (
+              {selectedOrder.profile ? (
                 <Card>
                   <CardContent className="p-3 space-y-1.5 text-sm">
                     <div className="flex items-center gap-2 font-medium">
@@ -422,7 +428,19 @@ export default function OtOrdersTab() {
                     )}
                   </CardContent>
                 </Card>
-              )}
+              ) : (selectedOrder.delivery_address as any)?.guest_phone ? (
+                <Card>
+                  <CardContent className="p-3 space-y-1.5 text-sm">
+                    <div className="flex items-center gap-2 font-medium">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      Зочин хэрэглэгч
+                    </div>
+                    <div className="text-xs text-muted-foreground pl-5">
+                      📱 {(selectedOrder.delivery_address as any).guest_phone}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
 
               {/* Delivery Address */}
               {selectedOrder.delivery_address && (
