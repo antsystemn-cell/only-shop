@@ -3,6 +3,7 @@ import { Folder } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProviderSafe } from "@/contexts/ProviderContext";
+import { getCategoryPath } from "@/utils/categoryUrl";
 
 interface OtCat {
   id: string;
@@ -12,6 +13,7 @@ interface OtCat {
   icon_url: string | null;
   provider_type: string | null;
   item_ids: string[];
+  seo_alias: string | null;
 }
 
 export function OtCategoryStrip() {
