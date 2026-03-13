@@ -331,6 +331,8 @@ export default function OtCheckout() {
         district: selectedAddr.district,
         city: selectedAddr.city,
         label: selectedAddr.label,
+      } : !user && effectiveGuestPhone ? {
+        guest_phone: effectiveGuestPhone,
       } : null;
 
       // Build items snapshot
