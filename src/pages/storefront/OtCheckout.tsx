@@ -888,7 +888,7 @@ export default function OtCheckout() {
                 <Button
                   size="lg"
                   className="w-full mt-4"
-                  onClick={handleCreateOrder}
+                  onClick={() => handleCreateOrder()}
                   disabled={isProcessing}
                 >
                   {isProcessing ? (
