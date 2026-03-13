@@ -75,6 +75,7 @@ export default function Profile() {
           { href: "/wallet", icon: Wallet, label: "Данс", color: "text-green-500" },
           { href: "/favourite-vendors", icon: Store, label: "Дуртай борлуулагч", color: "text-orange-500" },
           { href: "/wishlist", icon: Heart, label: "Дуртай бараа", color: "text-red-500" },
+          { href: "/view-history", icon: Clock, label: "Үзсэн түүх", color: "text-purple-500" },
         ].map((item) => (
           <Link
             key={item.href}
