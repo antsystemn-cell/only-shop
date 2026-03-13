@@ -198,7 +198,7 @@ export default function OtAllCategories() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ot_categories")
-        .select("id, internal_id, external_id, name_mn, name_en, icon_url, provider_type, parent_internal_id, depth")
+        .select("id, internal_id, external_id, name_mn, name_en, icon_url, provider_type, parent_internal_id, depth, seo_alias")
         .eq("is_active", true)
         .order("display_order");
       if (error) throw error;
