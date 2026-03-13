@@ -170,7 +170,7 @@ export default function OtCategoryBrowse() {
   const browseTitlesList = useMemo(() => (products || []).map(p => p.title), [browseItemsKey]);
   const browseTranslations = useTranslatedTitles(browseTitlesList);
 
-  const displayName = category?.name_mn || category?.name_en || category?.name_ru || internalId;
+  const displayName = category?.name_mn || category?.name_en || category?.name_ru || resolvedSlug;
 
   return (
     <div className="py-4 md:py-8 animate-fade-in">
