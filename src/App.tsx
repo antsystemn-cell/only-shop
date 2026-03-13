@@ -31,6 +31,7 @@ import Profile from "./pages/storefront/Profile";
 import Wallet from "./pages/storefront/Wallet";
 import FavouriteVendors from "./pages/storefront/FavouriteVendors";
 import Support from "./pages/storefront/Support";
+import ViewHistory from "./pages/storefront/ViewHistory";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
