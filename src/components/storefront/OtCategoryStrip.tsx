@@ -24,7 +24,7 @@ export function OtCategoryStrip() {
     queryFn: async () => {
       let query = supabase
         .from("ot_categories")
-        .select("id, internal_id, name_mn, name_en, icon_url, provider_type, item_ids")
+        .select("id, internal_id, name_mn, name_en, icon_url, provider_type, item_ids, seo_alias")
         .is("parent_internal_id", null)
         .eq("is_active", true)
         .order("display_order");
