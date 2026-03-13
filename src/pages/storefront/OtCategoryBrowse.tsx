@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Loader2, Package, FolderTree, ChevronRight, Home, ChevronDown, Folder, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import { searchItems, fetchItemsByIds } from "@/services/otApi";
 import { useProviderSafe } from "@/contexts/ProviderContext";
@@ -27,9 +27,11 @@ interface OtCat {
   seo_alias: string | null;
 }
 
+const PAGE_SIZE = 20;
+const API_PAGE_SIZE = 40;
+
 // ─── Breadcrumbs component ──────────────────────────────────
 function CategoryBreadcrumbs({ category, allCategories }: { category: OtCat; allCategories: OtCat[] }) {
-  // Build breadcrumb chain by walking up parent_internal_id
   const chain: OtCat[] = [];
   let current: OtCat | undefined = category;
   const catMap = new Map(allCategories.map((c) => [c.internal_id, c]));
@@ -71,13 +73,27 @@ function CategoryBreadcrumbs({ category, allCategories }: { category: OtCat; all
   );
 }
 
+// ─── Product grid skeleton ──────────────────────────────────
+function ProductGridSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="aspect-square w-full rounded-lg" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function OtCategoryBrowse() {
   const { internalId, slug } = useParams<{ internalId?: string; slug?: string }>();
   const resolvedSlug = internalId || slug;
   const navigate = useNavigate();
   const { apiProvider } = useProviderSafe();
-  const [page, setPage] = useState(0);
-  const PAGE_SIZE = 20;
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Fetch ALL categories for breadcrumb chain
   const { data: allCategories } = useQuery({
@@ -94,11 +110,10 @@ export default function OtCategoryBrowse() {
     staleTime: 1000 * 60 * 30,
   });
 
-  // Fetch current category - resolve by seo_alias OR internal_id
+  // Fetch current category
   const { data: category, isLoading: loadingCat } = useQuery({
     queryKey: ["ot-category", resolvedSlug],
     queryFn: async () => {
-      // Try seo_alias first, then internal_id
       const { data: bySeo } = await supabase
         .from("ot_categories")
         .select("*")
@@ -118,7 +133,7 @@ export default function OtCategoryBrowse() {
     enabled: !!resolvedSlug,
   });
 
-  // Fetch subcategories using resolved category's internal_id
+  // Fetch subcategories
   const categoryInternalId = category?.internal_id;
   const { data: subcategories } = useQuery({
     queryKey: ["ot-subcategories-db", categoryInternalId],
@@ -135,39 +150,81 @@ export default function OtCategoryBrowse() {
     enabled: !!categoryInternalId,
   });
 
-  // Fetch products — either via API search (external_id means it has an API category) or by item_ids batch fetch
-  // Always use internal_id (otc-XXX) for API search as it works for both Taobao and Poizon
-  const { data: products, isLoading: loadingProducts } = useQuery({
-    queryKey: ["ot-category-products", categoryInternalId, category?.external_id, category?.item_ids?.length, apiProvider, page],
-    queryFn: async () => {
-      if (!category) return [];
-      // Strategy 1: category has external_id → use OT API search with internal_id
-      if (category.external_id && category.provider_type) {
+  // Determine fetch mode
+  const isApiCategory = !!(category?.external_id && category?.provider_type);
+  const isItemIdsCategory = !isApiCategory && (category?.item_ids?.length || 0) > 0;
+  const hasProducts = isApiCategory || isItemIdsCategory;
+
+  // ─── Infinite scroll query ────────────────────────────────
+  const {
+    data: infiniteData,
+    isLoading: loadingProducts,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["ot-category-products-inf", categoryInternalId, category?.external_id, category?.item_ids?.length, apiProvider],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam = 0 }) => {
+      if (!category) return { items: [] as OtProductCard[], nextPage: undefined as number | undefined };
+
+      if (isApiCategory) {
         const result = await searchItems({
           categoryId: category.internal_id,
-          provider: apiProvider || category.provider_type,
-          pageSize: 40,
-          page,
+          provider: apiProvider || category.provider_type!,
+          pageSize: API_PAGE_SIZE,
+          page: pageParam,
         });
-        return result.items;
+        // If we got a full page, there's likely more
+        const nextPage = result.items.length >= API_PAGE_SIZE ? pageParam + 1 : undefined;
+        return { items: result.items, nextPage };
       }
-      // Strategy 2: category has item_ids → fetch items directly by ID
-      if (category.item_ids?.length) {
-        const pageItems = category.item_ids.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-        return fetchItemsByIds(pageItems);
+
+      if (isItemIdsCategory && category.item_ids?.length) {
+        const start = pageParam * PAGE_SIZE;
+        const pageItems = category.item_ids.slice(start, start + PAGE_SIZE);
+        if (pageItems.length === 0) return { items: [] as OtProductCard[], nextPage: undefined };
+        const items = await fetchItemsByIds(pageItems);
+        const nextPage = start + PAGE_SIZE < category.item_ids.length ? pageParam + 1 : undefined;
+        return { items, nextPage };
       }
-      return [];
+
+      return { items: [] as OtProductCard[], nextPage: undefined };
     },
-    enabled: !!category && (!!category.external_id || (category.item_ids?.length || 0) > 0),
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    enabled: !!category && hasProducts,
     staleTime: 1000 * 60 * 10,
   });
 
-  const totalPages = category?.item_ids?.length && !category.external_id
-    ? Math.ceil(category.item_ids.length / PAGE_SIZE)
-    : 0;
+  // Flatten all pages into single product list
+  const allProducts = useMemo(
+    () => infiniteData?.pages.flatMap((p) => p.items) || [],
+    [infiniteData]
+  );
 
-  const browseItemsKey = (products || []).map(p => p.id).join(",");
-  const browseTitlesList = useMemo(() => (products || []).map(p => p.title), [browseItemsKey]);
+  // ─── Intersection Observer for auto-loading ───────────────
+  const observerCallback = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(observerCallback, {
+      rootMargin: "400px",
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [observerCallback]);
+
+  // Translations
+  const browseItemsKey = allProducts.map((p) => p.id).join(",");
+  const browseTitlesList = useMemo(() => allProducts.map((p) => p.title), [browseItemsKey]);
   const browseTranslations = useTranslatedTitles(browseTitlesList);
 
   const displayName = category?.name_mn || category?.name_en || category?.name_ru || resolvedSlug;
@@ -175,7 +232,6 @@ export default function OtCategoryBrowse() {
   return (
     <div className="py-4 md:py-8 animate-fade-in">
       <div className="px-3 md:container mb-6">
-        {/* Breadcrumbs */}
         {category && allCategories && (
           <CategoryBreadcrumbs category={category} allCategories={allCategories} />
         )}
@@ -211,42 +267,31 @@ export default function OtCategoryBrowse() {
 
       {/* Products */}
       {loadingProducts ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        </div>
-      ) : products && products.length > 0 ? (
+        <ProductGridSkeleton count={12} />
+      ) : allProducts.length > 0 ? (
         <>
-          <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
-            {products.map((product) => (
+          <div className="px-2 md:container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-4">
+            {allProducts.map((product) => (
               <OtProductCardComponent key={product.id} product={product} translatedTitle={browseTranslations[product.title]} />
             ))}
           </div>
-          {/* Pagination for item_ids-based categories */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 py-6">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                ← Өмнөх
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {page + 1} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages - 1}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Дараах →
-              </Button>
+
+          {/* Sentinel for infinite scroll */}
+          <div ref={sentinelRef} className="h-1" />
+
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           )}
+
+          {!hasNextPage && allProducts.length > PAGE_SIZE && (
+            <p className="text-center text-sm text-muted-foreground py-6">
+              Бүх бараа ачааллаа
+            </p>
+          )}
         </>
-      ) : (category?.external_id || (category?.item_ids?.length || 0) > 0) ? (
+      ) : hasProducts ? (
         <div className="text-center py-12 text-muted-foreground">
           <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
           <p>Бараа олдсонгүй</p>
@@ -300,7 +345,6 @@ function SubcategoryDropdownBrowse({
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Хайх..."
                     className="pl-9 h-9 rounded-lg bg-muted border-0 text-sm"
-                    autoFocus
                   />
                 </div>
               </div>
