@@ -321,17 +321,32 @@ function HistoryCard({
               {config.label}
             </div>
           )}
-          {/* Remove button */}
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onRemove();
-            }}
-            className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-background/80 backdrop-blur-sm rounded-full p-1.5 transition-opacity"
-          >
-            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-          </button>
+          {/* Remove button - always visible with confirmation */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className="absolute top-1.5 right-1.5 bg-background/80 backdrop-blur-sm rounded-full p-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Устгах уу?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Энэ барааг үзсэн түүхээсээ устгахдаа итгэлтэй байна уу?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Үгүй</AlertDialogCancel>
+                <AlertDialogAction onClick={onRemove}>Тийм</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
         <div className="p-2.5 space-y-1">
           <p className="text-xs text-foreground line-clamp-2 leading-tight min-h-[2rem]">
