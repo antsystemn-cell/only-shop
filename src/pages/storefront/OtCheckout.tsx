@@ -1046,6 +1046,35 @@ export default function OtCheckout() {
           )}
         </div>
       </div>
+
+      {/* Guest Phone Dialog */}
+      <Dialog open={showGuestPhoneDialog} onOpenChange={setShowGuestPhoneDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Утасны дугаар оруулна уу</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Захиалгын мэдэгдэл хүлээн авахын тулд утасны дугаараа оруулна уу.
+          </p>
+          <Input
+            placeholder="Утасны дугаар (8 оронтой)"
+            value={guestPhone}
+            onChange={(e) => setGuestPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
+            maxLength={8}
+            type="tel"
+          />
+          <Button
+            className="w-full"
+            disabled={guestPhone.length !== 8}
+            onClick={() => {
+              setShowGuestPhoneDialog(false);
+              handleCreateOrder(guestPhone);
+            }}
+          >
+            Баталгаажуулах
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
