@@ -72,7 +72,8 @@ function CategoryBreadcrumbs({ category, allCategories }: { category: OtCat; all
 }
 
 export default function OtCategoryBrowse() {
-  const { internalId } = useParams<{ internalId: string }>();
+  const { internalId, slug } = useParams<{ internalId?: string; slug?: string }>();
+  const resolvedSlug = internalId || slug;
   const navigate = useNavigate();
   const { apiProvider } = useProviderSafe();
   const [page, setPage] = useState(0);

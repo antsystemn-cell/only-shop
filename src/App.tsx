@@ -117,6 +117,7 @@ const App = () => (
                 <Route path="/ot" element={<OtShop />} />
                 <Route path="/ot/category/:categoryId" element={<OtCategory />} />
                 <Route path="/ot/browse/:internalId" element={<OtCategoryBrowse />} />
+                <Route path="/category/:slug" element={<OtCategoryBrowse />} />
                 <Route path="/ot/allcats" element={<Navigate to="/categories" replace />} />
                 <Route path="/ot/provider/:slug" element={<ProviderPage />} />
               <Route path="/ot/product/:itemId" element={<OtProductDetail />} />
