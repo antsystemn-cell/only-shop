@@ -305,9 +305,18 @@ export default function OtCheckout() {
 
   // ─── Step 5: Create Order ─────────────────────────────────
 
-  const handleCreateOrder = async () => {
+  const handleCreateOrder = async (overrideGuestPhone?: string) => {
     try {
       setIsProcessing(true);
+
+      // If guest user and no phone provided, show dialog
+      if (!user && !overrideGuestPhone && !guestPhone) {
+        setShowGuestPhoneDialog(true);
+        setIsProcessing(false);
+        return;
+      }
+
+      const effectiveGuestPhone = overrideGuestPhone || guestPhone;
 
       if (items.length === 0) {
         toast.error("Сагс хоосон байна. Бараа нэмнэ үү.");
