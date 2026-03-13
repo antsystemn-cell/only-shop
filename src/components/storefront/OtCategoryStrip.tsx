@@ -3,6 +3,7 @@ import { Folder } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProviderSafe } from "@/contexts/ProviderContext";
+import { getCategoryPath } from "@/utils/categoryUrl";
 
 interface OtCat {
   id: string;
@@ -12,6 +13,7 @@ interface OtCat {
   icon_url: string | null;
   provider_type: string | null;
   item_ids: string[];
+  seo_alias: string | null;
 }
 
 export function OtCategoryStrip() {
@@ -22,7 +24,7 @@ export function OtCategoryStrip() {
     queryFn: async () => {
       let query = supabase
         .from("ot_categories")
-        .select("id, internal_id, name_mn, name_en, icon_url, provider_type, item_ids")
+        .select("id, internal_id, name_mn, name_en, icon_url, provider_type, item_ids, seo_alias")
         .is("parent_internal_id", null)
         .eq("is_active", true)
         .order("display_order");
@@ -45,7 +47,7 @@ export function OtCategoryStrip() {
           {categories.map((cat) => (
             <Link
               key={cat.internal_id}
-              to={`/ot/browse/${cat.internal_id}`}
+              to={getCategoryPath(cat)}
               className="group flex flex-col items-center gap-2 md:gap-3 min-w-[70px] md:min-w-[110px] shrink-0"
             >
               <div className="w-14 h-14 md:w-20 md:h-20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">

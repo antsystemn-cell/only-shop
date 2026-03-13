@@ -500,7 +500,7 @@ export default function ProviderPage() {
       >
         {activeCategoryId && <SubcategoryDropdown parentId={activeCategoryId} onSelect={(id) => {
           // Navigate to browse page for the selected subcategory
-          window.location.href = `/ot/browse/${id}`;
+          window.location.href = `/category/${id}`;
         }} />}
 
         <InfiniteProductFeed

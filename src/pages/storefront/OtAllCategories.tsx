@@ -7,6 +7,7 @@ import { useProviderSafe } from "@/contexts/ProviderContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { getCategoryPath } from "@/utils/categoryUrl";
 
 interface OtCat {
   id: string;
@@ -18,6 +19,7 @@ interface OtCat {
   provider_type: string | null;
   parent_internal_id: string | null;
   depth: number | null;
+  seo_alias: string | null;
 }
 
 // ─── Recursive Category Node ────────────────────────────────
@@ -87,7 +89,7 @@ function CategoryNode({
 
         {/* Name as link */}
         <Link
-          to={`/ot/browse/${cat.internal_id}`}
+          to={getCategoryPath(cat)}
           className={`flex-1 text-sm group-hover:text-primary transition-colors truncate ${
             level === 0 ? "font-semibold" : "font-medium text-muted-foreground"
           }`}
@@ -146,7 +148,7 @@ function CategoryGrid({ categories, childrenMap }: { categories: OtCat[]; childr
         return (
           <Link
             key={cat.internal_id}
-            to={`/ot/browse/${cat.internal_id}`}
+            to={getCategoryPath(cat)}
             className="group border rounded-xl p-4 hover:border-primary/30 hover:shadow-sm transition-all bg-card"
           >
             <div className="flex items-start gap-3 mb-3">
@@ -196,7 +198,7 @@ export default function OtAllCategories() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ot_categories")
-        .select("id, internal_id, external_id, name_mn, name_en, icon_url, provider_type, parent_internal_id, depth")
+        .select("id, internal_id, external_id, name_mn, name_en, icon_url, provider_type, parent_internal_id, depth, seo_alias")
         .eq("is_active", true)
         .order("display_order");
       if (error) throw error;
