@@ -267,7 +267,7 @@ function SubcategoryDropdownBrowse({
   onSelect,
 }: {
   subcategories: OtCat[];
-  onSelect: (internalId: string) => void;
+  onSelect: (cat: OtCat) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
