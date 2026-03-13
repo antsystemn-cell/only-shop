@@ -118,20 +118,21 @@ export default function OtCategoryBrowse() {
     enabled: !!resolvedSlug,
   });
 
-  // Fetch subcategories
+  // Fetch subcategories using resolved category's internal_id
+  const categoryInternalId = category?.internal_id;
   const { data: subcategories } = useQuery({
-    queryKey: ["ot-subcategories-db", internalId],
+    queryKey: ["ot-subcategories-db", categoryInternalId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ot_categories")
-        .select("*")
-        .eq("parent_internal_id", internalId!)
+        .select("*, seo_alias")
+        .eq("parent_internal_id", categoryInternalId!)
         .eq("is_active", true)
         .order("display_order");
       if (error) throw error;
       return data as OtCat[];
     },
-    enabled: !!internalId,
+    enabled: !!categoryInternalId,
   });
 
   // Fetch products — either via API search (external_id means it has an API category) or by item_ids batch fetch
