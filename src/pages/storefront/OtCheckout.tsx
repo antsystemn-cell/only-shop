@@ -571,8 +571,19 @@ export default function OtCheckout() {
                         </Button>
                       </div>
                     )}
-                    <div className="flex gap-2 justify-center">
+                    <div className="flex gap-2 justify-center flex-wrap">
                       <Button onClick={runCheck} disabled={checkingStatus.isRunning}>Дахин шалгах</Button>
+                      {checkError === "TIMEOUT" && (
+                        <Button
+                          variant="default"
+                          onClick={() => {
+                            setCheckError(null);
+                            setCheckResult({ _skipped: true });
+                          }}
+                        >
+                          Шалгалтыг алгасаад үргэлжлүүлэх
+                        </Button>
+                      )}
                       <Button variant="outline" onClick={() => navigate("/ot")}>Сагс руу буцах</Button>
                     </div>
                   </div>
