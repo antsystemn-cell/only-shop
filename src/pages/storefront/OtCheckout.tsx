@@ -193,7 +193,7 @@ export default function OtCheckout() {
       if (msg === "EMPTY_BASKET") {
         setCheckError("Сагс хоосон байна. Бараа нэмнэ үү.");
       } else if (msg === "CHECK_TIMEOUT") {
-        setCheckError("Сагс шалгалт удааширлаа. Дахин оролдоно уу.");
+        setCheckError("TIMEOUT");
       } else if (msg.includes("SessionExpired")) {
         setCheckError("Сессийн хугацаа дууссан. Дахин оролдоно уу.");
       } else if (msg === "BASKET_CHECK_NO_ACTIVITY_ID") {
