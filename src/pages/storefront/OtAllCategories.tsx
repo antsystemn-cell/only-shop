@@ -88,7 +88,7 @@ function CategoryNode({
 
         {/* Name as link */}
         <Link
-          to={`/ot/browse/${cat.internal_id}`}
+          to={getCategoryPath(cat)}
           className={`flex-1 text-sm group-hover:text-primary transition-colors truncate ${
             level === 0 ? "font-semibold" : "font-medium text-muted-foreground"
           }`}
