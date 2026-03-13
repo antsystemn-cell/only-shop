@@ -12,6 +12,8 @@ import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { RequireAuth } from "./components/storefront/RequireAuth";
 import { RecentlyViewedLoginMerge } from "./components/storefront/RecentlyViewedLoginMerge";
+import { PWAUpdatePrompt } from "./components/pwa/PWAUpdatePrompt";
+import { PWAInstallBanner } from "./components/pwa/PWAInstallBanner";
 
 // Storefront imports
 import { StorefrontLayout } from "./components/storefront/StorefrontLayout";
