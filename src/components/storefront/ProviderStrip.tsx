@@ -89,6 +89,7 @@ export function ProviderStrip() {
   const getIsActive = (item: StripItem) => {
     if (item.slug === "home") return selectedProvider === "all" && location.pathname === "/";
     if (item.provider_type === "Local" || item.slug === "shop") return location.pathname === "/shop";
+    if (item.provider_type === "Amazon") return location.pathname.startsWith("/amazon");
     return toProviderFilter(item.provider_type) === selectedProvider;
   };
 
