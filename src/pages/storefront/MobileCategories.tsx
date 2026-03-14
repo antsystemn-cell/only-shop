@@ -10,7 +10,7 @@ import { useProviderSafe } from "@/contexts/ProviderContext";
 import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
 import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
 
-type ProviderTab = "Poizon" | "Taobao";
+type ProviderTab = "Poizon" | "Taobao" | "Amazon";
 
 interface OtCat {
   id: string;
@@ -25,6 +25,7 @@ interface OtCat {
 }
 
 const POIZON_ROOT_ID = "otc-1465";
+const AMAZON_ROOT_ID = "otc-1974";
 const CAT_FIELDS = "id, internal_id, name_mn, name_en, icon_url, provider_type, parent_internal_id, external_id, item_ids";
 const DISPLAY_PAGE_SIZE = 20; // Show 20 items per "page"
 const FETCH_MULTIPLIER = 3; // Fetch 3x what we display
@@ -51,6 +52,8 @@ export default function MobileCategories() {
 
       if (activeTab === "Poizon") {
         query = query.eq("parent_internal_id", POIZON_ROOT_ID);
+      } else if (activeTab === "Amazon") {
+        query = query.eq("parent_internal_id", AMAZON_ROOT_ID);
       } else {
         query = query.eq("provider_type", activeTab).is("parent_internal_id", null);
       }
@@ -101,7 +104,12 @@ export default function MobileCategories() {
   });
 
   // Determine which category to load products for
-  const productCategory = selectedSubCategory || selectedCategory || (activeTab === "Poizon" ? { internal_id: POIZON_ROOT_ID, external_id: POIZON_ROOT_ID, provider_type: "Poizon", item_ids: null } as OtCat : null);
+  const defaultCategory: OtCat | null = activeTab === "Poizon"
+    ? { internal_id: POIZON_ROOT_ID, external_id: POIZON_ROOT_ID, provider_type: "Poizon", item_ids: null } as OtCat
+    : activeTab === "Amazon"
+    ? { internal_id: AMAZON_ROOT_ID, external_id: AMAZON_ROOT_ID, provider_type: "Amazon", item_ids: null } as OtCat
+    : null;
+  const productCategory = selectedSubCategory || selectedCategory || defaultCategory;
 
   // Infinite query: fetch 3x pages, display progressively
   const {
@@ -212,6 +220,7 @@ export default function MobileCategories() {
   const tabs: { key: ProviderTab; label: string }[] = [
     { key: "Poizon", label: "Poizon (Dewu)" },
     { key: "Taobao", label: "Taobao" },
+    { key: "Amazon", label: "Amazon" },
   ];
 
   const hasSubcats = subcategories && subcategories.length > 0;
