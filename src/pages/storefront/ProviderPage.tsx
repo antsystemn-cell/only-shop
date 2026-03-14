@@ -161,6 +161,7 @@ function SubcategoryDropdown({
 // ─── Category metadata type ─────────────────────────────────
 interface CategoryMeta {
   internal_id: string;
+  external_id?: string | null;
   has_api: boolean; // true if category can be searched via OT API (has external_id)
   item_ids?: string[] | null;
 }
