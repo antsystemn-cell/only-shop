@@ -206,9 +206,35 @@ serve(async (req) => {
       console.log("[sync-ot-categories] First cat sample:", JSON.stringify(catArray[0]).substring(0, 300));
     }
 
-    // Parse categories recursively
+    // Parse root categories
     const categories = parseCategoriesJson(catArray, null, 0, null);
-    console.log("[sync-ot-categories] Total parsed:", categories.length);
+    console.log("[sync-ot-categories] Root parsed:", categories.length);
+
+    // Fetch subcategories for parent categories (OTAPI doesn't include children inline)
+    const parentCats = categories.filter((c) => c.is_parent_on_provider && c.depth === 0);
+    console.log("[sync-ot-categories] Parent categories to fetch subs:", parentCats.length);
+
+    for (const parentCat of parentCats) {
+      try {
+        const subResponse = await callOtApi("GetCategorySubcategoryInfoList", {
+          instanceKey: OT_API_KEY,
+          language: "khk",
+          parentCategoryId: parentCat.internal_id,
+        });
+        const subContent = subResponse.CategoryInfoList?.Content?.Item
+          || subResponse.CategoryInfoList?.Content
+          || [];
+        const subArray = ensureArray(subContent);
+        if (subArray.length > 0) {
+          const subCats = parseCategoriesJson(subArray, parentCat.internal_id, 1, parentCat.provider_type);
+          categories.push(...subCats);
+          console.log(`[sync-ot-categories] ${parentCat.internal_id} (${parentCat.name_mn}): ${subCats.length} subcategories`);
+        }
+      } catch (err) {
+        console.error(`[sync-ot-categories] Error fetching subs for ${parentCat.internal_id}:`, err);
+      }
+    }
+    console.log("[sync-ot-categories] Total with subs:", categories.length);
 
     if (categories.length === 0) {
       return new Response(
