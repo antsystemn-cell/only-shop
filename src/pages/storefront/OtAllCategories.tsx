@@ -164,7 +164,7 @@ function CategoryGrid({ categories, childrenMap }: { categories: OtCat[]; childr
                   {name}
                 </h3>
                 {cat.provider_type && (
-                  <span className={`text-[10px] ${cat.provider_type === "Poizon" ? "text-emerald-600" : "text-orange-600"}`}>
+                  <span className={`text-[10px] ${cat.provider_type === "Poizon" ? "text-emerald-600" : cat.provider_type === "Amazon" ? "text-blue-600" : "text-orange-600"}`}>
                     {cat.provider_type}
                   </span>
                 )}

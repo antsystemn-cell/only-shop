@@ -271,6 +271,11 @@ export default function Home() {
     DEFAULT_HOME_PAGE_SIZE
   );
 
+  const amazonPageSize = toPositiveInt(
+    homeShowcaseSettings?.find((s) => s.setting_key === HOME_AMAZON_COUNT_KEY)?.setting_value,
+    DEFAULT_HOME_PAGE_SIZE
+  );
+
   return (
     <div className="animate-fade-in">
       {/* Mobile search */}
@@ -304,6 +309,17 @@ export default function Home() {
           providerType="Taobao"
           slug="taobao"
           pageSize={taobaoPageSize}
+        />
+
+        {/* Amazon Section */}
+        <ProviderShowcase
+          title="Amazon USA"
+          subtitle="Америкаас шууд"
+          icon={<Globe className="h-4 w-4" />}
+          logoUrl={getProviderLogo(stripItems, "Amazon")}
+          providerType="Amazon"
+          slug="amazon"
+          pageSize={amazonPageSize}
         />
       </div>
     </div>
