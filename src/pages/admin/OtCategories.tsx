@@ -290,7 +290,11 @@ export default function OtCategories() {
           <h1 className="text-3xl font-bold">OT Категори удирдлага</h1>
           <p className="text-muted-foreground mt-1">Ангилалуудыг үүсгэх, засах, дарааллыг өөрчлөх, бараа удирдах</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={handleOtapiSync} disabled={syncing} variant="outline" className="gap-1">
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            OTAPI-аас шинэчлэх
+          </Button>
           <Button onClick={() => { setEditingCat(null); setFormOpen(true); }} variant="outline" className="gap-1">
             <Plus className="h-4 w-4" /> Категори нэмэх
           </Button>
