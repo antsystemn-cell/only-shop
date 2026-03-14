@@ -220,6 +220,7 @@ export default function MobileCategories() {
   const tabs: { key: ProviderTab; label: string }[] = [
     { key: "Poizon", label: "Poizon (Dewu)" },
     { key: "Taobao", label: "Taobao" },
+    { key: "Amazon", label: "Amazon" },
   ];
 
   const hasSubcats = subcategories && subcategories.length > 0;
