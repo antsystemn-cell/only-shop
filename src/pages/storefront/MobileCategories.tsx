@@ -25,6 +25,7 @@ interface OtCat {
 }
 
 const POIZON_ROOT_ID = "otc-1465";
+const AMAZON_ROOT_ID = "otc-1974";
 const CAT_FIELDS = "id, internal_id, name_mn, name_en, icon_url, provider_type, parent_internal_id, external_id, item_ids";
 const DISPLAY_PAGE_SIZE = 20; // Show 20 items per "page"
 const FETCH_MULTIPLIER = 3; // Fetch 3x what we display
