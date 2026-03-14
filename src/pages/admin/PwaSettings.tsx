@@ -364,3 +364,43 @@ function BannerPreview({ config }: { config: PwaConfig }) {
     </div>
   );
 }
+
+function UpdatePreview({ config }: { config: PwaConfig }) {
+  const radiusMap = { sm: "0.25rem", md: "0.375rem", lg: "0.5rem", xl: "0.75rem", "2xl": "1rem" };
+  const radius = radiusMap[config.border_radius] || "1rem";
+
+  return (
+    <div
+      className="w-full max-w-sm shadow-lg p-4 flex items-start gap-3"
+      style={{
+        borderRadius: radius,
+        backgroundColor: config.bg_color || "hsl(var(--card))",
+        color: config.text_color || "hsl(var(--card-foreground))",
+      }}
+    >
+      <div className="shrink-0 w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6M5.64 18.36A9 9 0 1018.36 5.64" />
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold">{config.update_title || "Шинэ хувилбар бэлэн боллоо"}</p>
+        <p className="text-xs opacity-80 mt-0.5">{config.update_subtitle || "Шинэ хувилбараа суулгаарай."}</p>
+        <div className="flex gap-2 mt-3">
+          <button
+            className="text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors cursor-default"
+            style={{
+              backgroundColor: config.button_bg_color || (config.text_color ? `${config.text_color}33` : "hsl(var(--secondary-foreground) / 0.2)"),
+              color: config.button_text_color || "inherit",
+            }}
+          >
+            {config.update_button_text || "Шинэчлэх"}
+          </button>
+          <button className="text-xs font-medium px-3 py-1.5 rounded-lg cursor-default opacity-80">
+            {config.update_later_text || "Дараа"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
