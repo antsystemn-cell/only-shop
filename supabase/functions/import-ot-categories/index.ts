@@ -245,38 +245,45 @@ serve(async (req) => {
     const mergeMode = body.merge !== false;
 
     if (mergeMode) {
-      console.log("MERGE mode: updating existing categories with XML overlay data");
+      console.log("MERGE mode: overlaying XML data (item_ids, seo_alias, source_type) onto existing DB");
+      
+      // Only process categories that have meaningful overlay data
+      const overlays = categories.filter(c => c.item_ids.length > 0 || c.seo_alias || c.source_type === "manual");
+      console.log(`Processing ${overlays.length} categories with overlay data`);
+      
       let updated = 0;
-      let inserted = 0;
+      let notFound = 0;
 
-      for (const cat of categories) {
-        // Try to update existing category by internal_id
+      // Process in small batches to avoid timeout
+      for (const cat of overlays) {
         const updatePayload: Record<string, unknown> = {};
         if (cat.item_ids.length > 0) updatePayload.item_ids = cat.item_ids;
         if (cat.seo_alias) updatePayload.seo_alias = cat.seo_alias;
         if (cat.name_mn) updatePayload.name_mn = cat.name_mn;
-        if (cat.name_en) updatePayload.name_en = cat.name_en;
-        if (cat.name_ru) updatePayload.name_ru = cat.name_ru;
-        if (cat.icon_url) updatePayload.icon_url = cat.icon_url;
-        if (cat.icon_class) updatePayload.icon_class = cat.icon_class;
-        // Always set source_type and visibility for classification
         updatePayload.source_type = cat.source_type;
         if (cat.source_type === "manual") updatePayload.is_active = false;
 
-        const { data: existing } = await supabase
+        const { data, error } = await supabase
           .from("ot_categories")
-          .select("id")
+          .update(updatePayload)
           .eq("internal_id", cat.internal_id)
-          .maybeSingle();
+          .select("id");
 
-        if (existing) {
-          await supabase.from("ot_categories").update(updatePayload).eq("id", existing.id);
+        if (data && data.length > 0) {
           updated++;
         } else {
-          // Category not in DB (not from OTAPI sync) - insert it
-          await supabase.from("ot_categories").insert([cat]);
-          inserted++;
+          notFound++;
+          console.log(`Not found: ${cat.internal_id} (${cat.name_mn})`);
         }
+      }
+
+      // Also update SEO aliases for official categories from XML
+      const seoOnly = categories.filter(c => c.seo_alias && c.source_type !== "manual" && !overlays.includes(c));
+      for (const cat of seoOnly) {
+        await supabase
+          .from("ot_categories")
+          .update({ seo_alias: cat.seo_alias })
+          .eq("internal_id", cat.internal_id);
       }
 
       return new Response(
@@ -284,12 +291,12 @@ serve(async (req) => {
           success: true,
           mode: "merge",
           total_parsed: categories.length,
+          overlays_processed: overlays.length,
           updated,
-          inserted,
+          not_found: notFound,
+          seo_updates: seoOnly.length,
           manual_count: manualCount,
-          official_count: officialCount,
           with_items: withItems,
-          with_seo: withSeo,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
