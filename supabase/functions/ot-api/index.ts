@@ -459,6 +459,18 @@ async function routeAction(action: string, apiKey: string, params: Record<string
     case "getProviderCommonSettings":
       return callOtApi("GetProviderCommonSettings", { ...baseMeta, providerType: params.providerType });
 
+    // ── Provider Category Tree (for Amazon, etc.) ──
+    case "getProviderInfo":
+      return callOtApi("GetProviderInfo", { ...baseMeta, providerType: params.providerType });
+    case "getProviderCategorySubcategories":
+      return callOtApi("GetProviderCategorySubcategories", { ...baseMeta, categoryId: params.categoryId });
+    case "getProviderCategory":
+      return callOtApi("GetProviderCategory", { ...baseMeta, categoryId: params.categoryId });
+    case "getProviderCategoryRootPath":
+      return callOtApi("GetProviderCategoryRootPath", { ...baseMeta, categoryId: params.categoryId });
+    case "getProviderBriefCatalog":
+      return callOtApi("GetProviderBriefCatalog", { ...baseMeta, providerType: params.providerType });
+
     // ── Rating Lists / Element Collections ──
     case "getAutoRatingListsSettings":
       return callOtApi("GetAutoRatingListsSettings", baseMeta);
