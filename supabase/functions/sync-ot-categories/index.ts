@@ -178,13 +178,20 @@ serve(async (req) => {
       throw new Error(`OTAPI Error: ${response.ErrorCode} - ${response.ErrorDescription}`);
     }
 
-    // Extract category list from response
-    const content = response.Result?.Content?.Item
+    // Extract category list from response - OTAPI returns CategoryInfoList at top level
+    const content = response.CategoryInfoList?.Content?.Item
+      || response.CategoryInfoList?.Items
+      || response.CategoryInfoList?.Content
+      || response.Result?.Content?.Item
       || response.Result?.Items
-      || response.CategoryInfoList?.Content?.Item
-      || response.Content?.Item
       || ensureArray(response.Result?.Content)
       || [];
+
+    console.log("[sync-ot-categories] CategoryInfoList keys:", response.CategoryInfoList ? Object.keys(response.CategoryInfoList) : "N/A");
+    if (response.CategoryInfoList?.Content) {
+      console.log("[sync-ot-categories] Content keys:", Object.keys(response.CategoryInfoList.Content));
+      console.log("[sync-ot-categories] Content sample:", JSON.stringify(response.CategoryInfoList.Content).substring(0, 500));
+    }
 
     const catArray = ensureArray(content);
     console.log("[sync-ot-categories] Root categories found:", catArray.length);
