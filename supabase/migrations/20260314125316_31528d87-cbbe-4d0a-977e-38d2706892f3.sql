@@ -1,0 +1,1 @@
+UPDATE ot_categories SET is_active = true WHERE source_type = 'manual' AND is_active = false;
