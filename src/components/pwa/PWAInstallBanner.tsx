@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usePWAInstall } from '@/hooks/usePWA';
 import { usePwaConfig } from '@/hooks/usePwaConfig';
-import { Download, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function PWAInstallBanner() {
