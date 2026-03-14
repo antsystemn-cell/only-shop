@@ -186,9 +186,9 @@ function InfiniteProductFeed({
   const isCurated = !!(activeMeta && activeMeta.item_ids && activeMeta.item_ids.length > 0 && !activeMeta.has_api);
 
   // For "All" tab, only use categories that can be searched via API
-  // Use internal_id (otc-XXX) for API search as it works for both Taobao and Poizon
+  // Use external_id for OTAPI search (the actual provider category ID)
   const apiCategoryIds = useMemo(
-    () => categoryMetas.filter((m) => m.has_api).map((m) => m.internal_id),
+    () => categoryMetas.filter((m) => m.has_api && m.external_id).map((m) => m.external_id!),
     [categoryMetas]
   );
 
