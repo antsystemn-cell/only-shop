@@ -67,13 +67,28 @@ export default function OtCategories() {
   const { data: categories, isLoading } = useQuery({
     queryKey: ["admin", "ot-categories"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ot_categories")
-        .select("*")
-        .order("depth")
-        .order("display_order");
-      if (error) throw error;
-      return (data || []) as OtCategory[];
+      // Fetch all categories in batches to avoid the 1000-row default limit
+      const allData: OtCategory[] = [];
+      const batchSize = 1000;
+      let from = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("ot_categories")
+          .select("*")
+          .order("depth")
+          .order("display_order")
+          .range(from, from + batchSize - 1);
+        if (error) throw error;
+        if (data && data.length > 0) {
+          allData.push(...(data as OtCategory[]));
+          from += batchSize;
+          hasMore = data.length === batchSize;
+        } else {
+          hasMore = false;
+        }
+      }
+      return allData;
     },
   });
 
