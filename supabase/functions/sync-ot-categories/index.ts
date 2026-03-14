@@ -6,8 +6,51 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const OT_API_BASE = "https://otapi.net/service";
+const OT_API_BASE = "https://otapi.net/service-json";
 
+// ─── Signature ──────────────────────────────────────────────
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function getTimestamp(): string {
+  const now = new Date();
+  return (
+    now.getUTCFullYear().toString() +
+    String(now.getUTCMonth() + 1).padStart(2, "0") +
+    String(now.getUTCDate()).padStart(2, "0") +
+    String(now.getUTCHours()).padStart(2, "0") +
+    String(now.getUTCMinutes()).padStart(2, "0") +
+    String(now.getUTCSeconds()).padStart(2, "0")
+  );
+}
+
+async function callOtApi(methodName: string, queryParams: Record<string, string>) {
+  const OT_API_SECRET = Deno.env.get("OT_API_SECRET");
+  const timestamp = getTimestamp();
+  const allParams: Record<string, string> = {};
+  for (const [key, value] of Object.entries(queryParams)) {
+    if (value !== undefined && value !== null && value !== "") allParams[key] = value;
+  }
+  allParams.timestamp = timestamp;
+
+  if (OT_API_SECRET) {
+    const sortedKeys = Object.keys(allParams).sort();
+    const concatenatedValues = sortedKeys.map((k) => allParams[k]).join("");
+    const sigInput = methodName + concatenatedValues + OT_API_SECRET;
+    allParams.signature = await sha256Hex(sigInput);
+  }
+
+  const url = new URL(`${OT_API_BASE}/${methodName}`);
+  for (const [key, value] of Object.entries(allParams)) url.searchParams.set(key, value);
+
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(30000) });
+  return await res.json();
+}
+
+// ─── Category Parsing (from JSON response) ──────────────────
 interface ParsedCategory {
   internal_id: string;
   external_id: string | null;
@@ -26,104 +69,62 @@ interface ParsedCategory {
   display_order: number;
 }
 
-function extractTag(xml: string, tag: string): string | null {
-  const regex = new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, "i");
-  const match = xml.match(regex);
-  return match ? match[1].trim() : null;
+function ensureArray(val: unknown): any[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  return [val];
 }
 
-function extractNameByLang(namesBlock: string, lang: string): string | null {
-  const regex = new RegExp(`<Name\\s+Language="${lang}"[^>]*>([^<]*)</Name>`, "i");
-  const match = namesBlock.match(regex);
-  return match && match[1].trim() ? match[1].trim() : null;
-}
-
-function extractItemIds(xml: string): string[] {
-  const ids: string[] = [];
-  const ratingListMatch = xml.match(/<ItemRatingList>([\s\S]*?)<\/ItemRatingList>/);
-  if (ratingListMatch) {
-    const idRegex = /<Id>([^<]+)<\/Id>/g;
-    let m;
-    while ((m = idRegex.exec(ratingListMatch[1])) !== null) {
-      ids.push(m[1].trim());
-    }
+function extractName(names: any, lang: string): string | null {
+  if (!names) return null;
+  const arr = ensureArray(names.Name || names);
+  for (const n of arr) {
+    if (typeof n === "object" && n.Language === lang && n.Value) return n.Value;
+    if (typeof n === "string") return n;
   }
-  return ids;
+  return null;
 }
 
-function parseCategories(
-  xml: string,
+function parseCategoriesJson(
+  cats: any[],
   parentId: string | null,
   depth: number,
   inheritedProvider: string | null
 ): ParsedCategory[] {
   const results: ParsedCategory[] = [];
-  let pos = 0;
   let displayOrder = 0;
 
-  while (pos < xml.length) {
-    const catStart = xml.indexOf("<Category", pos);
-    if (catStart === -1) break;
-
-    let nestLevel = 0;
-    let i = catStart;
-    let catEnd = -1;
-
-    while (i < xml.length) {
-      const nextOpen = xml.indexOf("<Category", i + 1);
-      const nextClose = xml.indexOf("</Category>", i + 1);
-      if (nextClose === -1) break;
-      if (nextOpen !== -1 && nextOpen < nextClose) {
-        nestLevel++;
-        i = nextOpen;
-      } else {
-        if (nestLevel === 0) {
-          catEnd = nextClose + "</Category>".length;
-          break;
-        }
-        nestLevel--;
-        i = nextClose;
-      }
-    }
-
-    if (catEnd === -1) break;
-    const catXml = xml.substring(catStart, catEnd);
-    pos = catEnd;
-
-    const openTagEnd = catXml.indexOf(">");
-    const openTag = catXml.substring(0, openTagEnd + 1);
-    const isParentOnProvider = openTag.includes('IsParentOnProvider="true"');
-
-    const internalId = extractTag(catXml, "InternalId");
+  for (const cat of cats) {
+    const internalId = cat.InternalId || cat.Id?.Value || cat.Id;
     if (!internalId) continue;
 
-    const externalId = extractTag(catXml, "ExternalId");
-    const namesMatch = catXml.match(/<Names>([\s\S]*?)<\/Names>/);
-    let nameMn: string | null = null, nameEn: string | null = null,
-        nameRu: string | null = null, nameZh: string | null = null;
+    const externalId = cat.ExternalId || null;
+    const names = cat.Names;
+    const nameMn = extractName(names, "khk");
+    const nameEn = extractName(names, "en");
+    const nameRu = extractName(names, "ru");
+    const nameZh = extractName(names, "zh-chs");
 
-    if (namesMatch) {
-      nameMn = extractNameByLang(namesMatch[1], "khk");
-      nameEn = extractNameByLang(namesMatch[1], "en");
-      nameRu = extractNameByLang(namesMatch[1], "ru");
-      nameZh = extractNameByLang(namesMatch[1], "zh-chs");
+    const iconUrl = cat.IconImageUrl || cat.IconUrl || null;
+    const iconClass = cat.MetaData?.Items?.Item
+      ? ensureArray(cat.MetaData.Items.Item).find((i: any) => i.Name === "CategoryIconClass")?.Value || null
+      : null;
+
+    const providerType = cat.ProviderType || inheritedProvider;
+    const seoAlias = cat.Alias || cat.SeoAlias || null;
+    const isParentOnProvider = cat.IsParentOnProvider === true;
+
+    // Extract item IDs from rating list
+    const itemIds: string[] = [];
+    const ratingList = cat.ItemRatingList?.Content?.Item || cat.ItemRatingList?.Items || [];
+    for (const item of ensureArray(ratingList)) {
+      const id = typeof item === "string" ? item : item?.Id?.Value || item?.Id || item?.Value;
+      if (id) itemIds.push(String(id));
     }
 
-    const iconUrl = extractTag(catXml, "IconImageUrl");
-    let iconClass: string | null = null;
-    const metaMatch = catXml.match(/<Item\s+Name="CategoryIconClass"[^>]*>([^<]*)<\/Item>/);
-    if (metaMatch && metaMatch[1].trim()) iconClass = metaMatch[1].trim();
-
-    const providerType = extractTag(catXml, "ProviderType") || inheritedProvider;
-    const seoAlias = extractTag(catXml, "Alias");
-
-    const childrenMatch = catXml.match(/<Children>([\s\S]*)<\/Children>/);
-    const catXmlNoChildren = childrenMatch ? catXml.replace(childrenMatch[0], "") : catXml;
-    const itemIds = extractItemIds(catXmlNoChildren);
-
     results.push({
-      internal_id: internalId,
-      external_id: externalId,
+      internal_id: String(internalId),
+      external_id: externalId ? String(externalId) : null,
       parent_internal_id: parentId,
       name_mn: nameMn,
       name_en: nameEn,
@@ -139,8 +140,11 @@ function parseCategories(
       display_order: displayOrder++,
     });
 
-    if (childrenMatch) {
-      results.push(...parseCategories(childrenMatch[1], internalId, depth + 1, providerType));
+    // Parse children
+    const children = cat.Children?.Content?.Item || cat.Children?.Items || cat.ChildCategories || [];
+    const childArr = ensureArray(children);
+    if (childArr.length > 0) {
+      results.push(...parseCategoriesJson(childArr, String(internalId), depth + 1, providerType));
     }
   }
 
@@ -160,27 +164,50 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Fetch categories XML from OTAPI
-    const apiUrl = `${OT_API_BASE}/GetRootCategoryInfoList?instanceKey=${OT_API_KEY}&language=khk`;
-    console.log("[sync-ot-categories] Fetching from:", apiUrl.replace(OT_API_KEY, "***"));
-    const response = await fetch(apiUrl);
-    if (!response.ok) throw new Error(`OTAPI returned ${response.status}`);
-    const xmlContent = await response.text();
-    console.log("[sync-ot-categories] Response length:", xmlContent.length);
-    console.log("[sync-ot-categories] Preview:", xmlContent.substring(0, 500));
+    // Fetch categories from OTAPI using signed JSON API
+    console.log("[sync-ot-categories] Fetching from OTAPI...");
+    const response = await callOtApi("GetRootCategoryInfoList", {
+      instanceKey: OT_API_KEY,
+      language: "khk",
+    });
 
-    // Parse categories
-    const categories = parseCategories(xmlContent, null, 0, null);
-    console.log("[sync-ot-categories] Parsed:", categories.length, "categories");
+    console.log("[sync-ot-categories] OTAPI response keys:", Object.keys(response));
+
+    // Handle error
+    if (response.ErrorCode && response.ErrorCode !== "Ok") {
+      throw new Error(`OTAPI Error: ${response.ErrorCode} - ${response.ErrorDescription}`);
+    }
+
+    // Extract category list from response
+    const content = response.Result?.Content?.Item
+      || response.Result?.Items
+      || response.CategoryInfoList?.Content?.Item
+      || response.Content?.Item
+      || ensureArray(response.Result?.Content)
+      || [];
+
+    const catArray = ensureArray(content);
+    console.log("[sync-ot-categories] Root categories found:", catArray.length);
+    if (catArray.length > 0) {
+      console.log("[sync-ot-categories] First cat sample:", JSON.stringify(catArray[0]).substring(0, 300));
+    }
+
+    // Parse categories recursively
+    const categories = parseCategoriesJson(catArray, null, 0, null);
+    console.log("[sync-ot-categories] Total parsed:", categories.length);
 
     if (categories.length === 0) {
       return new Response(
-        JSON.stringify({ success: false, error: "No categories parsed from OTAPI response" }),
+        JSON.stringify({
+          success: false,
+          error: "No categories parsed from OTAPI response",
+          debug: { responseKeys: Object.keys(response), resultKeys: response.Result ? Object.keys(response.Result) : [] },
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Preserve existing seo_alias and display_order customizations
+    // Preserve existing admin customizations
     const { data: existingCats } = await supabase
       .from("ot_categories")
       .select("internal_id, seo_alias, display_order, icon_url, is_active");
@@ -195,7 +222,6 @@ serve(async (req) => {
       });
     }
 
-    // Merge: preserve admin customizations
     const mergedCategories = categories.map((cat) => {
       const existing = existingMap.get(cat.internal_id);
       if (existing) {
@@ -225,7 +251,6 @@ serve(async (req) => {
       inserted += batch.length;
     }
 
-    // Detect providers
     const providers = [...new Set(categories.map((c) => c.provider_type).filter(Boolean))];
 
     return new Response(
@@ -234,11 +259,11 @@ serve(async (req) => {
         total_parsed: categories.length,
         total_inserted: inserted,
         providers,
-        sample: categories.slice(0, 5).map((c) => ({
+        sample: categories.filter((c) => c.depth === 0).slice(0, 10).map((c) => ({
           id: c.internal_id,
           name: c.name_mn || c.name_en,
           provider: c.provider_type,
-          depth: c.depth,
+          children: categories.filter((ch) => ch.parent_internal_id === c.internal_id).length,
         })),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
