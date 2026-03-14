@@ -32,6 +32,10 @@ function isWarehouse(providerType?: string) {
   return providerType?.toLowerCase() === "warehouse";
 }
 
+function isAmazon(providerType?: string) {
+  return providerType?.toLowerCase() === "amazon";
+}
+
 function getProviderLabel(providerType?: string) {
   const p = providerType?.toLowerCase();
   if (p === "taobao") return "Taobao";
