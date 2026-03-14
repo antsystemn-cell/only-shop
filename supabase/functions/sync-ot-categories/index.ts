@@ -277,7 +277,12 @@ serve(async (req) => {
     const catArray = ensureArray(content);
     console.log("[sync-ot-categories] Root categories found:", catArray.length);
 
-    const categories = parseCategoriesJson(catArray, null, 0, null);
+    // Filter out Amazon provider categories from root list (they are fetched separately via fetchAmazonCategories)
+    const nonAmazonCatArray = catArray.filter((cat: any) => {
+      const providerType = cat.ProviderType || "";
+      return providerType !== "Amazon";
+    });
+    const categories = parseCategoriesJson(nonAmazonCatArray, null, 0, null);
 
     // Fetch subcategories for parent categories
     const parentCats = categories.filter((c) => c.is_parent_on_provider && c.depth === 0);
