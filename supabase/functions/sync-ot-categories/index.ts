@@ -226,8 +226,8 @@ async function fetchAmazonCategories(instanceKey: string): Promise<ParsedCategor
           display_order: displayOrder++,
         });
         
-        // Recursively fetch children (limit depth to avoid too many API calls)
-        if (hasChildren && depth < 2) {
+        // Only fetch depth 0→1 children to avoid timeout (depth 2+ loaded dynamically on frontend)
+        if (hasChildren && depth < 1) {
           await fetchSubcategories(String(id), internalId, depth + 1);
         }
       }
