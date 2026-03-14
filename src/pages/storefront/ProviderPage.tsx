@@ -161,6 +161,7 @@ function SubcategoryDropdown({
 // ─── Category metadata type ─────────────────────────────────
 interface CategoryMeta {
   internal_id: string;
+  external_id?: string | null;
   has_api: boolean; // true if category can be searched via OT API (has external_id)
   item_ids?: string[] | null;
 }
@@ -185,9 +186,9 @@ function InfiniteProductFeed({
   const isCurated = !!(activeMeta && activeMeta.item_ids && activeMeta.item_ids.length > 0 && !activeMeta.has_api);
 
   // For "All" tab, only use categories that can be searched via API
-  // Use internal_id (otc-XXX) for API search as it works for both Taobao and Poizon
+  // Use external_id for OTAPI search (the actual provider category ID)
   const apiCategoryIds = useMemo(
-    () => categoryMetas.filter((m) => m.has_api).map((m) => m.internal_id),
+    () => categoryMetas.filter((m) => m.has_api && m.external_id).map((m) => m.external_id!),
     [categoryMetas]
   );
 
@@ -234,7 +235,7 @@ function InfiniteProductFeed({
     queryFn: ({ pageParam = 0 }) => {
       let catId: string | undefined;
       if (activeHasApi && activeMeta) {
-        catId = activeMeta.internal_id;
+        catId = activeMeta.external_id || activeMeta.internal_id;
       } else if (apiCategoryIds.length > 0) {
         catId = apiCategoryIds[pageParam % apiCategoryIds.length];
       }
@@ -507,6 +508,7 @@ export default function ProviderPage() {
           categoryId={activeCategoryId}
           categoryMetas={categoryList.map((c) => ({
             internal_id: c.internal_id,
+            external_id: c.external_id,
             has_api: !!c.external_id,
             item_ids: c.item_ids,
           }))}

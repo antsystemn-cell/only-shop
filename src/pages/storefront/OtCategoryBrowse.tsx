@@ -180,7 +180,7 @@ export default function OtCategoryBrowse() {
 
       if (isApiCategory) {
         const result = await searchItems({
-          categoryId: category.internal_id,
+          categoryId: category.external_id!,
           provider: apiProvider || category.provider_type!,
           pageSize: API_PAGE_SIZE,
           page: pageParam,

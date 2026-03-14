@@ -73,24 +73,25 @@ const ProviderShowcase = memo(function ProviderShowcase({
       // First try root categories
       const { data: roots } = await supabase
         .from("ot_categories")
-        .select("internal_id")
+        .select("internal_id, external_id")
         .is("parent_internal_id", null)
         .eq("is_active", true)
         .eq("provider_type", providerType)
         .order("display_order")
         .limit(4);
-      const rootIds = roots?.map((c) => c.internal_id) || [];
+      const rootIds = roots?.map((c) => c.external_id || c.internal_id) || [];
+      const rootInternalIds = roots?.map((c) => c.internal_id) || [];
       // If only 1 root (like Amazon), fetch its subcategories instead
-      if (rootIds.length <= 1 && rootIds.length > 0) {
+      if (rootIds.length <= 1 && rootInternalIds.length > 0) {
         const { data: subs } = await supabase
           .from("ot_categories")
-          .select("internal_id")
-          .eq("parent_internal_id", rootIds[0])
+          .select("internal_id, external_id")
+          .eq("parent_internal_id", rootInternalIds[0])
           .eq("is_active", true)
           .eq("provider_type", providerType)
           .order("display_order")
           .limit(6);
-        const subIds = subs?.map((c) => c.internal_id) || [];
+        const subIds = subs?.map((c) => c.external_id || c.internal_id) || [];
         return subIds.length > 0 ? subIds : rootIds;
       }
       return rootIds;
