@@ -14,6 +14,7 @@ import { RequireAuth } from "./components/storefront/RequireAuth";
 import { RecentlyViewedLoginMerge } from "./components/storefront/RecentlyViewedLoginMerge";
 import { PWAUpdatePrompt } from "./components/pwa/PWAUpdatePrompt";
 import { PWAInstallBanner } from "./components/pwa/PWAInstallBanner";
+import { PWAAppSplash } from "./components/pwa/PWAAppSplash";
 
 // Storefront imports
 import { StorefrontLayout } from "./components/storefront/StorefrontLayout";
