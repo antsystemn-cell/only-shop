@@ -55,6 +55,7 @@ export const OtProductCardComponent = memo(function OtProductCardComponent({ pro
   const poizon = isPoizon(product.providerType);
   const taobao = isTaobaoOrTmall(product.providerType);
   const warehouse = isWarehouse(product.providerType);
+  const amazon = isAmazon(product.providerType);
   const inWishlist = isInWishlist(product.id);
   
   // Prefetch product detail on hover/touch for instant navigation
