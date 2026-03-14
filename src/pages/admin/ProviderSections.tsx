@@ -452,10 +452,11 @@ function HomeShowcaseSettingsManager() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: async ({ poizonCount, taobaoCount }: { poizonCount: number; taobaoCount: number }) => {
+    mutationFn: async ({ poizonCount, taobaoCount, amazonCount }: { poizonCount: number; taobaoCount: number; amazonCount: number }) => {
       const payload = [
         { key: HOME_POIZON_COUNT_KEY, value: poizonCount, description: "Нүүр хуудасны Poizon барааны тоо" },
         { key: HOME_TAOBAO_COUNT_KEY, value: taobaoCount, description: "Нүүр хуудасны Taobao барааны тоо" },
+        { key: HOME_AMAZON_COUNT_KEY, value: amazonCount, description: "Нүүр хуудасны Amazon барааны тоо" },
       ];
 
       await Promise.all(
