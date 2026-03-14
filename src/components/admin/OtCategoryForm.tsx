@@ -131,7 +131,20 @@ export function OtCategoryForm({ open, onOpenChange, editingCategory, parentCate
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editingCategory ? "Категори засах" : "Шинэ категори үүсгэх"}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {editingCategory ? "Категори засах" : "Шинэ категори үүсгэх"}
+            {editingCategory && (
+              <a
+                href={getCategoryPath(editingCategory)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm font-normal text-primary hover:underline"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Хуудас үзэх
+              </a>
+            )}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {!editingCategory && (
