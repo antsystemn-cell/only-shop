@@ -57,6 +57,7 @@ import Seo from "./pages/admin/Seo";
 import Newsletter from "./pages/admin/Newsletter";
 import Permissions from "./pages/admin/Permissions";
 import GeneralSettings from "./pages/admin/GeneralSettings";
+import PwaSettings from "./pages/admin/PwaSettings";
 import AuthSettings from "./pages/admin/AuthSettings";
 import SmsGateway from "./pages/admin/SmsGateway";
 import OrderSettings from "./pages/admin/OrderSettings";
@@ -176,6 +177,7 @@ const App = () => (
                 <Route path="newsletter" element={<Newsletter />} />
                 <Route path="permissions" element={<Permissions />} />
                 <Route path="settings" element={<GeneralSettings />} />
+                <Route path="pwa-settings" element={<PwaSettings />} />
                 <Route path="auth-settings" element={<AuthSettings />} />
                 <Route path="sms-gateway" element={<SmsGateway />} />
                 <Route path="settings-orders" element={<OrderSettings />} />
