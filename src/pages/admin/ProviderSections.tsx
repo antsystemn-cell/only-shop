@@ -552,6 +552,98 @@ function HomeShowcaseSettingsManager() {
 
 const BLOCKED_VENDORS_KEY = "blocked_vendors";
 
+const DEFAULT_PROVIDER_ORDER = ["Poizon", "Taobao", "Amazon"];
+
+function HomeProviderOrderManager() {
+  const queryClient = useQueryClient();
+
+  const { data: orderSetting, isLoading } = useQuery({
+    queryKey: ["admin-home-provider-order"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("admin_settings")
+        .select("id, setting_value")
+        .eq("category", "storefront")
+        .eq("setting_key", HOME_PROVIDER_ORDER_KEY)
+        .maybeSingle();
+      return {
+        id: data?.id,
+        order: Array.isArray(data?.setting_value) ? (data.setting_value as string[]) : DEFAULT_PROVIDER_ORDER,
+      };
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (order: string[]) => {
+      if (orderSetting?.id) {
+        const { error } = await supabase
+          .from("admin_settings")
+          .update({ setting_value: order as any })
+          .eq("id", orderSetting.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("admin_settings").insert([{
+          category: "storefront",
+          setting_key: HOME_PROVIDER_ORDER_KEY,
+          setting_value: order as any,
+          description: "Нүүр хуудасны провайдерын дараалал",
+        }]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-home-provider-order"] });
+      queryClient.invalidateQueries({ queryKey: ["home-provider-order"] });
+      toast.success("Дараалал хадгалагдлаа");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const moveUp = (idx: number) => {
+    if (idx <= 0) return;
+    const arr = [...(orderSetting?.order || DEFAULT_PROVIDER_ORDER)];
+    [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+    saveMutation.mutate(arr);
+  };
+
+  const moveDown = (idx: number) => {
+    const arr = [...(orderSetting?.order || DEFAULT_PROVIDER_ORDER)];
+    if (idx >= arr.length - 1) return;
+    [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+    saveMutation.mutate(arr);
+  };
+
+  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+
+  const currentOrder = orderSetting?.order || DEFAULT_PROVIDER_ORDER;
+
+  return (
+    <div className="space-y-4 rounded-lg border p-4 bg-card">
+      <h3 className="font-semibold">Нүүр хуудасны провайдерын дараалал</h3>
+      <p className="text-sm text-muted-foreground">Провайдеруудыг дээш доош шилжүүлж нүүр хуудсанд харагдах дарааллыг тохируулна.</p>
+
+      <div className="space-y-2">
+        {currentOrder.map((provider, idx) => (
+          <div key={provider} className="flex items-center justify-between rounded border px-4 py-3">
+            <div className="flex items-center gap-3">
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{idx + 1}. {provider}</span>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveUp(idx)} disabled={idx === 0 || saveMutation.isPending}>
+                <span className="text-lg">↑</span>
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveDown(idx)} disabled={idx === currentOrder.length - 1 || saveMutation.isPending}>
+                <span className="text-lg">↓</span>
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function BlockedVendorsManager() {
   const queryClient = useQueryClient();
   const [newVendor, setNewVendor] = useState("");
