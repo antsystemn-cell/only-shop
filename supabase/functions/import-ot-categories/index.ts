@@ -22,18 +22,14 @@ interface ParsedCategory {
   is_parent_on_provider: boolean;
   depth: number;
   display_order: number;
+  source_type: string;
+  is_active: boolean;
 }
 
 function extractTag(xml: string, tag: string): string | null {
   const regex = new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, "i");
   const match = xml.match(regex);
   return match ? match[1].trim() : null;
-}
-
-function extractAttribute(xml: string, attr: string): string | null {
-  const regex = new RegExp(`${attr}="([^"]*)"`, "i");
-  const match = xml.match(regex);
-  return match ? match[1] : null;
 }
 
 function extractNameByLang(namesBlock: string, lang: string): string | null {
@@ -55,6 +51,40 @@ function extractItemIds(xml: string): string[] {
   return ids;
 }
 
+/**
+ * Determines if a category is an official OTAPI provider category or manually curated.
+ * Official = has a real external_id (not "0") AND a provider_type with is_parent_on_provider.
+ * Manual = curated collection with item_ids but no real provider category mapping.
+ */
+function classifyCategory(cat: {
+  external_id: string | null;
+  provider_type: string | null;
+  is_parent_on_provider: boolean;
+  item_ids: string[];
+  depth: number;
+}): { source_type: string; is_active: boolean } {
+  // Root provider nodes (like Poizon root, Taobao root) are official
+  if (cat.is_parent_on_provider && cat.provider_type) {
+    return { source_type: "otapi-provider", is_active: true };
+  }
+  // Categories with a real external_id (not "0" or null) and provider are official
+  const hasRealExternalId = cat.external_id && cat.external_id !== "0" && cat.external_id !== "";
+  if (hasRealExternalId && cat.provider_type) {
+    return { source_type: "otapi-provider", is_active: true };
+  }
+  // Categories with item_ids but no real external_id are manual curated collections
+  // They should be hidden from public by default
+  if (cat.item_ids.length > 0 && !hasRealExternalId) {
+    return { source_type: "manual", is_active: false };
+  }
+  // Categories without external_id and without items, no provider - manual/placeholder
+  if (!hasRealExternalId && !cat.provider_type) {
+    return { source_type: "manual", is_active: false };
+  }
+  // Default: official
+  return { source_type: "otapi-provider", is_active: true };
+}
+
 function parseCategories(
   xml: string,
   parentId: string | null,
@@ -62,9 +92,6 @@ function parseCategories(
   inheritedProvider: string | null
 ): ParsedCategory[] {
   const results: ParsedCategory[] = [];
-
-  // Find all <Category> blocks at this level (not nested children)
-  // We need a smarter approach - find Category tags and track nesting
   let pos = 0;
   let displayOrder = 0;
 
@@ -72,7 +99,6 @@ function parseCategories(
     const catStart = xml.indexOf("<Category", pos);
     if (catStart === -1) break;
 
-    // Find the matching closing tag by counting nesting
     let nestLevel = 0;
     let i = catStart;
     let catEnd = -1;
@@ -80,9 +106,7 @@ function parseCategories(
     while (i < xml.length) {
       const nextOpen = xml.indexOf("<Category", i + 1);
       const nextClose = xml.indexOf("</Category>", i + 1);
-
       if (nextClose === -1) break;
-
       if (nextOpen !== -1 && nextOpen < nextClose) {
         nestLevel++;
         i = nextOpen;
@@ -101,19 +125,15 @@ function parseCategories(
     const catXml = xml.substring(catStart, catEnd);
     pos = catEnd;
 
-    // Extract the opening tag to check attributes
     const openTagEnd = catXml.indexOf(">");
     const openTag = catXml.substring(0, openTagEnd + 1);
     const isParentOnProvider = openTag.includes('IsParentOnProvider="true"');
 
-    // Extract InternalId
     const internalId = extractTag(catXml, "InternalId");
     if (!internalId) continue;
 
-    // Extract ExternalId
     const externalId = extractTag(catXml, "ExternalId");
 
-    // Extract names
     const namesMatch = catXml.match(/<Names>([\s\S]*?)<\/Names>/);
     let nameMn: string | null = null;
     let nameEn: string | null = null;
@@ -127,29 +147,30 @@ function parseCategories(
       nameZh = extractNameByLang(namesMatch[1], "zh-chs");
     }
 
-    // Extract icon
     const iconUrl = extractTag(catXml, "IconImageUrl");
-    
-    // Extract icon class from MetaData
+
     let iconClass: string | null = null;
     const metaMatch = catXml.match(/<Item\s+Name="CategoryIconClass"[^>]*>([^<]*)<\/Item>/);
     if (metaMatch && metaMatch[1].trim()) {
       iconClass = metaMatch[1].trim();
     }
 
-    // Extract provider type
     const providerType = extractTag(catXml, "ProviderType") || inheritedProvider;
-
-    // Extract SEO alias
     const seoAlias = extractTag(catXml, "Alias");
 
-    // Extract item rating list (only from this level, not children)
-    // Remove children block first for item extraction
+    // Extract item_ids from this level only (not children)
     const childrenMatch = catXml.match(/<Children>([\s\S]*)<\/Children>/);
-    const catXmlNoChildren = childrenMatch
-      ? catXml.replace(childrenMatch[0], "")
-      : catXml;
+    const catXmlNoChildren = childrenMatch ? catXml.replace(childrenMatch[0], "") : catXml;
     const itemIds = extractItemIds(catXmlNoChildren);
+
+    // Classify source_type and default visibility
+    const { source_type, is_active } = classifyCategory({
+      external_id: externalId,
+      provider_type: providerType,
+      is_parent_on_provider: isParentOnProvider,
+      item_ids: itemIds,
+      depth,
+    });
 
     const category: ParsedCategory = {
       internal_id: internalId,
@@ -167,18 +188,14 @@ function parseCategories(
       is_parent_on_provider: isParentOnProvider,
       depth,
       display_order: displayOrder++,
+      source_type,
+      is_active,
     };
 
     results.push(category);
 
-    // Parse children
     if (childrenMatch) {
-      const children = parseCategories(
-        childrenMatch[1],
-        internalId,
-        depth + 1,
-        providerType
-      );
+      const children = parseCategories(childrenMatch[1], internalId, depth + 1, providerType);
       results.push(...children);
     }
   }
@@ -196,39 +213,49 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Get XML from request body
-    const { xml_content } = await req.json();
-    
-    if (!xml_content) {
-      throw new Error("xml_content is required");
+    const body = await req.json();
+    let xmlContent = body.xml_content;
+
+    // Support fetching XML from a URL
+    if (!xmlContent && body.fetch_url) {
+      console.log("Fetching XML from URL:", body.fetch_url);
+      const resp = await fetch(body.fetch_url);
+      if (!resp.ok) throw new Error(`Failed to fetch XML: ${resp.status}`);
+      xmlContent = await resp.text();
     }
 
-    console.log("Parsing XML, length:", xml_content.length);
+    if (!xmlContent) {
+      throw new Error("xml_content or fetch_url is required");
+    }
 
-    // Parse the XML
-    const categories = parseCategories(xml_content, null, 0, null);
+    console.log("Parsing XML, length:", xmlContent.length);
+
+    const categories = parseCategories(xmlContent, null, 0, null);
     console.log("Parsed categories count:", categories.length);
+
+    const manualCount = categories.filter(c => c.source_type === "manual").length;
+    const officialCount = categories.filter(c => c.source_type === "otapi-provider").length;
+    const withItems = categories.filter(c => c.item_ids.length > 0).length;
+    const withSeo = categories.filter(c => c.seo_alias).length;
+    console.log(`Classification: ${officialCount} official, ${manualCount} manual, ${withItems} with items, ${withSeo} with SEO alias`);
 
     // Clear existing data
     const { error: deleteError } = await supabase
       .from("ot_categories")
       .delete()
-      .neq("id", "00000000-0000-0000-0000-000000000000"); // delete all
-    
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+
     if (deleteError) {
       console.error("Delete error:", deleteError);
     }
 
-    // Insert in batches of 100
+    // Insert in batches
     const batchSize = 100;
     let inserted = 0;
-    
+
     for (let i = 0; i < categories.length; i += batchSize) {
       const batch = categories.slice(i, i + batchSize);
-      const { error } = await supabase
-        .from("ot_categories")
-        .insert(batch);
-      
+      const { error } = await supabase.from("ot_categories").insert(batch);
       if (error) {
         console.error(`Batch ${i} error:`, error);
         throw error;
@@ -241,11 +268,17 @@ serve(async (req) => {
         success: true,
         total_parsed: categories.length,
         total_inserted: inserted,
+        official_count: officialCount,
+        manual_count: manualCount,
+        with_items: withItems,
+        with_seo: withSeo,
         sample: categories.slice(0, 5).map(c => ({
           id: c.internal_id,
           name: c.name_mn || c.name_en || c.name_ru,
           provider: c.provider_type,
           items: c.item_ids.length,
+          source: c.source_type,
+          active: c.is_active,
           depth: c.depth,
         })),
       }),
