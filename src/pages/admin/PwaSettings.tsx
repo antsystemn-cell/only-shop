@@ -295,10 +295,21 @@ export default function PwaSettings() {
             Урьдчилан харах
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="bg-muted/50 rounded-xl p-6 flex items-center justify-center min-h-[120px]">
-            <BannerPreview config={config} />
+        <CardContent className="space-y-4">
+          <div>
+            <p className="text-sm font-medium mb-2">Суулгах popup</p>
+            <div className="bg-muted/50 rounded-xl p-6 flex items-center justify-center min-h-[120px]">
+              <BannerPreview config={config} />
+            </div>
           </div>
+          {config.update_enabled && (
+            <div>
+              <p className="text-sm font-medium mb-2">Шинэчлэлтийн popup</p>
+              <div className="bg-muted/50 rounded-xl p-6 flex items-center justify-center min-h-[120px]">
+                <UpdatePreview config={config} />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
