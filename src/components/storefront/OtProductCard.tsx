@@ -32,6 +32,10 @@ function isWarehouse(providerType?: string) {
   return providerType?.toLowerCase() === "warehouse";
 }
 
+function isAmazon(providerType?: string) {
+  return providerType?.toLowerCase() === "amazon";
+}
+
 function getProviderLabel(providerType?: string) {
   const p = providerType?.toLowerCase();
   if (p === "taobao") return "Taobao";
@@ -51,6 +55,7 @@ export const OtProductCardComponent = memo(function OtProductCardComponent({ pro
   const poizon = isPoizon(product.providerType);
   const taobao = isTaobaoOrTmall(product.providerType);
   const warehouse = isWarehouse(product.providerType);
+  const amazon = isAmazon(product.providerType);
   const inWishlist = isInWishlist(product.id);
   
   // Prefetch product detail on hover/touch for instant navigation
@@ -119,6 +124,21 @@ export const OtProductCardComponent = memo(function OtProductCardComponent({ pro
         {warehouse && (
           <span className="absolute bottom-1.5 left-1.5 bg-primary text-primary-foreground text-[9px] md:text-[10px] font-medium px-1.5 py-0.5 rounded">
             Агуулах
+          </span>
+        )}
+        {amazon && (
+          <span className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'linear-gradient(135deg, #002868, #BF0A30)' }}>
+            <svg viewBox="0 0 16 12" className="h-2.5 w-3.5 shrink-0" fill="none">
+              <rect width="16" height="12" rx="1" fill="#002868"/>
+              <rect y="0" width="16" height="1.5" fill="#BF0A30"/>
+              <rect y="3" width="16" height="1.5" fill="#fff"/>
+              <rect y="4.5" width="16" height="1.5" fill="#BF0A30"/>
+              <rect y="7.5" width="16" height="1.5" fill="#fff"/>
+              <rect y="9" width="16" height="1.5" fill="#BF0A30"/>
+              <rect y="10.5" width="16" height="1.5" fill="#fff"/>
+              <rect width="7" height="6" fill="#002868"/>
+            </svg>
+            Америкаас
           </span>
         )}
       </div>

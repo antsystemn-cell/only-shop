@@ -47,6 +47,8 @@ const ICON_OPTIONS = [
 
 const HOME_POIZON_COUNT_KEY = "home_poizon_count";
 const HOME_TAOBAO_COUNT_KEY = "home_taobao_count";
+const HOME_AMAZON_COUNT_KEY = "home_amazon_count";
+const HOME_PROVIDER_ORDER_KEY = "home_provider_order";
 const DEFAULT_HOME_PAGE_SIZE = 24;
 
 function SectionsManager({ providerType }: { providerType: string }) {
@@ -435,7 +437,7 @@ function HomeShowcaseSettingsManager() {
         .from("admin_settings")
         .select("id, setting_key, setting_value")
         .eq("category", "storefront")
-        .in("setting_key", [HOME_POIZON_COUNT_KEY, HOME_TAOBAO_COUNT_KEY]);
+        .in("setting_key", [HOME_POIZON_COUNT_KEY, HOME_TAOBAO_COUNT_KEY, HOME_AMAZON_COUNT_KEY]);
       if (error) throw error;
       return data || [];
     },
@@ -450,10 +452,11 @@ function HomeShowcaseSettingsManager() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: async ({ poizonCount, taobaoCount }: { poizonCount: number; taobaoCount: number }) => {
+    mutationFn: async ({ poizonCount, taobaoCount, amazonCount }: { poizonCount: number; taobaoCount: number; amazonCount: number }) => {
       const payload = [
         { key: HOME_POIZON_COUNT_KEY, value: poizonCount, description: "Нүүр хуудасны Poizon барааны тоо" },
         { key: HOME_TAOBAO_COUNT_KEY, value: taobaoCount, description: "Нүүр хуудасны Taobao барааны тоо" },
+        { key: HOME_AMAZON_COUNT_KEY, value: amazonCount, description: "Нүүр хуудасны Amazon барааны тоо" },
       ];
 
       await Promise.all(
@@ -493,7 +496,8 @@ function HomeShowcaseSettingsManager() {
     const fd = new FormData(e.currentTarget);
     const poizonCount = Math.max(1, Number(fd.get("poizon_count")) || DEFAULT_HOME_PAGE_SIZE);
     const taobaoCount = Math.max(1, Number(fd.get("taobao_count")) || DEFAULT_HOME_PAGE_SIZE);
-    saveMutation.mutate({ poizonCount, taobaoCount });
+    const amazonCount = Math.max(1, Number(fd.get("amazon_count")) || DEFAULT_HOME_PAGE_SIZE);
+    saveMutation.mutate({ poizonCount, taobaoCount, amazonCount });
   };
 
   if (isLoading) {
@@ -503,9 +507,9 @@ function HomeShowcaseSettingsManager() {
   return (
     <form onSubmit={handleSave} className="space-y-4 rounded-lg border p-4 bg-card">
       <h3 className="font-semibold">Нүүр хуудсанд харагдах барааны тоо</h3>
-      <p className="text-sm text-muted-foreground">Poizon болон Taobao тус бүр хэдэн бараа харагдахыг тохируулна.</p>
+      <p className="text-sm text-muted-foreground">Poizon, Taobao, Amazon тус бүр хэдэн бараа харагдахыг тохируулна.</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <Label htmlFor="poizon_count">Poizon барааны тоо</Label>
           <Input
@@ -526,6 +530,16 @@ function HomeShowcaseSettingsManager() {
             defaultValue={getSettingValue(HOME_TAOBAO_COUNT_KEY)}
           />
         </div>
+        <div>
+          <Label htmlFor="amazon_count">Amazon барааны тоо</Label>
+          <Input
+            id="amazon_count"
+            name="amazon_count"
+            type="number"
+            min={1}
+            defaultValue={getSettingValue(HOME_AMAZON_COUNT_KEY)}
+          />
+        </div>
       </div>
 
       <Button type="submit" disabled={saveMutation.isPending} className="gap-2">
@@ -537,6 +551,98 @@ function HomeShowcaseSettingsManager() {
 }
 
 const BLOCKED_VENDORS_KEY = "blocked_vendors";
+
+const DEFAULT_PROVIDER_ORDER = ["Poizon", "Taobao", "Amazon"];
+
+function HomeProviderOrderManager() {
+  const queryClient = useQueryClient();
+
+  const { data: orderSetting, isLoading } = useQuery({
+    queryKey: ["admin-home-provider-order"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("admin_settings")
+        .select("id, setting_value")
+        .eq("category", "storefront")
+        .eq("setting_key", HOME_PROVIDER_ORDER_KEY)
+        .maybeSingle();
+      return {
+        id: data?.id,
+        order: Array.isArray(data?.setting_value) ? (data.setting_value as string[]) : DEFAULT_PROVIDER_ORDER,
+      };
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (order: string[]) => {
+      if (orderSetting?.id) {
+        const { error } = await supabase
+          .from("admin_settings")
+          .update({ setting_value: order as any })
+          .eq("id", orderSetting.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("admin_settings").insert([{
+          category: "storefront",
+          setting_key: HOME_PROVIDER_ORDER_KEY,
+          setting_value: order as any,
+          description: "Нүүр хуудасны провайдерын дараалал",
+        }]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-home-provider-order"] });
+      queryClient.invalidateQueries({ queryKey: ["home-provider-order"] });
+      toast.success("Дараалал хадгалагдлаа");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const moveUp = (idx: number) => {
+    if (idx <= 0) return;
+    const arr = [...(orderSetting?.order || DEFAULT_PROVIDER_ORDER)];
+    [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+    saveMutation.mutate(arr);
+  };
+
+  const moveDown = (idx: number) => {
+    const arr = [...(orderSetting?.order || DEFAULT_PROVIDER_ORDER)];
+    if (idx >= arr.length - 1) return;
+    [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+    saveMutation.mutate(arr);
+  };
+
+  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+
+  const currentOrder = orderSetting?.order || DEFAULT_PROVIDER_ORDER;
+
+  return (
+    <div className="space-y-4 rounded-lg border p-4 bg-card">
+      <h3 className="font-semibold">Нүүр хуудасны провайдерын дараалал</h3>
+      <p className="text-sm text-muted-foreground">Провайдеруудыг дээш доош шилжүүлж нүүр хуудсанд харагдах дарааллыг тохируулна.</p>
+
+      <div className="space-y-2">
+        {currentOrder.map((provider, idx) => (
+          <div key={provider} className="flex items-center justify-between rounded border px-4 py-3">
+            <div className="flex items-center gap-3">
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{idx + 1}. {provider}</span>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveUp(idx)} disabled={idx === 0 || saveMutation.isPending}>
+                <span className="text-lg">↑</span>
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveDown(idx)} disabled={idx === currentOrder.length - 1 || saveMutation.isPending}>
+                <span className="text-lg">↓</span>
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function BlockedVendorsManager() {
   const queryClient = useQueryClient();
@@ -652,9 +758,11 @@ export default function ProviderSectionsAdmin() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="strip">Провайдер товчлуурууд</TabsTrigger>
           <TabsTrigger value="home-counts">Нүүрийн бараа тоо</TabsTrigger>
+          <TabsTrigger value="home-order">Нүүрийн дараалал</TabsTrigger>
           <TabsTrigger value="blocked-vendors">Хасагдсан борлуулагчид</TabsTrigger>
           <TabsTrigger value="poizon">Poizon секцүүд</TabsTrigger>
           <TabsTrigger value="taobao">Taobao секцүүд</TabsTrigger>
+          <TabsTrigger value="amazon">Amazon секцүүд</TabsTrigger>
           <TabsTrigger value="poizon-cats">Poizon ангилал</TabsTrigger>
           <TabsTrigger value="taobao-cats">Taobao ангилал</TabsTrigger>
         </TabsList>
@@ -664,6 +772,9 @@ export default function ProviderSectionsAdmin() {
         <TabsContent value="home-counts" className="mt-4">
           <HomeShowcaseSettingsManager />
         </TabsContent>
+        <TabsContent value="home-order" className="mt-4">
+          <HomeProviderOrderManager />
+        </TabsContent>
         <TabsContent value="blocked-vendors" className="mt-4">
           <BlockedVendorsManager />
         </TabsContent>
@@ -672,6 +783,9 @@ export default function ProviderSectionsAdmin() {
         </TabsContent>
         <TabsContent value="taobao" className="mt-4">
           <SectionsManager providerType="Taobao" />
+        </TabsContent>
+        <TabsContent value="amazon" className="mt-4">
+          <SectionsManager providerType="Amazon" />
         </TabsContent>
         <TabsContent value="poizon-cats" className="mt-4">
           <ProviderCategoryConfig providerType="Poizon" />

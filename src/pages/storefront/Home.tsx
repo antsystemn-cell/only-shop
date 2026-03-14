@@ -28,6 +28,7 @@ const DEFAULT_HOME_PAGE_SIZE = 24;
 const HOME_POIZON_COUNT_KEY = "home_poizon_count";
 const HOME_TAOBAO_COUNT_KEY = "home_taobao_count";
 const HOME_AMAZON_COUNT_KEY = "home_amazon_count";
+const HOME_PROVIDER_ORDER_KEY = "home_provider_order";
 
 // Specific Dewu category IDs to show on home
 const DEWU_HOME_CATEGORIES = ["otc-1368", "otc-1466", "otc-1470", "otc-1471", "otc-1467"];
@@ -277,6 +278,20 @@ export default function Home() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: providerOrder } = useQuery({
+    queryKey: ["home-provider-order"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("admin_settings")
+        .select("setting_value")
+        .eq("category", "storefront")
+        .eq("setting_key", HOME_PROVIDER_ORDER_KEY)
+        .maybeSingle();
+      return Array.isArray(data?.setting_value) ? (data.setting_value as string[]) : ["Poizon", "Taobao", "Amazon"];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   const poizonPageSize = toPositiveInt(
     homeShowcaseSettings?.find((s) => s.setting_key === HOME_POIZON_COUNT_KEY)?.setting_value,
     DEFAULT_HOME_PAGE_SIZE
@@ -292,6 +307,50 @@ export default function Home() {
     DEFAULT_HOME_PAGE_SIZE
   );
 
+  const providerConfigs: Record<string, React.ReactNode> = {
+    Poizon: (
+      <ProviderShowcase
+        key="Poizon"
+        title="Poizon, Dewu"
+        subtitle="100% Оригинал"
+        icon={<Shield className="h-4 w-4" />}
+        logoUrl={getProviderLogo(stripItems, "Poizon")}
+        providerType="Poizon"
+        slug="poizon"
+        categoryIds={DEWU_HOME_CATEGORIES}
+        guaranteedCategoryIds={POIZON_GUARANTEED_CATEGORY_IDS}
+        guaranteedPerCategory={3}
+        pageSize={poizonPageSize}
+      />
+    ),
+    Taobao: (
+      <ProviderShowcase
+        key="Taobao"
+        title="Taobao"
+        subtitle="Хүссэн бүхэн нэг дор"
+        icon={<ShoppingBag className="h-4 w-4" />}
+        logoUrl={getProviderLogo(stripItems, "Taobao")}
+        providerType="Taobao"
+        slug="taobao"
+        pageSize={taobaoPageSize}
+      />
+    ),
+    Amazon: (
+      <ProviderShowcase
+        key="Amazon"
+        title="Amazon USA"
+        subtitle="Америкаас шууд"
+        icon={<Globe className="h-4 w-4" />}
+        logoUrl={getProviderLogo(stripItems, "Amazon")}
+        providerType="Amazon"
+        slug="amazon"
+        pageSize={amazonPageSize}
+      />
+    ),
+  };
+
+  const orderedProviders = (providerOrder || ["Poizon", "Taobao", "Amazon"]);
+
   return (
     <div className="animate-fade-in">
       {/* Mobile search */}
@@ -302,41 +361,7 @@ export default function Home() {
       )}
 
       <div className="px-1 md:container py-2 md:py-6 space-y-2">
-        {/* Poizon Section */}
-        <ProviderShowcase
-          title="Poizon, Dewu"
-          subtitle="100% Оригинал"
-          icon={<Shield className="h-4 w-4" />}
-          logoUrl={getProviderLogo(stripItems, "Poizon")}
-          providerType="Poizon"
-          slug="poizon"
-          categoryIds={DEWU_HOME_CATEGORIES}
-          guaranteedCategoryIds={POIZON_GUARANTEED_CATEGORY_IDS}
-          guaranteedPerCategory={3}
-          pageSize={poizonPageSize}
-        />
-
-        {/* Taobao Section */}
-        <ProviderShowcase
-          title="Taobao"
-          subtitle="Хүссэн бүхэн нэг дор"
-          icon={<ShoppingBag className="h-4 w-4" />}
-          logoUrl={getProviderLogo(stripItems, "Taobao")}
-          providerType="Taobao"
-          slug="taobao"
-          pageSize={taobaoPageSize}
-        />
-
-        {/* Amazon Section */}
-        <ProviderShowcase
-          title="Amazon USA"
-          subtitle="Америкаас шууд"
-          icon={<Globe className="h-4 w-4" />}
-          logoUrl={getProviderLogo(stripItems, "Amazon")}
-          providerType="Amazon"
-          slug="amazon"
-          pageSize={amazonPageSize}
-        />
+        {orderedProviders.map((provider) => providerConfigs[provider] || null)}
       </div>
     </div>
   );
