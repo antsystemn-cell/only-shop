@@ -239,7 +239,74 @@ serve(async (req) => {
     const withSeo = categories.filter(c => c.seo_alias).length;
     console.log(`Classification: ${officialCount} official, ${manualCount} manual, ${withItems} with items, ${withSeo} with SEO alias`);
 
-    // Clear existing data
+    // Merge mode (default): update existing categories with XML data (item_ids, seo_alias, source_type)
+    // without deleting categories not in XML (like Amazon from OTAPI sync).
+    // Full replace mode: delete all then insert (use merge=false).
+    const mergeMode = body.merge !== false;
+
+    if (mergeMode) {
+      console.log("MERGE mode: overlaying XML data (item_ids, seo_alias, source_type) onto existing DB");
+      
+      // Only process categories with item_ids or manual source_type (the critical overlay data)
+      const overlays = categories.filter(c => c.item_ids.length > 0 || c.source_type === "manual");
+      console.log(`Processing ${overlays.length} categories with item/manual overlay data`);
+      
+      let updated = 0;
+      let notFound = 0;
+
+      // Process in small batches to avoid timeout
+      for (const cat of overlays) {
+        const updatePayload: Record<string, unknown> = {};
+        if (cat.item_ids.length > 0) updatePayload.item_ids = cat.item_ids;
+        if (cat.seo_alias) updatePayload.seo_alias = cat.seo_alias;
+        if (cat.name_mn) updatePayload.name_mn = cat.name_mn;
+        updatePayload.source_type = cat.source_type;
+        if (cat.source_type === "manual") updatePayload.is_active = false;
+
+        const { data, error } = await supabase
+          .from("ot_categories")
+          .update(updatePayload)
+          .eq("internal_id", cat.internal_id)
+          .select("id");
+
+        if (data && data.length > 0) {
+          updated++;
+        } else {
+          notFound++;
+          console.log(`Not found: ${cat.internal_id} (${cat.name_mn})`);
+        }
+      }
+
+      // Batch update SEO aliases for all categories that have them
+      const seoCategories = categories.filter(c => c.seo_alias && !overlays.some(o => o.internal_id === c.internal_id));
+      let seoUpdated = 0;
+      // Process in batches of 20 for speed
+      for (let i = 0; i < seoCategories.length; i += 20) {
+        const batch = seoCategories.slice(i, i + 20);
+        await Promise.all(batch.map(cat =>
+          supabase.from("ot_categories").update({ seo_alias: cat.seo_alias }).eq("internal_id", cat.internal_id)
+        ));
+        seoUpdated += batch.length;
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          mode: "merge",
+          total_parsed: categories.length,
+          overlays_processed: overlays.length,
+          updated,
+          not_found: notFound,
+          seo_updates: seoUpdated,
+          manual_count: manualCount,
+          with_items: withItems,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Full replace mode
+    console.log("FULL REPLACE mode: deleting all and re-inserting");
     const { error: deleteError } = await supabase
       .from("ot_categories")
       .delete()
@@ -249,7 +316,6 @@ serve(async (req) => {
       console.error("Delete error:", deleteError);
     }
 
-    // Insert in batches
     const batchSize = 100;
     let inserted = 0;
 
