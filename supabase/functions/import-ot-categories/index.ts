@@ -239,7 +239,64 @@ serve(async (req) => {
     const withSeo = categories.filter(c => c.seo_alias).length;
     console.log(`Classification: ${officialCount} official, ${manualCount} manual, ${withItems} with items, ${withSeo} with SEO alias`);
 
-    // Clear existing data
+    // Merge mode (default): update existing categories with XML data (item_ids, seo_alias, source_type)
+    // without deleting categories not in XML (like Amazon from OTAPI sync).
+    // Full replace mode: delete all then insert (use merge=false).
+    const mergeMode = body.merge !== false;
+
+    if (mergeMode) {
+      console.log("MERGE mode: updating existing categories with XML overlay data");
+      let updated = 0;
+      let inserted = 0;
+
+      for (const cat of categories) {
+        // Try to update existing category by internal_id
+        const updatePayload: Record<string, unknown> = {};
+        if (cat.item_ids.length > 0) updatePayload.item_ids = cat.item_ids;
+        if (cat.seo_alias) updatePayload.seo_alias = cat.seo_alias;
+        if (cat.name_mn) updatePayload.name_mn = cat.name_mn;
+        if (cat.name_en) updatePayload.name_en = cat.name_en;
+        if (cat.name_ru) updatePayload.name_ru = cat.name_ru;
+        if (cat.icon_url) updatePayload.icon_url = cat.icon_url;
+        if (cat.icon_class) updatePayload.icon_class = cat.icon_class;
+        // Always set source_type and visibility for classification
+        updatePayload.source_type = cat.source_type;
+        if (cat.source_type === "manual") updatePayload.is_active = false;
+
+        const { data: existing } = await supabase
+          .from("ot_categories")
+          .select("id")
+          .eq("internal_id", cat.internal_id)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase.from("ot_categories").update(updatePayload).eq("id", existing.id);
+          updated++;
+        } else {
+          // Category not in DB (not from OTAPI sync) - insert it
+          await supabase.from("ot_categories").insert([cat]);
+          inserted++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          mode: "merge",
+          total_parsed: categories.length,
+          updated,
+          inserted,
+          manual_count: manualCount,
+          official_count: officialCount,
+          with_items: withItems,
+          with_seo: withSeo,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Full replace mode
+    console.log("FULL REPLACE mode: deleting all and re-inserting");
     const { error: deleteError } = await supabase
       .from("ot_categories")
       .delete()
@@ -249,7 +306,6 @@ serve(async (req) => {
       console.error("Delete error:", deleteError);
     }
 
-    // Insert in batches
     const batchSize = 100;
     let inserted = 0;
 
