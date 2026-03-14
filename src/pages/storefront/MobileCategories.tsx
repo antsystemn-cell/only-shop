@@ -128,7 +128,7 @@ export default function MobileCategories() {
 
       if (productCategory.external_id && productCategory.provider_type) {
         const result = await searchItems({
-          categoryId: productCategory.internal_id,
+          categoryId: productCategory.external_id,
           provider: apiProvider || productCategory.provider_type,
           pageSize: fetchSize,
           page: pageParam,
