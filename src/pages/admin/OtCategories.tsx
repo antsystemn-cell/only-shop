@@ -118,6 +118,21 @@ export default function OtCategories() {
     }
   };
 
+  const handleOtapiSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-ot-categories", { body: {} });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Sync failed");
+      uiToast({ title: "Амжилттай!", description: `${data.total_inserted} категори шинэчлэгдлээ. Провайдерууд: ${data.providers?.join(", ")}` });
+      queryClient.invalidateQueries({ queryKey: ["admin", "ot-categories"] });
+    } catch (err: any) {
+      uiToast({ title: "Алдаа", description: err.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const toggleExpand = (internalId: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
