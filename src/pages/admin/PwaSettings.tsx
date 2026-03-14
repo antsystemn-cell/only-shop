@@ -119,10 +119,10 @@ export default function PwaSettings() {
         </CardContent>
       </Card>
 
-      {/* Text Content */}
+      {/* Install Banner Text Content */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Текст & Контент</CardTitle>
+          <CardTitle className="text-base">Суулгах popup текст</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -141,6 +141,52 @@ export default function PwaSettings() {
             <Label>Дахин санамж үзүүлэх хоног</Label>
             <Input type="number" min={1} max={90} value={config.dismiss_days} onChange={(e) => update("dismiss_days", Number(e.target.value))} />
             <p className="text-xs text-muted-foreground">Хэрэглэгч хаасны дараа хэдэн хоногийн дараа дахин харуулах</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Update Popup Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Шинэчлэлтийн popup текст</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Switch checked={config.update_enabled} onCheckedChange={(v) => update("update_enabled", v)} />
+            <span className="text-sm text-muted-foreground">
+              {config.update_enabled ? "Идэвхтэй" : "Идэвхгүй"}
+            </span>
+          </div>
+          <div className="space-y-2">
+            <Label>Шинэчлэлтийн гарчиг</Label>
+            <Input value={config.update_title} onChange={(e) => update("update_title", e.target.value)} placeholder="Шинэ хувилбар бэлэн боллоо" />
+          </div>
+          <div className="space-y-2">
+            <Label>Шинэчлэлтийн тайлбар</Label>
+            <Textarea value={config.update_subtitle} onChange={(e) => update("update_subtitle", e.target.value)} rows={2} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Шинэчлэх товч</Label>
+              <Input value={config.update_button_text} onChange={(e) => update("update_button_text", e.target.value)} placeholder="Шинэчлэх" />
+            </div>
+            <div className="space-y-2">
+              <Label>Дараа товч</Label>
+              <Input value={config.update_later_text} onChange={(e) => update("update_later_text", e.target.value)} placeholder="Дараа" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Шинэчлэлтийн popup байрлал</Label>
+            <Select value={config.update_position} onValueChange={(v) => update("update_position", v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="top">Дээд талд</SelectItem>
+                <SelectItem value="center">Дунд (Modal)</SelectItem>
+                <SelectItem value="bottom">Доод талд</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
