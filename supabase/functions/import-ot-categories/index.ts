@@ -247,9 +247,9 @@ serve(async (req) => {
     if (mergeMode) {
       console.log("MERGE mode: overlaying XML data (item_ids, seo_alias, source_type) onto existing DB");
       
-      // Only process categories that have meaningful overlay data
-      const overlays = categories.filter(c => c.item_ids.length > 0 || c.seo_alias || c.source_type === "manual");
-      console.log(`Processing ${overlays.length} categories with overlay data`);
+      // Only process categories with item_ids or manual source_type (the critical overlay data)
+      const overlays = categories.filter(c => c.item_ids.length > 0 || c.source_type === "manual");
+      console.log(`Processing ${overlays.length} categories with item/manual overlay data`);
       
       let updated = 0;
       let notFound = 0;
