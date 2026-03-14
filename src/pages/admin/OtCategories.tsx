@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { toast } from "sonner";
 import {
   Upload, FolderTree, Loader2, ChevronRight, ChevronDown, Search,
-  Package, Plus, Pencil, ArrowUp, ArrowDown, Trash2, ListTree,
+  Package, Plus, Pencil, ArrowUp, ArrowDown, Trash2, ListTree, RefreshCw,
 } from "lucide-react";
 import { OtCategoryForm } from "@/components/admin/OtCategoryForm";
 import { OtCategoryItemsManager } from "@/components/admin/OtCategoryItemsManager";
