@@ -508,6 +508,7 @@ export default function ProviderPage() {
           categoryId={activeCategoryId}
           categoryMetas={categoryList.map((c) => ({
             internal_id: c.internal_id,
+            external_id: c.external_id,
             has_api: !!c.external_id,
             item_ids: c.item_ids,
           }))}
