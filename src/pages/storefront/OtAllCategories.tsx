@@ -104,6 +104,8 @@ function CategoryNode({
             className={`text-[10px] shrink-0 ${
               cat.provider_type === "Poizon"
                 ? "border-emerald-500/30 text-emerald-600"
+                : cat.provider_type === "Amazon"
+                ? "border-blue-500/30 text-blue-600"
                 : "border-orange-500/30 text-orange-600"
             }`}
           >
