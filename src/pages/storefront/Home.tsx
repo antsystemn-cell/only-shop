@@ -28,6 +28,7 @@ const DEFAULT_HOME_PAGE_SIZE = 24;
 const HOME_POIZON_COUNT_KEY = "home_poizon_count";
 const HOME_TAOBAO_COUNT_KEY = "home_taobao_count";
 const HOME_AMAZON_COUNT_KEY = "home_amazon_count";
+const HOME_PROVIDER_ORDER_KEY = "home_provider_order";
 
 // Specific Dewu category IDs to show on home
 const DEWU_HOME_CATEGORIES = ["otc-1368", "otc-1466", "otc-1470", "otc-1471", "otc-1467"];
