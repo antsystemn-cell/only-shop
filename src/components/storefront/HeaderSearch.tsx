@@ -30,6 +30,7 @@ const DEFAULT_PROVIDERS: SearchProvider[] = [
   { value: "", label: "Бүгд", icon: Globe },
   { value: "Taobao", label: "Taobao", icon: Globe },
   { value: "Poizon", label: "Poizon", icon: Globe },
+  { value: "Amazon", label: "Amazon", icon: Globe },
   { value: "local", label: "Бэлэн бараа", icon: Package },
 ];
 
