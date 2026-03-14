@@ -94,6 +94,7 @@ import AmazonPricing from "./pages/admin/AmazonPricing";
 import AmazonSync from "./pages/admin/AmazonSync";
 import AmazonShop from "./pages/storefront/AmazonShop";
 import AmazonProductDetail from "./pages/storefront/AmazonProductDetail";
+import AmazonCategoryBrowse from "./pages/storefront/AmazonCategoryBrowse";
 
 // Redirect component for old OT Orders route
 const OtOrdersRedirect = () => <Navigate to="/admin/orders?source=ot" replace />;
