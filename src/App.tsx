@@ -177,6 +177,7 @@ const App = () => (
                 <Route path="newsletter" element={<Newsletter />} />
                 <Route path="permissions" element={<Permissions />} />
                 <Route path="settings" element={<GeneralSettings />} />
+                <Route path="pwa-settings" element={<PwaSettings />} />
                 <Route path="auth-settings" element={<AuthSettings />} />
                 <Route path="sms-gateway" element={<SmsGateway />} />
                 <Route path="settings-orders" element={<OrderSettings />} />
