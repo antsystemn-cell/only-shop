@@ -12,37 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Save, Smartphone, Eye } from "lucide-react";
 
-interface PwaConfig {
-  enabled: boolean;
-  title: string;
-  subtitle: string;
-  button_text: string;
-  dismiss_days: number;
-  position: "bottom" | "top" | "center";
-  logo_url: string;
-  bg_color: string;
-  text_color: string;
-  button_bg_color: string;
-  button_text_color: string;
-  border_radius: "sm" | "md" | "lg" | "xl" | "2xl";
-  show_close_button: boolean;
-}
+import { DEFAULT_PWA_CONFIG, type PwaBannerConfig as PwaConfig } from "@/types/pwa";
 
-const DEFAULT_CONFIG: PwaConfig = {
-  enabled: true,
-  title: "Only.mn апп суулгах",
-  subtitle: "Илүү хурдан, илүү тохиромжтой хэрэглээ.",
-  button_text: "Суулгах",
-  dismiss_days: 7,
-  position: "bottom",
-  logo_url: "",
-  bg_color: "",
-  text_color: "",
-  button_bg_color: "",
-  button_text_color: "",
-  border_radius: "2xl",
-  show_close_button: true,
-};
+const DEFAULT_CONFIG: PwaConfig = DEFAULT_PWA_CONFIG;
 
 export default function PwaSettings() {
   const queryClient = useQueryClient();
@@ -147,10 +119,10 @@ export default function PwaSettings() {
         </CardContent>
       </Card>
 
-      {/* Text Content */}
+      {/* Install Banner Text Content */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Текст & Контент</CardTitle>
+          <CardTitle className="text-base">Суулгах popup текст</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -169,6 +141,52 @@ export default function PwaSettings() {
             <Label>Дахин санамж үзүүлэх хоног</Label>
             <Input type="number" min={1} max={90} value={config.dismiss_days} onChange={(e) => update("dismiss_days", Number(e.target.value))} />
             <p className="text-xs text-muted-foreground">Хэрэглэгч хаасны дараа хэдэн хоногийн дараа дахин харуулах</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Update Popup Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Шинэчлэлтийн popup текст</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Switch checked={config.update_enabled} onCheckedChange={(v) => update("update_enabled", v)} />
+            <span className="text-sm text-muted-foreground">
+              {config.update_enabled ? "Идэвхтэй" : "Идэвхгүй"}
+            </span>
+          </div>
+          <div className="space-y-2">
+            <Label>Шинэчлэлтийн гарчиг</Label>
+            <Input value={config.update_title} onChange={(e) => update("update_title", e.target.value)} placeholder="Шинэ хувилбар бэлэн боллоо" />
+          </div>
+          <div className="space-y-2">
+            <Label>Шинэчлэлтийн тайлбар</Label>
+            <Textarea value={config.update_subtitle} onChange={(e) => update("update_subtitle", e.target.value)} rows={2} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Шинэчлэх товч</Label>
+              <Input value={config.update_button_text} onChange={(e) => update("update_button_text", e.target.value)} placeholder="Шинэчлэх" />
+            </div>
+            <div className="space-y-2">
+              <Label>Дараа товч</Label>
+              <Input value={config.update_later_text} onChange={(e) => update("update_later_text", e.target.value)} placeholder="Дараа" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Шинэчлэлтийн popup байрлал</Label>
+            <Select value={config.update_position} onValueChange={(v) => update("update_position", v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="top">Дээд талд</SelectItem>
+                <SelectItem value="center">Дунд (Modal)</SelectItem>
+                <SelectItem value="bottom">Доод талд</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -277,10 +295,21 @@ export default function PwaSettings() {
             Урьдчилан харах
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="bg-muted/50 rounded-xl p-6 flex items-center justify-center min-h-[120px]">
-            <BannerPreview config={config} />
+        <CardContent className="space-y-4">
+          <div>
+            <p className="text-sm font-medium mb-2">Суулгах popup</p>
+            <div className="bg-muted/50 rounded-xl p-6 flex items-center justify-center min-h-[120px]">
+              <BannerPreview config={config} />
+            </div>
           </div>
+          {config.update_enabled && (
+            <div>
+              <p className="text-sm font-medium mb-2">Шинэчлэлтийн popup</p>
+              <div className="bg-muted/50 rounded-xl p-6 flex items-center justify-center min-h-[120px]">
+                <UpdatePreview config={config} />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -332,6 +361,46 @@ function BannerPreview({ config }: { config: PwaConfig }) {
           </svg>
         </div>
       )}
+    </div>
+  );
+}
+
+function UpdatePreview({ config }: { config: PwaConfig }) {
+  const radiusMap = { sm: "0.25rem", md: "0.375rem", lg: "0.5rem", xl: "0.75rem", "2xl": "1rem" };
+  const radius = radiusMap[config.border_radius] || "1rem";
+
+  return (
+    <div
+      className="w-full max-w-sm shadow-lg p-4 flex items-start gap-3"
+      style={{
+        borderRadius: radius,
+        backgroundColor: config.bg_color || "hsl(var(--card))",
+        color: config.text_color || "hsl(var(--card-foreground))",
+      }}
+    >
+      <div className="shrink-0 w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6M5.64 18.36A9 9 0 1018.36 5.64" />
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold">{config.update_title || "Шинэ хувилбар бэлэн боллоо"}</p>
+        <p className="text-xs opacity-80 mt-0.5">{config.update_subtitle || "Шинэ хувилбараа суулгаарай."}</p>
+        <div className="flex gap-2 mt-3">
+          <button
+            className="text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors cursor-default"
+            style={{
+              backgroundColor: config.button_bg_color || (config.text_color ? `${config.text_color}33` : "hsl(var(--secondary-foreground) / 0.2)"),
+              color: config.button_text_color || "inherit",
+            }}
+          >
+            {config.update_button_text || "Шинэчлэх"}
+          </button>
+          <button className="text-xs font-medium px-3 py-1.5 rounded-lg cursor-default opacity-80">
+            {config.update_later_text || "Дараа"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
