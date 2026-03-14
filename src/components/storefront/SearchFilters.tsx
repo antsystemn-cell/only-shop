@@ -25,6 +25,7 @@ const PROVIDERS = [
   { value: "Tmall", label: "Tmall" },
   { value: "1688", label: "1688" },
   { value: "Poizon", label: "Poizon / Dewu" },
+  { value: "Amazon", label: "Amazon USA" },
 ];
 
 interface SearchFiltersProps {
