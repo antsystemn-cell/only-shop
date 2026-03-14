@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const OT_API_BASE = "https://otapi.net/service-json";
+const OT_API_BASE = "https://otapi.net/service";
 
 interface ParsedCategory {
   internal_id: string;
