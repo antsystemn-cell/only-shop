@@ -99,20 +99,27 @@ function parseCategoriesJson(
     if (!internalId) continue;
 
     const externalId = cat.ExternalId || null;
+    
+    // Name can be a flat string (when language param used) or Names object
     const names = cat.Names;
-    const nameMn = extractName(names, "khk");
-    const nameEn = extractName(names, "en");
-    const nameRu = extractName(names, "ru");
-    const nameZh = extractName(names, "zh-chs");
+    let nameMn = extractName(names, "khk");
+    let nameEn = extractName(names, "en");
+    let nameRu = extractName(names, "ru");
+    let nameZh = extractName(names, "zh-chs");
+    
+    // If flat Name string (language=khk returns translated name directly)
+    if (!nameMn && !nameEn && cat.Name && typeof cat.Name === "string") {
+      nameMn = cat.Name;
+    }
 
     const iconUrl = cat.IconImageUrl || cat.IconUrl || null;
-    const iconClass = cat.MetaData?.Items?.Item
-      ? ensureArray(cat.MetaData.Items.Item).find((i: any) => i.Name === "CategoryIconClass")?.Value || null
-      : null;
+    // MetaData can be { Item: [...] } or { Items: { Item: [...] } }
+    const metaItems = cat.MetaData?.Item || cat.MetaData?.Items?.Item || [];
+    const iconClass = ensureArray(metaItems).find((i: any) => i.Name === "CategoryIconClass")?.Value || null;
 
     const providerType = cat.ProviderType || inheritedProvider;
     const seoAlias = cat.Alias || cat.SeoAlias || null;
-    const isParentOnProvider = cat.IsParentOnProvider === true;
+    const isParentOnProvider = cat.IsParentOnProvider === true || cat.IsParent === true;
 
     // Extract item IDs from rating list
     const itemIds: string[] = [];
