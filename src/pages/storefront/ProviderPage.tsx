@@ -235,7 +235,7 @@ function InfiniteProductFeed({
     queryFn: ({ pageParam = 0 }) => {
       let catId: string | undefined;
       if (activeHasApi && activeMeta) {
-        catId = activeMeta.internal_id;
+        catId = activeMeta.external_id || activeMeta.internal_id;
       } else if (apiCategoryIds.length > 0) {
         catId = apiCategoryIds[pageParam % apiCategoryIds.length];
       }
