@@ -147,10 +147,10 @@ function parseCategoriesJson(
       display_order: displayOrder++,
     });
 
-    // Parse children
-    const children = cat.Children?.Content?.Item || cat.Children?.Items || cat.ChildCategories || [];
+    // Parse children - can be nested in various ways
+    const children = cat.Children?.Content?.Item || cat.Children?.Content || cat.Children?.Items || cat.Children || cat.ChildCategories || cat.SubCategories || [];
     const childArr = ensureArray(children);
-    if (childArr.length > 0) {
+    if (childArr.length > 0 && typeof childArr[0] === "object") {
       results.push(...parseCategoriesJson(childArr, String(internalId), depth + 1, providerType));
     }
   }
