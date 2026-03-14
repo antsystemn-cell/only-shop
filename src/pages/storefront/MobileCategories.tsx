@@ -52,6 +52,8 @@ export default function MobileCategories() {
 
       if (activeTab === "Poizon") {
         query = query.eq("parent_internal_id", POIZON_ROOT_ID);
+      } else if (activeTab === "Amazon") {
+        query = query.eq("parent_internal_id", AMAZON_ROOT_ID);
       } else {
         query = query.eq("provider_type", activeTab).is("parent_internal_id", null);
       }
