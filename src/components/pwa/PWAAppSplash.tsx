@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download } from "lucide-react";
+
 import { usePwaConfig } from "@/hooks/usePwaConfig";
 
 const isStandaloneMode = () =>
@@ -43,10 +43,8 @@ export function PWAAppSplash() {
           }}
         >
           {logoUrl ? (
-            <img src={logoUrl} alt="Only logo" className="size-14 object-contain" />
-          ) : (
-            <Download className="size-8 text-foreground" />
-          )}
+            <img src={logoUrl} alt="App logo" className="size-14 object-contain" />
+          ) : null}
         </div>
         <p className="text-sm font-medium text-foreground">Only.mn</p>
       </div>
