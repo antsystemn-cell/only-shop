@@ -507,9 +507,9 @@ function HomeShowcaseSettingsManager() {
   return (
     <form onSubmit={handleSave} className="space-y-4 rounded-lg border p-4 bg-card">
       <h3 className="font-semibold">Нүүр хуудсанд харагдах барааны тоо</h3>
-      <p className="text-sm text-muted-foreground">Poizon болон Taobao тус бүр хэдэн бараа харагдахыг тохируулна.</p>
+      <p className="text-sm text-muted-foreground">Poizon, Taobao, Amazon тус бүр хэдэн бараа харагдахыг тохируулна.</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <Label htmlFor="poizon_count">Poizon барааны тоо</Label>
           <Input
@@ -528,6 +528,16 @@ function HomeShowcaseSettingsManager() {
             type="number"
             min={1}
             defaultValue={getSettingValue(HOME_TAOBAO_COUNT_KEY)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="amazon_count">Amazon барааны тоо</Label>
+          <Input
+            id="amazon_count"
+            name="amazon_count"
+            type="number"
+            min={1}
+            defaultValue={getSettingValue(HOME_AMAZON_COUNT_KEY)}
           />
         </div>
       </div>
