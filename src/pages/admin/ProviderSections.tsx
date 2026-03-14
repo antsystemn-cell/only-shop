@@ -666,9 +666,11 @@ export default function ProviderSectionsAdmin() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="strip">Провайдер товчлуурууд</TabsTrigger>
           <TabsTrigger value="home-counts">Нүүрийн бараа тоо</TabsTrigger>
+          <TabsTrigger value="home-order">Нүүрийн дараалал</TabsTrigger>
           <TabsTrigger value="blocked-vendors">Хасагдсан борлуулагчид</TabsTrigger>
           <TabsTrigger value="poizon">Poizon секцүүд</TabsTrigger>
           <TabsTrigger value="taobao">Taobao секцүүд</TabsTrigger>
+          <TabsTrigger value="amazon">Amazon секцүүд</TabsTrigger>
           <TabsTrigger value="poizon-cats">Poizon ангилал</TabsTrigger>
           <TabsTrigger value="taobao-cats">Taobao ангилал</TabsTrigger>
         </TabsList>
@@ -678,6 +680,9 @@ export default function ProviderSectionsAdmin() {
         <TabsContent value="home-counts" className="mt-4">
           <HomeShowcaseSettingsManager />
         </TabsContent>
+        <TabsContent value="home-order" className="mt-4">
+          <HomeProviderOrderManager />
+        </TabsContent>
         <TabsContent value="blocked-vendors" className="mt-4">
           <BlockedVendorsManager />
         </TabsContent>
@@ -686,6 +691,9 @@ export default function ProviderSectionsAdmin() {
         </TabsContent>
         <TabsContent value="taobao" className="mt-4">
           <SectionsManager providerType="Taobao" />
+        </TabsContent>
+        <TabsContent value="amazon" className="mt-4">
+          <SectionsManager providerType="Amazon" />
         </TabsContent>
         <TabsContent value="poizon-cats" className="mt-4">
           <ProviderCategoryConfig providerType="Poizon" />
