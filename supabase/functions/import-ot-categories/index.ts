@@ -277,13 +277,16 @@ serve(async (req) => {
         }
       }
 
-      // Also update SEO aliases for official categories from XML
-      const seoOnly = categories.filter(c => c.seo_alias && c.source_type !== "manual" && !overlays.includes(c));
-      for (const cat of seoOnly) {
-        await supabase
-          .from("ot_categories")
-          .update({ seo_alias: cat.seo_alias })
-          .eq("internal_id", cat.internal_id);
+      // Batch update SEO aliases for all categories that have them
+      const seoCategories = categories.filter(c => c.seo_alias && !overlays.some(o => o.internal_id === c.internal_id));
+      let seoUpdated = 0;
+      // Process in batches of 20 for speed
+      for (let i = 0; i < seoCategories.length; i += 20) {
+        const batch = seoCategories.slice(i, i + 20);
+        await Promise.all(batch.map(cat =>
+          supabase.from("ot_categories").update({ seo_alias: cat.seo_alias }).eq("internal_id", cat.internal_id)
+        ));
+        seoUpdated += batch.length;
       }
 
       return new Response(
