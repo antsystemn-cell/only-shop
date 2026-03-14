@@ -297,7 +297,7 @@ serve(async (req) => {
           overlays_processed: overlays.length,
           updated,
           not_found: notFound,
-          seo_updates: seoOnly.length,
+          seo_updates: seoUpdated,
           manual_count: manualCount,
           with_items: withItems,
         }),
