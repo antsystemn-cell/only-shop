@@ -50,7 +50,7 @@ async function callOtApi(methodName: string, queryParams: Record<string, string>
   return await res.json();
 }
 
-// ─── Category Parsing (from JSON response) ──────────────────
+// ─── Category Parsing ───────────────────────────────────────
 interface ParsedCategory {
   internal_id: string;
   external_id: string | null;
@@ -99,21 +99,17 @@ function parseCategoriesJson(
     if (!internalId) continue;
 
     const externalId = cat.ExternalId || null;
-    
-    // Name can be a flat string (when language param used) or Names object
     const names = cat.Names;
     let nameMn = extractName(names, "khk");
     let nameEn = extractName(names, "en");
     let nameRu = extractName(names, "ru");
     let nameZh = extractName(names, "zh-chs");
-    
-    // If flat Name string (language=khk returns translated name directly)
+
     if (!nameMn && !nameEn && cat.Name && typeof cat.Name === "string") {
       nameMn = cat.Name;
     }
 
     const iconUrl = cat.IconImageUrl || cat.IconUrl || null;
-    // MetaData can be { Item: [...] } or { Items: { Item: [...] } }
     const metaItems = cat.MetaData?.Item || cat.MetaData?.Items?.Item || [];
     const iconClass = ensureArray(metaItems).find((i: any) => i.Name === "CategoryIconClass")?.Value || null;
 
@@ -121,7 +117,6 @@ function parseCategoriesJson(
     const seoAlias = cat.Alias || cat.SeoAlias || null;
     const isParentOnProvider = cat.IsParentOnProvider === true || cat.IsParent === true;
 
-    // Extract item IDs from rating list
     const itemIds: string[] = [];
     const ratingList = cat.ItemRatingList?.Content?.Item || cat.ItemRatingList?.Items || [];
     for (const item of ensureArray(ratingList)) {
@@ -147,7 +142,6 @@ function parseCategoriesJson(
       display_order: displayOrder++,
     });
 
-    // Parse children - can be nested in various ways
     const children = cat.Children?.Content?.Item || cat.Children?.Content || cat.Children?.Items || cat.Children || cat.ChildCategories || cat.SubCategories || [];
     const childArr = ensureArray(children);
     if (childArr.length > 0 && typeof childArr[0] === "object") {
@@ -156,6 +150,96 @@ function parseCategoriesJson(
   }
 
   return results;
+}
+
+// ─── Amazon Provider Category Fetcher ───────────────────────
+// Amazon categories use a different OTAPI structure: provider-based category tree
+async function fetchAmazonCategories(instanceKey: string): Promise<ParsedCategory[]> {
+  console.log("[sync-ot-categories] Fetching Amazon provider info...");
+  
+  // Step 1: Get Amazon root category ID via GetProviderInfo
+  const providerInfoRes = await callOtApi("GetProviderInfo", {
+    instanceKey,
+    language: "khk",
+    providerType: "Amazon",
+  });
+  
+  const providerResult = providerInfoRes?.Result || providerInfoRes;
+  const rootCategoryId = providerResult?.RootCategoryId || providerResult?.ProviderInfo?.RootCategoryId;
+  
+  if (!rootCategoryId) {
+    console.log("[sync-ot-categories] Amazon: No root category ID found, skipping");
+    return [];
+  }
+  console.log(`[sync-ot-categories] Amazon root category ID: ${rootCategoryId}`);
+  
+  // Step 2: Recursively fetch subcategories
+  const allCategories: ParsedCategory[] = [];
+  
+  async function fetchSubcategories(parentCategoryId: string, parentInternalId: string | null, depth: number) {
+    try {
+      const subRes = await callOtApi("GetProviderCategorySubcategories", {
+        instanceKey,
+        language: "khk",
+        categoryId: parentCategoryId,
+      });
+      
+      const result = subRes?.Result || subRes;
+      const items = result?.Items || result?.Content || result?.CategoryInfoList;
+      let catArray: any[] = [];
+      
+      if (Array.isArray(items)) {
+        catArray = items;
+      } else if (items?.Content) {
+        catArray = Array.isArray(items.Content) ? items.Content : [items.Content];
+      } else if (Array.isArray(result)) {
+        catArray = result;
+      }
+      
+      let displayOrder = 0;
+      for (const cat of catArray) {
+        if (cat.IsHidden) continue;
+        
+        const id = cat.Id || cat.CategoryId || "";
+        const title = cat.Name || cat.Title || cat.DisplayName || id;
+        const hasChildren = cat.HasChildren !== false && cat.IsLeaf !== true;
+        const iconUrl = cat.IconUrl || cat.PictureUrl || null;
+        
+        // Use "az-" prefix to avoid ID collisions with Poizon/Taobao categories
+        const internalId = String(id);
+        
+        allCategories.push({
+          internal_id: internalId,
+          external_id: internalId,
+          parent_internal_id: parentInternalId,
+          name_mn: title,
+          name_en: title,
+          name_ru: null,
+          name_zh: null,
+          icon_url: iconUrl,
+          icon_class: null,
+          provider_type: "Amazon",
+          seo_alias: null,
+          item_ids: [],
+          is_parent_on_provider: hasChildren,
+          depth,
+          display_order: displayOrder++,
+        });
+        
+        // Only fetch depth 0→1 children to avoid timeout (depth 2+ loaded dynamically on frontend)
+        if (hasChildren && depth < 1) {
+          await fetchSubcategories(String(id), internalId, depth + 1);
+        }
+      }
+    } catch (err) {
+      console.error(`[sync-ot-categories] Amazon: Error fetching subcategories for ${parentCategoryId}:`, err);
+    }
+  }
+  
+  await fetchSubcategories(rootCategoryId, null, 0);
+  console.log(`[sync-ot-categories] Amazon: Total categories fetched: ${allCategories.length}`);
+  
+  return allCategories;
 }
 
 serve(async (req) => {
@@ -171,21 +255,17 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Fetch categories from OTAPI using signed JSON API
-    console.log("[sync-ot-categories] Fetching from OTAPI...");
+    // ─── Fetch Poizon/Taobao categories from OTAPI ──────────
+    console.log("[sync-ot-categories] Fetching from OTAPI GetRootCategoryInfoList...");
     const response = await callOtApi("GetRootCategoryInfoList", {
       instanceKey: OT_API_KEY,
       language: "khk",
     });
 
-    console.log("[sync-ot-categories] OTAPI response keys:", Object.keys(response));
-
-    // Handle error
     if (response.ErrorCode && response.ErrorCode !== "Ok") {
       throw new Error(`OTAPI Error: ${response.ErrorCode} - ${response.ErrorDescription}`);
     }
 
-    // Extract category list from response - OTAPI returns CategoryInfoList at top level
     const content = response.CategoryInfoList?.Content?.Item
       || response.CategoryInfoList?.Items
       || response.CategoryInfoList?.Content
@@ -194,26 +274,13 @@ serve(async (req) => {
       || ensureArray(response.Result?.Content)
       || [];
 
-    console.log("[sync-ot-categories] CategoryInfoList keys:", response.CategoryInfoList ? Object.keys(response.CategoryInfoList) : "N/A");
-    if (response.CategoryInfoList?.Content) {
-      console.log("[sync-ot-categories] Content keys:", Object.keys(response.CategoryInfoList.Content));
-      console.log("[sync-ot-categories] Content sample:", JSON.stringify(response.CategoryInfoList.Content).substring(0, 500));
-    }
-
     const catArray = ensureArray(content);
     console.log("[sync-ot-categories] Root categories found:", catArray.length);
-    if (catArray.length > 0) {
-      console.log("[sync-ot-categories] First cat sample:", JSON.stringify(catArray[0]).substring(0, 300));
-    }
 
-    // Parse root categories
     const categories = parseCategoriesJson(catArray, null, 0, null);
-    console.log("[sync-ot-categories] Root parsed:", categories.length);
 
-    // Fetch subcategories for parent categories (OTAPI doesn't include children inline)
+    // Fetch subcategories for parent categories
     const parentCats = categories.filter((c) => c.is_parent_on_provider && c.depth === 0);
-    console.log("[sync-ot-categories] Parent categories to fetch subs:", parentCats.length);
-
     for (const parentCat of parentCats) {
       try {
         const subResponse = await callOtApi("GetCategorySubcategoryInfoList", {
@@ -234,35 +301,39 @@ serve(async (req) => {
         console.error(`[sync-ot-categories] Error fetching subs for ${parentCat.internal_id}:`, err);
       }
     }
-    console.log("[sync-ot-categories] Total with subs:", categories.length);
+
+    // ─── Fetch Amazon categories ────────────────────────────
+    const amazonCategories = await fetchAmazonCategories(OT_API_KEY);
+    categories.push(...amazonCategories);
+
+    console.log("[sync-ot-categories] Total with Amazon:", categories.length);
 
     if (categories.length === 0) {
       return new Response(
         JSON.stringify({
           success: false,
           error: "No categories parsed from OTAPI response",
-          debug: { responseKeys: Object.keys(response), resultKeys: response.Result ? Object.keys(response.Result) : [] },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Preserve existing admin customizations
+    // ─── Preserve existing admin customizations ─────────────
     const { data: existingCats } = await supabase
       .from("ot_categories")
-      .select("internal_id, seo_alias, display_order, icon_url, is_active");
+      .select("internal_id, seo_alias, display_order, icon_url, is_active, item_ids, source_type");
 
-    const existingMap = new Map<string, { seo_alias: string | null; display_order: number | null; icon_url: string | null; is_active: boolean }>();
+    const existingMap = new Map<string, any>();
+    const manualIds = new Set<string>();
     for (const ec of existingCats || []) {
-      existingMap.set(ec.internal_id, {
-        seo_alias: ec.seo_alias,
-        display_order: ec.display_order,
-        icon_url: ec.icon_url,
-        is_active: ec.is_active ?? true,
-      });
+      existingMap.set(ec.internal_id, ec);
+      if (ec.source_type === "manual") manualIds.add(ec.internal_id);
     }
 
-    const mergedCategories = categories.map((cat) => {
+    // Filter out categories that conflict with manual category IDs
+    const filteredCategories = categories.filter((cat) => !manualIds.has(cat.internal_id));
+
+    const mergedCategories = filteredCategories.map((cat) => {
       const existing = existingMap.get(cat.internal_id);
       if (existing) {
         return {
@@ -271,13 +342,20 @@ serve(async (req) => {
           display_order: existing.display_order ?? cat.display_order,
           icon_url: existing.icon_url || cat.icon_url,
           is_active: existing.is_active,
+          item_ids: (existing.item_ids && existing.item_ids.length > 0) ? existing.item_ids : cat.item_ids,
+          source_type: "otapi-provider",
         };
       }
-      return { ...cat, is_active: true };
+      return { ...cat, is_active: true, source_type: "otapi-provider" };
     });
 
-    // Clear and re-insert
-    await supabase.from("ot_categories").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    // Delete all non-manual categories, preserve manual ones
+    const { error: delError } = await supabase.from("ot_categories").delete().neq("source_type", "manual");
+    if (delError) {
+      console.error("[sync-ot-categories] Delete error:", delError);
+      throw delError;
+    }
+    console.log("[sync-ot-categories] Deleted non-manual categories, inserting", mergedCategories.length);
 
     const batchSize = 100;
     let inserted = 0;
@@ -285,7 +363,7 @@ serve(async (req) => {
       const batch = mergedCategories.slice(i, i + batchSize);
       const { error } = await supabase.from("ot_categories").insert(batch);
       if (error) {
-        console.error(`Batch ${i} error:`, error);
+        console.error(`Batch ${i}/${mergedCategories.length} error:`, error, "sample:", batch[0]?.internal_id);
         throw error;
       }
       inserted += batch.length;
@@ -299,6 +377,7 @@ serve(async (req) => {
         total_parsed: categories.length,
         total_inserted: inserted,
         providers,
+        amazon_count: amazonCategories.length,
         sample: categories.filter((c) => c.depth === 0).slice(0, 10).map((c) => ({
           id: c.internal_id,
           name: c.name_mn || c.name_en,
