@@ -47,6 +47,8 @@ const ICON_OPTIONS = [
 
 const HOME_POIZON_COUNT_KEY = "home_poizon_count";
 const HOME_TAOBAO_COUNT_KEY = "home_taobao_count";
+const HOME_AMAZON_COUNT_KEY = "home_amazon_count";
+const HOME_PROVIDER_ORDER_KEY = "home_provider_order";
 const DEFAULT_HOME_PAGE_SIZE = 24;
 
 function SectionsManager({ providerType }: { providerType: string }) {
