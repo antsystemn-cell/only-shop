@@ -324,11 +324,16 @@ serve(async (req) => {
       .select("internal_id, seo_alias, display_order, icon_url, is_active, item_ids, source_type");
 
     const existingMap = new Map<string, any>();
+    const manualIds = new Set<string>();
     for (const ec of existingCats || []) {
       existingMap.set(ec.internal_id, ec);
+      if (ec.source_type === "manual") manualIds.add(ec.internal_id);
     }
 
-    const mergedCategories = categories.map((cat) => {
+    // Filter out categories that conflict with manual category IDs
+    const filteredCategories = categories.filter((cat) => !manualIds.has(cat.internal_id));
+
+    const mergedCategories = filteredCategories.map((cat) => {
       const existing = existingMap.get(cat.internal_id);
       if (existing) {
         return {
@@ -337,7 +342,6 @@ serve(async (req) => {
           display_order: existing.display_order ?? cat.display_order,
           icon_url: existing.icon_url || cat.icon_url,
           is_active: existing.is_active,
-          // Preserve admin-curated item_ids if they exist
           item_ids: (existing.item_ids && existing.item_ids.length > 0) ? existing.item_ids : cat.item_ids,
           source_type: "otapi-provider",
         };
@@ -346,7 +350,12 @@ serve(async (req) => {
     });
 
     // Delete all non-manual categories, preserve manual ones
-    await supabase.from("ot_categories").delete().neq("source_type", "manual");
+    const { error: delError } = await supabase.from("ot_categories").delete().neq("source_type", "manual");
+    if (delError) {
+      console.error("[sync-ot-categories] Delete error:", delError);
+      throw delError;
+    }
+    console.log("[sync-ot-categories] Deleted non-manual categories, inserting", mergedCategories.length);
 
     const batchSize = 100;
     let inserted = 0;
@@ -354,7 +363,7 @@ serve(async (req) => {
       const batch = mergedCategories.slice(i, i + batchSize);
       const { error } = await supabase.from("ot_categories").insert(batch);
       if (error) {
-        console.error(`Batch ${i} error:`, error);
+        console.error(`Batch ${i}/${mergedCategories.length} error:`, error, "sample:", batch[0]?.internal_id);
         throw error;
       }
       inserted += batch.length;
