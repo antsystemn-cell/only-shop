@@ -63,6 +63,12 @@ export function ProviderStrip() {
     const filter = item.slug === "home" ? "all" : toProviderFilter(item.provider_type);
     setSelectedProvider(filter);
 
+    // Amazon has its own dedicated category browse page
+    if (item.provider_type === "Amazon") {
+      navigate("/amazon");
+      return;
+    }
+
     const isOnProviderPage = location.pathname.startsWith("/ot/provider/");
     if (item.slug === "home") {
       if (isOnProviderPage || location.pathname !== "/") navigate("/");
