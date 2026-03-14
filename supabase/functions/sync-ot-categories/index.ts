@@ -161,12 +161,13 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // Fetch categories XML from OTAPI
-    const apiUrl = `${OT_API_BASE}/GetRootCategoryInfoList?instanceKey=${OT_API_KEY}&language=khk&output=xml`;
-    console.log("[sync-ot-categories] Fetching from OTAPI...");
+    const apiUrl = `${OT_API_BASE}/GetRootCategoryInfoList?instanceKey=${OT_API_KEY}&language=khk`;
+    console.log("[sync-ot-categories] Fetching from:", apiUrl.replace(OT_API_KEY, "***"));
     const response = await fetch(apiUrl);
     if (!response.ok) throw new Error(`OTAPI returned ${response.status}`);
     const xmlContent = await response.text();
-    console.log("[sync-ot-categories] XML length:", xmlContent.length);
+    console.log("[sync-ot-categories] Response length:", xmlContent.length);
+    console.log("[sync-ot-categories] Preview:", xmlContent.substring(0, 500));
 
     // Parse categories
     const categories = parseCategories(xmlContent, null, 0, null);
