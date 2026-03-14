@@ -437,7 +437,7 @@ function HomeShowcaseSettingsManager() {
         .from("admin_settings")
         .select("id, setting_key, setting_value")
         .eq("category", "storefront")
-        .in("setting_key", [HOME_POIZON_COUNT_KEY, HOME_TAOBAO_COUNT_KEY]);
+        .in("setting_key", [HOME_POIZON_COUNT_KEY, HOME_TAOBAO_COUNT_KEY, HOME_AMAZON_COUNT_KEY]);
       if (error) throw error;
       return data || [];
     },
