@@ -10,7 +10,7 @@ import { useProviderSafe } from "@/contexts/ProviderContext";
 import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
 import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
 
-type ProviderTab = "Poizon" | "Taobao";
+type ProviderTab = "Poizon" | "Taobao" | "Amazon";
 
 interface OtCat {
   id: string;
