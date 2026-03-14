@@ -1138,6 +1138,7 @@ export type Database = {
           parent_internal_id: string | null
           provider_type: string | null
           seo_alias: string | null
+          source_type: string
           updated_at: string
         }
         Insert: {
@@ -1159,6 +1160,7 @@ export type Database = {
           parent_internal_id?: string | null
           provider_type?: string | null
           seo_alias?: string | null
+          source_type?: string
           updated_at?: string
         }
         Update: {
@@ -1180,6 +1182,7 @@ export type Database = {
           parent_internal_id?: string | null
           provider_type?: string | null
           seo_alias?: string | null
+          source_type?: string
           updated_at?: string
         }
         Relationships: []
