@@ -14,8 +14,9 @@ import { toast } from "sonner";
 import {
   Upload, FolderTree, Loader2, ChevronRight, ChevronDown, Search,
   Package, Plus, Pencil, ArrowUp, ArrowDown, Trash2, ListTree, RefreshCw,
-  Eye, EyeOff, Globe, ShoppingBag, Shield, FileQuestion,
+  Eye, EyeOff, Globe, ShoppingBag, Shield, FileQuestion, ExternalLink,
 } from "lucide-react";
+import { getCategoryPath } from "@/utils/categoryUrl";
 import { OtCategoryForm } from "@/components/admin/OtCategoryForm";
 import { OtCategoryItemsManager } from "@/components/admin/OtCategoryItemsManager";
 
