@@ -1,7 +1,7 @@
 import { useMemo, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Shield, ShoppingBag } from "lucide-react";
+import { Shield, ShoppingBag, Globe } from "lucide-react";
 import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
