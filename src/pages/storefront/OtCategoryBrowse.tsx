@@ -114,6 +114,7 @@ export default function OtCategoryBrowse() {
   const { data: category, isLoading: loadingCat } = useQuery({
     queryKey: ["ot-category", resolvedSlug],
     queryFn: async () => {
+      // First try by seo_alias (active categories)
       const { data: bySeo } = await supabase
         .from("ot_categories")
         .select("*")
@@ -122,6 +123,15 @@ export default function OtCategoryBrowse() {
         .maybeSingle();
       if (bySeo) return bySeo as OtCat;
 
+      // Then try by seo_alias without is_active filter (direct URL access for hidden/manual categories)
+      const { data: bySeoHidden } = await supabase
+        .from("ot_categories")
+        .select("*")
+        .eq("seo_alias", resolvedSlug!)
+        .maybeSingle();
+      if (bySeoHidden) return bySeoHidden as OtCat;
+
+      // Finally try by internal_id (always accessible via direct URL)
       const { data, error } = await supabase
         .from("ot_categories")
         .select("*")
