@@ -65,9 +65,7 @@ export function PWAInstallBanner() {
       >
         {config.logo_url ? (
           <img src={config.logo_url} alt="App logo" className="w-8 h-8 object-contain" />
-        ) : (
-          <Download className="h-5 w-5" />
-        )}
+        ) : null}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold">{config.title}</p>
