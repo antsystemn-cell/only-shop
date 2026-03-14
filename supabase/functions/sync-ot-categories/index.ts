@@ -304,7 +304,37 @@ serve(async (req) => {
 
     // ─── Fetch Amazon categories ────────────────────────────
     const amazonCategories = await fetchAmazonCategories(OT_API_KEY);
-    categories.push(...amazonCategories);
+
+    // Create Amazon root node and nest all Amazon categories under it
+    if (amazonCategories.length > 0) {
+      categories.push({
+        internal_id: "amazon-root",
+        external_id: null,
+        parent_internal_id: null,
+        name_mn: "Amazon",
+        name_en: "Amazon",
+        name_ru: null,
+        name_zh: null,
+        icon_url: null,
+        icon_class: null,
+        provider_type: "Amazon",
+        seo_alias: null,
+        item_ids: [],
+        is_parent_on_provider: true,
+        depth: 0,
+        display_order: 9999,
+      });
+      // Re-parent top-level Amazon categories under the root
+      for (const ac of amazonCategories) {
+        if (!ac.parent_internal_id) {
+          ac.parent_internal_id = "amazon-root";
+          ac.depth = 1;
+        } else {
+          ac.depth = (ac.depth || 0) + 1;
+        }
+      }
+      categories.push(...amazonCategories);
+    }
 
     console.log("[sync-ot-categories] Total with Amazon:", categories.length);
 
