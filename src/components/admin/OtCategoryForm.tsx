@@ -111,9 +111,10 @@ export function OtCategoryForm({ open, onOpenChange, editingCategory, parentCate
         if (error) throw error;
       } else {
         if (!internalId.trim()) throw new Error("Internal ID шаардлагатай");
+        // Manual categories default to hidden (is_active=false) and source_type='manual'
         const { error } = await supabase
           .from("ot_categories")
-          .insert([{ ...payload, internal_id: internalId.trim(), depth }]);
+          .insert([{ ...payload, internal_id: internalId.trim(), depth, source_type: 'manual', is_active: false }]);
         if (error) throw error;
       }
     },
