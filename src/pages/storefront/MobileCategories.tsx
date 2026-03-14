@@ -104,7 +104,12 @@ export default function MobileCategories() {
   });
 
   // Determine which category to load products for
-  const productCategory = selectedSubCategory || selectedCategory || (activeTab === "Poizon" ? { internal_id: POIZON_ROOT_ID, external_id: POIZON_ROOT_ID, provider_type: "Poizon", item_ids: null } as OtCat : null);
+  const defaultCategory: OtCat | null = activeTab === "Poizon"
+    ? { internal_id: POIZON_ROOT_ID, external_id: POIZON_ROOT_ID, provider_type: "Poizon", item_ids: null } as OtCat
+    : activeTab === "Amazon"
+    ? { internal_id: AMAZON_ROOT_ID, external_id: AMAZON_ROOT_ID, provider_type: "Amazon", item_ids: null } as OtCat
+    : null;
+  const productCategory = selectedSubCategory || selectedCategory || defaultCategory;
 
   // Infinite query: fetch 3x pages, display progressively
   const {
