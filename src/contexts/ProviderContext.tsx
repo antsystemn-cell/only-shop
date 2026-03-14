@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 
-export type ProviderFilter = "all" | "Poizon" | "Taobao";
+export type ProviderFilter = "all" | "Poizon" | "Taobao" | "Amazon";
 
 interface ProviderContextType {
   selectedProvider: ProviderFilter;

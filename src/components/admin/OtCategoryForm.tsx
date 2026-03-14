@@ -180,6 +180,7 @@ export function OtCategoryForm({ open, onOpenChange, editingCategory, parentCate
                 <SelectContent>
                   <SelectItem value="Poizon">Poizon</SelectItem>
                   <SelectItem value="Taobao">Taobao</SelectItem>
+                  <SelectItem value="Amazon">Amazon</SelectItem>
                 </SelectContent>
               </Select>
             </div>
