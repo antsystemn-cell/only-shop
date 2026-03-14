@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download } from "lucide-react";
+
 import { usePwaConfig } from "@/hooks/usePwaConfig";
 
 const isStandaloneMode = () =>
