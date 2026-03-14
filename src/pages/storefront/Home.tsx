@@ -185,7 +185,7 @@ const ProviderShowcase = memo(function ProviderShowcase({
   const homeTranslations = useTranslatedTitles(homeTitlesList);
 
   const handleViewAll = () => {
-    const filter = providerType === "Poizon" ? ("Poizon" as const) : ("Taobao" as const);
+    const filter = providerType === "Poizon" ? ("Poizon" as const) : providerType === "Amazon" ? ("Amazon" as const) : ("Taobao" as const);
     setSelectedProvider(filter);
     navigate(`/ot/provider/${slug}`);
   };
