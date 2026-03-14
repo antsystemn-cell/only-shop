@@ -1,0 +1,1 @@
+DELETE FROM ot_categories WHERE internal_id LIKE 'otc-%' AND provider_type = 'Amazon';
