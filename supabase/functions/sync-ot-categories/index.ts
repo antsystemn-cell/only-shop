@@ -345,10 +345,8 @@ serve(async (req) => {
       return { ...cat, is_active: true, source_type: "otapi-provider" };
     });
 
-    // Only delete otapi-provider categories, preserve manual ones
-    await supabase.from("ot_categories").delete().eq("source_type", "otapi-provider");
-    // Also delete categories without source_type (legacy)
-    await supabase.from("ot_categories").delete().is("source_type", null);
+    // Delete all non-manual categories, preserve manual ones
+    await supabase.from("ot_categories").delete().neq("source_type", "manual");
 
     const batchSize = 100;
     let inserted = 0;
