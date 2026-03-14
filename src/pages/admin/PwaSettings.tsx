@@ -12,37 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Save, Smartphone, Eye } from "lucide-react";
 
-interface PwaConfig {
-  enabled: boolean;
-  title: string;
-  subtitle: string;
-  button_text: string;
-  dismiss_days: number;
-  position: "bottom" | "top" | "center";
-  logo_url: string;
-  bg_color: string;
-  text_color: string;
-  button_bg_color: string;
-  button_text_color: string;
-  border_radius: "sm" | "md" | "lg" | "xl" | "2xl";
-  show_close_button: boolean;
-}
+import { DEFAULT_PWA_CONFIG, type PwaBannerConfig as PwaConfig } from "@/types/pwa";
 
-const DEFAULT_CONFIG: PwaConfig = {
-  enabled: true,
-  title: "Only.mn апп суулгах",
-  subtitle: "Илүү хурдан, илүү тохиромжтой хэрэглээ.",
-  button_text: "Суулгах",
-  dismiss_days: 7,
-  position: "bottom",
-  logo_url: "",
-  bg_color: "",
-  text_color: "",
-  button_bg_color: "",
-  button_text_color: "",
-  border_radius: "2xl",
-  show_close_button: true,
-};
+const DEFAULT_CONFIG: PwaConfig = DEFAULT_PWA_CONFIG;
 
 export default function PwaSettings() {
   const queryClient = useQueryClient();
