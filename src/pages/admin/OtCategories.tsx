@@ -40,6 +40,7 @@ interface OtCategory {
 
 export default function OtCategories() {
   const [importing, setImporting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
