@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { toast } from "sonner";
 import {
   Upload, FolderTree, Loader2, ChevronRight, ChevronDown, Search,
-  Package, Plus, Pencil, ArrowUp, ArrowDown, Trash2, ListTree,
+  Package, Plus, Pencil, ArrowUp, ArrowDown, Trash2, ListTree, RefreshCw,
 } from "lucide-react";
 import { OtCategoryForm } from "@/components/admin/OtCategoryForm";
 import { OtCategoryItemsManager } from "@/components/admin/OtCategoryItemsManager";
@@ -40,6 +40,7 @@ interface OtCategory {
 
 export default function OtCategories() {
   const [importing, setImporting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -114,6 +115,21 @@ export default function OtCategories() {
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleOtapiSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-ot-categories", { body: {} });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Sync failed");
+      uiToast({ title: "Амжилттай!", description: `${data.total_inserted} категори шинэчлэгдлээ. Провайдерууд: ${data.providers?.join(", ")}` });
+      queryClient.invalidateQueries({ queryKey: ["admin", "ot-categories"] });
+    } catch (err: any) {
+      uiToast({ title: "Алдаа", description: err.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -274,7 +290,11 @@ export default function OtCategories() {
           <h1 className="text-3xl font-bold">OT Категори удирдлага</h1>
           <p className="text-muted-foreground mt-1">Ангилалуудыг үүсгэх, засах, дарааллыг өөрчлөх, бараа удирдах</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={handleOtapiSync} disabled={syncing} variant="outline" className="gap-1">
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            OTAPI-аас шинэчлэх
+          </Button>
           <Button onClick={() => { setEditingCat(null); setFormOpen(true); }} variant="outline" className="gap-1">
             <Plus className="h-4 w-4" /> Категори нэмэх
           </Button>

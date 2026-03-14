@@ -28,6 +28,7 @@ interface StripItem {
 function toProviderFilter(providerType: string): ProviderFilter {
   if (providerType === "Poizon") return "Poizon";
   if (providerType === "Taobao") return "Taobao";
+  if (providerType === "Amazon") return "Amazon";
   return "all";
 }
 

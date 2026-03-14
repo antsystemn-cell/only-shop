@@ -1,7 +1,7 @@
 import { useMemo, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Shield, ShoppingBag } from "lucide-react";
+import { Shield, ShoppingBag, Globe } from "lucide-react";
 import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ function shuffle<T>(arr: T[]): T[] {
 const DEFAULT_HOME_PAGE_SIZE = 24;
 const HOME_POIZON_COUNT_KEY = "home_poizon_count";
 const HOME_TAOBAO_COUNT_KEY = "home_taobao_count";
+const HOME_AMAZON_COUNT_KEY = "home_amazon_count";
 
 // Specific Dewu category IDs to show on home
 const DEWU_HOME_CATEGORIES = ["otc-1368", "otc-1466", "otc-1470", "otc-1471", "otc-1467"];
@@ -184,7 +185,7 @@ const ProviderShowcase = memo(function ProviderShowcase({
   const homeTranslations = useTranslatedTitles(homeTitlesList);
 
   const handleViewAll = () => {
-    const filter = providerType === "Poizon" ? ("Poizon" as const) : ("Taobao" as const);
+    const filter = providerType === "Poizon" ? ("Poizon" as const) : providerType === "Amazon" ? ("Amazon" as const) : ("Taobao" as const);
     setSelectedProvider(filter);
     navigate(`/ot/provider/${slug}`);
   };
@@ -253,7 +254,7 @@ export default function Home() {
         .from("admin_settings")
         .select("setting_key, setting_value")
         .eq("category", "storefront")
-        .in("setting_key", [HOME_POIZON_COUNT_KEY, HOME_TAOBAO_COUNT_KEY]);
+        .in("setting_key", [HOME_POIZON_COUNT_KEY, HOME_TAOBAO_COUNT_KEY, HOME_AMAZON_COUNT_KEY]);
       if (error) throw error;
       return data || [];
     },
@@ -267,6 +268,11 @@ export default function Home() {
 
   const taobaoPageSize = toPositiveInt(
     homeShowcaseSettings?.find((s) => s.setting_key === HOME_TAOBAO_COUNT_KEY)?.setting_value,
+    DEFAULT_HOME_PAGE_SIZE
+  );
+
+  const amazonPageSize = toPositiveInt(
+    homeShowcaseSettings?.find((s) => s.setting_key === HOME_AMAZON_COUNT_KEY)?.setting_value,
     DEFAULT_HOME_PAGE_SIZE
   );
 
@@ -303,6 +309,17 @@ export default function Home() {
           providerType="Taobao"
           slug="taobao"
           pageSize={taobaoPageSize}
+        />
+
+        {/* Amazon Section */}
+        <ProviderShowcase
+          title="Amazon USA"
+          subtitle="Америкаас шууд"
+          icon={<Globe className="h-4 w-4" />}
+          logoUrl={getProviderLogo(stripItems, "Amazon")}
+          providerType="Amazon"
+          slug="amazon"
+          pageSize={amazonPageSize}
         />
       </div>
     </div>

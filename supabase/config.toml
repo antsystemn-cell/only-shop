@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.amazon-api]
 verify_jwt = false
+
+[functions.sync-ot-categories]
+verify_jwt = false
