@@ -496,7 +496,8 @@ function HomeShowcaseSettingsManager() {
     const fd = new FormData(e.currentTarget);
     const poizonCount = Math.max(1, Number(fd.get("poizon_count")) || DEFAULT_HOME_PAGE_SIZE);
     const taobaoCount = Math.max(1, Number(fd.get("taobao_count")) || DEFAULT_HOME_PAGE_SIZE);
-    saveMutation.mutate({ poizonCount, taobaoCount });
+    const amazonCount = Math.max(1, Number(fd.get("amazon_count")) || DEFAULT_HOME_PAGE_SIZE);
+    saveMutation.mutate({ poizonCount, taobaoCount, amazonCount });
   };
 
   if (isLoading) {
