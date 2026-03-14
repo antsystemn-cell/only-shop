@@ -70,15 +70,30 @@ const ProviderShowcase = memo(function ProviderShowcase({
     queryKey: ["home-cat-ids", providerType, categoryIds],
     queryFn: async () => {
       if (categoryIds && categoryIds.length > 0) return categoryIds;
-      const { data } = await supabase
+      // First try root categories
+      const { data: roots } = await supabase
         .from("ot_categories")
         .select("internal_id")
         .is("parent_internal_id", null)
         .eq("is_active", true)
         .eq("provider_type", providerType)
         .order("display_order")
-        .limit(4); // Only top 4 categories, not all 20+
-      return data?.map((c) => c.internal_id) || [];
+        .limit(4);
+      const rootIds = roots?.map((c) => c.internal_id) || [];
+      // If only 1 root (like Amazon), fetch its subcategories instead
+      if (rootIds.length <= 1 && rootIds.length > 0) {
+        const { data: subs } = await supabase
+          .from("ot_categories")
+          .select("internal_id")
+          .eq("parent_internal_id", rootIds[0])
+          .eq("is_active", true)
+          .eq("provider_type", providerType)
+          .order("display_order")
+          .limit(6);
+        const subIds = subs?.map((c) => c.internal_id) || [];
+        return subIds.length > 0 ? subIds : rootIds;
+      }
+      return rootIds;
     },
     staleTime: 1000 * 60 * 60,
   });
