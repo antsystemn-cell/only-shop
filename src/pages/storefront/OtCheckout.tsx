@@ -185,7 +185,8 @@ export default function OtCheckout() {
         return;
       }
 
-      // Success
+      // Success — refresh basket to get OTAPI-confirmed prices with proper MNT conversion
+      await refreshBasket();
       setCheckResult(result);
       console.log("[OtCheckout] Basket check passed");
     } catch (err: any) {

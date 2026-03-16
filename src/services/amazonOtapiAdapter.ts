@@ -228,19 +228,10 @@ export function mapAmazonBasketLinePrice(
 ): { unitPrice: number; totalPrice: number } {
   const quantity = line.Quantity || 1;
 
-  // First try OTAPI's internal conversion (it may work for some Amazon items)
-  const fullTotalInternal = line.FullTotalCost?.ConvertedPriceList?.Internal?.Price;
-  const totalCostInternal = line.TotalCost?.ConvertedPriceList?.Internal?.Price;
-  const priceInternal = line.Price?.ConvertedPriceList?.Internal?.Price;
+  // For Amazon: NEVER trust OTAPI's "Internal" conversion — it often passes
+  // through the raw USD value (e.g. 110) without converting to MNT.
+  // Always extract the source price and do manual USD→MNT conversion + markup.
 
-  if (fullTotalInternal != null || totalCostInternal != null || priceInternal != null) {
-    const totalPrice = fullTotalInternal ?? totalCostInternal ?? (priceInternal! * quantity);
-    const unitPrice = totalPrice / (quantity || 1);
-    amazonLog("basketLine:internalConversion", { itemId: line.ItemId, unitPrice, totalPrice });
-    return { unitPrice, totalPrice };
-  }
-
-  // No internal conversion → manual conversion for Amazon
   const rawNumericPrice = typeof line.Price === "number"
     ? line.Price
     : typeof line.Price?.OriginalPrice === "number"
