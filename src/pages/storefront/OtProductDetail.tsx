@@ -266,8 +266,9 @@ export default function OtProductDetail() {
         return false;
       }
 
-      // Check stock for selected variant
-      if (matchedConfig && matchedConfig.quantity !== undefined && matchedConfig.quantity <= 0) {
+      // Check stock for selected/auto-resolved variant
+      const resolvedConfig = matchedConfig || amazonConfigPool.find((ci) => ci.id === resolvedConfigId);
+      if (resolvedConfig && resolvedConfig.quantity !== undefined && resolvedConfig.quantity <= 0) {
         toast.error("Сонгосон хувилбарын үлдэгдэл дууссан байна");
         return false;
       }
