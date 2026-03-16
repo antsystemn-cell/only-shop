@@ -200,8 +200,8 @@ export default function OtCheckout() {
         setCheckError("Сагс шалгалт эхлүүлж чадсангүй (ID олдсонгүй). Дахин оролдоно уу.");
       } else if (msg.includes("NotFound") || msg.includes("not found")) {
         setCheckError("Сагс шалгалтын хүсэлт хугацаа дууссан. Дахин шалгаж байна…");
-      } else if (msg.includes("ContractViolation")) {
-        setCheckError("Техникийн алдаа гарлаа. Сагсаа шинэчилж дахин оролдоно уу.");
+      } else if (msg.includes("ContractViolation") || msg.includes("configurationId")) {
+        setCheckError("Сагсанд тохиргоо дутуу бараа байна. Барааны сонголтыг шалгаад дахин нэмнэ үү.");
         await refreshBasket();
       } else {
         setCheckError(msg || "Сагс шалгахад алдаа гарлаа");
