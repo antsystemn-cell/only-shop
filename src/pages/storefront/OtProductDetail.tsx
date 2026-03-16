@@ -242,9 +242,10 @@ export default function OtProductDetail() {
     if (isAmazon) {
       // Auto-resolve configurationId for products with no configurator UI
       let resolvedConfigId = matchedConfig?.id;
-      if (!resolvedConfigId && product.configuredItems?.length) {
+      const amazonConfigPool = effectiveConfiguredItems;
+      if (!resolvedConfigId && amazonConfigPool.length) {
         const autoId = getAmazonAutoConfigurationId(
-          product.configuredItems,
+          amazonConfigPool,
           product.configurators,
         );
         if (autoId) {
