@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { fetchProductDetail, fetchProductDescription, batchGetSimplifiedItemConfigurationInfo } from "@/services/otApi";
+import { fetchProductDetail, fetchProductDescription, batchGetSimplifiedItemConfigurationInfo, fetchItemsByIds } from "@/services/otApi";
 import { isAmazonProvider, buildAmazonAddToCartPayload, withAmazonErrorHandling, getAmazonAutoConfigurationId, amazonLog } from "@/services/amazonOtapiAdapter";
 import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
