@@ -205,12 +205,25 @@ export default function OtProductDetail() {
 
     // Amazon-specific: use adapter for validation and payload building
     if (isAmazon) {
+      // Auto-resolve configurationId for products with no configurator UI
+      let resolvedConfigId = matchedConfig?.id;
+      if (!resolvedConfigId && product.configuredItems?.length) {
+        const autoId = getAmazonAutoConfigurationId(
+          product.configuredItems,
+          product.configurators,
+        );
+        if (autoId) {
+          resolvedConfigId = autoId;
+          amazonLog("autoConfigResolved", { itemId: product.id, configId: autoId });
+        }
+      }
+
       const result = buildAmazonAddToCartPayload(
         product.id,
         quantity,
         selectedConfigs,
         product.configurators,
-        matchedConfig?.id,
+        resolvedConfigId,
       );
       if ("error" in result) {
         toast.error(result.error);
