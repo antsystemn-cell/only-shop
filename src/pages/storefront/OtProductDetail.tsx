@@ -734,15 +734,22 @@ export default function OtProductDetail() {
                       }`}
                       title={isOutOfStock ? "Дууссан" : ""}
                     >
-                      {val.imageUrl && (
-                        <img
-                          src={val.imageUrl}
-                          alt={val.value}
-                          className={`w-8 h-8 rounded object-cover ${isOutOfStock ? "grayscale" : ""}`}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                          }}
-                        />
+                      {(() => {
+                        // Use configurator value image, or fallback to enriched configuredItem image
+                        const thumbUrl = val.imageUrl || effectiveConfiguredItems.find(
+                          (ci) => ci.configuratorIds.includes(val.id)
+                        )?.imageUrl;
+                        return thumbUrl ? (
+                          <img
+                            src={thumbUrl}
+                            alt={val.value}
+                            className={`w-8 h-8 rounded object-cover ${isOutOfStock ? "grayscale" : ""}`}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        ) : null;
+                      })()}
                       )}
                       <span className="line-clamp-1">{val.value}</span>
                       {isOutOfStock && <span className="text-[10px] text-destructive font-medium">Дууссан</span>}
