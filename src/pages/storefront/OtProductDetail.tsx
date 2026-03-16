@@ -711,6 +711,16 @@ export default function OtProductDetail() {
                         // Show configurator image in main gallery
                         if (newVal && val.imageUrl) {
                           setConfigImageOverride(val.imageUrl);
+                        } else if (newVal) {
+                          // For Amazon: try to get image from enriched configuredItem
+                          const matchingCi = effectiveConfiguredItems.find((ci) =>
+                            ci.configuratorIds.includes(newVal)
+                          );
+                          if (matchingCi?.imageUrl) {
+                            setConfigImageOverride(matchingCi.imageUrl);
+                          } else {
+                            setConfigImageOverride(null);
+                          }
                         } else {
                           setConfigImageOverride(null);
                         }
