@@ -198,12 +198,11 @@ export default function OtProductDetail() {
     staleTime: 1000 * 60 * 10,
   });
 
-  // Amazon variant enrichment: fetch real prices and images for each variant ASIN
-  // OTAPI returns the same parent price for all variants — we need per-ASIN prices
+  // Amazon variant enrichment: fetch images for each variant ASIN
+  // Prices are now resolved via skuPrices in fetchProductDetail
   const isAmazon = isAmazonProvider(product?.providerType);
   const variantAsins = useMemo(() => {
     if (!isAmazon || !product?.configuredItems?.length) return [];
-    // Each configuredItem.id is an ASIN like "B0BG8CJXHH"
     return [...new Set(product.configuredItems.map((ci) => `az-${ci.id}`))];
   }, [isAmazon, product?.configuredItems]);
 
@@ -219,7 +218,7 @@ export default function OtProductDetail() {
       ? product.configuredItems
       : amazonHiddenConfiguration ? [amazonHiddenConfiguration] : [];
 
-    // Enrich with real Amazon variant prices and images
+    // Enrich with Amazon variant images (prices already set via skuPrices)
     if (amazonVariantInfo?.length && baseItems.length > 0) {
       const infoMap = new Map(amazonVariantInfo.map((v) => [v.id.replace(/^az-/, ""), v]));
       return baseItems.map((ci) => {
@@ -227,7 +226,6 @@ export default function OtProductDetail() {
         if (!info) return ci;
         return {
           ...ci,
-          price: info.price > 0 ? info.price : ci.price,
           imageUrl: info.imageUrl || ci.imageUrl,
         };
       });
