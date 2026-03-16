@@ -104,7 +104,7 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
     let unitPrice: number;
     let totalPrice: number;
 
-    if (isAmazonProvider(line.ProviderType) && priceConfig) {
+    if (isAmazonItem(line.ProviderType, line.ItemId) && priceConfig) {
       const amazonPrice = mapAmazonBasketLinePrice(line, priceConfig);
       unitPrice = amazonPrice.unitPrice;
       totalPrice = amazonPrice.totalPrice;
