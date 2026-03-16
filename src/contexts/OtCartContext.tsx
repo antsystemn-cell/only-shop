@@ -278,7 +278,12 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
       await fetchBasket();
       toast.success("Сагсанд нэмэгдлээ!");
     } catch (err: any) {
-      toast.error(err.message || "Сагсанд нэмэхэд алдаа гарлаа");
+      // Amazon-specific error mapping
+      const errorMsg = err.message || "Сагсанд нэмэхэд алдаа гарлаа";
+      const friendlyMsg = errorMsg.toLowerCase().includes("configurationid") || errorMsg.toLowerCase().includes("contractviolation")
+        ? mapAmazonOtapiError(errorMsg)
+        : errorMsg;
+      toast.error(friendlyMsg);
       throw err;
     } finally {
       setIsLoading(false);
