@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { fetchProductDetail, fetchProductDescription } from "@/services/otApi";
+import { fetchProductDetail, fetchProductDescription, batchGetSimplifiedItemConfigurationInfo } from "@/services/otApi";
 import { isAmazonProvider, buildAmazonAddToCartPayload, withAmazonErrorHandling, getAmazonAutoConfigurationId, amazonLog } from "@/services/amazonOtapiAdapter";
 import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -124,6 +124,34 @@ export default function OtProductDetail() {
     retry: 1,
   });
 
+  const { data: amazonHiddenConfiguration } = useQuery({
+    queryKey: ["amazon-hidden-config", itemId, product?.providerType],
+    queryFn: async () => {
+      const data = await batchGetSimplifiedItemConfigurationInfo(itemId!) as {
+        Result?: { Configuration?: { Current?: { ConfigurationId?: string | number; AvailableQuantity?: number } } };
+      };
+      const current = data?.Result?.Configuration?.Current;
+      const configurationId = current?.ConfigurationId;
+      if (configurationId === undefined || configurationId === null || configurationId === "") {
+        return null;
+      }
+      return {
+        id: String(configurationId),
+        quantity: typeof current?.AvailableQuantity === "number" ? current.AvailableQuantity : undefined,
+        price: product?.price,
+        imageUrl: undefined,
+        configuratorIds: [] as string[],
+      };
+    },
+    enabled:
+      !!itemId &&
+      !!product &&
+      isAmazonProvider(product.providerType) &&
+      product.configurators.length === 0 &&
+      product.configuredItems.length === 0,
+    staleTime: 1000 * 60 * 5,
+  });
+
   // Auto-select configurator groups that have only one option
   useEffect(() => {
     if (!product?.configurators?.length) return;
@@ -170,24 +198,33 @@ export default function OtProductDetail() {
     staleTime: 1000 * 60 * 10,
   });
 
+  const effectiveConfiguredItems = useMemo(() => {
+    if (product?.configuredItems?.length) return product.configuredItems;
+    return amazonHiddenConfiguration ? [amazonHiddenConfiguration] : [];
+  }, [product?.configuredItems, amazonHiddenConfiguration]);
+
   // Find matching configured item
   const matchedConfig = useMemo(() => {
-    if (!product?.configuredItems?.length || !Object.keys(selectedConfigs).length) return null;
+    if (!effectiveConfiguredItems.length) return null;
     const selectedVids = Object.values(selectedConfigs).filter(Boolean);
-    if (selectedVids.length === 0) return null;
-    return product.configuredItems.find((ci) => selectedVids.every((vid) => ci.configuratorIds.includes(vid)));
-  }, [product, selectedConfigs]);
+
+    if (selectedVids.length === 0) {
+      return null;
+    }
+
+    return effectiveConfiguredItems.find((ci) => selectedVids.every((vid) => ci.configuratorIds.includes(vid)));
+  }, [effectiveConfiguredItems, selectedConfigs]);
 
   // Price range from configured items
   const priceRange = useMemo(() => {
-    if (!product?.configuredItems?.length) return null;
-    const prices = product.configuredItems.map((ci) => ci.price).filter((p): p is number => p != null && p > 0);
+    if (!effectiveConfiguredItems.length) return null;
+    const prices = effectiveConfiguredItems.map((ci) => ci.price).filter((p): p is number => p != null && p > 0);
     if (prices.length < 2) return null;
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     if (min === max) return null;
     return { min, max };
-  }, [product]);
+  }, [effectiveConfiguredItems]);
 
   const allConfigsSelected = product?.configurators?.length
     ? product.configurators.every((c) => selectedConfigs[c.pid] && selectedConfigs[c.pid] !== "")
@@ -207,9 +244,10 @@ export default function OtProductDetail() {
     if (isAmazon) {
       // Auto-resolve configurationId for products with no configurator UI
       let resolvedConfigId = matchedConfig?.id;
-      if (!resolvedConfigId && product.configuredItems?.length) {
+      const amazonConfigPool = effectiveConfiguredItems;
+      if (!resolvedConfigId && amazonConfigPool.length) {
         const autoId = getAmazonAutoConfigurationId(
-          product.configuredItems,
+          amazonConfigPool,
           product.configurators,
         );
         if (autoId) {
@@ -230,8 +268,9 @@ export default function OtProductDetail() {
         return false;
       }
 
-      // Check stock for selected variant
-      if (matchedConfig && matchedConfig.quantity !== undefined && matchedConfig.quantity <= 0) {
+      // Check stock for selected/auto-resolved variant
+      const resolvedConfig = matchedConfig || amazonConfigPool.find((ci) => ci.id === resolvedConfigId);
+      if (resolvedConfig && resolvedConfig.quantity !== undefined && resolvedConfig.quantity <= 0) {
         toast.error("Сонгосон хувилбарын үлдэгдэл дууссан байна");
         return false;
       }

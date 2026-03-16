@@ -14,7 +14,7 @@ import {
   getOriginalPriceValue,
   type PriceConfig,
 } from "@/utils/priceCalculator";
-import { cachedFetch, CACHE_TTL, invalidateCacheByPrefix } from "@/services/apiCache";
+import { cachedFetch, CACHE_TTL, invalidateCache, invalidateCacheByPrefix } from "@/services/apiCache";
 
 // ─── Catalog Item Overrides ─────────────────────────────────
 interface CatalogItemOverride {
@@ -904,8 +904,12 @@ export async function getItemTotalCost(
   return callProxy("getItemTotalCost", params);
 }
 
-export async function batchGetSimplifiedItemConfigurationInfo(itemId: string) {
-  return callProxy("batchGetSimplifiedItemConfigurationInfo", { itemId });
+export async function batchGetSimplifiedItemConfigurationInfo(
+  itemId: string,
+  xmlRequest = "<Request />",
+  blockList = "ConfigurationDetails",
+) {
+  return callProxy("batchGetSimplifiedItemConfigurationInfo", { itemId, xmlRequest, blockList });
 }
 
 // ─── Reviews ────────────────────────────────────────────────

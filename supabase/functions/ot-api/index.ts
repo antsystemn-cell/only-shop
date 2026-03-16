@@ -159,12 +159,16 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       if (params.blockList) bgtcParams.blockList = params.blockList;
       return callOtApi("BatchGetItemTotalCost", bgtcParams);
     }
-    case "batchGetSimplifiedItemConfigurationInfo":
-      return callOtApi("BatchGetSimplifiedItemConfigurationInfo", {
+    case "batchGetSimplifiedItemConfigurationInfo": {
+      const configParams: Record<string, string> = {
         ...base,
         itemId: params.itemId,
-        ...(params.blockList ? { blockList: params.blockList } : {}),
-      });
+        xmlRequest: params.xmlRequest || "<Request />",
+        blockList: params.blockList || "ConfigurationDetails",
+      };
+      if (params.itemParameters) configParams.itemParameters = params.itemParameters;
+      return callOtApi("BatchGetSimplifiedItemConfigurationInfo", configParams);
+    }
 
     // ── Brands ──
     case "getBrandInfoList":
