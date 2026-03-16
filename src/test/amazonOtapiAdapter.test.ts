@@ -37,6 +37,23 @@ describe("isAmazonProvider", () => {
   });
 });
 
+// ─── Amazon Item Detection (by provider + itemId) ───────────
+
+describe("isAmazonItem", () => {
+  it("detects by provider type", () => {
+    expect(isAmazonItem("Amazon")).toBe(true);
+    expect(isAmazonItem("amazon")).toBe(true);
+  });
+  it("detects by itemId prefix", () => {
+    expect(isAmazonItem(undefined, "az-B00284ADAI")).toBe(true);
+    expect(isAmazonItem("", "az-B00284ADAI")).toBe(true);
+  });
+  it("rejects non-Amazon", () => {
+    expect(isAmazonItem("Taobao", "12345")).toBe(false);
+    expect(isAmazonItem(undefined, "12345")).toBe(false);
+  });
+});
+
 // ─── Amazon Price Normalization ─────────────────────────────
 
 describe("normalizeAmazonOtapiPrice", () => {
