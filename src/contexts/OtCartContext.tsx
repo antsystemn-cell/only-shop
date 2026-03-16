@@ -100,26 +100,36 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
     console.log("[OtCart] Line ItemId:", line.ItemId, "ProviderType:", line.ProviderType, "Price:", JSON.stringify(line.Price));
 
     // ── Price extraction (MNT) ──
-    const fullTotalInternal = line.FullTotalCost?.ConvertedPriceList?.Internal?.Price;
-    const totalCostInternal = line.TotalCost?.ConvertedPriceList?.Internal?.Price;
-    const priceInternal = line.Price?.ConvertedPriceList?.Internal?.Price;
-    const rawNumericPrice = typeof line.Price === "number" ? line.Price : 
-                            typeof line.Price?.OriginalPrice === "number" ? line.Price.OriginalPrice : 0;
-    
-    let totalPrice = fullTotalInternal ?? totalCostInternal ?? (priceInternal ? priceInternal * quantity : rawNumericPrice * quantity);
-    let unitPrice = totalPrice / (quantity || 1);
+    // Amazon-specific: use isolated adapter for price normalization
+    let unitPrice: number;
+    let totalPrice: number;
 
-    // ── If no Internal conversion available (e.g. Amazon USD items), convert using our price config ──
-    const hasInternalConversion = fullTotalInternal != null || totalCostInternal != null || priceInternal != null;
-    if (!hasInternalConversion && rawNumericPrice > 0 && priceConfig) {
-      const currencyCode = getOriginalCurrencyCode(line.Price) || 
-        line.Price?.ConvertedPriceList?.Original?.CurrencyCode || 
-        line.Price?.CurrencyCode ||
-        (line.ProviderType === "Amazon" ? "USD" : "CNY");
-      const providerType = line.ProviderType || "Taobao";
-      unitPrice = calculateMntPrice(rawNumericPrice, currencyCode, providerType, priceConfig);
-      totalPrice = unitPrice * quantity;
-      console.log(`[OtCart] Manual conversion: ${rawNumericPrice} ${currencyCode} → ${unitPrice}₮ (provider: ${providerType})`);
+    if (isAmazonProvider(line.ProviderType) && priceConfig) {
+      const amazonPrice = mapAmazonBasketLinePrice(line, priceConfig);
+      unitPrice = amazonPrice.unitPrice;
+      totalPrice = amazonPrice.totalPrice;
+    } else {
+      // Non-Amazon providers: use existing OTAPI internal conversion logic
+      const fullTotalInternal = line.FullTotalCost?.ConvertedPriceList?.Internal?.Price;
+      const totalCostInternal = line.TotalCost?.ConvertedPriceList?.Internal?.Price;
+      const priceInternal = line.Price?.ConvertedPriceList?.Internal?.Price;
+      const rawNumericPrice = typeof line.Price === "number" ? line.Price : 
+                              typeof line.Price?.OriginalPrice === "number" ? line.Price.OriginalPrice : 0;
+      
+      totalPrice = fullTotalInternal ?? totalCostInternal ?? (priceInternal ? priceInternal * quantity : rawNumericPrice * quantity);
+      unitPrice = totalPrice / (quantity || 1);
+
+      // Fallback for non-Amazon providers without internal conversion
+      const hasInternalConversion = fullTotalInternal != null || totalCostInternal != null || priceInternal != null;
+      if (!hasInternalConversion && rawNumericPrice > 0 && priceConfig) {
+        const currencyCode = getOriginalCurrencyCode(line.Price) || 
+          line.Price?.ConvertedPriceList?.Original?.CurrencyCode || 
+          line.Price?.CurrencyCode || "CNY";
+        const providerType = line.ProviderType || "Taobao";
+        unitPrice = calculateMntPrice(rawNumericPrice, currencyCode, providerType, priceConfig);
+        totalPrice = unitPrice * quantity;
+        console.log(`[OtCart] Manual conversion: ${rawNumericPrice} ${currencyCode} → ${unitPrice}₮ (provider: ${providerType})`);
+      }
     }
 
     const originalCnyPrice = line.Price?.OriginalPrice 
