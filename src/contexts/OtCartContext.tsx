@@ -236,9 +236,12 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
   const fetchBasket = useCallback(async () => {
     try {
       setIsLoading(true);
-      const sessionId = await getAnonymousSession();
+      const [sessionId, priceConfig] = await Promise.all([
+        getAnonymousSession(),
+        getPriceConfig(),
+      ]);
       const data = await getBasket(sessionId);
-      const parsed = parseBasketResponse(data);
+      const parsed = parseBasketResponse(data, priceConfig);
       const enriched = await enrichItems(parsed);
       setItems(enriched);
     } catch (err) {
