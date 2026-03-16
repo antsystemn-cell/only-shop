@@ -198,10 +198,43 @@ export default function OtProductDetail() {
     staleTime: 1000 * 60 * 10,
   });
 
+  // Amazon variant enrichment: fetch real prices and images for each variant ASIN
+  // OTAPI returns the same parent price for all variants — we need per-ASIN prices
+  const isAmazon = isAmazonProvider(product?.providerType);
+  const variantAsins = useMemo(() => {
+    if (!isAmazon || !product?.configuredItems?.length) return [];
+    // Each configuredItem.id is an ASIN like "B0BG8CJXHH"
+    return [...new Set(product.configuredItems.map((ci) => `az-${ci.id}`))];
+  }, [isAmazon, product?.configuredItems]);
+
+  const { data: amazonVariantInfo } = useQuery({
+    queryKey: ["amazon-variant-info", variantAsins],
+    queryFn: () => fetchItemsByIds(variantAsins, 6, { includeUnavailable: true }),
+    enabled: variantAsins.length > 1,
+    staleTime: 1000 * 60 * 10,
+  });
+
   const effectiveConfiguredItems = useMemo(() => {
-    if (product?.configuredItems?.length) return product.configuredItems;
-    return amazonHiddenConfiguration ? [amazonHiddenConfiguration] : [];
-  }, [product?.configuredItems, amazonHiddenConfiguration]);
+    const baseItems = product?.configuredItems?.length
+      ? product.configuredItems
+      : amazonHiddenConfiguration ? [amazonHiddenConfiguration] : [];
+
+    // Enrich with real Amazon variant prices and images
+    if (amazonVariantInfo?.length && baseItems.length > 0) {
+      const infoMap = new Map(amazonVariantInfo.map((v) => [v.id.replace(/^az-/, ""), v]));
+      return baseItems.map((ci) => {
+        const info = infoMap.get(ci.id);
+        if (!info) return ci;
+        return {
+          ...ci,
+          price: info.price > 0 ? info.price : ci.price,
+          imageUrl: info.imageUrl || ci.imageUrl,
+        };
+      });
+    }
+
+    return baseItems;
+  }, [product?.configuredItems, amazonHiddenConfiguration, amazonVariantInfo]);
 
   // Find matching configured item
   const matchedConfig = useMemo(() => {
