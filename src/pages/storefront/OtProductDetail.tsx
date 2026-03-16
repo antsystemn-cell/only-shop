@@ -196,24 +196,33 @@ export default function OtProductDetail() {
     staleTime: 1000 * 60 * 10,
   });
 
+  const effectiveConfiguredItems = useMemo(() => {
+    if (product?.configuredItems?.length) return product.configuredItems;
+    return amazonHiddenConfiguration ? [amazonHiddenConfiguration] : [];
+  }, [product?.configuredItems, amazonHiddenConfiguration]);
+
   // Find matching configured item
   const matchedConfig = useMemo(() => {
-    if (!product?.configuredItems?.length || !Object.keys(selectedConfigs).length) return null;
+    if (!effectiveConfiguredItems.length) return null;
     const selectedVids = Object.values(selectedConfigs).filter(Boolean);
-    if (selectedVids.length === 0) return null;
-    return product.configuredItems.find((ci) => selectedVids.every((vid) => ci.configuratorIds.includes(vid)));
-  }, [product, selectedConfigs]);
+
+    if (selectedVids.length === 0) {
+      return null;
+    }
+
+    return effectiveConfiguredItems.find((ci) => selectedVids.every((vid) => ci.configuratorIds.includes(vid)));
+  }, [effectiveConfiguredItems, selectedConfigs]);
 
   // Price range from configured items
   const priceRange = useMemo(() => {
-    if (!product?.configuredItems?.length) return null;
-    const prices = product.configuredItems.map((ci) => ci.price).filter((p): p is number => p != null && p > 0);
+    if (!effectiveConfiguredItems.length) return null;
+    const prices = effectiveConfiguredItems.map((ci) => ci.price).filter((p): p is number => p != null && p > 0);
     if (prices.length < 2) return null;
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     if (min === max) return null;
     return { min, max };
-  }, [product]);
+  }, [effectiveConfiguredItems]);
 
   const allConfigsSelected = product?.configurators?.length
     ? product.configurators.every((c) => selectedConfigs[c.pid] && selectedConfigs[c.pid] !== "")
