@@ -25,6 +25,14 @@ export function isAmazonProvider(providerType?: string): boolean {
   return providerType?.toLowerCase() === "amazon";
 }
 
+/**
+ * Detect Amazon item by provider type OR itemId prefix "az-".
+ * Basket lines sometimes lack ProviderType, so we use itemId as fallback.
+ */
+export function isAmazonItem(providerType?: string, itemId?: string): boolean {
+  return isAmazonProvider(providerType) || (!!itemId && itemId.startsWith("az-"));
+}
+
 // ─── Amazon Normalized Price Model ──────────────────────────
 
 export interface AmazonNormalizedPrice {
