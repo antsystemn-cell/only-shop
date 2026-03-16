@@ -477,20 +477,49 @@ async function fetchProductDetailUncached(itemId: string): Promise<ProductDetail
       value: f.Value,
     })),
     configurators,
-    configuredItems: configuredItemsArray.map((ci: any) => ({
-      id: ci.Id,
-      quantity: ci.Quantity,
-      price: ci.Price ? calculateMntPrice(
-        getOriginalPriceValue(ci.Price),
-        getOriginalCurrencyCode(ci.Price),
-        item.ProviderType,
-        priceConfig
-      ) : undefined,
-      originalSourcePrice: ci.Price ? getOriginalPriceValue(ci.Price) : undefined,
-      originalSourceCurrency: ci.Price ? (getOriginalCurrencyCode(ci.Price) === "CNY" ? "¥" : getOriginalCurrencyCode(ci.Price) === "USD" ? "$" : getOriginalCurrencyCode(ci.Price)) : undefined,
-      imageUrl: ci.ImageUrl,
-      configuratorIds: (Array.isArray(ci.Configurators) ? ci.Configurators : ci.Configurators ? [ci.Configurators] : []).map((c: any) => c.Vid),
-    })),
+    configuredItems: (() => {
+      // For Amazon: use skuPrices from FeaturedValues for per-variant pricing
+      // OTAPI returns the parent price for all variants, but skuPrices has the real per-SKU prices
+      let skuPricesMap: Record<string, { price: number; discountPrice?: number }> | null = null;
+      if (item.ProviderType?.toLowerCase() === "amazon") {
+        const skuPricesFeature = featuresArray.find((f: any) => f.Name === "skuPrices");
+        if (skuPricesFeature?.Value) {
+          try {
+            skuPricesMap = JSON.parse(skuPricesFeature.Value);
+          } catch { /* ignore parse errors */ }
+        }
+      }
+
+      return configuredItemsArray.map((ci: any) => {
+        // Try skuPrices first for Amazon variants
+        let variantPrice: number | undefined;
+        let variantOriginalSourcePrice: number | undefined;
+        const skuData = skuPricesMap?.[ci.Id];
+        if (skuData && skuData.price > 0) {
+          const effectiveUsd = skuData.discountPrice ?? skuData.price;
+          variantPrice = calculateMntPrice(effectiveUsd, "USD", item.ProviderType, priceConfig);
+          variantOriginalSourcePrice = effectiveUsd;
+        } else if (ci.Price) {
+          variantPrice = calculateMntPrice(
+            getOriginalPriceValue(ci.Price),
+            getOriginalCurrencyCode(ci.Price),
+            item.ProviderType,
+            priceConfig
+          );
+          variantOriginalSourcePrice = getOriginalPriceValue(ci.Price);
+        }
+
+        return {
+          id: ci.Id,
+          quantity: ci.Quantity,
+          price: variantPrice,
+          originalSourcePrice: variantOriginalSourcePrice,
+          originalSourceCurrency: ci.Price ? (getOriginalCurrencyCode(ci.Price) === "CNY" ? "¥" : getOriginalCurrencyCode(ci.Price) === "USD" ? "$" : getOriginalCurrencyCode(ci.Price)) : (skuPricesMap ? "$" : undefined),
+          imageUrl: ci.ImageUrl,
+          configuratorIds: (Array.isArray(ci.Configurators) ? ci.Configurators : ci.Configurators ? [ci.Configurators] : []).map((c: any) => c.Vid),
+        };
+      });
+    })(),
     breadcrumbs: rootPath.map((b: any) => ({ id: b.Id, name: b.Name })),
     vendor: data?.Result?.Vendor
       ? {
