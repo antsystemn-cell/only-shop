@@ -14,7 +14,7 @@ import {
 } from "@/services/otApi";
 import { toast } from "sonner";
 import { getPriceConfig, calculateMntPrice, getOriginalCurrencyCode } from "@/utils/priceCalculator";
-import { isAmazonProvider, mapAmazonBasketLinePrice, mapAmazonOtapiError, amazonLog } from "@/services/amazonOtapiAdapter";
+import { isAmazonProvider, isAmazonItem, mapAmazonBasketLinePrice, mapAmazonOtapiError, amazonLog } from "@/services/amazonOtapiAdapter";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -104,7 +104,7 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
     let unitPrice: number;
     let totalPrice: number;
 
-    if (isAmazonProvider(line.ProviderType) && priceConfig) {
+    if (isAmazonItem(line.ProviderType, line.ItemId) && priceConfig) {
       const amazonPrice = mapAmazonBasketLinePrice(line, priceConfig);
       unitPrice = amazonPrice.unitPrice;
       totalPrice = amazonPrice.totalPrice;

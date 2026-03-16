@@ -25,6 +25,14 @@ export function isAmazonProvider(providerType?: string): boolean {
   return providerType?.toLowerCase() === "amazon";
 }
 
+/**
+ * Detect Amazon item by provider type OR itemId prefix "az-".
+ * Basket lines sometimes lack ProviderType, so we use itemId as fallback.
+ */
+export function isAmazonItem(providerType?: string, itemId?: string): boolean {
+  return isAmazonProvider(providerType) || (!!itemId && itemId.startsWith("az-"));
+}
+
 // ─── Amazon Normalized Price Model ──────────────────────────
 
 export interface AmazonNormalizedPrice {
@@ -243,10 +251,12 @@ export function mapAmazonBasketLinePrice(
     return { unitPrice: 0, totalPrice: 0 };
   }
 
-  const currencyCode = getOriginalCurrencyCode(line.Price)
-    || line.Price?.ConvertedPriceList?.Original?.CurrencyCode
-    || line.Price?.CurrencyCode
-    || "USD";
+  // For Amazon: currency is always USD. Don't trust getOriginalCurrencyCode
+  // which defaults to "CNY" — that would use the wrong exchange rate.
+  const detectedCurrency = getOriginalCurrencyCode(line.Price);
+  const currencyCode = (detectedCurrency && detectedCurrency !== "CNY")
+    ? detectedCurrency
+    : (line.Price?.ConvertedPriceList?.Original?.CurrencyCode || line.Price?.CurrencyCode || "USD");
 
   const unitPrice = calculateMntPrice(rawNumericPrice, currencyCode, "Amazon", priceConfig);
   const totalPrice = unitPrice * quantity;

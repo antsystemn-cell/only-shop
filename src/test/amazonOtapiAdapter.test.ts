@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   isAmazonProvider,
+  isAmazonItem,
   normalizeAmazonOtapiPrice,
   resolveAmazonConfigurations,
   buildAmazonAddToCartPayload,
@@ -33,6 +34,23 @@ describe("isAmazonProvider", () => {
     expect(isAmazonProvider("Taobao")).toBe(false);
     expect(isAmazonProvider("Dewu")).toBe(false);
     expect(isAmazonProvider(undefined)).toBe(false);
+  });
+});
+
+// ─── Amazon Item Detection (by provider + itemId) ───────────
+
+describe("isAmazonItem", () => {
+  it("detects by provider type", () => {
+    expect(isAmazonItem("Amazon")).toBe(true);
+    expect(isAmazonItem("amazon")).toBe(true);
+  });
+  it("detects by itemId prefix", () => {
+    expect(isAmazonItem(undefined, "az-B00284ADAI")).toBe(true);
+    expect(isAmazonItem("", "az-B00284ADAI")).toBe(true);
+  });
+  it("rejects non-Amazon", () => {
+    expect(isAmazonItem("Taobao", "12345")).toBe(false);
+    expect(isAmazonItem(undefined, "12345")).toBe(false);
   });
 });
 
@@ -162,19 +180,20 @@ describe("mapAmazonBasketLinePrice", () => {
     expect(result.totalPrice).toBe(344400);
   });
 
-  it("uses internal conversion when available", () => {
+  it("forces USD conversion even when Price is raw number", () => {
+    // When OTAPI returns Price as a raw number (no currency info),
+    // Amazon adapter should assume USD, not CNY
     const line = {
       ItemId: "az-test",
       Quantity: 1,
       ProviderType: "Amazon",
-      Price: {
-        OriginalPrice: 41,
-        ConvertedPriceList: { Internal: { Price: 200000 } },
-      },
+      Price: 110, // raw number — no currency info at all
     };
     const result = mapAmazonBasketLinePrice(line, mockPriceConfig);
-    expect(result.unitPrice).toBe(200000);
-    expect(result.totalPrice).toBe(200000);
+    // Should use USD rate (3500), not CNY (525)
+    // 110 * 3500 * 1.2 = 462000
+    expect(result.unitPrice).toBe(462000);
+    expect(result.unitPrice).toBeGreaterThan(100000); // NOT raw 110
   });
 });
 
