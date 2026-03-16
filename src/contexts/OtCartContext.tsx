@@ -13,6 +13,7 @@ import {
   getItemBasicInfo,
 } from "@/services/otApi";
 import { toast } from "sonner";
+import { getPriceConfig, calculateMntPrice, getOriginalCurrencyCode } from "@/utils/priceCalculator";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -78,7 +79,7 @@ const OtCartContext = createContext<OtCartContextType | undefined>(undefined);
 
 // ─── Parse basket response ──────────────────────────────────
 
-function parseBasketResponse(data: any): OtBasketItem[] {
+function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof getPriceConfig>> | null): OtBasketItem[] {
   const elements = data?.CollectionInfo?.Elements
     || data?.Result?.CollectionInfo?.Elements
     || data?.Result?.OrderLines
@@ -95,7 +96,7 @@ function parseBasketResponse(data: any): OtBasketItem[] {
     const quantity = line.Quantity || 1;
 
     // Minimal debug
-    console.log("[OtCart] Line ItemId:", line.ItemId, "Config:", JSON.stringify(line.Configuration));
+    console.log("[OtCart] Line ItemId:", line.ItemId, "ProviderType:", line.ProviderType, "Price:", JSON.stringify(line.Price));
 
     // ── Price extraction (MNT) ──
     const fullTotalInternal = line.FullTotalCost?.ConvertedPriceList?.Internal?.Price;
@@ -104,8 +105,21 @@ function parseBasketResponse(data: any): OtBasketItem[] {
     const rawNumericPrice = typeof line.Price === "number" ? line.Price : 
                             typeof line.Price?.OriginalPrice === "number" ? line.Price.OriginalPrice : 0;
     
-    const totalPrice = fullTotalInternal ?? totalCostInternal ?? (priceInternal ? priceInternal * quantity : rawNumericPrice * quantity);
-    const unitPrice = totalPrice / (quantity || 1);
+    let totalPrice = fullTotalInternal ?? totalCostInternal ?? (priceInternal ? priceInternal * quantity : rawNumericPrice * quantity);
+    let unitPrice = totalPrice / (quantity || 1);
+
+    // ── If no Internal conversion available (e.g. Amazon USD items), convert using our price config ──
+    const hasInternalConversion = fullTotalInternal != null || totalCostInternal != null || priceInternal != null;
+    if (!hasInternalConversion && rawNumericPrice > 0 && priceConfig) {
+      const currencyCode = getOriginalCurrencyCode(line.Price) || 
+        line.Price?.ConvertedPriceList?.Original?.CurrencyCode || 
+        line.Price?.CurrencyCode ||
+        (line.ProviderType === "Amazon" ? "USD" : "CNY");
+      const providerType = line.ProviderType || "Taobao";
+      unitPrice = calculateMntPrice(rawNumericPrice, currencyCode, providerType, priceConfig);
+      totalPrice = unitPrice * quantity;
+      console.log(`[OtCart] Manual conversion: ${rawNumericPrice} ${currencyCode} → ${unitPrice}₮ (provider: ${providerType})`);
+    }
 
     const originalCnyPrice = line.Price?.OriginalPrice 
       ?? line.Price?.ConvertedPriceList?.Original?.Price
@@ -222,9 +236,12 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
   const fetchBasket = useCallback(async () => {
     try {
       setIsLoading(true);
-      const sessionId = await getAnonymousSession();
+      const [sessionId, priceConfig] = await Promise.all([
+        getAnonymousSession(),
+        getPriceConfig(),
+      ]);
       const data = await getBasket(sessionId);
-      const parsed = parseBasketResponse(data);
+      const parsed = parseBasketResponse(data, priceConfig);
       const enriched = await enrichItems(parsed);
       setItems(enriched);
     } catch (err) {
