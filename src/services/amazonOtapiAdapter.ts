@@ -251,10 +251,12 @@ export function mapAmazonBasketLinePrice(
     return { unitPrice: 0, totalPrice: 0 };
   }
 
-  const currencyCode = getOriginalCurrencyCode(line.Price)
-    || line.Price?.ConvertedPriceList?.Original?.CurrencyCode
-    || line.Price?.CurrencyCode
-    || "USD";
+  // For Amazon: currency is always USD. Don't trust getOriginalCurrencyCode
+  // which defaults to "CNY" — that would use the wrong exchange rate.
+  const detectedCurrency = getOriginalCurrencyCode(line.Price);
+  const currencyCode = (detectedCurrency && detectedCurrency !== "CNY")
+    ? detectedCurrency
+    : (line.Price?.ConvertedPriceList?.Original?.CurrencyCode || line.Price?.CurrencyCode || "USD");
 
   const unitPrice = calculateMntPrice(rawNumericPrice, currencyCode, "Amazon", priceConfig);
   const totalPrice = unitPrice * quantity;
