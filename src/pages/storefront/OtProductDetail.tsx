@@ -124,6 +124,32 @@ export default function OtProductDetail() {
     retry: 1,
   });
 
+  const { data: amazonHiddenConfiguration } = useQuery({
+    queryKey: ["amazon-hidden-config", itemId, product?.providerType],
+    queryFn: async () => {
+      const data = await batchGetSimplifiedItemConfigurationInfo(itemId!);
+      const current = data?.Result?.Configuration?.Current;
+      const configurationId = current?.ConfigurationId;
+      if (configurationId === undefined || configurationId === null || configurationId === "") {
+        return null;
+      }
+      return {
+        id: String(configurationId),
+        quantity: typeof current?.AvailableQuantity === "number" ? current.AvailableQuantity : undefined,
+        price: product?.price,
+        imageUrl: undefined,
+        configuratorIds: [] as string[],
+      };
+    },
+    enabled:
+      !!itemId &&
+      !!product &&
+      isAmazonProvider(product.providerType) &&
+      product.configurators.length === 0 &&
+      product.configuredItems.length === 0,
+    staleTime: 1000 * 60 * 5,
+  });
+
   // Auto-select configurator groups that have only one option
   useEffect(() => {
     if (!product?.configurators?.length) return;
