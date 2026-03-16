@@ -132,10 +132,39 @@ async function routeAction(action: string, apiKey: string, params: Record<string
       return callOtApi("GetItemPrice", { ...base, itemId: params.itemId, quantity: params.quantity || "1", ...(params.configurators ? { configurators: params.configurators } : {}) });
     case "getItemPromotions":
       return callOtApi("GetItemPromotions", { ...base, itemId: params.itemId });
-    case "getItemTotalCost":
-      return callOtApi("GetItemTotalCost", { ...base, itemId: params.itemId, quantity: params.quantity || "1", ...(params.weight ? { weight: params.weight } : {}) });
-    case "batchGetItemTotalCost":
-      return callOtApi("BatchGetItemTotalCost", { ...base, xmlParameters: params.xmlParameters });
+    case "getItemTotalCost": {
+      const gtcParams: Record<string, string> = {
+        ...base,
+        itemId: params.itemId,
+        quantity: params.quantity || "1",
+        ...(params.weight ? { weight: params.weight } : {}),
+      };
+      // Support configurationId for Amazon products
+      if (params.configurationId) {
+        gtcParams.configurationId = params.configurationId;
+      }
+      if (params.priceType) {
+        gtcParams.priceType = params.priceType;
+      }
+      if (params.promotionId) {
+        gtcParams.promotionId = params.promotionId;
+      }
+      return callOtApi("GetItemTotalCost", gtcParams);
+    }
+    case "batchGetItemTotalCost": {
+      const bgtcParams: Record<string, string> = {
+        ...base,
+        xmlParameters: params.xmlParameters,
+      };
+      if (params.blockList) bgtcParams.blockList = params.blockList;
+      return callOtApi("BatchGetItemTotalCost", bgtcParams);
+    }
+    case "batchGetSimplifiedItemConfigurationInfo":
+      return callOtApi("BatchGetSimplifiedItemConfigurationInfo", {
+        ...base,
+        itemId: params.itemId,
+        ...(params.blockList ? { blockList: params.blockList } : {}),
+      });
 
     // ── Brands ──
     case "getBrandInfoList":

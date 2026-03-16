@@ -891,8 +891,21 @@ export async function getDiscountGroupList() {
   return callProxy("getDiscountGroupList");
 }
 
-export async function getItemTotalCost(itemId: string, quantity = 1, weight?: string) {
-  return callProxy("getItemTotalCost", { itemId, quantity, weight });
+export async function getItemTotalCost(
+  itemId: string,
+  quantity = 1,
+  weight?: string,
+  configurationId?: string,
+  priceType?: string,
+) {
+  const params: Record<string, unknown> = { itemId, quantity, weight };
+  if (configurationId) params.configurationId = configurationId;
+  if (priceType) params.priceType = priceType;
+  return callProxy("getItemTotalCost", params);
+}
+
+export async function batchGetSimplifiedItemConfigurationInfo(itemId: string) {
+  return callProxy("batchGetSimplifiedItemConfigurationInfo", { itemId });
 }
 
 // ─── Reviews ────────────────────────────────────────────────

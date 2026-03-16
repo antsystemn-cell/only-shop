@@ -200,8 +200,8 @@ export default function OtCheckout() {
         setCheckError("Сагс шалгалт эхлүүлж чадсангүй (ID олдсонгүй). Дахин оролдоно уу.");
       } else if (msg.includes("NotFound") || msg.includes("not found")) {
         setCheckError("Сагс шалгалтын хүсэлт хугацаа дууссан. Дахин шалгаж байна…");
-      } else if (msg.includes("ContractViolation")) {
-        setCheckError("Техникийн алдаа гарлаа. Сагсаа шинэчилж дахин оролдоно уу.");
+      } else if (msg.includes("ContractViolation") || msg.includes("configurationId")) {
+        setCheckError("Сагсанд тохиргоо дутуу бараа байна. Барааны сонголтыг шалгаад дахин нэмнэ үү.");
         await refreshBasket();
       } else {
         setCheckError(msg || "Сагс шалгахад алдаа гарлаа");
@@ -352,7 +352,9 @@ export default function OtCheckout() {
         originalCnyCurrency: item.originalCnyCurrency,
         externalUrl: item.providerType === "Poizon"
           ? `https://www.dewu.com/product-detail.html?productId=${item.itemId}`
-          : `https://item.taobao.com/item.htm?id=${item.itemId}`,
+          : item.providerType === "Amazon"
+            ? `https://www.amazon.com/dp/${item.itemId.replace(/^az-/, "")}`
+            : `https://item.taobao.com/item.htm?id=${item.itemId}`,
       }));
 
       const commentText = comment
