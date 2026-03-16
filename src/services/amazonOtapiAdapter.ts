@@ -328,13 +328,22 @@ export function getAmazonAutoConfigurationId(
   configuredItems: Array<{ id: string; quantity?: number; configuratorIds: string[] }>,
   configurators: Array<{ pid: string; values: Array<{ id: string }> }>,
 ): string | null | undefined {
-  // No configurators → no configuration needed
-  if (!configurators.length) return undefined;
+  // No configured items at all → no configuration needed
+  if (!configuredItems.length) return undefined;
   
   // Filter to available configurations (quantity > 0 or undefined)
   const available = configuredItems.filter(
     (ci) => ci.quantity === undefined || ci.quantity > 0
   );
+
+  // No configurators in UI but configuredItems exist → auto-select if only one available
+  if (!configurators.length) {
+    if (available.length >= 1) {
+      amazonLog("autoConfig:noConfigurators", { autoSelectedId: available[0].id, totalAvailable: available.length });
+      return available[0].id;
+    }
+    return undefined;
+  }
 
   if (available.length === 1) {
     amazonLog("autoConfig", { autoSelectedId: available[0].id });
