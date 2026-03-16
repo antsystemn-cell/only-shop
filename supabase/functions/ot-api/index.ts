@@ -164,9 +164,9 @@ async function routeAction(action: string, apiKey: string, params: Record<string
         ...base,
         itemId: params.itemId,
         xmlRequest: params.xmlRequest || "<Request />",
+        blockList: params.blockList || "ConfigurationDetails",
       };
       if (params.itemParameters) configParams.itemParameters = params.itemParameters;
-      if (params.blockList) configParams.blockList = params.blockList;
       return callOtApi("BatchGetSimplifiedItemConfigurationInfo", configParams);
     }
 

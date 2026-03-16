@@ -907,11 +907,9 @@ export async function getItemTotalCost(
 export async function batchGetSimplifiedItemConfigurationInfo(
   itemId: string,
   xmlRequest = "<Request />",
-  blockList?: string,
+  blockList = "ConfigurationDetails",
 ) {
-  const params: Record<string, unknown> = { itemId, xmlRequest };
-  if (blockList) params.blockList = blockList;
-  return callProxy("batchGetSimplifiedItemConfigurationInfo", params);
+  return callProxy("batchGetSimplifiedItemConfigurationInfo", { itemId, xmlRequest, blockList });
 }
 
 // ─── Reviews ────────────────────────────────────────────────
