@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { fetchProductDetail, fetchProductDescription, batchGetSimplifiedItemConfigurationInfo } from "@/services/otApi";
+import { fetchProductDetail, fetchProductDescription, batchGetSimplifiedItemConfigurationInfo, fetchItemsByIds } from "@/services/otApi";
 import { isAmazonProvider, buildAmazonAddToCartPayload, withAmazonErrorHandling, getAmazonAutoConfigurationId, amazonLog } from "@/services/amazonOtapiAdapter";
 import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -198,10 +198,43 @@ export default function OtProductDetail() {
     staleTime: 1000 * 60 * 10,
   });
 
+  // Amazon variant enrichment: fetch real prices and images for each variant ASIN
+  // OTAPI returns the same parent price for all variants — we need per-ASIN prices
+  const isAmazon = isAmazonProvider(product?.providerType);
+  const variantAsins = useMemo(() => {
+    if (!isAmazon || !product?.configuredItems?.length) return [];
+    // Each configuredItem.id is an ASIN like "B0BG8CJXHH"
+    return [...new Set(product.configuredItems.map((ci) => `az-${ci.id}`))];
+  }, [isAmazon, product?.configuredItems]);
+
+  const { data: amazonVariantInfo } = useQuery({
+    queryKey: ["amazon-variant-info", variantAsins],
+    queryFn: () => fetchItemsByIds(variantAsins, 6, { includeUnavailable: true }),
+    enabled: variantAsins.length > 1,
+    staleTime: 1000 * 60 * 10,
+  });
+
   const effectiveConfiguredItems = useMemo(() => {
-    if (product?.configuredItems?.length) return product.configuredItems;
-    return amazonHiddenConfiguration ? [amazonHiddenConfiguration] : [];
-  }, [product?.configuredItems, amazonHiddenConfiguration]);
+    const baseItems = product?.configuredItems?.length
+      ? product.configuredItems
+      : amazonHiddenConfiguration ? [amazonHiddenConfiguration] : [];
+
+    // Enrich with real Amazon variant prices and images
+    if (amazonVariantInfo?.length && baseItems.length > 0) {
+      const infoMap = new Map(amazonVariantInfo.map((v) => [v.id.replace(/^az-/, ""), v]));
+      return baseItems.map((ci) => {
+        const info = infoMap.get(ci.id);
+        if (!info) return ci;
+        return {
+          ...ci,
+          price: info.price > 0 ? info.price : ci.price,
+          imageUrl: info.imageUrl || ci.imageUrl,
+        };
+      });
+    }
+
+    return baseItems;
+  }, [product?.configuredItems, amazonHiddenConfiguration, amazonVariantInfo]);
 
   // Find matching configured item
   const matchedConfig = useMemo(() => {
@@ -678,6 +711,16 @@ export default function OtProductDetail() {
                         // Show configurator image in main gallery
                         if (newVal && val.imageUrl) {
                           setConfigImageOverride(val.imageUrl);
+                        } else if (newVal) {
+                          // For Amazon: try to get image from enriched configuredItem
+                          const matchingCi = effectiveConfiguredItems.find((ci) =>
+                            ci.configuratorIds.includes(newVal)
+                          );
+                          if (matchingCi?.imageUrl) {
+                            setConfigImageOverride(matchingCi.imageUrl);
+                          } else {
+                            setConfigImageOverride(null);
+                          }
                         } else {
                           setConfigImageOverride(null);
                         }
@@ -691,16 +734,22 @@ export default function OtProductDetail() {
                       }`}
                       title={isOutOfStock ? "Дууссан" : ""}
                     >
-                      {val.imageUrl && (
-                        <img
-                          src={val.imageUrl}
-                          alt={val.value}
-                          className={`w-8 h-8 rounded object-cover ${isOutOfStock ? "grayscale" : ""}`}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      )}
+                      {(() => {
+                        // Use configurator value image, or fallback to enriched configuredItem image
+                        const thumbUrl = val.imageUrl || effectiveConfiguredItems.find(
+                          (ci) => ci.configuratorIds.includes(val.id)
+                        )?.imageUrl;
+                        return thumbUrl ? (
+                          <img
+                            src={thumbUrl}
+                            alt={val.value}
+                            className={`w-8 h-8 rounded object-cover ${isOutOfStock ? "grayscale" : ""}`}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        ) : null;
+                      })()}
                       <span className="line-clamp-1">{val.value}</span>
                       {isOutOfStock && <span className="text-[10px] text-destructive font-medium">Дууссан</span>}
                     </button>
