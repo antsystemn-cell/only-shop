@@ -904,8 +904,14 @@ export async function getItemTotalCost(
   return callProxy("getItemTotalCost", params);
 }
 
-export async function batchGetSimplifiedItemConfigurationInfo(itemId: string) {
-  return callProxy("batchGetSimplifiedItemConfigurationInfo", { itemId });
+export async function batchGetSimplifiedItemConfigurationInfo(
+  itemId: string,
+  xmlRequest = "<Request />",
+  blockList?: string,
+) {
+  const params: Record<string, unknown> = { itemId, xmlRequest };
+  if (blockList) params.blockList = blockList;
+  return callProxy("batchGetSimplifiedItemConfigurationInfo", params);
 }
 
 // ─── Reviews ────────────────────────────────────────────────
