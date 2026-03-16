@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { fetchProductDetail, fetchProductDescription } from "@/services/otApi";
+import { isAmazonProvider, buildAmazonAddToCartPayload, withAmazonErrorHandling, amazonLog } from "@/services/amazonOtapiAdapter";
 import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
