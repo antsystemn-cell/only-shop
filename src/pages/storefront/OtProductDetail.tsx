@@ -750,7 +750,6 @@ export default function OtProductDetail() {
                           />
                         ) : null;
                       })()}
-                      )}
                       <span className="line-clamp-1">{val.value}</span>
                       {isOutOfStock && <span className="text-[10px] text-destructive font-medium">Дууссан</span>}
                     </button>
