@@ -127,7 +127,9 @@ export default function OtProductDetail() {
   const { data: amazonHiddenConfiguration } = useQuery({
     queryKey: ["amazon-hidden-config", itemId, product?.providerType],
     queryFn: async () => {
-      const data = await batchGetSimplifiedItemConfigurationInfo(itemId!);
+      const data = await batchGetSimplifiedItemConfigurationInfo(itemId!) as {
+        Result?: { Configuration?: { Current?: { ConfigurationId?: string | number; AvailableQuantity?: number } } };
+      };
       const current = data?.Result?.Configuration?.Current;
       const configurationId = current?.ConfigurationId;
       if (configurationId === undefined || configurationId === null || configurationId === "") {
