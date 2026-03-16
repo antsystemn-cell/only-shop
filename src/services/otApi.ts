@@ -14,7 +14,7 @@ import {
   getOriginalPriceValue,
   type PriceConfig,
 } from "@/utils/priceCalculator";
-import { cachedFetch, CACHE_TTL, invalidateCacheByPrefix } from "@/services/apiCache";
+import { cachedFetch, CACHE_TTL, invalidateCache, invalidateCacheByPrefix } from "@/services/apiCache";
 
 // ─── Catalog Item Overrides ─────────────────────────────────
 interface CatalogItemOverride {
