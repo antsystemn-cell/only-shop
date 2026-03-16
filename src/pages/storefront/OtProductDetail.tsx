@@ -201,11 +201,19 @@ export default function OtProductDetail() {
   const handleAddToCart = async (): Promise<boolean> => {
     if (!product) return false;
 
-    // If there are configurators, ALL must be selected
-    if (product.configurators.length > 0) {
-      const allSelected = product.configurators.every((c) => selectedConfigs[c.pid] && selectedConfigs[c.pid] !== "");
-      if (!allSelected) {
-        toast.error("Бүх хувилбараа сонгоно уу (өнгө, хэмжээ гэх мэт)");
+    const isAmazon = isAmazonProvider(product.providerType);
+
+    // Amazon-specific: use adapter for validation and payload building
+    if (isAmazon) {
+      const result = buildAmazonAddToCartPayload(
+        product.id,
+        quantity,
+        selectedConfigs,
+        product.configurators,
+        matchedConfig?.id,
+      );
+      if ("error" in result) {
+        toast.error(result.error);
         return false;
       }
 
@@ -214,11 +222,40 @@ export default function OtProductDetail() {
         toast.error("Сонгосон хувилбарын үлдэгдэл дууссан байна");
         return false;
       }
+
+      try {
+        await withAmazonErrorHandling(
+          () => addItem(
+            result.payload.itemId,
+            result.payload.quantity,
+            undefined,
+            result.payload.configurationId,
+            result.payload.fieldParameters,
+          ),
+          product.providerType,
+        );
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    // Non-Amazon: existing logic unchanged
+    if (product.configurators.length > 0) {
+      const allSelected = product.configurators.every((c) => selectedConfigs[c.pid] && selectedConfigs[c.pid] !== "");
+      if (!allSelected) {
+        toast.error("Бүх хувилбараа сонгоно уу (өнгө, хэмжээ гэх мэт)");
+        return false;
+      }
+
+      if (matchedConfig && matchedConfig.quantity !== undefined && matchedConfig.quantity <= 0) {
+        toast.error("Сонгосон хувилбарын үлдэгдэл дууссан байна");
+        return false;
+      }
     }
 
     const configurationId = matchedConfig?.id;
 
-    // Build fieldParameters XML from configurator selections
     let fieldParameters = "<Fields/>";
     if (product.configurators.length > 0 && Object.keys(selectedConfigs).length > 0) {
       const fieldXmlParts = Object.entries(selectedConfigs)
