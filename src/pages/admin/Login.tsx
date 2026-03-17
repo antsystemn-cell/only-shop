@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Lock, Loader2, User, AtSign } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
+import { FacebookSignInButton } from "@/components/storefront/FacebookSignInButton";
 
 const MN_PHONE_REGEX = /^[89]\d{7}$/;
 
