@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { Loader2, ArrowLeft, Phone, Mail, ChevronDown, Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
 import onlyLogo from "@/assets/only-logo.png";
+import { FacebookSignInButton } from "@/components/storefront/FacebookSignInButton";
 
 // ── Validation ──────────────────────────────────────────────
 function isPhoneNumber(val: string): boolean {

@@ -141,6 +141,7 @@ const App = () => (
               
               {/* Auth and checkout routes - outside layout */}
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/ot/checkout" element={<OtCheckout />} />
