@@ -64,10 +64,9 @@ export default function FacebookCallback() {
           return;
         }
 
-        const otpType = data.type === "magiclink" ? "email" : data.type || "email";
         const { error: verifyErr } = await supabase.auth.verifyOtp({
           token_hash: data.token_hash,
-          type: otpType,
+          type: "magiclink",
         });
 
         if (verifyErr) {
