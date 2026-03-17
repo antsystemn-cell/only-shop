@@ -125,44 +125,11 @@ Deno.serve(async (req) => {
         userId = newUser.user!.id;
       }
 
-      // No need for separate no-email block anymore since userEmail handles both cases
-
-        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-        const existingUser = existingUsers?.users?.find(
-          (u: any) => u.email === placeholderEmail
-        );
-
-        if (existingUser) {
-          userId = existingUser.id;
-        } else {
-          const randomPassword = crypto.randomUUID() + crypto.randomUUID();
-          const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-            email: placeholderEmail,
-            password: randomPassword,
-            email_confirm: true,
-            user_metadata: {
-              full_name: fullName,
-              avatar_url: avatarUrl,
-              facebook_id: facebookId,
-            },
-          });
-
-          if (createErr) {
-            return new Response(
-              JSON.stringify({ error: "Хэрэглэгч үүсгэхэд алдаа гарлаа" }),
-              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-
-          userId = newUser.user!.id;
-        }
-      }
 
       // Generate a magic link / session for the user
-      // Use generateLink to create a magic link token
       const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
         type: "magiclink",
-        email: email || `fb_${facebookId}@facebook.placeholder`,
+        email: userEmail,
       });
 
       if (linkErr || !linkData) {
