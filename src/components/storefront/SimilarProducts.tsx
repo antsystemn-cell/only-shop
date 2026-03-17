@@ -66,6 +66,10 @@ export function SimilarProducts({ product, customTitle }: SimilarProductsProps) 
       navigate(`/ot/category/${categoryId}`);
     } else if (vendorId) {
       navigate(`/ot?vendorId=${vendorId}&vendorName=${encodeURIComponent(product.vendorName || "")}`);
+    } else if (searchQuery) {
+      const params = new URLSearchParams({ q: searchQuery });
+      if (product.providerType) params.set("provider", product.providerType);
+      navigate(`/ot?${params.toString()}`);
     }
   };
 
