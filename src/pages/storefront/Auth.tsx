@@ -162,7 +162,10 @@ export default function Auth() {
               </div>
             </div>
 
-            <GoogleSignInButton />
+            <div className="space-y-3">
+              <GoogleSignInButton />
+              <FacebookSignInButton />
+            </div>
           </CardContent>
 
           <CardFooter className="flex justify-center text-sm text-muted-foreground">
