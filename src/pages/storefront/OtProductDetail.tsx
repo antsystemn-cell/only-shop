@@ -536,13 +536,13 @@ export default function OtProductDetail() {
           />
 
           {/* Thumbnails */}
-          {product.images.length > 1 && (
+          {galleryImages.length > 1 && (
             <div className="flex gap-2 mt-3 overflow-x-auto pb-2 scrollbar-hide">
-              {ensureArray(product.images)
+              {galleryImages
                 .slice(0, 10)
                 .map((img, i) => (
                   <button
-                    key={i}
+                    key={`${img}-${i}`}
                     onClick={() => setSelectedImage(i)}
                     className={`w-16 h-16 rounded-lg border-2 overflow-hidden shrink-0 transition-all ${
                       selectedImage === i
