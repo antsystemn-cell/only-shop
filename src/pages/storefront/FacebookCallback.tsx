@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -10,8 +10,12 @@ export default function FacebookCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
+    if (hasProcessedRef.current) return;
+    hasProcessedRef.current = true;
+
     const code = searchParams.get("code");
     const stateB64 = searchParams.get("state");
     const fbError = searchParams.get("error");
@@ -28,18 +32,16 @@ export default function FacebookCallback() {
       return;
     }
 
-    // Decode state to get return_to
     let returnTo = "/";
     if (stateB64) {
       try {
         const state = JSON.parse(atob(stateB64));
         returnTo = state.return_to || "/";
       } catch {
-        // ignore
+        // ignore invalid state
       }
     }
 
-    // Exchange code for session
     (async () => {
       try {
         const { data, error: fnErr } = await supabase.functions.invoke("facebook-auth", {
@@ -56,29 +58,30 @@ export default function FacebookCallback() {
           return;
         }
 
-        if (data?.token_hash) {
-          // Verify the magic link token to create a session
-          const { error: verifyErr } = await supabase.auth.verifyOtp({
-            token_hash: data.token_hash,
-            type: "magiclink",
-          });
-
-          if (verifyErr) {
-            console.error("OTP verify error:", verifyErr);
-            setError("Сессия үүсгэхэд алдаа гарлаа");
-            setTimeout(() => navigate("/auth"), 3000);
-            return;
-          }
-
-          toast.success("Facebook-ээр амжилттай нэвтэрлээ!");
-          navigate(returnTo);
-        } else {
+        if (!data?.token_hash) {
           setError("Сессия үүсгэхэд алдаа гарлаа");
           setTimeout(() => navigate("/auth"), 3000);
+          return;
         }
+
+        const otpType = data.type === "magiclink" ? "email" : data.type || "email";
+        const { error: verifyErr } = await supabase.auth.verifyOtp({
+          token_hash: data.token_hash,
+          type: otpType,
+        });
+
+        if (verifyErr) {
+          console.error("OTP verify error:", verifyErr);
+          setError(verifyErr.message || "Сессия үүсгэхэд алдаа гарлаа");
+          setTimeout(() => navigate("/auth"), 3000);
+          return;
+        }
+
+        toast.success("Facebook-ээр амжилттай нэвтэрлээ!");
+        navigate(returnTo, { replace: true });
       } catch (err: any) {
         console.error("Facebook callback error:", err);
-        setError("Алдаа гарлаа. Дахин оролдоно уу.");
+        setError(err?.message || "Алдаа гарлаа. Дахин оролдоно уу.");
         setTimeout(() => navigate("/auth"), 3000);
       }
     })();
