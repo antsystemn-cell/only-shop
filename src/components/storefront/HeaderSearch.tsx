@@ -125,8 +125,6 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
     let fromLang: string | undefined;
     if (hasCyrillic) {
       fromLang = undefined; // default Mongolian→Chinese behavior
-    } else if (hasLatin && !hasChinese) {
-      fromLang = "en"; // English→Chinese for OT search
     } else {
       return text; // No translation needed
     }
