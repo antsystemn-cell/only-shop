@@ -105,13 +105,36 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
 
   // Detect Cyrillic (Mongolian) text
   const CYRILLIC_RE = /[\u0400-\u04FF]/;
+  // Detect Latin (English) text - for translating English product names to Chinese
+  const LATIN_RE = /[a-zA-Z]{2,}/;
+  // Detect Chinese characters
+  const CHINESE_RE = /[\u4e00-\u9fff]/;
 
-  const translateIfMongolian = useCallback(async (text: string): Promise<string> => {
-    if (!CYRILLIC_RE.test(text)) return text;
+  const translateForOtSearch = useCallback(async (text: string, currentProvider: string): Promise<string> => {
+    // Skip translation for local provider
+    if (currentProvider === "local") return text;
+
+    const hasCyrillic = CYRILLIC_RE.test(text);
+    const hasLatin = LATIN_RE.test(text);
+    const hasChinese = CHINESE_RE.test(text);
+
+    // If already Chinese, no translation needed
+    if (hasChinese && !hasCyrillic && !hasLatin) return text;
+
+    // Determine source language
+    let fromLang: string | undefined;
+    if (hasCyrillic) {
+      fromLang = undefined; // default Mongolian→Chinese behavior
+    } else if (hasLatin && !hasChinese) {
+      fromLang = "en"; // English→Chinese for OT search
+    } else {
+      return text; // No translation needed
+    }
+
     try {
       setTranslating(true);
       const { data, error } = await supabase.functions.invoke("translate-search", {
-        body: { query: text },
+        body: { query: text, fromLang },
       });
       if (error) throw error;
       return data?.translated || text;

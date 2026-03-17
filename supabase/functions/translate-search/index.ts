@@ -8,13 +8,17 @@ const corsHeaders = {
 
 // Detect Cyrillic (Mongolian) characters
 const CYRILLIC_RE = /[\u0400-\u04FF]/;
+// Detect Latin (English) characters
+const LATIN_RE = /[a-zA-Z]/;
+// Detect Chinese characters
+const CHINESE_RE = /[\u4e00-\u9fff]/;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const { query } = (await req.json()) as { query: string };
+    const { query, fromLang } = (await req.json()) as { query: string; fromLang?: string };
 
     if (!query?.trim()) {
       return new Response(JSON.stringify({ translated: query || "" }), {
@@ -22,8 +26,22 @@ serve(async (req) => {
       });
     }
 
-    // Only translate if contains Cyrillic (Mongolian)
-    if (!CYRILLIC_RE.test(query)) {
+    // Determine source language and whether translation is needed
+    const hasCyrillic = CYRILLIC_RE.test(query);
+    const hasLatin = LATIN_RE.test(query);
+    const hasChinese = CHINESE_RE.test(query);
+
+    // If explicit fromLang="en", translate English→Chinese
+    // If Cyrillic detected, translate Mongolian→Chinese
+    // If already Chinese or no translatable text, return as-is
+    let sourceLang: string | null = null;
+    if (fromLang === "en" && hasLatin && !hasChinese) {
+      sourceLang = "en";
+    } else if (hasCyrillic) {
+      sourceLang = "mn";
+    }
+
+    if (!sourceLang) {
       return new Response(JSON.stringify({ translated: query }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -37,6 +55,10 @@ serve(async (req) => {
       });
     }
 
+    const systemPrompt = sourceLang === "en"
+      ? "You are a translator. Translate the user's English search query into Chinese (Simplified) for searching products on Chinese e-commerce platforms. Return ONLY the Chinese translation, nothing else. No explanations, no quotes, no extra text. If the input contains brand names, translate them to how they are commonly known in Chinese e-commerce (e.g., 'Dior' → 'Dior迪奥', 'Penhaligons' → '潘海利根'). Keep model numbers and sizes as-is."
+      : "You are a translator. Translate the user's Mongolian search query into Chinese (Simplified). Return ONLY the Chinese translation, nothing else. No explanations, no quotes, no extra text. If the input contains brand names or English words, keep them as-is.";
+
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
@@ -48,11 +70,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "google/gemini-2.5-flash-lite",
           messages: [
-            {
-              role: "system",
-              content:
-                "You are a translator. Translate the user's Mongolian search query into Chinese (Simplified). Return ONLY the Chinese translation, nothing else. No explanations, no quotes, no extra text. If the input contains brand names or English words, keep them as-is.",
-            },
+            { role: "system", content: systemPrompt },
             { role: "user", content: query },
           ],
           stream: false,
