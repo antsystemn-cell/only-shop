@@ -97,89 +97,39 @@ Deno.serve(async (req) => {
       let userId: string | null = null;
       let sessionData: any = null;
 
-      if (email) {
-        // Try to find existing user by email
-        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-        const existingUser = existingUsers?.users?.find(
-          (u: any) => u.email?.toLowerCase() === email.toLowerCase()
-        );
+      const userEmail = email || `fb_${facebookId}@facebook.placeholder`;
 
-        if (existingUser) {
-          // User exists - generate a session for them
-          userId = existingUser.id;
+      // Try to create user first; if exists, just proceed
+      const randomPassword = crypto.randomUUID() + crypto.randomUUID();
+      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email: userEmail,
+        password: randomPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName,
+          avatar_url: avatarUrl,
+          facebook_id: facebookId,
+        },
+      });
 
-          // Update profile with Facebook info if needed
-          await supabaseAdmin
-            .from("profiles")
-            .update({
-              full_name: existingUser.user_metadata?.full_name || fullName,
-              avatar_url: avatarUrl,
-            })
-            .eq("user_id", userId);
-        } else {
-          // Create new user with a random password (they'll use Facebook to log in)
-          const randomPassword = crypto.randomUUID() + crypto.randomUUID();
-          const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-            email: email,
-            password: randomPassword,
-            email_confirm: true,
-            user_metadata: {
-              full_name: fullName,
-              avatar_url: avatarUrl,
-              facebook_id: facebookId,
-            },
-          });
+      if (createErr) {
+        // User already exists - this is fine, just update profile
+        console.log("User exists, proceeding with login:", userEmail);
 
-          if (createErr) {
-            console.error("User creation error:", createErr);
-            return new Response(
-              JSON.stringify({ error: "Хэрэглэгч үүсгэхэд алдаа гарлаа" }),
-              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-
-          userId = newUser.user!.id;
-        }
+        // Update profile with Facebook avatar
+        await supabaseAdmin
+          .from("profiles")
+          .update({ avatar_url: avatarUrl })
+          .eq("email", userEmail);
       } else {
-        // No email from Facebook - create user with facebook ID as identifier
-        const placeholderEmail = `fb_${facebookId}@facebook.placeholder`;
-
-        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-        const existingUser = existingUsers?.users?.find(
-          (u: any) => u.email === placeholderEmail
-        );
-
-        if (existingUser) {
-          userId = existingUser.id;
-        } else {
-          const randomPassword = crypto.randomUUID() + crypto.randomUUID();
-          const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-            email: placeholderEmail,
-            password: randomPassword,
-            email_confirm: true,
-            user_metadata: {
-              full_name: fullName,
-              avatar_url: avatarUrl,
-              facebook_id: facebookId,
-            },
-          });
-
-          if (createErr) {
-            return new Response(
-              JSON.stringify({ error: "Хэрэглэгч үүсгэхэд алдаа гарлаа" }),
-              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-
-          userId = newUser.user!.id;
-        }
+        userId = newUser.user!.id;
       }
 
+
       // Generate a magic link / session for the user
-      // Use generateLink to create a magic link token
       const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
         type: "magiclink",
-        email: email || `fb_${facebookId}@facebook.placeholder`,
+        email: userEmail,
       });
 
       if (linkErr || !linkData) {
@@ -200,7 +150,7 @@ Deno.serve(async (req) => {
           success: true,
           token_hash: tokenHash,
           type: type,
-          email: email || `fb_${facebookId}@facebook.placeholder`,
+          email: userEmail,
           profile: { full_name: fullName, avatar_url: avatarUrl },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
