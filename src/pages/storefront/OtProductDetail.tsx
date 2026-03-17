@@ -443,7 +443,7 @@ export default function OtProductDetail() {
       : 0;
 
   // Update ref for touch handler
-  imageCountRef.current = product.images.length;
+  imageCountRef.current = galleryImages.length;
 
   return (
     <div className="container py-4 md:py-8 animate-fade-in">
