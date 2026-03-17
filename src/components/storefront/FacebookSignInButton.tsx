@@ -31,7 +31,9 @@ export function FacebookSignInButton() {
       }
 
       if (data?.url) {
-        window.location.href = data.url;
+        // Use window.top to break out of iframe (Lovable preview), fallback to window
+        const target = window.top || window;
+        target.location.href = data.url;
       }
     } catch (err) {
       toast.error("Facebook нэвтрэлт эхлүүлэхэд алдаа гарлаа");
