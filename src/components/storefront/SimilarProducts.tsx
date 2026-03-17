@@ -55,7 +55,11 @@ export function SimilarProducts({ product, customTitle }: SimilarProductsProps) 
 
   if (!enabled) return null;
 
-  const sectionTitle = poizon ? "Төстэй бараанууд" : `${product.vendorName || "Дэлгүүр"}-ийн бусад бараа`;
+  const sectionTitle = poizon
+    ? "Төстэй бараанууд"
+    : vendorId
+      ? `${product.vendorName || "Дэлгүүр"}-ийн бусад бараа`
+      : "Төстэй бараанууд";
 
   const handleViewAll = () => {
     if (poizon && categoryId) {
