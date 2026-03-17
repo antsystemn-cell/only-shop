@@ -161,8 +161,8 @@ export default function HeaderSearch({ className, autoFocus, onSearchComplete }:
     } else if (effectiveProvider === "local") {
       navigate(`/shop?q=${encodeURIComponent(text)}`);
     } else {
-      // Translate Mongolian to Chinese for OT search
-      const translatedQuery = await translateIfMongolian(text);
+      // Translate for OT search (Mongolian→Chinese, English→Chinese)
+      const translatedQuery = await translateForOtSearch(text, effectiveProvider);
       const params = new URLSearchParams();
       params.set("q", translatedQuery);
       if (effectiveProvider) params.set("provider", effectiveProvider);
