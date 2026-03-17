@@ -487,7 +487,7 @@ export default function OtProductDetail() {
                 (e.target as HTMLImageElement).src = "/placeholder.svg";
               }}
             />
-            {product.images.length > 1 && (
+            {galleryImages.length > 1 && (
               <>
                 <Button
                   variant="secondary"
@@ -495,7 +495,7 @@ export default function OtProductDetail() {
                   className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
-                    animateGallery((p) => (p - 1 + product.images.length) % product.images.length, "right");
+                    animateGallery((p) => (p - 1 + galleryImages.length) % galleryImages.length, "right");
                   }}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -506,7 +506,7 @@ export default function OtProductDetail() {
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
-                    animateGallery((p) => (p + 1) % product.images.length, "left");
+                    animateGallery((p) => (p + 1) % galleryImages.length, "left");
                   }}
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -520,9 +520,9 @@ export default function OtProductDetail() {
               </Badge>
             )}
             {/* Image counter */}
-            {product.images.length > 1 && (
+            {galleryImages.length > 1 && (
               <span className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-full">
-                {selectedImage + 1}/{product.images.length}
+                {selectedImage + 1}/{galleryImages.length}
               </span>
             )}
           </div>
