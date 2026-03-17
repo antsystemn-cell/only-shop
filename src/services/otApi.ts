@@ -255,48 +255,130 @@ async function getBlockedVendors(): Promise<string[]> {
   }
 }
 
+// Detect if query is English (Latin characters, no Chinese/Cyrillic)
+const LATIN_SEARCH_RE = /[a-zA-Z]{2,}/;
+const CHINESE_SEARCH_RE = /[\u4e00-\u9fff]/;
+const CYRILLIC_SEARCH_RE = /[\u0400-\u04FF]/;
+
+async function translateQueryToChinese(query: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke("translate-search", {
+      body: { query, fromLang: "en" },
+    });
+    if (error) return null;
+    const translated = data?.translated;
+    // Only return if actually translated to Chinese
+    if (translated && translated !== query && CHINESE_SEARCH_RE.test(translated)) {
+      return translated;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function parseSearchResponse(
+  data: any,
+  priceConfig: PriceConfig,
+  blockedVendors: string[]
+): SearchResponse {
+  const result = data?.Result;
+
+  const rawItems = result?.Items?.Items;
+  const itemsArray: OtSearchItem[] = Array.isArray(rawItems) ? rawItems : (rawItems as any)?.Content || [];
+  const filteredRaw = itemsArray.filter((item: any) => {
+    if (item.IsAuction) return false;
+    if (item.IsSoldOut) return false;
+    if (item.IsTranslationItem) return false;
+    const qty = item.Quantity ?? item.MasterQuantity;
+    if (qty !== undefined && qty !== null && qty <= 0) return false;
+    const vName = (item.VendorName || item.VendorDisplayName || "").toLowerCase();
+    if (blockedVendors.some((bv) => vName.includes(bv))) return false;
+    return true;
+  });
+  const items = filteredRaw.map((item: OtSearchItem) => mapSearchItem(item, priceConfig)).filter(isAvailableProduct);
+  const totalCount = result?.Items?.TotalCount || (rawItems as any)?.TotalCount || 0;
+
+  const rawSubCats = result?.SubCategories?.Items;
+  const subCatsArray = Array.isArray(rawSubCats) ? rawSubCats : (rawSubCats as any)?.Content || [];
+  const subCategories = subCatsArray.map(mapCategory);
+
+  const breadcrumbs = (result?.BreadCrumbs || []).map((b: any) => ({ id: b.Id, name: b.Name }));
+
+  const rawProps = result?.SearchProperties?.Items;
+  const propsArray = Array.isArray(rawProps) ? rawProps : (rawProps as any)?.Content || [];
+  const searchProperties: SearchProperty[] = propsArray.map((sp: any) => ({
+    propertyName: sp.PropertyName,
+    values: (sp.PropertyValues || []).map((v: any) => ({ id: v.Id, value: v.Value, itemCount: v.ItemCount })),
+  }));
+
+  return { items, totalCount, subCategories, breadcrumbs, searchProperties };
+}
+
 export async function searchItems(params: SearchParams): Promise<SearchResponse> {
   const cacheKey = `search:${JSON.stringify(params)}`;
   return cachedFetch(cacheKey, async () => {
-    const [data, priceConfig, blockedVendors] = await Promise.all([
-      callProxy<OtSearchResult>("searchItems", { ...params } as Record<string, unknown>),
+    const query = params.query || "";
+    const hasLatin = LATIN_SEARCH_RE.test(query);
+    const hasChinese = CHINESE_SEARCH_RE.test(query);
+    const hasCyrillic = CYRILLIC_SEARCH_RE.test(query);
+    // Dual search: if query is English (Latin, no Chinese/Cyrillic), search both
+    // with original English AND Chinese translation in parallel
+    const needsDualSearch = hasLatin && !hasChinese && !hasCyrillic && query.length >= 2;
+
+    const [priceConfig, blockedVendors] = await Promise.all([
       getPriceConfig(),
       getBlockedVendors(),
     ]);
-    const result = data?.Result;
 
-    // Handle both array and { Content: [] } response formats
-    const rawItems = result?.Items?.Items;
-    const itemsArray: OtSearchItem[] = Array.isArray(rawItems) ? rawItems : (rawItems as any)?.Content || [];
-    // Pre-filter: remove auction items, sold-out items, and blocked vendors
-    const filteredRaw = itemsArray.filter((item: any) => {
-      if (item.IsAuction) return false;
-      if (item.IsSoldOut) return false;
-      if (item.IsTranslationItem) return false;
-      const qty = item.Quantity ?? item.MasterQuantity;
-      if (qty !== undefined && qty !== null && qty <= 0) return false;
-      // Check blocked vendors list from admin settings
-      const vName = (item.VendorName || item.VendorDisplayName || "").toLowerCase();
-      if (blockedVendors.some((bv) => vName.includes(bv))) return false;
-      return true;
-    });
-    const items = filteredRaw.map((item: OtSearchItem) => mapSearchItem(item, priceConfig)).filter(isAvailableProduct);
-    const totalCount = result?.Items?.TotalCount || (rawItems as any)?.TotalCount || 0;
+    if (needsDualSearch) {
+      // Run both searches in parallel: English as-is + Chinese translation
+      const [englishData, chineseQuery] = await Promise.all([
+        callProxy<OtSearchResult>("searchItems", { ...params } as Record<string, unknown>),
+        translateQueryToChinese(query),
+      ]);
 
-    const rawSubCats = result?.SubCategories?.Items;
-    const subCatsArray = Array.isArray(rawSubCats) ? rawSubCats : (rawSubCats as any)?.Content || [];
-    const subCategories = subCatsArray.map(mapCategory);
+      const englishResult = parseSearchResponse(englishData, priceConfig, blockedVendors);
 
-    const breadcrumbs = (result?.BreadCrumbs || []).map((b) => ({ id: b.Id, name: b.Name }));
+      if (chineseQuery) {
+        // Search with Chinese translation
+        const chineseData = await callProxy<OtSearchResult>("searchItems", {
+          ...params,
+          query: chineseQuery,
+        } as Record<string, unknown>);
+        const chineseResult = parseSearchResponse(chineseData, priceConfig, blockedVendors);
 
-    const rawProps = result?.SearchProperties?.Items;
-    const propsArray = Array.isArray(rawProps) ? rawProps : (rawProps as any)?.Content || [];
-    const searchProperties: SearchProperty[] = propsArray.map((sp: any) => ({
-      propertyName: sp.PropertyName,
-      values: (sp.PropertyValues || []).map((v: any) => ({ id: v.Id, value: v.Value, itemCount: v.ItemCount })),
-    }));
+        // Merge: English results first, then Chinese results (deduplicated)
+        const seenIds = new Set(englishResult.items.map(item => item.id));
+        const mergedItems = [...englishResult.items];
+        for (const item of chineseResult.items) {
+          if (!seenIds.has(item.id)) {
+            seenIds.add(item.id);
+            mergedItems.push(item);
+          }
+        }
 
-    return { items, totalCount, subCategories, breadcrumbs, searchProperties };
+        return {
+          items: mergedItems,
+          totalCount: Math.max(englishResult.totalCount, chineseResult.totalCount),
+          subCategories: englishResult.subCategories.length > 0
+            ? englishResult.subCategories
+            : chineseResult.subCategories,
+          breadcrumbs: englishResult.breadcrumbs.length > 0
+            ? englishResult.breadcrumbs
+            : chineseResult.breadcrumbs,
+          searchProperties: englishResult.searchProperties.length > 0
+            ? englishResult.searchProperties
+            : chineseResult.searchProperties,
+        };
+      }
+
+      return englishResult;
+    }
+
+    // Standard single search (Chinese, Mongolian, or other)
+    const data = await callProxy<OtSearchResult>("searchItems", { ...params } as Record<string, unknown>);
+    return parseSearchResponse(data, priceConfig, blockedVendors);
   }, CACHE_TTL.SEARCH_RESULTS);
 }
 
