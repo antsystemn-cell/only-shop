@@ -265,8 +265,21 @@ export default function OtProductDetail() {
 
   const effectivePrice = matchedConfig?.price ?? product?.price ?? 0;
   const effectiveQuantity = matchedConfig?.quantity ?? product?.quantity;
+
+  // Build gallery images: prepend variant image if it's not already in the original gallery
+  const galleryImages = useMemo(() => {
+    if (!product?.images) return [];
+    if (!variantGalleryImage) return product.images;
+    // If variant image is already in the product images, don't duplicate
+    if (product.images.includes(variantGalleryImage)) return product.images;
+    // Prepend variant image at position 0
+    return [variantGalleryImage, ...product.images];
+  }, [product?.images, variantGalleryImage]);
+
+  // For non-Amazon products, configImageOverride replaces the gallery view entirely (old behavior)
+  // For Amazon products, we use galleryImages with variantGalleryImage prepended
   const effectiveImage =
-    configImageOverride || matchedConfig?.imageUrl || product?.images?.[selectedImage] || product?.imageUrl;
+    (configImageOverride && !isAmazon) ? configImageOverride : galleryImages[selectedImage] || product?.imageUrl;
 
   const handleAddToCart = async (): Promise<boolean> => {
     if (!product) return false;
