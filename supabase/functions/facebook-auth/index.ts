@@ -94,14 +94,11 @@ Deno.serve(async (req) => {
         auth: { autoRefreshToken: false, persistSession: false },
       });
 
-      let userId: string | null = null;
-      let sessionData: any = null;
-
       const userEmail = email || `fb_${facebookId}@facebook.placeholder`;
 
-      // Try to create user first; if exists, just proceed
+      // Try to create user first; if it already exists, continue with sign-in
       const randomPassword = crypto.randomUUID() + crypto.randomUUID();
-      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+      const { error: createErr } = await supabaseAdmin.auth.admin.createUser({
         email: userEmail,
         password: randomPassword,
         email_confirm: true,
@@ -113,20 +110,28 @@ Deno.serve(async (req) => {
       });
 
       if (createErr) {
-        // User already exists - this is fine, just update profile
+        const isExistingUser = /already been registered|email_exists/i.test(createErr.message || "");
+
+        if (!isExistingUser) {
+          console.error("Create user error:", createErr);
+          return new Response(
+            JSON.stringify({ error: "Хэрэглэгч бэлтгэхэд алдаа гарлаа" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         console.log("User exists, proceeding with login:", userEmail);
 
-        // Update profile with Facebook avatar
         await supabaseAdmin
           .from("profiles")
-          .update({ avatar_url: avatarUrl })
+          .update({
+            avatar_url: avatarUrl,
+            ...(fullName ? { full_name: fullName } : {}),
+          })
           .eq("email", userEmail);
-      } else {
-        userId = newUser.user!.id;
       }
 
-
-      // Generate a magic link / session for the user
+      // Generate a magic link session for the user
       const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
         type: "magiclink",
         email: userEmail,
@@ -140,16 +145,30 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Extract the token_hash from the generated link
-      const linkUrl = new URL(linkData.properties.action_link);
-      const tokenHash = linkUrl.searchParams.get("token_hash") || linkUrl.hash?.match(/token_hash=([^&]+)/)?.[1];
-      const type = linkUrl.searchParams.get("type") || "magiclink";
+      const fallbackTokenHash = (() => {
+        try {
+          const linkUrl = new URL(linkData.properties.action_link);
+          return linkUrl.searchParams.get("token_hash") || linkUrl.hash?.match(/token_hash=([^&]+)/)?.[1] || null;
+        } catch {
+          return null;
+        }
+      })();
+
+      const tokenHash = linkData.properties.hashed_token || fallbackTokenHash;
+
+      if (!tokenHash) {
+        console.error("Generate link missing token hash:", linkData.properties);
+        return new Response(
+          JSON.stringify({ error: "Сессия үүсгэхэд алдаа гарлаа" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
       return new Response(
         JSON.stringify({
           success: true,
           token_hash: tokenHash,
-          type: type,
+          type: "magiclink",
           email: userEmail,
           profile: { full_name: fullName, avatar_url: avatarUrl },
         }),
