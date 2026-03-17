@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
           success: true,
           token_hash: tokenHash,
           type: type,
-          email: email || `fb_${facebookId}@facebook.placeholder`,
+          email: userEmail,
           profile: { full_name: fullName, avatar_url: avatarUrl },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
