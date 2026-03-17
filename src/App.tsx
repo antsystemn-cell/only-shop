@@ -95,6 +95,7 @@ import AmazonSync from "./pages/admin/AmazonSync";
 import AmazonShop from "./pages/storefront/AmazonShop";
 import AmazonProductDetail from "./pages/storefront/AmazonProductDetail";
 import AmazonCategoryBrowse from "./pages/storefront/AmazonCategoryBrowse";
+import FacebookCallback from "./pages/storefront/FacebookCallback";
 
 // Redirect component for old OT Orders route
 const OtOrdersRedirect = () => <Navigate to="/admin/orders?source=ot" replace />;
@@ -140,6 +141,7 @@ const App = () => (
               
               {/* Auth and checkout routes - outside layout */}
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/ot/checkout" element={<OtCheckout />} />

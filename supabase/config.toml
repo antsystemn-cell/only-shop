@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.sync-ot-categories]
 verify_jwt = false
+
+[functions.facebook-auth]
+verify_jwt = false

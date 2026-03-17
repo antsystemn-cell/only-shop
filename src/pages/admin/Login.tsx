@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Lock, Loader2, User, AtSign } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
+import { FacebookSignInButton } from "@/components/storefront/FacebookSignInButton";
 
 const MN_PHONE_REGEX = /^[89]\d{7}$/;
 
@@ -266,7 +267,18 @@ export default function AdminLogin() {
               )}
             </Button>
 
-            <div className="text-center">
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Эсвэл</span>
+              </div>
+            </div>
+
+            <FacebookSignInButton />
+
+            <div className="text-center mt-4">
               <button
                 type="button"
                 onClick={() => { setIsSignup(!isSignup); setErrors({}); }}
