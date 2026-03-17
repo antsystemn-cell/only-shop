@@ -529,7 +529,7 @@ export default function OtProductDetail() {
 
           {/* Image Zoom Modal */}
           <ImageZoomModal
-            images={product.images}
+            images={galleryImages}
             initialIndex={selectedImage}
             open={zoomOpen}
             onOpenChange={setZoomOpen}
