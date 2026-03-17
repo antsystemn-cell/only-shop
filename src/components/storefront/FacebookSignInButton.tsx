@@ -31,9 +31,17 @@ export function FacebookSignInButton() {
       }
 
       if (data?.url) {
-        // Use window.top to break out of iframe (Lovable preview), fallback to window
-        const target = window.top || window;
-        target.location.href = data.url;
+        try {
+          // Try parent window first (breaks out of iframe)
+          if (window.top && window.top !== window) {
+            window.top.location.href = data.url;
+          } else {
+            window.location.href = data.url;
+          }
+        } catch {
+          // Cross-origin iframe - open in new tab
+          window.open(data.url, '_blank');
+        }
       }
     } catch (err) {
       toast.error("Facebook нэвтрэлт эхлүүлэхэд алдаа гарлаа");
