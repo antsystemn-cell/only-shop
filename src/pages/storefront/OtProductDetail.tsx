@@ -722,20 +722,32 @@ export default function OtProductDetail() {
                           [config.pid]: newVal,
                         }));
                         // Show configurator image in main gallery
-                        if (newVal && val.imageUrl) {
-                          setConfigImageOverride(val.imageUrl);
-                        } else if (newVal) {
-                          // For Amazon: try to get image from enriched configuredItem
-                          const matchingCi = effectiveConfiguredItems.find((ci) =>
+                        if (newVal) {
+                          const imgUrl = val.imageUrl || effectiveConfiguredItems.find((ci) =>
                             ci.configuratorIds.includes(newVal)
-                          );
-                          if (matchingCi?.imageUrl) {
-                            setConfigImageOverride(matchingCi.imageUrl);
+                          )?.imageUrl;
+                          
+                          if (imgUrl && isAmazon) {
+                            // Amazon: prepend image to gallery and navigate to it
+                            setVariantGalleryImage(imgUrl);
+                            // If the image is already in the product gallery, navigate to it
+                            const existingIdx = product.images.indexOf(imgUrl);
+                            if (existingIdx >= 0) {
+                              setSelectedImage(existingIdx);
+                            } else {
+                              // It will be prepended at index 0
+                              setSelectedImage(0);
+                            }
+                          } else if (imgUrl) {
+                            // Non-Amazon: use override (old behavior)
+                            setConfigImageOverride(imgUrl);
                           } else {
                             setConfigImageOverride(null);
+                            setVariantGalleryImage(null);
                           }
                         } else {
                           setConfigImageOverride(null);
+                          setVariantGalleryImage(null);
                         }
                       }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
