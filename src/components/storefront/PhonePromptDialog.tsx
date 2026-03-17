@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -19,31 +19,51 @@ export function PhonePromptDialog() {
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
-  const checkedUserIdRef = useRef<string | null>(null);
+  const lastCheckedRef = useRef<string | null>(null);
 
+  const checkPhone = useCallback(async (userId: string) => {
+    // Avoid re-checking same user
+    if (lastCheckedRef.current === userId) return;
+    lastCheckedRef.current = userId;
+
+    // Delay for new user profile trigger
+    await new Promise((r) => setTimeout(r, 1200));
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("phone")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!data?.phone || data.phone.trim() === "") {
+      setOpen(true);
+    }
+  }, []);
+
+  // Check on user change
   useEffect(() => {
-    if (isLoading || !user) return;
-    // Already checked this user
-    if (checkedUserIdRef.current === user.id) return;
-    checkedUserIdRef.current = user.id;
+    if (isLoading || !user) {
+      // Reset when logged out so next login re-checks
+      if (!user && !isLoading) {
+        lastCheckedRef.current = null;
+      }
+      return;
+    }
+    checkPhone(user.id);
+  }, [user, isLoading, checkPhone]);
 
-    const checkPhone = async () => {
-      // Small delay to allow profile trigger to complete for new users
-      await new Promise((r) => setTimeout(r, 1500));
+  // Also re-check after navigation (e.g. from /auth to /)
+  useEffect(() => {
+    if (!user || isLoading) return;
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("phone")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (!data?.phone || data.phone.trim() === "") {
-        setOpen(true);
+    const onFocus = () => {
+      if (user && lastCheckedRef.current !== user.id) {
+        checkPhone(user.id);
       }
     };
-
-    checkPhone();
-  }, [user, isLoading]);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [user, isLoading, checkPhone]);
 
   const handleSave = async () => {
     const trimmed = phone.replace(/\s/g, "");
@@ -72,8 +92,8 @@ export function PhonePromptDialog() {
   if (!user) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={(v) => { /* prevent closing without saving */ if (!v) return; }}>
+      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Phone className="h-5 w-5 text-primary" />
