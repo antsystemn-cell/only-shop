@@ -65,6 +65,8 @@ export default function OtProductDetail() {
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [gallerySlide, setGallerySlide] = useState<"left" | "right" | null>(null);
   const [configImageOverride, setConfigImageOverride] = useState<string | null>(null);
+  // For Amazon: track the variant image inserted into the gallery
+  const [variantGalleryImage, setVariantGalleryImage] = useState<string | null>(null);
 
   // Touch swipe state for image gallery
   const touchStartX = useRef(0);
@@ -263,8 +265,21 @@ export default function OtProductDetail() {
 
   const effectivePrice = matchedConfig?.price ?? product?.price ?? 0;
   const effectiveQuantity = matchedConfig?.quantity ?? product?.quantity;
+
+  // Build gallery images: prepend variant image if it's not already in the original gallery
+  const galleryImages = useMemo(() => {
+    if (!product?.images) return [];
+    if (!variantGalleryImage) return product.images;
+    // If variant image is already in the product images, don't duplicate
+    if (product.images.includes(variantGalleryImage)) return product.images;
+    // Prepend variant image at position 0
+    return [variantGalleryImage, ...product.images];
+  }, [product?.images, variantGalleryImage]);
+
+  // For non-Amazon products, configImageOverride replaces the gallery view entirely (old behavior)
+  // For Amazon products, we use galleryImages with variantGalleryImage prepended
   const effectiveImage =
-    configImageOverride || matchedConfig?.imageUrl || product?.images?.[selectedImage] || product?.imageUrl;
+    (configImageOverride && !isAmazon) ? configImageOverride : galleryImages[selectedImage] || product?.imageUrl;
 
   const handleAddToCart = async (): Promise<boolean> => {
     if (!product) return false;
@@ -428,7 +443,7 @@ export default function OtProductDetail() {
       : 0;
 
   // Update ref for touch handler
-  imageCountRef.current = product.images.length;
+  imageCountRef.current = galleryImages.length;
 
   return (
     <div className="container py-4 md:py-8 animate-fade-in">
@@ -472,7 +487,7 @@ export default function OtProductDetail() {
                 (e.target as HTMLImageElement).src = "/placeholder.svg";
               }}
             />
-            {product.images.length > 1 && (
+            {galleryImages.length > 1 && (
               <>
                 <Button
                   variant="secondary"
@@ -480,7 +495,7 @@ export default function OtProductDetail() {
                   className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
-                    animateGallery((p) => (p - 1 + product.images.length) % product.images.length, "right");
+                    animateGallery((p) => (p - 1 + galleryImages.length) % galleryImages.length, "right");
                   }}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -491,7 +506,7 @@ export default function OtProductDetail() {
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
-                    animateGallery((p) => (p + 1) % product.images.length, "left");
+                    animateGallery((p) => (p + 1) % galleryImages.length, "left");
                   }}
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -505,29 +520,29 @@ export default function OtProductDetail() {
               </Badge>
             )}
             {/* Image counter */}
-            {product.images.length > 1 && (
+            {galleryImages.length > 1 && (
               <span className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-full">
-                {selectedImage + 1}/{product.images.length}
+                {selectedImage + 1}/{galleryImages.length}
               </span>
             )}
           </div>
 
           {/* Image Zoom Modal */}
           <ImageZoomModal
-            images={product.images}
+            images={galleryImages}
             initialIndex={selectedImage}
             open={zoomOpen}
             onOpenChange={setZoomOpen}
           />
 
           {/* Thumbnails */}
-          {product.images.length > 1 && (
+          {galleryImages.length > 1 && (
             <div className="flex gap-2 mt-3 overflow-x-auto pb-2 scrollbar-hide">
-              {ensureArray(product.images)
+              {galleryImages
                 .slice(0, 10)
                 .map((img, i) => (
                   <button
-                    key={i}
+                    key={`${img}-${i}`}
                     onClick={() => setSelectedImage(i)}
                     className={`w-16 h-16 rounded-lg border-2 overflow-hidden shrink-0 transition-all ${
                       selectedImage === i
@@ -707,20 +722,32 @@ export default function OtProductDetail() {
                           [config.pid]: newVal,
                         }));
                         // Show configurator image in main gallery
-                        if (newVal && val.imageUrl) {
-                          setConfigImageOverride(val.imageUrl);
-                        } else if (newVal) {
-                          // For Amazon: try to get image from enriched configuredItem
-                          const matchingCi = effectiveConfiguredItems.find((ci) =>
+                        if (newVal) {
+                          const imgUrl = val.imageUrl || effectiveConfiguredItems.find((ci) =>
                             ci.configuratorIds.includes(newVal)
-                          );
-                          if (matchingCi?.imageUrl) {
-                            setConfigImageOverride(matchingCi.imageUrl);
+                          )?.imageUrl;
+                          
+                          if (imgUrl && isAmazon) {
+                            // Amazon: prepend image to gallery and navigate to it
+                            setVariantGalleryImage(imgUrl);
+                            // If the image is already in the product gallery, navigate to it
+                            const existingIdx = product.images.indexOf(imgUrl);
+                            if (existingIdx >= 0) {
+                              setSelectedImage(existingIdx);
+                            } else {
+                              // It will be prepended at index 0
+                              setSelectedImage(0);
+                            }
+                          } else if (imgUrl) {
+                            // Non-Amazon: use override (old behavior)
+                            setConfigImageOverride(imgUrl);
                           } else {
                             setConfigImageOverride(null);
+                            setVariantGalleryImage(null);
                           }
                         } else {
                           setConfigImageOverride(null);
+                          setVariantGalleryImage(null);
                         }
                       }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
@@ -895,7 +922,7 @@ export default function OtProductDetail() {
       </Tabs>
 
       {/* Similar / Vendor Products */}
-      <SimilarProducts product={product} />
+      <SimilarProducts product={product} customTitle={translatedTitle || product.title} />
     </div>
   );
 }

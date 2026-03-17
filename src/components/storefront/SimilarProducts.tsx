@@ -10,6 +10,8 @@ import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
 
 interface SimilarProductsProps {
   product: ProductDetail;
+  /** If the product has a custom title override, pass it here so similar search uses it */
+  customTitle?: string;
 }
 
 function isPoizon(providerType?: string) {
@@ -17,22 +19,25 @@ function isPoizon(providerType?: string) {
   return p === "poizon" || p === "dewu";
 }
 
-export function SimilarProducts({ product }: SimilarProductsProps) {
+export function SimilarProducts({ product, customTitle }: SimilarProductsProps) {
   const navigate = useNavigate();
   const poizon = isPoizon(product.providerType);
 
-  // Poizon: fetch by categoryId; Taobao: fetch by vendorId
+  // Poizon: fetch by categoryId; others with vendor: fetch by vendorId; fallback: search by title
   const categoryId = poizon ? product.categoryId : undefined;
   const vendorId = !poizon ? product.vendor?.id : undefined;
+  // Use customTitle (override) for search if available, otherwise fall back to original title
+  const searchQuery = !categoryId && !vendorId ? (customTitle || product.title) : undefined;
 
-  const enabled = !!(categoryId || vendorId);
+  const enabled = !!(categoryId || vendorId || searchQuery);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["similar-products", product.id, categoryId, vendorId],
+    queryKey: ["similar-products", product.id, categoryId, vendorId, searchQuery],
     queryFn: async () => {
       const result = await searchItems({
         categoryId,
         vendorId,
+        query: searchQuery,
         provider: product.providerType,
         page: 0,
         pageSize: 20,
@@ -50,13 +55,21 @@ export function SimilarProducts({ product }: SimilarProductsProps) {
 
   if (!enabled) return null;
 
-  const sectionTitle = poizon ? "Төстэй бараанууд" : `${product.vendorName || "Дэлгүүр"}-ийн бусад бараа`;
+  const sectionTitle = poizon
+    ? "Төстэй бараанууд"
+    : vendorId
+      ? `${product.vendorName || "Дэлгүүр"}-ийн бусад бараа`
+      : "Төстэй бараанууд";
 
   const handleViewAll = () => {
     if (poizon && categoryId) {
       navigate(`/ot/category/${categoryId}`);
     } else if (vendorId) {
       navigate(`/ot?vendorId=${vendorId}&vendorName=${encodeURIComponent(product.vendorName || "")}`);
+    } else if (searchQuery) {
+      const params = new URLSearchParams({ q: searchQuery });
+      if (product.providerType) params.set("provider", product.providerType);
+      navigate(`/ot?${params.toString()}`);
     }
   };
 
