@@ -119,6 +119,7 @@ const App = () => (
             <BrowserRouter>
             <ScrollToTop />
             <RecentlyViewedLoginMerge />
+            <PhonePromptDialog />
             <Routes>
               {/* Storefront routes */}
               <Route element={<StorefrontLayout />}>
