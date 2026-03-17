@@ -15,29 +15,35 @@ import { Phone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export function PhonePromptDialog() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const checkedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user || checked) return;
+    if (isLoading || !user) return;
+    // Already checked this user
+    if (checkedUserIdRef.current === user.id) return;
+    checkedUserIdRef.current = user.id;
 
-    (async () => {
+    const checkPhone = async () => {
+      // Small delay to allow profile trigger to complete for new users
+      await new Promise((r) => setTimeout(r, 1500));
+
       const { data } = await supabase
         .from("profiles")
         .select("phone")
         .eq("user_id", user.id)
-        .single();
-
-      setChecked(true);
+        .maybeSingle();
 
       if (!data?.phone || data.phone.trim() === "") {
         setOpen(true);
       }
-    })();
-  }, [user, checked]);
+    };
+
+    checkPhone();
+  }, [user, isLoading]);
 
   const handleSave = async () => {
     const trimmed = phone.replace(/\s/g, "");
