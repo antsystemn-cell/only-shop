@@ -895,7 +895,7 @@ export default function OtProductDetail() {
       </Tabs>
 
       {/* Similar / Vendor Products */}
-      <SimilarProducts product={product} />
+      <SimilarProducts product={product} customTitle={translatedTitle || product.title} />
     </div>
   );
 }
