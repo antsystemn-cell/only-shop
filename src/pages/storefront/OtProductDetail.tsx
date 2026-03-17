@@ -65,6 +65,8 @@ export default function OtProductDetail() {
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [gallerySlide, setGallerySlide] = useState<"left" | "right" | null>(null);
   const [configImageOverride, setConfigImageOverride] = useState<string | null>(null);
+  // For Amazon: track the variant image inserted into the gallery
+  const [variantGalleryImage, setVariantGalleryImage] = useState<string | null>(null);
 
   // Touch swipe state for image gallery
   const touchStartX = useRef(0);
