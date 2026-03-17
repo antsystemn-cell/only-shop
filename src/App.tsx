@@ -15,6 +15,7 @@ import { RecentlyViewedLoginMerge } from "./components/storefront/RecentlyViewed
 import { PWAUpdatePrompt } from "./components/pwa/PWAUpdatePrompt";
 import { PWAInstallBanner } from "./components/pwa/PWAInstallBanner";
 import { PWAAppSplash } from "./components/pwa/PWAAppSplash";
+import { PhonePromptDialog } from "./components/storefront/PhonePromptDialog";
 
 // Storefront imports
 import { StorefrontLayout } from "./components/storefront/StorefrontLayout";
@@ -118,6 +119,7 @@ const App = () => (
             <BrowserRouter>
             <ScrollToTop />
             <RecentlyViewedLoginMerge />
+            <PhonePromptDialog />
             <Routes>
               {/* Storefront routes */}
               <Route element={<StorefrontLayout />}>
