@@ -293,6 +293,7 @@ export default function Products() {
   const resetForm = () => {
     setFormData({
       name_mn: "",
+      slug: "",
       description_mn: "",
       price: "",
       compare_price: "",
