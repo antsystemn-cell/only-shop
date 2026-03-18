@@ -313,6 +313,7 @@ export default function Products() {
     setEditingProduct(product);
     setFormData({
       name_mn: product.name_mn,
+      slug: (product as any).slug || "",
       description_mn: product.description_mn || "",
       price: product.price.toString(),
       compare_price: product.compare_price?.toString() || "",
