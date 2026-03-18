@@ -101,17 +101,30 @@ export default function ProductDetail() {
   }, [emblaApi]);
 
   // Fetch product
+  // Check if the param looks like a UUID
+  const isUuid = id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) : false;
+
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*, categories(*)")
-        .eq("id", id)
-        .single();
-
-      if (error) throw error;
-      return data;
+      // Try by UUID first, then by slug
+      if (isUuid) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*, categories(*)")
+          .eq("id", id!)
+          .single();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*, categories(*)")
+          .eq("slug", id!)
+          .single();
+        if (error) throw error;
+        return data;
+      }
     },
     enabled: !!id,
   });
