@@ -91,6 +91,7 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name_mn: "",
+    slug: "",
     description_mn: "",
     price: "",
     compare_price: "",
