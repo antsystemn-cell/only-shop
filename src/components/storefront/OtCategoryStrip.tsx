@@ -1,9 +1,18 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Folder } from "lucide-react";
+import { ChevronDown, Folder } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProviderSafe } from "@/contexts/ProviderContext";
 import { getCategoryPath } from "@/utils/categoryUrl";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface OtCat {
   id: string;
@@ -18,6 +27,8 @@ interface OtCat {
 
 export function OtCategoryStrip() {
   const { apiProvider } = useProviderSafe();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   const { data: categories } = useQuery({
     queryKey: ["ot-root-categories-strip", apiProvider],
@@ -40,32 +51,60 @@ export function OtCategoryStrip() {
 
   if (!categories || categories.length === 0) return null;
 
+  const filtered = search
+    ? categories.filter((c) => {
+        const name = c.name_mn || c.name_en || c.internal_id;
+        return name.toLowerCase().includes(search.toLowerCase());
+      })
+    : categories;
+
   return (
     <div className="py-3 md:py-4 bg-primary/95">
       <div className="md:container">
-        <div className="flex items-center gap-2 md:gap-4 overflow-x-auto scrollbar-hide px-3 md:px-0">
-          {categories.map((cat) => (
-            <Link
-              key={cat.internal_id}
-              to={getCategoryPath(cat)}
-              className="group flex flex-col items-center gap-2 md:gap-3 min-w-[70px] md:min-w-[110px] shrink-0"
-            >
-              <div className="w-14 h-14 md:w-20 md:h-20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                {cat.icon_url ? (
-                  <img
-                    src={cat.icon_url}
-                    alt={cat.name_mn || cat.name_en || ""}
-                    className="w-full h-full object-contain"
+        <div className="flex items-center gap-2 px-3 md:px-0">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="gap-2 h-9 text-sm font-medium bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+              >
+                <Folder className="h-4 w-4" />
+                Ангилал сонгох
+                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-0" align="start">
+              {categories.length > 5 && (
+                <div className="p-2 border-b">
+                  <Input
+                    placeholder="Ангилал хайх..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="h-8 text-xs"
                   />
-                ) : (
-                  <Folder className="h-6 w-6 md:h-8 md:w-8 text-white/70" />
-                )}
-              </div>
-              <span className="text-[10px] md:text-sm text-white/80 text-center font-medium uppercase tracking-wide max-w-[70px] md:max-w-[110px] truncate group-hover:text-white transition-colors">
-                {cat.name_mn || cat.name_en || cat.internal_id}
-              </span>
-            </Link>
-          ))}
+                </div>
+              )}
+              <ScrollArea className={filtered.length > 8 ? "h-64" : undefined}>
+                <div className="p-1">
+                  {filtered.map((cat) => (
+                    <Link
+                      key={cat.internal_id}
+                      to={getCategoryPath(cat)}
+                      onClick={() => { setOpen(false); setSearch(""); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors hover:bg-muted"
+                    >
+                      {cat.icon_url ? (
+                        <img src={cat.icon_url} alt="" className="w-5 h-5 object-contain" />
+                      ) : (
+                        <Folder className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {cat.name_mn || cat.name_en || cat.internal_id}
+                    </Link>
+                  ))}
+                </div>
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
     </div>
