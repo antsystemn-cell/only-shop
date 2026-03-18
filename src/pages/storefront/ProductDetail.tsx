@@ -247,7 +247,7 @@ export default function ProductDetail() {
         .select("*")
         .eq("is_active", true)
         .eq("category_id", product!.category_id)
-        .neq("id", id)
+        .neq("id", product!.id)
         .limit(4);
 
       if (error) throw error;
