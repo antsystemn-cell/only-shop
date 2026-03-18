@@ -172,6 +172,7 @@ export default function Products() {
       const productData = {
         name: data.name_mn,
         name_mn: data.name_mn,
+        slug: data.slug || null,
         description_mn: data.description_mn || null,
         price: parseFloat(data.price) || 0,
         compare_price: data.compare_price ? parseFloat(data.compare_price) : null,
