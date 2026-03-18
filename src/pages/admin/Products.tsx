@@ -45,6 +45,8 @@ import {
   Package,
   Star,
   Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface Product {
@@ -233,6 +235,27 @@ export default function Products() {
         title: editingProduct ? "Бараа шинэчлэгдлээ" : "Бараа нэмэгдлээ",
         description: "Амжилттай хадгаллаа",
       });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Алдаа гарлаа",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Toggle visibility mutation
+  const toggleVisibilityMutation = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await supabase
+        .from("products")
+        .update({ is_active })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
     },
     onError: (error: any) => {
       toast({
@@ -677,7 +700,16 @@ export default function Products() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleVisibilityMutation.mutate({ id: product.id, is_active: !product.is_active })}
+                            title={product.is_active ? "Нуух" : "Харуулах"}
+                            className={product.is_active ? "text-green-600 hover:text-red-500" : "text-muted-foreground hover:text-green-600"}
+                          >
+                            {product.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
