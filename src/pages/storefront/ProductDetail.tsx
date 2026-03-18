@@ -146,20 +146,21 @@ export default function ProductDetail() {
   }, [product?.id]);
 
   // Fetch product variants
+  const productId = product?.id;
   const { data: variants = [] } = useQuery({
-    queryKey: ["product-variants", id],
+    queryKey: ["product-variants", productId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_variants")
         .select("*")
-        .eq("product_id", id)
+        .eq("product_id", productId!)
         .eq("is_active", true)
         .order("display_order", { ascending: true });
 
       if (error) throw error;
       return data as ProductVariant[];
     },
-    enabled: !!id,
+    enabled: !!productId,
   });
 
   // Selected variant object
