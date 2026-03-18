@@ -483,6 +483,20 @@ export default function Products() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
+                  <Label htmlFor="slug">URL Slug</Label>
+                  <Input
+                    id="slug"
+                    value={formData.slug}
+                    onChange={(e) =>
+                      setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/--+/g, "-").replace(/^-|-$/g, "") })
+                    }
+                    placeholder="iphone-15-pro-max"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {formData.slug ? `/product/${formData.slug}` : "Хоосон үлдээвэл ID ашиглана"}
+                  </p>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="sku">SKU</Label>
                   <Input
                     id="sku"
