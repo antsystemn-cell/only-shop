@@ -47,6 +47,7 @@ import {
   Loader2,
   Eye,
   EyeOff,
+} from "lucide-react";
 
 interface Product {
   id: string;
