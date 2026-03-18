@@ -45,7 +45,8 @@ import {
   Package,
   Star,
   Loader2,
-} from "lucide-react";
+  Eye,
+  EyeOff,
 
 interface Product {
   id: string;
