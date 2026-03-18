@@ -699,7 +699,16 @@ export default function Products() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleVisibilityMutation.mutate({ id: product.id, is_active: !product.is_active })}
+                            title={product.is_active ? "Нуух" : "Харуулах"}
+                            className={product.is_active ? "text-green-600 hover:text-red-500" : "text-muted-foreground hover:text-green-600"}
+                          >
+                            {product.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
