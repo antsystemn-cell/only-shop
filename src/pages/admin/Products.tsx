@@ -91,6 +91,7 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name_mn: "",
+    slug: "",
     description_mn: "",
     price: "",
     compare_price: "",
@@ -171,6 +172,7 @@ export default function Products() {
       const productData = {
         name: data.name_mn,
         name_mn: data.name_mn,
+        slug: data.slug || null,
         description_mn: data.description_mn || null,
         price: parseFloat(data.price) || 0,
         compare_price: data.compare_price ? parseFloat(data.compare_price) : null,
@@ -291,6 +293,7 @@ export default function Products() {
   const resetForm = () => {
     setFormData({
       name_mn: "",
+      slug: "",
       description_mn: "",
       price: "",
       compare_price: "",
@@ -310,6 +313,7 @@ export default function Products() {
     setEditingProduct(product);
     setFormData({
       name_mn: product.name_mn,
+      slug: (product as any).slug || "",
       description_mn: product.description_mn || "",
       price: product.price.toString(),
       compare_price: product.compare_price?.toString() || "",
@@ -478,6 +482,20 @@ export default function Products() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="slug">URL Slug</Label>
+                  <Input
+                    id="slug"
+                    value={formData.slug}
+                    onChange={(e) =>
+                      setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/--+/g, "-").replace(/^-|-$/g, "") })
+                    }
+                    placeholder="iphone-15-pro-max"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {formData.slug ? `/product/${formData.slug}` : "Хоосон үлдээвэл ID ашиглана"}
+                  </p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="sku">SKU</Label>
                   <Input
