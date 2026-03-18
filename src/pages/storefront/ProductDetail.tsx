@@ -132,16 +132,16 @@ export default function ProductDetail() {
   // Track recently viewed (fire-and-forget)
   const trackView = useTrackRecentlyViewed();
   useEffect(() => {
-    if (!product || !id) return;
+    if (!product) return;
     trackView({
       provider: "local",
-      provider_product_id: id,
-      canonical_key: `local:${id}`,
+      provider_product_id: product.id,
+      canonical_key: `local:${product.id}`,
       title_snapshot: product.name_mn || product.name,
       image_snapshot: product.images?.[0] || "",
       price_snapshot: product.price,
       currency: "₮",
-      product_url: `/product/${id}`,
+      product_url: `/product/${product.slug || product.id}`,
     });
   }, [product?.id]);
 
