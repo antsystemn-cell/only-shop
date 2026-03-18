@@ -101,17 +101,30 @@ export default function ProductDetail() {
   }, [emblaApi]);
 
   // Fetch product
+  // Check if the param looks like a UUID
+  const isUuid = id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) : false;
+
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*, categories(*)")
-        .eq("id", id)
-        .single();
-
-      if (error) throw error;
-      return data;
+      // Try by UUID first, then by slug
+      if (isUuid) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*, categories(*)")
+          .eq("id", id!)
+          .single();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*, categories(*)")
+          .eq("slug", id!)
+          .single();
+        if (error) throw error;
+        return data;
+      }
     },
     enabled: !!id,
   });
@@ -119,34 +132,35 @@ export default function ProductDetail() {
   // Track recently viewed (fire-and-forget)
   const trackView = useTrackRecentlyViewed();
   useEffect(() => {
-    if (!product || !id) return;
+    if (!product) return;
     trackView({
       provider: "local",
-      provider_product_id: id,
-      canonical_key: `local:${id}`,
+      provider_product_id: product.id,
+      canonical_key: `local:${product.id}`,
       title_snapshot: product.name_mn || product.name,
       image_snapshot: product.images?.[0] || "",
       price_snapshot: product.price,
       currency: "₮",
-      product_url: `/product/${id}`,
+      product_url: `/product/${product.slug || product.id}`,
     });
   }, [product?.id]);
 
   // Fetch product variants
+  const productId = product?.id;
   const { data: variants = [] } = useQuery({
-    queryKey: ["product-variants", id],
+    queryKey: ["product-variants", productId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_variants")
         .select("*")
-        .eq("product_id", id)
+        .eq("product_id", productId!)
         .eq("is_active", true)
         .order("display_order", { ascending: true });
 
       if (error) throw error;
       return data as ProductVariant[];
     },
-    enabled: !!id,
+    enabled: !!productId,
   });
 
   // Selected variant object
@@ -233,7 +247,7 @@ export default function ProductDetail() {
         .select("*")
         .eq("is_active", true)
         .eq("category_id", product!.category_id)
-        .neq("id", id)
+        .neq("id", product!.id)
         .limit(4);
 
       if (error) throw error;

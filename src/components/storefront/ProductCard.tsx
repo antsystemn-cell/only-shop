@@ -94,7 +94,7 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
   };
 
   return (
-    <Link to={`/product/${product.id}`}>
+    <Link to={`/product/${product.slug || product.id}`}>
       <Card className="group overflow-hidden hover-lift hover:shadow-lg transition-all duration-300">
         {/* Image */}
         <div className="relative aspect-square bg-card overflow-hidden">
