@@ -333,10 +333,16 @@ function ProductDetailCard({ product, onUpdated }: { product: ProductDetail; onU
 
         {product.configurators.length > 0 && (
           <div>
-            <h3 className="font-semibold mb-2 flex items-center gap-2">
-              <Pencil className="h-4 w-4" />
-              Тохиргоо / Сонголтууд ({product.configurators.length})
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Pencil className="h-4 w-4" />
+                Тохиргоо / Сонголтууд ({product.configurators.length})
+              </h3>
+              <Button onClick={handleSaveVariants} disabled={savingVariants} size="sm" variant="outline">
+                {savingVariants ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
+                Сонголт хадгалах
+              </Button>
+            </div>
             {product.configurators.map((c) => (
               <div key={c.pid} className="mb-4">
                 <Label className="text-muted-foreground">{c.propertyName}</Label>
