@@ -4,12 +4,23 @@ import { Footer } from "./Footer";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { ProviderStrip } from "./ProviderStrip";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSeoDefaults } from "@/hooks/useSeoDefaults";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 
 export function StorefrontLayout() {
   const isMobile = useIsMobile();
   const location = useLocation();
+  const { data: seo } = useSeoDefaults();
 
-  // Hide header on mobile - use bottom nav + provider strip instead
+  // Apply site-wide SEO defaults (individual pages can override via their own useDocumentMeta)
+  useDocumentMeta({
+    title: seo?.siteTitle || "Онли",
+    description: seo?.siteDescription,
+    image: seo?.ogImage || undefined,
+    url: `https://only.mn${location.pathname}`,
+    type: "website",
+  });
+
   const hideHeader = isMobile;
 
   return (
