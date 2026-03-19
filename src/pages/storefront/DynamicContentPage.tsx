@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import DOMPurify from "dompurify";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import { getSeoImage } from "@/utils/seoHelpers";
 
 interface DynamicContentPageProps {
   slug?: string;
