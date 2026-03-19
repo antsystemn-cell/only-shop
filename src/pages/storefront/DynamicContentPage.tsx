@@ -31,6 +31,13 @@ export default function DynamicContentPage({ slug: propSlug }: DynamicContentPag
     enabled: !!slug,
   });
 
+  useDocumentMeta({
+    title: page?.seo_title || page?.title ? `${page.seo_title || page.title} | Онли` : undefined,
+    description: page?.seo_description || undefined,
+    image: page ? getSeoImage({ type: "page", coverImage: page.seo_image }) : undefined,
+    url: slug ? `https://only.mn/page/${slug}` : undefined,
+  });
+
   if (isLoading) {
     return (
       <div className="container py-8 max-w-4xl">

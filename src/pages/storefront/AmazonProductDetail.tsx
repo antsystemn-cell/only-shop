@@ -28,6 +28,22 @@ export default function AmazonProductDetail() {
     enabled: !!asin,
   });
 
+  const displayTitleForSeo = (() => {
+    if (!product) return undefined;
+    const s = Array.isArray(product.amazon_product_store_settings)
+      ? product.amazon_product_store_settings[0]
+      : product.amazon_product_store_settings;
+    return s?.local_title_override || product.title || undefined;
+  })();
+
+  useDocumentMeta({
+    title: displayTitleForSeo ? `${displayTitleForSeo} | Онли` : undefined,
+    description: product?.short_description?.slice(0, 160) || undefined,
+    image: product ? getSeoImage({ type: "product", images: product.main_image ? [product.main_image] : [] }) : undefined,
+    url: asin ? `https://only.mn/amazon/product/${asin}` : undefined,
+    type: "product",
+  });
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">

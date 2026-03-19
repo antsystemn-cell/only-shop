@@ -19,6 +19,12 @@ export default function Categories() {
     },
   });
 
+  useDocumentMeta({
+    title: "Ангилалууд | Онли",
+    description: "Бүх төрлийн бараануудыг ангилалаар нь үзэх",
+    url: "https://only.mn/categories",
+  });
+
   return (
     <div className="py-6 md:py-8 animate-fade-in">
       <div className="px-3 md:container mb-6 md:mb-8">
