@@ -408,13 +408,6 @@ function ProductDetailCard({ product, onUpdated }: { product: ProductDetail; onU
           </div>
         )}
 
-        {/* Save button */}
-        <div className="flex justify-end pt-4 border-t">
-          <Button onClick={handleSave} disabled={saving} size="lg">
-            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Өөрчлөлт хадгалах
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
