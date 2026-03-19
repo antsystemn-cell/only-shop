@@ -292,11 +292,16 @@ function ProductDetailCard({ product, onUpdated }: { product: ProductDetail; onU
               <Label className="text-muted-foreground flex items-center gap-1">
                 <Pencil className="h-3 w-3" /> Барааны нэр (засварлах)
               </Label>
-              <Input
-                value={titleOverride}
-                onChange={(e) => setTitleOverride(e.target.value)}
-                className="font-medium"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={titleOverride}
+                  onChange={(e) => setTitleOverride(e.target.value)}
+                  className="font-medium flex-1"
+                />
+                <Button onClick={handleSaveTitle} disabled={savingTitle} size="sm" variant="outline">
+                  {savingTitle ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                </Button>
+              </div>
             </div>
 
             <div><Label className="text-muted-foreground">Үнэ</Label><p className="text-xl font-bold">{product.currency}{product.price?.toLocaleString()}</p></div>
