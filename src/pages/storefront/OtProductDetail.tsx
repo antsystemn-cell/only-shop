@@ -261,6 +261,15 @@ export default function OtProductDetail() {
     return { min, max };
   }, [effectiveConfiguredItems]);
 
+  // Dynamic SEO meta tags for link previews
+  useDocumentMeta({
+    title: product ? `${product.title} | Онли` : undefined,
+    description: product?.features?.slice(0, 3).map(f => `${f.name}: ${f.value}`).join(", ").slice(0, 160) || undefined,
+    image: product ? getSeoImage({ type: "product", images: product.images, imageUrl: product.imageUrl }) : undefined,
+    url: itemId ? `https://only.mn/ot/product/${itemId}` : undefined,
+    type: "product",
+  });
+
   const allConfigsSelected = product?.configurators?.length
     ? product.configurators.every((c) => selectedConfigs[c.pid] && selectedConfigs[c.pid] !== "")
     : true;
