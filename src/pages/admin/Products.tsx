@@ -541,7 +541,52 @@ export default function Products() {
                 </div>
               </div>
 
-              {/* Product Images Upload */}
+              {/* SEO / Link Preview */}
+              <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+                <h4 className="font-semibold text-sm">🔗 Link Preview / SEO</h4>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Чатаар линк илгээхэд харагдах гарчиг, тайлбар. Хоосон үлдээвэл барааны нэр, тайлбараас автомат үүсгэнэ.
+                </p>
+                <div className="grid gap-4 md:grid-cols-1">
+                  <div className="space-y-2">
+                    <Label htmlFor="seo_title">SEO гарчиг</Label>
+                    <Input
+                      id="seo_title"
+                      value={formData.seo_title}
+                      onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+                      placeholder={formData.name_mn || "Барааны нэр ашиглагдана"}
+                      maxLength={70}
+                    />
+                    <p className="text-xs text-muted-foreground">{formData.seo_title.length}/70</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="seo_description">SEO тайлбар</Label>
+                    <Textarea
+                      id="seo_description"
+                      value={formData.seo_description}
+                      onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+                      placeholder="Хоосон бол барааны тайлбараас автомат авна"
+                      rows={2}
+                      maxLength={160}
+                    />
+                    <p className="text-xs text-muted-foreground">{formData.seo_description.length}/160</p>
+                  </div>
+                </div>
+                {/* Preview card */}
+                {(formData.name_mn || formData.seo_title) && (
+                  <div className="border rounded-lg overflow-hidden bg-background max-w-sm">
+                    {formData.images[0] && (
+                      <img src={formData.images[0]} alt="preview" className="w-full h-32 object-cover" />
+                    )}
+                    <div className="p-3">
+                      <p className="text-xs text-muted-foreground">only.mn</p>
+                      <p className="font-medium text-sm line-clamp-1">{formData.seo_title || formData.name_mn}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{formData.seo_description || "Барааны тайлбар энд харагдана"}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="border rounded-lg p-4 bg-muted/30">
                 <ProductImageUpload
                   images={formData.images}
