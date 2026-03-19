@@ -146,6 +146,15 @@ export default function ProductDetail() {
     });
   }, [product?.id]);
 
+  // Dynamic OG meta tags for link previews
+  useDocumentMeta({
+    title: product?.seo_title || product?.name_mn,
+    description: product?.seo_description || (product?.description_mn ? product.description_mn.replace(/<[^>]*>/g, "").slice(0, 160) : undefined),
+    image: product?.images?.[0],
+    url: product ? `https://only.mn/product/${product.slug || product.id}` : undefined,
+    type: "product",
+  });
+
   // Fetch product variants
   const productId = product?.id;
   const { data: variants = [] } = useQuery({
