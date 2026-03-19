@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import DOMPurify from "dompurify";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import { getSeoImage } from "@/utils/seoHelpers";
 
 interface DynamicContentPageProps {
   slug?: string;
@@ -27,6 +29,13 @@ export default function DynamicContentPage({ slug: propSlug }: DynamicContentPag
       return data;
     },
     enabled: !!slug,
+  });
+
+  useDocumentMeta({
+    title: page?.seo_title || page?.title ? `${page.seo_title || page.title} | Онли` : undefined,
+    description: page?.seo_description || undefined,
+    image: page ? getSeoImage({ type: "page", coverImage: page.seo_image }) : undefined,
+    url: slug ? `https://only.mn/page/${slug}` : undefined,
   });
 
   if (isLoading) {

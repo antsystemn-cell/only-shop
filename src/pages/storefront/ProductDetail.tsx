@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { useTrackRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import { getSeoImage } from "@/utils/seoHelpers";
 
 interface ProductVariant {
   id: string;
@@ -148,9 +149,9 @@ export default function ProductDetail() {
 
   // Dynamic OG meta tags for link previews
   useDocumentMeta({
-    title: product?.seo_title || product?.name_mn,
+    title: product ? `${product.seo_title || product.name_mn} | Онли` : undefined,
     description: product?.seo_description || (product?.description_mn ? product.description_mn.replace(/<[^>]*>/g, "").slice(0, 160) : undefined),
-    image: product?.images?.[0],
+    image: product ? getSeoImage({ type: "product", images: product.images }) : undefined,
     url: product ? `https://only.mn/product/${product.slug || product.id}` : undefined,
     type: "product",
   });

@@ -1,5 +1,7 @@
 import DOMPurify from "dompurify";
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import { getSeoImage } from "@/utils/seoHelpers";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
@@ -258,6 +260,15 @@ export default function OtProductDetail() {
     if (min === max) return null;
     return { min, max };
   }, [effectiveConfiguredItems]);
+
+  // Dynamic SEO meta tags for link previews
+  useDocumentMeta({
+    title: product ? `${product.title} | Онли` : undefined,
+    description: product?.features?.slice(0, 3).map(f => `${f.name}: ${f.value}`).join(", ").slice(0, 160) || undefined,
+    image: product ? getSeoImage({ type: "product", images: product.images, imageUrl: product.imageUrl }) : undefined,
+    url: itemId ? `https://only.mn/ot/product/${itemId}` : undefined,
+    type: "product",
+  });
 
   const allConfigsSelected = product?.configurators?.length
     ? product.configurators.every((c) => selectedConfigs[c.pid] && selectedConfigs[c.pid] !== "")

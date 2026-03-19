@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { CategoryCard } from "@/components/storefront/CategoryCard";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 
 export default function Categories() {
   const { data: categories, isLoading } = useQuery({
@@ -16,6 +17,12 @@ export default function Categories() {
       if (error) throw error;
       return data;
     },
+  });
+
+  useDocumentMeta({
+    title: "Ангилалууд | Онли",
+    description: "Бүх төрлийн бараануудыг ангилалаар нь үзэх",
+    url: "https://only.mn/categories",
   });
 
   return (
