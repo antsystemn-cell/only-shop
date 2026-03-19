@@ -298,6 +298,8 @@ export default function Products() {
     setFormData({
       name_mn: "",
       slug: "",
+      seo_title: "",
+      seo_description: "",
       description_mn: "",
       price: "",
       compare_price: "",
