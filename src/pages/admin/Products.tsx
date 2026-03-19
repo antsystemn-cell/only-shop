@@ -320,6 +320,8 @@ export default function Products() {
     setFormData({
       name_mn: product.name_mn,
       slug: (product as any).slug || "",
+      seo_title: (product as any).seo_title || "",
+      seo_description: (product as any).seo_description || "",
       description_mn: product.description_mn || "",
       price: product.price.toString(),
       compare_price: product.compare_price?.toString() || "",
