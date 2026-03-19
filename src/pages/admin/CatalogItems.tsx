@@ -164,7 +164,8 @@ export default function CatalogItems() {
 function ProductDetailCard({ product, onUpdated }: { product: ProductDetail; onUpdated: () => void }) {
   const [titleOverride, setTitleOverride] = useState("");
   const [variantOverrides, setVariantOverrides] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
+  const [savingTitle, setSavingTitle] = useState(false);
+  const [savingVariants, setSavingVariants] = useState(false);
   const [hasExistingOverride, setHasExistingOverride] = useState(false);
 
   // Load existing overrides when product changes
@@ -199,37 +200,46 @@ function ProductDetailCard({ product, onUpdated }: { product: ProductDetail; onU
       });
   }, [product.id]);
 
-  const handleSave = async () => {
-    setSaving(true);
+  const upsertField = async (field: Partial<{ title_override: string | null; variant_overrides: any }>) => {
+    if (hasExistingOverride) {
+      const { error } = await supabase
+        .from("catalog_item_overrides")
+        .update(field as any)
+        .eq("item_id", product.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("catalog_item_overrides")
+        .insert({ item_id: product.id, ...field } as any);
+      if (error) throw error;
+      setHasExistingOverride(true);
+    }
+    invalidateCacheByPrefix(`product:${product.id}`);
+  };
+
+  const handleSaveTitle = async () => {
+    setSavingTitle(true);
     try {
-      const payload = {
-        item_id: product.id,
-        title_override: titleOverride !== product.title ? titleOverride : null,
-        variant_overrides: variantOverrides,
-      };
-
-      if (hasExistingOverride) {
-        const { error } = await supabase
-          .from("catalog_item_overrides")
-          .update({ title_override: payload.title_override, variant_overrides: payload.variant_overrides as any })
-          .eq("item_id", product.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("catalog_item_overrides")
-          .insert(payload as any);
-        if (error) throw error;
-        setHasExistingOverride(true);
-      }
-
-      toast.success("Амжилттай хадгалагдлаа");
-      // Invalidate product cache and refetch
-      invalidateCacheByPrefix(`product:${product.id}`);
+      await upsertField({ title_override: titleOverride !== product.title ? titleOverride : null });
+      toast.success("Нэр хадгалагдлаа");
       onUpdated();
     } catch (e: any) {
       toast.error("Алдаа: " + e.message);
     } finally {
-      setSaving(false);
+      setSavingTitle(false);
+    }
+  };
+
+  const handleSaveVariants = async () => {
+    setSavingVariants(true);
+    try {
+      await upsertField({ variant_overrides: variantOverrides });
+      toast.success("Сонголтууд хадгалагдлаа");
+      onUpdated();
+    } catch (e: any) {
+      toast.error("Алдаа: " + e.message);
+    } finally {
+      setSavingVariants(false);
     }
   };
 
@@ -282,11 +292,16 @@ function ProductDetailCard({ product, onUpdated }: { product: ProductDetail; onU
               <Label className="text-muted-foreground flex items-center gap-1">
                 <Pencil className="h-3 w-3" /> Барааны нэр (засварлах)
               </Label>
-              <Input
-                value={titleOverride}
-                onChange={(e) => setTitleOverride(e.target.value)}
-                className="font-medium"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={titleOverride}
+                  onChange={(e) => setTitleOverride(e.target.value)}
+                  className="font-medium flex-1"
+                />
+                <Button onClick={handleSaveTitle} disabled={savingTitle} size="sm" variant="outline">
+                  {savingTitle ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                </Button>
+              </div>
             </div>
 
             <div><Label className="text-muted-foreground">Үнэ</Label><p className="text-xl font-bold">{product.currency}{product.price?.toLocaleString()}</p></div>
@@ -318,10 +333,16 @@ function ProductDetailCard({ product, onUpdated }: { product: ProductDetail; onU
 
         {product.configurators.length > 0 && (
           <div>
-            <h3 className="font-semibold mb-2 flex items-center gap-2">
-              <Pencil className="h-4 w-4" />
-              Тохиргоо / Сонголтууд ({product.configurators.length})
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Pencil className="h-4 w-4" />
+                Тохиргоо / Сонголтууд ({product.configurators.length})
+              </h3>
+              <Button onClick={handleSaveVariants} disabled={savingVariants} size="sm" variant="outline">
+                {savingVariants ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
+                Сонголт хадгалах
+              </Button>
+            </div>
             {product.configurators.map((c) => (
               <div key={c.pid} className="mb-4">
                 <Label className="text-muted-foreground">{c.propertyName}</Label>
@@ -387,13 +408,6 @@ function ProductDetailCard({ product, onUpdated }: { product: ProductDetail; onU
           </div>
         )}
 
-        {/* Save button */}
-        <div className="flex justify-end pt-4 border-t">
-          <Button onClick={handleSave} disabled={saving} size="lg">
-            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Өөрчлөлт хадгалах
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
