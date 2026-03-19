@@ -145,6 +145,7 @@ const menuGroups: MenuGroup[] = [
     label: "Тохиргоо",
     items: [
       { title: "Ерөнхий тохиргоо", url: "/admin/settings", icon: Settings },
+      { title: "Үндсэн SEO тохиргоо", url: "/admin/settings-seo", icon: Megaphone },
       { title: "PWA тохиргоо", url: "/admin/pwa-settings", icon: Megaphone },
       { title: "Нэвтрэлтийн тохиргоо", url: "/admin/auth-settings", icon: Shield },
       { title: "SMS Gateway", url: "/admin/sms-gateway", icon: MessageSquare },

@@ -77,8 +77,8 @@ export default function Seo() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-bold">SEO тохиргоо</h1>
-        <p className="text-muted-foreground mt-1">Хайлтын системийн оновчлол & Link Preview удирдлага</p>
+        <h1 className="text-3xl font-bold">Үндсэн SEO тохиргоо</h1>
+        <p className="text-muted-foreground mt-1">Сайтын ерөнхий Website Info, хайлтын үр дүн, link preview-ийн үндсэн мэдээллийг удирдана</p>
       </div>
 
       {/* Site Title */}
