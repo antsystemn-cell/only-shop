@@ -32,7 +32,7 @@ export function useDocumentMeta(meta: DocumentMeta) {
     const prevTitle = document.title;
 
     if (meta.title) {
-      document.title = `${meta.title} | Онли`;
+      document.title = meta.title;
       setMetaTag("og:title", meta.title);
       setMetaTag("twitter:title", meta.title);
     }
