@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, ShoppingBag, ChevronRight, ArrowLeft } from "lucide-react";
 import { useState } from "react";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import { getSeoImage } from "@/utils/seoHelpers";
 
 export default function AmazonProductDetail() {
   const { asin } = useParams<{ asin: string }>();
