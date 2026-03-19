@@ -200,37 +200,46 @@ function ProductDetailCard({ product, onUpdated }: { product: ProductDetail; onU
       });
   }, [product.id]);
 
-  const handleSave = async () => {
-    setSaving(true);
+  const upsertField = async (field: Partial<{ title_override: string | null; variant_overrides: any }>) => {
+    if (hasExistingOverride) {
+      const { error } = await supabase
+        .from("catalog_item_overrides")
+        .update(field as any)
+        .eq("item_id", product.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("catalog_item_overrides")
+        .insert({ item_id: product.id, ...field } as any);
+      if (error) throw error;
+      setHasExistingOverride(true);
+    }
+    invalidateCacheByPrefix(`product:${product.id}`);
+  };
+
+  const handleSaveTitle = async () => {
+    setSavingTitle(true);
     try {
-      const payload = {
-        item_id: product.id,
-        title_override: titleOverride !== product.title ? titleOverride : null,
-        variant_overrides: variantOverrides,
-      };
-
-      if (hasExistingOverride) {
-        const { error } = await supabase
-          .from("catalog_item_overrides")
-          .update({ title_override: payload.title_override, variant_overrides: payload.variant_overrides as any })
-          .eq("item_id", product.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("catalog_item_overrides")
-          .insert(payload as any);
-        if (error) throw error;
-        setHasExistingOverride(true);
-      }
-
-      toast.success("Амжилттай хадгалагдлаа");
-      // Invalidate product cache and refetch
-      invalidateCacheByPrefix(`product:${product.id}`);
+      await upsertField({ title_override: titleOverride !== product.title ? titleOverride : null });
+      toast.success("Нэр хадгалагдлаа");
       onUpdated();
     } catch (e: any) {
       toast.error("Алдаа: " + e.message);
     } finally {
-      setSaving(false);
+      setSavingTitle(false);
+    }
+  };
+
+  const handleSaveVariants = async () => {
+    setSavingVariants(true);
+    try {
+      await upsertField({ variant_overrides: variantOverrides });
+      toast.success("Сонголтууд хадгалагдлаа");
+      onUpdated();
+    } catch (e: any) {
+      toast.error("Алдаа: " + e.message);
+    } finally {
+      setSavingVariants(false);
     }
   };
 
