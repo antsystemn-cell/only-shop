@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { CategoryCard } from "@/components/storefront/CategoryCard";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 
 export default function Categories() {
   const { data: categories, isLoading } = useQuery({
