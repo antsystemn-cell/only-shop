@@ -26,6 +26,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { useTrackRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 
 interface ProductVariant {
   id: string;
