@@ -92,6 +92,8 @@ export default function Products() {
   const [formData, setFormData] = useState({
     name_mn: "",
     slug: "",
+    seo_title: "",
+    seo_description: "",
     description_mn: "",
     price: "",
     compare_price: "",
