@@ -135,6 +135,7 @@ const App = () => (
                 <Route path="/ot/allcats" element={<Navigate to="/categories" replace />} />
                 <Route path="/ot/provider/:slug" element={<ProviderPage />} />
               <Route path="/ot/product/:itemId" element={<OtProductDetail />} />
+              <Route path="/item" element={<LegacyItemRedirect />} />
               <Route path="/page/:slug" element={<DynamicContentPage />} />
               <Route path="/amazon" element={<AmazonCategoryBrowse />} />
               <Route path="/amazon/category/:categoryId" element={<AmazonCategoryBrowse />} />
