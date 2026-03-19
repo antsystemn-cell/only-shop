@@ -164,7 +164,8 @@ export default function CatalogItems() {
 function ProductDetailCard({ product, onUpdated }: { product: ProductDetail; onUpdated: () => void }) {
   const [titleOverride, setTitleOverride] = useState("");
   const [variantOverrides, setVariantOverrides] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
+  const [savingTitle, setSavingTitle] = useState(false);
+  const [savingVariants, setSavingVariants] = useState(false);
   const [hasExistingOverride, setHasExistingOverride] = useState(false);
 
   // Load existing overrides when product changes
