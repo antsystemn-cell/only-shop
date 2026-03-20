@@ -54,9 +54,19 @@ function formatPrice(price: number, currency: string) {
   return `${currency}${price.toFixed(2)}`;
 }
 
+const OT_PRODUCT_REDIRECTS: Record<string, string> = {
+  "wh-133760": "/product/aismartglasses",
+};
+
 export default function OtProductDetail() {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
+
+  // Handle permanent redirects for specific products
+  const redirectTo = itemId ? OT_PRODUCT_REDIRECTS[itemId] : undefined;
+  if (redirectTo) {
+    return <Navigate to={redirectTo} replace />;
+  }
   const { addItem, isLoading: isCartLoading } = useOtCartSafe();
   const { user } = useAuth();
   const queryClient = useQueryClient();
