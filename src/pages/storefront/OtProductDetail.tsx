@@ -54,18 +54,6 @@ function formatPrice(price: number, currency: string) {
   return `${currency}${price.toFixed(2)}`;
 }
 
-const OT_PRODUCT_REDIRECTS: Record<string, string> = {
-  "wh-133760": "/product/aismartglasses",
-};
-
-function OtProductRedirectGuard({ itemId, children }: { itemId?: string; children: React.ReactNode }) {
-  const redirectTo = itemId ? OT_PRODUCT_REDIRECTS[itemId] : undefined;
-  if (redirectTo) {
-    return <Navigate to={redirectTo} replace />;
-  }
-  return <>{children}</>;
-}
-
 export default function OtProductDetail() {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
