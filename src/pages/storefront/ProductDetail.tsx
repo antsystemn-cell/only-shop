@@ -67,7 +67,7 @@ export default function ProductDetail() {
     (index: number) => {
       if (emblaApi) emblaApi.scrollTo(index);
     },
-    [emblaApi]
+    [emblaApi],
   );
 
   const onSelect = useCallback(() => {
@@ -111,19 +111,11 @@ export default function ProductDetail() {
     queryFn: async () => {
       // Try by UUID first, then by slug
       if (isUuid) {
-        const { data, error } = await supabase
-          .from("products")
-          .select("*, categories(*)")
-          .eq("id", id!)
-          .single();
+        const { data, error } = await supabase.from("products").select("*, categories(*)").eq("id", id!).single();
         if (error) throw error;
         return data;
       } else {
-        const { data, error } = await supabase
-          .from("products")
-          .select("*, categories(*)")
-          .eq("slug", id!)
-          .single();
+        const { data, error } = await supabase.from("products").select("*, categories(*)").eq("slug", id!).single();
         if (error) throw error;
         return data;
       }
@@ -150,7 +142,9 @@ export default function ProductDetail() {
   // Dynamic OG meta tags for link previews
   useDocumentMeta({
     title: product ? `${product.seo_title || product.name_mn} | Онли` : undefined,
-    description: product?.seo_description || (product?.description_mn ? product.description_mn.replace(/<[^>]*>/g, "").slice(0, 160) : undefined),
+    description:
+      product?.seo_description ||
+      (product?.description_mn ? product.description_mn.replace(/<[^>]*>/g, "").slice(0, 160) : undefined),
     image: product ? getSeoImage({ type: "product", images: product.images }) : undefined,
     url: product ? `https://only.mn/product/${product.slug || product.id}` : undefined,
     type: "product",
@@ -199,10 +193,7 @@ export default function ProductDetail() {
     // If variant selected, use variant's own price (absolute, not additive)
     if (selectedVariant) {
       // Use variant.price if set, otherwise fall back to base price + adjustment (legacy)
-      if (
-        selectedVariant.price !== null &&
-        selectedVariant.price !== undefined
-      ) {
+      if (selectedVariant.price !== null && selectedVariant.price !== undefined) {
         return selectedVariant.price;
       }
       // Legacy fallback
@@ -211,9 +202,7 @@ export default function ProductDetail() {
 
     // No variant selected yet, show minimum price
     const minPrice = Math.min(
-      ...variants.map((v) =>
-        v.price !== null ? v.price : product.price + (v.price_adjustment || 0)
-      )
+      ...variants.map((v) => (v.price !== null ? v.price : product.price + (v.price_adjustment || 0))),
     );
     return minPrice;
   }, [product, variants, selectedVariant]);
@@ -240,10 +229,7 @@ export default function ProductDetail() {
 
   // Get images - use variant images if selected, otherwise product images
   const displayImages = useMemo(() => {
-    if (
-      selectedVariant?.images &&
-      selectedVariant.images.length > 0
-    ) {
+    if (selectedVariant?.images && selectedVariant.images.length > 0) {
       return selectedVariant.images;
     }
     return product?.images || [];
@@ -287,17 +273,14 @@ export default function ProductDetail() {
   }
 
   const discount = product.compare_price
-    ? Math.round(
-        ((product.compare_price - effectivePrice) / product.compare_price) * 100
-      )
+    ? Math.round(((product.compare_price - effectivePrice) / product.compare_price) * 100)
     : 0;
 
   const handleAddToCart = () => {
     addToCart(product, quantity);
-    const variantName = selectedVariant?.name || 
-      [selectedVariant?.size, selectedVariant?.color, selectedVariant?.dimensions]
-        .filter(Boolean)
-        .join(", ");
+    const variantName =
+      selectedVariant?.name ||
+      [selectedVariant?.size, selectedVariant?.color, selectedVariant?.dimensions].filter(Boolean).join(", ");
     toast({
       title: "Сагсанд нэмэгдлээ",
       description: `${product.name_mn}${variantName ? ` (${variantName})` : ""} - ${quantity} ширхэг`,
@@ -341,10 +324,7 @@ export default function ProductDetail() {
         {product.categories && (
           <>
             <span>/</span>
-            <Link
-              to={`/shop?category=${product.category_id}`}
-              className="hover:text-foreground"
-            >
+            <Link to={`/shop?category=${product.category_id}`} className="hover:text-foreground">
               {(product.categories as { name_mn: string }).name_mn}
             </Link>
           </>
@@ -362,15 +342,8 @@ export default function ProductDetail() {
               <div className="overflow-hidden rounded-2xl" ref={emblaRef}>
                 <div className="flex">
                   {displayImages.map((image, index) => (
-                    <div
-                      key={index}
-                      className="flex-[0_0_100%] min-w-0 aspect-[4/5] md:aspect-square bg-muted"
-                    >
-                      <img
-                        src={image}
-                        alt={`${product.name_mn} ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
+                    <div key={index} className="flex-[0_0_100%] min-w-0 aspect-[4/5] md:aspect-square bg-muted">
+                      <img src={image} alt={`${product.name_mn} ${index + 1}`} className="w-full h-full object-cover" />
                     </div>
                   ))}
                 </div>
@@ -406,15 +379,9 @@ export default function ProductDetail() {
             {/* Badges */}
             <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
               {discount > 0 && (
-                <Badge className="bg-destructive text-destructive-foreground text-sm px-3 py-1">
-                  -{discount}%
-                </Badge>
+                <Badge className="bg-destructive text-destructive-foreground text-sm px-3 py-1">-{discount}%</Badge>
               )}
-              {product.is_featured && (
-                <Badge className="bg-primary text-primary-foreground">
-                  Онцлох
-                </Badge>
-              )}
+              {product.is_featured && <Badge className="bg-primary text-primary-foreground">Онцлох</Badge>}
             </div>
 
             {/* Dot Indicators */}
@@ -425,9 +392,7 @@ export default function ProductDetail() {
                     key={index}
                     onClick={() => scrollTo(index)}
                     className={`w-2 h-2 rounded-full transition-all ${
-                      index === selectedIndex
-                        ? "bg-white w-6"
-                        : "bg-white/50 hover:bg-white/70"
+                      index === selectedIndex ? "bg-white w-6" : "bg-white/50 hover:bg-white/70"
                     }`}
                   />
                 ))}
@@ -448,11 +413,7 @@ export default function ProductDetail() {
                       : "border-transparent hover:border-muted-foreground/30"
                   }`}
                 >
-                  <img
-                    src={image}
-                    alt={`${product.name_mn} ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={image} alt={`${product.name_mn} ${index + 1}`} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -464,9 +425,7 @@ export default function ProductDetail() {
           {/* Brand & Title */}
           <div>
             {product.brand && (
-              <span className="text-sm font-medium text-primary uppercase tracking-wide">
-                {product.brand}
-              </span>
+              <span className="text-sm font-medium text-primary uppercase tracking-wide">{product.brand}</span>
             )}
             <h1 className="text-2xl lg:text-3xl font-bold">{product.name_mn}</h1>
             {product.rating && product.rating > 0 && (
@@ -476,16 +435,12 @@ export default function ProductDetail() {
                     <Star
                       key={star}
                       className={`h-4 w-4 ${
-                        star <= Math.round(product.rating || 0)
-                          ? "fill-primary text-primary"
-                          : "text-muted-foreground"
+                        star <= Math.round(product.rating || 0) ? "fill-primary text-primary" : "text-muted-foreground"
                       }`}
                     />
                   ))}
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  ({product.review_count} үнэлгээ)
-                </span>
+                <span className="text-sm text-muted-foreground">({product.review_count} үнэлгээ)</span>
               </div>
             )}
           </div>
@@ -497,9 +452,7 @@ export default function ProductDetail() {
               {formatPrice(effectivePrice)}
             </span>
             {product.compare_price && product.compare_price > effectivePrice && (
-              <span className="text-xl text-muted-foreground line-through">
-                {formatPrice(product.compare_price)}
-              </span>
+              <span className="text-xl text-muted-foreground line-through">{formatPrice(product.compare_price)}</span>
             )}
           </div>
 
@@ -546,34 +499,20 @@ export default function ProductDetail() {
                         {variant.color_hex && (
                           <div
                             className={`w-6 h-6 rounded-full border shrink-0 ${
-                              isLightColor(variant.color_hex)
-                                ? "border-border"
-                                : "border-transparent"
+                              isLightColor(variant.color_hex) ? "border-border" : "border-transparent"
                             }`}
                             style={{ backgroundColor: variant.color_hex }}
                           />
                         )}
                         {/* Variant image thumbnail */}
-                        {!variant.color_hex &&
-                          variant.images &&
-                          variant.images[0] && (
-                            <img
-                              src={variant.images[0]}
-                              alt=""
-                              className="w-6 h-6 rounded object-cover shrink-0"
-                            />
-                          )}
+                        {!variant.color_hex && variant.images && variant.images[0] && (
+                          <img src={variant.images[0]} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+                        )}
                         <div className="flex-1 min-w-0">
-                          <span
-                            className={`block font-medium text-sm truncate ${
-                              isSelected ? "text-primary" : ""
-                            }`}
-                          >
+                          <span className={`block font-medium text-sm truncate ${isSelected ? "text-primary" : ""}`}>
                             {getVariantDisplayName(variant)}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatPrice(variantPrice)}
-                          </span>
+                          <span className="text-xs text-muted-foreground">{formatPrice(variantPrice)}</span>
                         </div>
                       </div>
                       {!isAvailable && (
@@ -599,17 +538,13 @@ export default function ProductDetail() {
               {selectedVariant.dimensions && (
                 <div>
                   <span className="font-medium">Хэмжээ:</span>{" "}
-                  <span className="text-muted-foreground">
-                    {selectedVariant.dimensions}
-                  </span>
+                  <span className="text-muted-foreground">{selectedVariant.dimensions}</span>
                 </div>
               )}
               {selectedVariant.weight && (
                 <div>
                   <span className="font-medium">Жин:</span>{" "}
-                  <span className="text-muted-foreground">
-                    {selectedVariant.weight}
-                  </span>
+                  <span className="text-muted-foreground">{selectedVariant.weight}</span>
                 </div>
               )}
             </div>
@@ -619,7 +554,12 @@ export default function ProductDetail() {
           {product.description_mn && (
             <div
               className="text-muted-foreground prose prose-sm max-w-none line-clamp-3 [&_img]:hidden [&_table]:hidden [&_iframe]:hidden"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description_mn.replace(/<[^>]*>/g, ' ').substring(0, 200) + (product.description_mn.length > 200 ? '...' : '')) }}
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(
+                  product.description_mn.replace(/<[^>]*>/g, " ").substring(0, 200) +
+                    (product.description_mn.length > 200 ? "..." : ""),
+                ),
+              }}
             />
           )}
 
@@ -630,16 +570,12 @@ export default function ProductDetail() {
                 selectedVariant.stock > 0 ? (
                   <>
                     <span className="w-2 h-2 rounded-full bg-primary" />
-                    <span className="text-sm">
-                      Нөөцөнд {selectedVariant.stock} ширхэг байна
-                    </span>
+                    <span className="text-sm">Нөөцөнд {selectedVariant.stock} ширхэг байна</span>
                   </>
                 ) : (
                   <>
                     <span className="w-2 h-2 rounded-full bg-destructive" />
-                    <span className="text-sm text-destructive">
-                      Энэ хувилбар дууссан
-                    </span>
+                    <span className="text-sm text-destructive">Энэ хувилбар дууссан</span>
                   </>
                 )
               ) : variants.length > 0 ? (
@@ -650,9 +586,7 @@ export default function ProductDetail() {
               ) : (
                 <>
                   <span className="w-2 h-2 rounded-full bg-primary" />
-                  <span className="text-sm">
-                    Нөөцөнд {effectiveStock} ширхэг байна
-                  </span>
+                  <span className="text-sm">Нөөцөнд {effectiveStock} ширхэг байна</span>
                 </>
               )
             ) : (
@@ -678,15 +612,8 @@ export default function ProductDetail() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() =>
-                  setQuantity((q) =>
-                    Math.min(selectedVariant?.stock || effectiveStock, q + 1)
-                  )
-                }
-                disabled={
-                  quantity >= (selectedVariant?.stock || effectiveStock) ||
-                  !hasAnyStock
-                }
+                onClick={() => setQuantity((q) => Math.min(selectedVariant?.stock || effectiveStock, q + 1))}
+                disabled={quantity >= (selectedVariant?.stock || effectiveStock) || !hasAnyStock}
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -730,7 +657,7 @@ export default function ProductDetail() {
               <Truck className="h-5 w-5 text-primary" />
               <div className="text-sm">
                 <p className="font-medium">Хурдан хүргэлт</p>
-                <p className="text-muted-foreground">1-3 хоног</p>
+                <p className="text-muted-foreground">24 цагийн дотор</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
@@ -743,8 +670,8 @@ export default function ProductDetail() {
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
               <Package className="h-5 w-5 text-primary" />
               <div className="text-sm">
-                <p className="font-medium">Буцаалт</p>
-                <p className="text-muted-foreground">7 хоногт</p>
+                <p className="font-medium">Найдвартай</p>
+                <p className="text-muted-foreground">Төлбөрийн систем</p>
               </div>
             </div>
           </div>
@@ -761,30 +688,58 @@ export default function ProductDetail() {
           <TabsContent value="description" className="mt-4">
             <div className="prose prose-sm max-w-none [&_table]:border-collapse [&_table]:w-full [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_th]:font-semibold [&_img]:rounded-lg [&_img]:max-w-full [&_iframe]:rounded-lg [&_iframe]:max-w-full [&_iframe]:aspect-video">
               {product.description_mn || product.description ? (
-                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description_mn || product.description || '', { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'b', 'i', 'u'], ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'width', 'height'] }) }} />
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(product.description_mn || product.description || "", {
+                      ALLOWED_TAGS: [
+                        "p",
+                        "br",
+                        "strong",
+                        "em",
+                        "ul",
+                        "ol",
+                        "li",
+                        "a",
+                        "img",
+                        "table",
+                        "tr",
+                        "td",
+                        "th",
+                        "thead",
+                        "tbody",
+                        "div",
+                        "span",
+                        "h1",
+                        "h2",
+                        "h3",
+                        "h4",
+                        "h5",
+                        "h6",
+                        "b",
+                        "i",
+                        "u",
+                      ],
+                      ALLOWED_ATTR: ["href", "src", "alt", "title", "class", "style", "width", "height"],
+                    }),
+                  }}
+                />
               ) : (
                 <p className="text-muted-foreground">Тайлбар байхгүй</p>
               )}
             </div>
           </TabsContent>
           <TabsContent value="specs" className="mt-4">
-            {product.specs &&
-            typeof product.specs === "object" &&
-            Object.keys(product.specs).length > 0 ? (
+            {product.specs && typeof product.specs === "object" && Object.keys(product.specs).length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(product.specs as Record<string, string>).map(
-                  ([key, value]) => (
-                    <div key={key} className="flex justify-between py-2 border-b">
-                      <span className="font-medium">{key}</span>
-                      <span className="text-muted-foreground">{value}</span>
-                    </div>
-                  )
-                )}
+                {Object.entries(product.specs as Record<string, string>).map(([key, value]) => (
+                  <div key={key} className="flex justify-between py-2 border-b">
+                    <span className="font-medium">{key}</span>
+                    <span className="text-muted-foreground">{value}</span>
+                  </div>
+                ))}
               </div>
             ) : (
-              <p className="text-muted-foreground">
-                Техникийн үзүүлэлт байхгүй
-              </p>
+              <p className="text-muted-foreground">Техникийн үзүүлэлт байхгүй</p>
             )}
           </TabsContent>
         </Tabs>
