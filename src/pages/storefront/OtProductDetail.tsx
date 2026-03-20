@@ -3,7 +3,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { getSeoImage } from "@/utils/seoHelpers";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, Link, useNavigate, Navigate } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Loader2,
   ChevronLeft,
