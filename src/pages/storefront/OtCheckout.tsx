@@ -985,12 +985,6 @@ export default function OtCheckout() {
                 </Card>
               ) : (
                 <>
-                  {/* Payment method selector */}
-                  <PaymentMethodSelector
-                    selected={paymentMethod}
-                    onSelect={setPaymentMethod}
-                  />
-
                   {/* Payment component based on selected method */}
                   {paymentMethod === "qpay" && orderResult?.id && (
                     <QPayPayment
