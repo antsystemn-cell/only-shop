@@ -258,19 +258,24 @@ export default function Checkout() {
         if (otItemsError) throw otItemsError;
       }
 
-      // Create payment intent
-      const { data: pi, error: piErr } = await supabase
-        .from("payment_intents")
-        .insert({
-          user_id: user.id,
-          type: "order" as const,
-          reference_id: order.id,
-          amount: localTotal,
-          provider: paymentMethod === "omniway" ? ("omniway" as const) : paymentMethod === "storepay" ? ("storepay" as const) : ("qpay" as const),
-          status: "initiated" as const,
-        })
-        .select()
-        .single();
+      // Create payment intent (skip for wallet payments - handled directly)
+      let pi: any = null;
+      if (paymentMethod !== "wallet") {
+        const { data: piData, error: piErr } = await supabase
+          .from("payment_intents")
+          .insert({
+            user_id: user.id,
+            type: "order" as const,
+            reference_id: order.id,
+            amount: localTotal,
+            provider: paymentMethod === "omniway" ? ("omniway" as const) : paymentMethod === "storepay" ? ("storepay" as const) : ("qpay" as const),
+            status: "initiated" as const,
+          })
+          .select()
+          .single();
+        if (piErr) console.error("Payment intent creation error:", piErr);
+        pi = piData;
+      }
 
       if (piErr) console.error("Payment intent creation error:", piErr);
 
