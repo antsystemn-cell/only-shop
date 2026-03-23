@@ -539,13 +539,20 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
               <p className="text-xl font-bold">{formatCurrency(Number(walletData?.balance || 0))}</p>
             </div>
             <div>
-              <Label>Дүн (эерэг = нэмэх, сөрөг = хасах)</Label>
+              <Label>Цэнэглэх дүн (₮)</Label>
               <Input
                 type="number"
-                placeholder="Жш: 50000 эсвэл -10000"
+                placeholder="Жш: 50000"
                 value={walletAmount}
                 onChange={(e) => setWalletAmount(e.target.value)}
               />
+              <div className="flex gap-2 flex-wrap mt-2">
+                {[5000, 10000, 50000, 100000, 500000].map((amt) => (
+                  <Button key={amt} variant="outline" size="sm" onClick={() => setWalletAmount(String(amt))}>
+                    +{amt.toLocaleString()}₮
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>

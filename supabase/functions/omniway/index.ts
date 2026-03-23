@@ -374,6 +374,7 @@ async function finalizePayment(supabase: any, pi: any) {
     .eq("id", pi.id);
 
   if (pi.type === "order") {
+    // Try local orders first
     const { data: order } = await supabase
       .from("orders")
       .update({
@@ -385,8 +386,24 @@ async function finalizePayment(supabase: any, pi: any) {
       .select("order_number, total")
       .single();
 
-    // Notify admin (fire-and-forget)
-    notifyAdminPayment(supabase, order?.order_number, order?.total, "OmniWay").catch(console.error);
+    if (order) {
+      notifyAdminPayment(supabase, order.order_number, order.total, "OmniWay").catch(console.error);
+    } else {
+      // Try ot_orders table
+      const { data: otOrder } = await supabase
+        .from("ot_orders")
+        .update({ status: "paid" })
+        .eq("id", pi.reference_id)
+        .select("order_number, subtotal")
+        .single();
+
+      if (otOrder) {
+        console.log("[omniway] OT order updated:", otOrder.order_number);
+        notifyAdminPayment(supabase, otOrder.order_number, otOrder.subtotal, "OmniWay").catch(console.error);
+      } else {
+        console.error("[omniway] Order not found in either table:", pi.reference_id);
+      }
+    }
   } else if (pi.type === "wallet_topup") {
     await supabase.rpc("credit_wallet", {
       p_user_id: pi.user_id,

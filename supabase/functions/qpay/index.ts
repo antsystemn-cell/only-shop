@@ -440,8 +440,8 @@ async function finalizePayment(supabase: any, pi: any, qpayPaymentId: string) {
     .eq("id", pi.id);
 
   if (pi.type === "order") {
-    // Update order
-    const { data: order } = await supabase
+    // Try updating local orders table first
+    const { data: order, error: orderErr } = await supabase
       .from("orders")
       .update({
         payment_status: "paid",
@@ -453,8 +453,29 @@ async function finalizePayment(supabase: any, pi: any, qpayPaymentId: string) {
       .select("order_number, total")
       .single();
 
-    // Notify admin (fire-and-forget)
-    notifyAdminPayment(supabase, order?.order_number, order?.total, "QPay").catch(console.error);
+    if (order) {
+      console.log("[qpay] Local order updated:", order.order_number);
+      // Notify admin (fire-and-forget)
+      notifyAdminPayment(supabase, order.order_number, order.total, "QPay").catch(console.error);
+    } else {
+      // Not found in orders — try ot_orders table
+      console.log("[qpay] Order not in 'orders' table, trying 'ot_orders'...");
+      const { data: otOrder, error: otErr } = await supabase
+        .from("ot_orders")
+        .update({
+          status: "paid",
+        })
+        .eq("id", pi.reference_id)
+        .select("order_number, subtotal")
+        .single();
+
+      if (otOrder) {
+        console.log("[qpay] OT order updated:", otOrder.order_number);
+        notifyAdminPayment(supabase, otOrder.order_number, otOrder.subtotal, "QPay").catch(console.error);
+      } else {
+        console.error("[qpay] Order not found in either table:", pi.reference_id, orderErr?.message, otErr?.message);
+      }
+    }
   } else if (pi.type === "wallet_topup") {
     const { data: walletResult, error: walletErr } = await supabase.rpc("credit_wallet", {
       p_user_id: pi.user_id,
