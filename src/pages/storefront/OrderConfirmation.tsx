@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import QPayPayment from "@/components/storefront/QPayPayment";
 import OmniWayPayment from "@/components/storefront/OmniWayPayment";
 import StorepayPayment from "@/components/storefront/StorepayPayment";
+import WalletPayment from "@/components/storefront/WalletPayment";
 import { 
   CheckCircle2, 
   Package, 
