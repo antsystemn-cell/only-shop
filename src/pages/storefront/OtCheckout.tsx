@@ -381,8 +381,8 @@ export default function OtCheckout() {
 
       if (error) throw new Error(error.message);
 
-      // Create payment intent
-      if (user?.id) {
+      // Create payment intent (skip for wallet - handled directly)
+      if (user?.id && paymentMethod !== "wallet") {
         const { data: pi, error: piErr } = await supabase
           .from("payment_intents")
           .insert({
@@ -900,6 +900,14 @@ export default function OtCheckout() {
 
                 <Separator />
 
+                {/* Payment Method Selection */}
+                <PaymentMethodSelector
+                  selected={paymentMethod}
+                  onSelect={setPaymentMethod}
+                />
+
+                <Separator />
+
                 <div className="flex justify-between text-lg font-bold">
                   <span>Нийт дүн:</span>
                   <span className="text-primary">{new Intl.NumberFormat("mn-MN").format(Math.round(subtotal))}₮</span>
@@ -977,12 +985,6 @@ export default function OtCheckout() {
                 </Card>
               ) : (
                 <>
-                  {/* Payment method selector */}
-                  <PaymentMethodSelector
-                    selected={paymentMethod}
-                    onSelect={setPaymentMethod}
-                  />
-
                   {/* Payment component based on selected method */}
                   {paymentMethod === "qpay" && orderResult?.id && (
                     <QPayPayment

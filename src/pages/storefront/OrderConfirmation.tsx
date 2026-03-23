@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import QPayPayment from "@/components/storefront/QPayPayment";
 import OmniWayPayment from "@/components/storefront/OmniWayPayment";
 import StorepayPayment from "@/components/storefront/StorepayPayment";
+import WalletPayment from "@/components/storefront/WalletPayment";
 import { 
   CheckCircle2, 
   Package, 
@@ -163,6 +164,21 @@ export default function OrderConfirmation() {
       </div>
 
       {/* Payment Section - shown for unpaid orders */}
+      {showPayment && order.payment_method === "wallet" && (
+        <div className="mb-8">
+          <WalletPayment
+            amount={order.total}
+            orderId={order.id}
+            onPaymentSuccess={async () => {
+              await supabase
+                .from("orders")
+                .update({ payment_status: "paid", status: "processing" })
+                .eq("id", order.id);
+              refetch();
+            }}
+          />
+        </div>
+      )}
       {showPayment && order.payment_method === "omniway" && paymentIntentId && (
         <div className="mb-8">
           <OmniWayPayment
@@ -183,7 +199,7 @@ export default function OrderConfirmation() {
           />
         </div>
       )}
-      {showPayment && order.payment_method !== "omniway" && order.payment_method !== "storepay" && (
+      {showPayment && order.payment_method !== "omniway" && order.payment_method !== "storepay" && order.payment_method !== "wallet" && (
         <div className="mb-8">
           <QPayPayment
             paymentIntentId={paymentIntentId || undefined}
