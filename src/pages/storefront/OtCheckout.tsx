@@ -900,6 +900,14 @@ export default function OtCheckout() {
 
                 <Separator />
 
+                {/* Payment Method Selection */}
+                <PaymentMethodSelector
+                  selected={paymentMethod}
+                  onSelect={setPaymentMethod}
+                />
+
+                <Separator />
+
                 <div className="flex justify-between text-lg font-bold">
                   <span>Нийт дүн:</span>
                   <span className="text-primary">{new Intl.NumberFormat("mn-MN").format(Math.round(subtotal))}₮</span>
