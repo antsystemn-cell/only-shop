@@ -277,8 +277,6 @@ export default function Checkout() {
         pi = piData;
       }
 
-      if (piErr) console.error("Payment intent creation error:", piErr);
-
       return { order, paymentIntentId: pi?.id };
     },
     onSuccess: ({ order, paymentIntentId }) => {

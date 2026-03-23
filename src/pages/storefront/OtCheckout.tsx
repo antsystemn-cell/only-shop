@@ -381,8 +381,8 @@ export default function OtCheckout() {
 
       if (error) throw new Error(error.message);
 
-      // Create payment intent
-      if (user?.id) {
+      // Create payment intent (skip for wallet - handled directly)
+      if (user?.id && paymentMethod !== "wallet") {
         const { data: pi, error: piErr } = await supabase
           .from("payment_intents")
           .insert({
