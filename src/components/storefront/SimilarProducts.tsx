@@ -66,7 +66,7 @@ export function SimilarProducts({ product, customTitle }: SimilarProductsProps) 
   const titlesList = useMemo(() => (data || []).map(p => p.title), [similarItemsKey]);
   const translations = useTranslatedTitles(titlesList);
 
-  if (!enabled) return null;
+  if (!enabled) return <div ref={containerRef} />;
 
   const sectionTitle = poizon
     ? "Төстэй бараанууд"
