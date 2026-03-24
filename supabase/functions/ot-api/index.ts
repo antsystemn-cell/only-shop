@@ -8,6 +8,90 @@ const corsHeaders = {
 
 const OT_API_BASE = "https://otapi.net/service-json";
 
+// ─── Server-side Response Cache (L2) ────────────────────────
+// Caches OTAPI responses in-memory at the edge function level
+// This prevents duplicate calls across different frontend clients
+interface ServerCacheEntry {
+  data: unknown;
+  expiresAt: number;
+}
+
+const serverCache = new Map<string, ServerCacheEntry>();
+const SERVER_CACHE_MAX_SIZE = 500;
+
+// TTLs for different action types (in ms)
+const SERVER_CACHE_TTLS: Record<string, number> = {
+  getRootCategories: 2 * 60 * 60 * 1000,      // 2hr
+  getSubcategories: 2 * 60 * 60 * 1000,        // 2hr
+  getCategoryInfo: 60 * 60 * 1000,             // 1hr
+  getCategoryInfoList: 60 * 60 * 1000,         // 1hr
+  getCategorySearchProperties: 60 * 60 * 1000, // 1hr
+  getItemFullInfo: 10 * 60 * 1000,             // 10min
+  getItemDescription: 30 * 60 * 1000,          // 30min
+  searchItems: 3 * 60 * 1000,                  // 3min
+  searchItemsFrame: 3 * 60 * 1000,             // 3min
+  getCurrencyList: 60 * 60 * 1000,             // 1hr
+  getProviderInfoList: 60 * 60 * 1000,         // 1hr
+  getProviderSettings: 60 * 60 * 1000,         // 1hr
+  getCommonInstanceOptionsInfo: 60 * 60 * 1000, // 1hr
+  getInstanceOptionsInfo: 60 * 60 * 1000,      // 1hr
+  getDeliveryCountryInfoList: 60 * 60 * 1000,  // 1hr
+  getBannerSettings: 30 * 60 * 1000,           // 30min
+  getApplicationDesignSettings: 30 * 60 * 1000,// 30min
+  getContentMenuItemTree: 30 * 60 * 1000,      // 30min
+  getAvailableRoleList: 60 * 60 * 1000,        // 1hr
+  getOrderStatusList: 60 * 60 * 1000,          // 1hr
+};
+
+// Actions that should NEVER be cached (mutations, session-dependent, basket)
+const NEVER_CACHE_ACTIONS = new Set([
+  "getAnonymousSession", "authenticateOperator",
+  "getBasket", "addItemToBasket", "editBasketItemQuantity",
+  "removeBasketItem", "clearBasket", "runBasketChecking",
+  "getBasketCheckingResult", "createOrder", "recreateOrder",
+  "registerUser", "authenticateUser",
+  "addItemReview", "approveItemReviews",
+  "createContentMenuItem", "updateContentMenuItem", "deleteContentMenuItem",
+  "updateApplicationDesignSettings", "updateTranslationSettings",
+  "resetInstanceCaches", "createWarehouseItem",
+  "cancelSalesOrder", "cancelLineSalesOrder", "confirmOrderPackaging",
+  "changeEmail", "changePhone", "confirmEmail", "confirmPhone",
+  "createUserProfile", "updateUserProfile", "deleteUserProfile",
+  "createBalanceChargingBill", "salesPaymentReserve",
+  "addUserToDiscountGroup", "removeUserFromDiscountGroup",
+  "batchSimplifiedAddItemsToBasket", "moveItemsBetweenBasketAndNote",
+  "updateOrderLineInfo", "createInstanceRole", "attachRightsToRole",
+  "deleteInstanceRole", "addInstanceUserToRole", "removeUserFromRole",
+  "addInstanceLogEntry", "addItemRatingList", "addElementsSetToRatingList",
+  "externalAuthentication", "rewardItemReview",
+]);
+
+// Call counter for monitoring
+let totalOtapiCalls = 0;
+let cacheHitsServer = 0;
+
+function getServerCacheKey(action: string, params: Record<string, any>): string {
+  // Remove session-specific and timestamp params from cache key
+  const { sessionId, timestamp, signature, ...keyParams } = params;
+  return `${action}:${JSON.stringify(keyParams)}`;
+}
+
+function pruneServerCache() {
+  if (serverCache.size <= SERVER_CACHE_MAX_SIZE) return;
+  const now = Date.now();
+  // Remove expired entries first
+  for (const [key, entry] of serverCache) {
+    if (entry.expiresAt < now) serverCache.delete(key);
+  }
+  // If still too large, remove oldest
+  if (serverCache.size > SERVER_CACHE_MAX_SIZE) {
+    const entries = Array.from(serverCache.entries());
+    entries.sort((a, b) => a[1].expiresAt - b[1].expiresAt);
+    const toRemove = entries.slice(0, entries.length - SERVER_CACHE_MAX_SIZE + 50);
+    for (const [key] of toRemove) serverCache.delete(key);
+  }
+}
+
 // ─── Extract activityId string from OTAPI nested response ───
 // OTAPI returns activityId as { Type: "BasketChecking", Id: { Value: "uuid-string" } }
 // We need to extract the plain string UUID from this nested structure
@@ -64,13 +148,37 @@ serve(async (req) => {
       );
     }
 
+    // ─── Server-side cache check ───────────────────────────
+    const cacheTtl = SERVER_CACHE_TTLS[action];
+    const canCache = cacheTtl && !NEVER_CACHE_ACTIONS.has(action);
+
+    if (canCache) {
+      const cacheKey = getServerCacheKey(action, params || {});
+      const cached = serverCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        cacheHitsServer++;
+        return new Response(JSON.stringify(cached.data), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
+        });
+      }
+    }
+
     console.log(`[ot-api] action=${action}, hasSecrets: key=${!!OT_API_KEY}, secret=${!!Deno.env.get("OT_API_SECRET")}`);
+    totalOtapiCalls++;
 
     const result = await routeAction(action, OT_API_KEY, params || {});
 
+    // ─── Store in server cache ─────────────────────────────
+    if (canCache && result) {
+      const cacheKey = getServerCacheKey(action, params || {});
+      serverCache.set(cacheKey, { data: result, expiresAt: Date.now() + cacheTtl! });
+      pruneServerCache();
+    }
+
     return new Response(JSON.stringify(result), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
     });
   } catch (error: unknown) {
     console.error("OT API Error:", error);
