@@ -192,7 +192,9 @@ export async function fetchSubcategories(parentId: string): Promise<OtCategoryCa
   }, CACHE_TTL.CATEGORIES);
 }
 export async function fetchCategorySearchProperties(categoryId: string) {
-  return callProxy("getCategorySearchProperties", { categoryId });
+  return cachedFetch(`cat-search-props:${categoryId}`, async () => {
+    return callProxy("getCategorySearchProperties", { categoryId });
+  }, CACHE_TTL.CATEGORY_SEARCH_PROPS);
 }
 
 // ─── Search ──────────────────────────────────────────────────
