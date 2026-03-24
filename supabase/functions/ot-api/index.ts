@@ -306,7 +306,10 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 
     // ── Product Details ──
     case "getItemFullInfo":
-      return callOtApi("BatchGetItemFullInfo", { ...base, itemId: params.itemId, blockList: "Vendor,RootPath,Promotions" });
+      return callOtApi("BatchGetItemFullInfo", { ...base, itemId: params.itemId, blockList: params.blockList || "Vendor,RootPath,Promotions" });
+    case "getItemBasicInfo":
+      // Lightweight: NO extra blocks, just core item data (title, image, price)
+      return callOtApi("BatchGetItemFullInfo", { ...base, itemId: params.itemId, blockList: "" });
     case "getItemDescription":
       return callOtApi("GetItemDescription", { ...base, itemId: params.itemId });
     case "getItemInfoList":
