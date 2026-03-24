@@ -202,7 +202,6 @@ export default function OtCheckout() {
         setCheckError("Сагс шалгалтын хүсэлт хугацаа дууссан. Дахин шалгаж байна…");
       } else if (msg.includes("ContractViolation") || msg.includes("configurationId")) {
         setCheckError("Сагсанд тохиргоо дутуу бараа байна. Барааны сонголтыг шалгаад дахин нэмнэ үү.");
-        await refreshBasket();
       } else {
         setCheckError(msg || "Сагс шалгахад алдаа гарлаа");
       }
