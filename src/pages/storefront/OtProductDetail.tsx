@@ -874,7 +874,7 @@ export default function OtProductDetail() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="description" className="mt-8">
+      <Tabs defaultValue="description" className="mt-8" onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start">
           <TabsTrigger value="description">Тайлбар</TabsTrigger>
           <TabsTrigger value="reviews">Сэтгэгдэл</TabsTrigger>
