@@ -788,19 +788,22 @@ export async function fetchItemsByIds(
     .filter((v): v is OtProductCard => Boolean(v));
 }
 
+// Lightweight item info fetch - uses dedicated lightweight endpoint to avoid expensive getItemFullInfo
 export async function getItemBasicInfo(itemId: string): Promise<{ title: string; imageUrl: string }> {
-  try {
-    const data = await callProxy<any>("getItemFullInfo", { itemId });
-    const item = data?.Result?.Item;
-    const title = item?.Title || item?.OriginalTitle || "";
-    const imageUrl = item?.MainPictureUrl 
-      || item?.Pictures?.ItemPicture?.Url
-      || (Array.isArray(item?.Pictures) ? item.Pictures[0]?.Url : "")
-      || "";
-    return { title, imageUrl };
-  } catch {
-    return { title: "", imageUrl: "" };
-  }
+  return cachedFetch(`item-basic:${itemId}`, async () => {
+    try {
+      const data = await callProxy<any>("getItemBasicInfo", { itemId });
+      const item = data?.Result?.Item || data?.Item;
+      const title = item?.Title || item?.OriginalTitle || "";
+      const imageUrl = item?.MainPictureUrl 
+        || item?.Pictures?.ItemPicture?.Url
+        || (Array.isArray(item?.Pictures) ? item.Pictures[0]?.Url : "")
+        || "";
+      return { title, imageUrl };
+    } catch {
+      return { title: "", imageUrl: "" };
+    }
+  }, CACHE_TTL.PRODUCT_DETAIL);
 }
 
 export async function addItemToBasket(

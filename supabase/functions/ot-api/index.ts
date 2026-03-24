@@ -19,28 +19,29 @@ interface ServerCacheEntry {
 const serverCache = new Map<string, ServerCacheEntry>();
 const SERVER_CACHE_MAX_SIZE = 500;
 
-// TTLs for different action types (in ms)
+// TTLs for different action types (in ms) — AGGRESSIVELY OPTIMIZED
 const SERVER_CACHE_TTLS: Record<string, number> = {
-  getRootCategories: 2 * 60 * 60 * 1000,      // 2hr
-  getSubcategories: 2 * 60 * 60 * 1000,        // 2hr
-  getCategoryInfo: 60 * 60 * 1000,             // 1hr
-  getCategoryInfoList: 60 * 60 * 1000,         // 1hr
-  getCategorySearchProperties: 60 * 60 * 1000, // 1hr
-  getItemFullInfo: 10 * 60 * 1000,             // 10min
-  getItemDescription: 30 * 60 * 1000,          // 30min
-  searchItems: 3 * 60 * 1000,                  // 3min
-  searchItemsFrame: 3 * 60 * 1000,             // 3min
-  getCurrencyList: 60 * 60 * 1000,             // 1hr
-  getProviderInfoList: 60 * 60 * 1000,         // 1hr
-  getProviderSettings: 60 * 60 * 1000,         // 1hr
-  getCommonInstanceOptionsInfo: 60 * 60 * 1000, // 1hr
-  getInstanceOptionsInfo: 60 * 60 * 1000,      // 1hr
-  getDeliveryCountryInfoList: 60 * 60 * 1000,  // 1hr
-  getBannerSettings: 30 * 60 * 1000,           // 30min
-  getApplicationDesignSettings: 30 * 60 * 1000,// 30min
-  getContentMenuItemTree: 30 * 60 * 1000,      // 30min
-  getAvailableRoleList: 60 * 60 * 1000,        // 1hr
-  getOrderStatusList: 60 * 60 * 1000,          // 1hr
+  getRootCategories: 4 * 60 * 60 * 1000,      // 4hr
+  getSubcategories: 4 * 60 * 60 * 1000,        // 4hr
+  getCategoryInfo: 2 * 60 * 60 * 1000,         // 2hr
+  getCategoryInfoList: 2 * 60 * 60 * 1000,     // 2hr
+  getCategorySearchProperties: 2 * 60 * 60 * 1000, // 2hr
+  getItemFullInfo: 15 * 60 * 1000,             // 15min
+  getItemBasicInfo: 30 * 60 * 1000,            // 30min (lightweight)
+  getItemDescription: 60 * 60 * 1000,          // 1hr
+  searchItems: 5 * 60 * 1000,                  // 5min
+  searchItemsFrame: 5 * 60 * 1000,             // 5min
+  getCurrencyList: 2 * 60 * 60 * 1000,         // 2hr
+  getProviderInfoList: 2 * 60 * 60 * 1000,     // 2hr
+  getProviderSettings: 2 * 60 * 60 * 1000,     // 2hr
+  getCommonInstanceOptionsInfo: 2 * 60 * 60 * 1000, // 2hr
+  getInstanceOptionsInfo: 2 * 60 * 60 * 1000,  // 2hr
+  getDeliveryCountryInfoList: 2 * 60 * 60 * 1000, // 2hr
+  getBannerSettings: 60 * 60 * 1000,           // 1hr
+  getApplicationDesignSettings: 60 * 60 * 1000, // 1hr
+  getContentMenuItemTree: 60 * 60 * 1000,      // 1hr
+  getAvailableRoleList: 2 * 60 * 60 * 1000,    // 2hr
+  getOrderStatusList: 2 * 60 * 60 * 1000,      // 2hr
 };
 
 // Actions that should NEVER be cached (mutations, session-dependent, basket)
@@ -305,7 +306,10 @@ async function routeAction(action: string, apiKey: string, params: Record<string
 
     // ── Product Details ──
     case "getItemFullInfo":
-      return callOtApi("BatchGetItemFullInfo", { ...base, itemId: params.itemId, blockList: "Vendor,RootPath,Promotions" });
+      return callOtApi("BatchGetItemFullInfo", { ...base, itemId: params.itemId, blockList: params.blockList || "Vendor,RootPath,Promotions" });
+    case "getItemBasicInfo":
+      // Lightweight: NO extra blocks, just core item data (title, image, price)
+      return callOtApi("BatchGetItemFullInfo", { ...base, itemId: params.itemId, blockList: "" });
     case "getItemDescription":
       return callOtApi("GetItemDescription", { ...base, itemId: params.itemId });
     case "getItemInfoList":

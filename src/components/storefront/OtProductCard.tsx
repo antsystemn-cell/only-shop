@@ -4,7 +4,7 @@ import type { OtProductCard } from "@/types/otApi";
 import { Heart, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getGridImageUrl } from "@/utils/imageOptimizer";
-import { prefetchProductDetail } from "@/services/otApi";
+// prefetchProductDetail removed - was causing excessive OTAPI calls
 import { useWishlist } from "@/contexts/WishlistContext";
 
 interface OtProductCardComponentProps {
@@ -58,10 +58,7 @@ export const OtProductCardComponent = memo(function OtProductCardComponent({ pro
   const amazon = isAmazon(product.providerType);
   const inWishlist = isInWishlist(product.id);
   
-  // Prefetch product detail on hover/touch for instant navigation
-  const handlePrefetch = useCallback(() => {
-    prefetchProductDetail(product.id);
-  }, [product.id]);
+  // Prefetch disabled to save OTAPI costs
 
   const handleToggleWishlist = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -76,8 +73,6 @@ export const OtProductCardComponent = memo(function OtProductCardComponent({ pro
     <Link
       to={`/ot/product/${product.id}`}
       className="group block overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
-      onMouseEnter={handlePrefetch}
-      onTouchStart={handlePrefetch}
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-white">

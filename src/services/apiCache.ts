@@ -247,14 +247,14 @@ export function clearAllCache(): void {
 
 // Cache TTL constants (milliseconds) — AGGRESSIVELY OPTIMIZED
 export const CACHE_TTL = {
-  SEARCH_RESULTS: 5 * 60 * 1000,       // 5min for search/category lists (was 60s)
-  PRODUCT_DETAIL: 15 * 60 * 1000,      // 15min for product details (was 180s)
-  CATEGORIES: 60 * 60 * 1000,          // 1hr for category metadata (was 10min)
-  CATEGORY_MENU: 2 * 60 * 60 * 1000,   // 2hr for category menu/tree (was 30min)
-  PRICE_CONFIG: 15 * 60 * 1000,        // 15min for price config (was 5min)
-  BLOCKED_VENDORS: 30 * 60 * 1000,     // 30min for blocked vendors (was 10min)
-  STATIC_CONFIG: 60 * 60 * 1000,       // 1hr for static configs (was 30min)
-  CATEGORY_SEARCH_PROPS: 30 * 60 * 1000, // 30min for category search properties
-  ITEM_CARD: 15 * 60 * 1000,           // 15min for individual item cards
-  DESCRIPTION: 30 * 60 * 1000,         // 30min for product descriptions
+  SEARCH_RESULTS: 10 * 60 * 1000,       // 10min for search/category lists
+  PRODUCT_DETAIL: 20 * 60 * 1000,       // 20min for product details
+  CATEGORIES: 2 * 60 * 60 * 1000,       // 2hr for category metadata
+  CATEGORY_MENU: 4 * 60 * 60 * 1000,    // 4hr for category menu/tree
+  PRICE_CONFIG: 30 * 60 * 1000,         // 30min for price config
+  BLOCKED_VENDORS: 60 * 60 * 1000,      // 1hr for blocked vendors
+  STATIC_CONFIG: 2 * 60 * 60 * 1000,    // 2hr for static configs
+  CATEGORY_SEARCH_PROPS: 60 * 60 * 1000, // 1hr for category search properties
+  ITEM_CARD: 20 * 60 * 1000,            // 20min for individual item cards
+  DESCRIPTION: 60 * 60 * 1000,          // 1hr for product descriptions
 } as const;

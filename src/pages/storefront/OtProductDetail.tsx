@@ -56,6 +56,7 @@ function formatPrice(price: number, currency: string) {
 
 export default function OtProductDetail() {
   const { itemId } = useParams<{ itemId: string }>();
+  const [activeTab, setActiveTab] = useState("description");
   const navigate = useNavigate();
   const { addItem, isLoading: isCartLoading } = useOtCartSafe();
   const { user } = useAuth();
@@ -195,11 +196,12 @@ export default function OtProductDetail() {
     });
   }, [product?.id]); // Only once per product load
 
+  // LAZY: Only fetch description when the description tab is active
   const { data: description } = useQuery({
     queryKey: ["ot-product-desc", itemId],
     queryFn: () => fetchProductDescription(itemId!),
-    enabled: !!itemId,
-    staleTime: 1000 * 60 * 10,
+    enabled: !!itemId && activeTab === "description",
+    staleTime: 1000 * 60 * 30, // 30min cache
   });
 
   // Amazon variant enrichment: fetch images for each variant ASIN
@@ -872,7 +874,7 @@ export default function OtProductDetail() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="description" className="mt-8">
+      <Tabs defaultValue="description" className="mt-8" onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start">
           <TabsTrigger value="description">Тайлбар</TabsTrigger>
           <TabsTrigger value="reviews">Сэтгэгдэл</TabsTrigger>
