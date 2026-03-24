@@ -106,6 +106,9 @@ const menuGroups: MenuGroup[] = [
       { title: "Бараа засах", url: "/admin/catalog-items", icon: Package },
       { title: "SEO тохиргоо", url: "/admin/seo", icon: Megaphone },
       { title: "Мэдээллийн товхимол", url: "/admin/newsletter", icon: Megaphone },
+      { title: "Тайлан & Аналитик", url: "/admin/ot-reports", icon: Activity },
+      { title: "Биллинг", url: "/admin/ot-billing", icon: DollarSign },
+      { title: "Оношлогоо", url: "/admin/ot-diagnostics", icon: Activity },
     ],
   },
   {

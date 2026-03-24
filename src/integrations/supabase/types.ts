@@ -1259,6 +1259,51 @@ export type Database = {
         }
         Relationships: []
       }
+      otapi_logs: {
+        Row: {
+          created_at: string
+          error_code: string | null
+          id: string
+          is_cache_hit: boolean | null
+          is_paid: boolean | null
+          method: string
+          page_source: string | null
+          params_hash: string | null
+          provider: string | null
+          response_time_ms: number | null
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          is_cache_hit?: boolean | null
+          is_paid?: boolean | null
+          method: string
+          page_source?: string | null
+          params_hash?: string | null
+          provider?: string | null
+          response_time_ms?: number | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          is_cache_hit?: boolean | null
+          is_paid?: boolean | null
+          method?: string
+          page_source?: string | null
+          params_hash?: string | null
+          provider?: string | null
+          response_time_ms?: number | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       otp_codes: {
         Row: {
           attempts_count: number

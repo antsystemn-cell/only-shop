@@ -80,6 +80,9 @@ import OtRoles from "./pages/admin/OtRoles";
 import UserActivityLog from "./pages/admin/UserActivityLog";
 import InstanceLogs from "./pages/admin/InstanceLogs";
 import OtCategoryBrowse from "./pages/storefront/OtCategoryBrowse";
+import OtReports from "./pages/admin/OtReports";
+import OtBilling from "./pages/admin/OtBilling";
+import OtDiagnostics from "./pages/admin/OtDiagnostics";
 
 import ProviderPage from "./pages/storefront/ProviderPage";
 import MobileCategories from "./pages/storefront/MobileCategories";
@@ -211,6 +214,9 @@ const App = () => (
                 <Route path="instance-logs" element={<InstanceLogs />} />
                 <Route path="provider-sections" element={<ProviderSectionsAdmin />} />
                 <Route path="migration" element={<Migration />} />
+                <Route path="ot-reports" element={<OtReports />} />
+                <Route path="ot-billing" element={<OtBilling />} />
+                <Route path="ot-diagnostics" element={<OtDiagnostics />} />
                 <Route path="amazon/connection" element={<AmazonConnection />} />
                 <Route path="amazon/marketplaces" element={<AmazonMarketplaces />} />
                 <Route path="amazon/categories" element={<AmazonCategories />} />
