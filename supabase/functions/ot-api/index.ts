@@ -124,6 +124,42 @@ function buildWarehouseXmlSearchParameters(params: Record<string, any> = {}) {
   return `<SearchParameters>${parts.join("")}</SearchParameters>`;
 }
 
+// ─── Async log to DB (fire-and-forget) ──────────────────────
+const logBuffer: Array<Record<string, unknown>> = [];
+let logFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function flushLogs() {
+  if (logBuffer.length === 0) return;
+  const batch = logBuffer.splice(0, logBuffer.length);
+  try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+    await fetch(`${SUPABASE_URL}/rest/v1/otapi_logs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(batch),
+    });
+  } catch (e) {
+    console.error("[ot-api] log flush error:", e);
+  }
+}
+
+function logOtapiCall(entry: Record<string, unknown>) {
+  logBuffer.push(entry);
+  if (logFlushTimer) clearTimeout(logFlushTimer);
+  if (logBuffer.length >= 10) {
+    flushLogs();
+  } else {
+    logFlushTimer = setTimeout(flushLogs, 3000);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -148,6 +184,8 @@ serve(async (req) => {
       );
     }
 
+    const startTime = Date.now();
+
     // ─── Server-side cache check ───────────────────────────
     const cacheTtl = SERVER_CACHE_TTLS[action];
     const canCache = cacheTtl && !NEVER_CACHE_ACTIONS.has(action);
@@ -157,6 +195,17 @@ serve(async (req) => {
       const cached = serverCache.get(cacheKey);
       if (cached && cached.expiresAt > Date.now()) {
         cacheHitsServer++;
+        // Log cache hit
+        logOtapiCall({
+          method: action,
+          provider: params?.providerType || "otapi",
+          params_hash: cacheKey.substring(0, 100),
+          page_source: params?._pageSource || null,
+          response_time_ms: Date.now() - startTime,
+          error_code: "Ok",
+          is_paid: false,
+          is_cache_hit: true,
+        });
         return new Response(JSON.stringify(cached.data), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
@@ -168,6 +217,21 @@ serve(async (req) => {
     totalOtapiCalls++;
 
     const result = await routeAction(action, OT_API_KEY, params || {});
+    const elapsed = Date.now() - startTime;
+    const errorCode = result?.ErrorCode || "Ok";
+    const isPaid = errorCode === "Ok" || errorCode === "BatchError";
+
+    // Log actual API call
+    logOtapiCall({
+      method: action,
+      provider: params?.providerType || "otapi",
+      params_hash: getServerCacheKey(action, params || {}).substring(0, 100),
+      page_source: params?._pageSource || null,
+      response_time_ms: elapsed,
+      error_code: errorCode,
+      is_paid: isPaid,
+      is_cache_hit: false,
+    });
 
     // ─── Store in server cache ─────────────────────────────
     if (canCache && result) {
@@ -183,6 +247,16 @@ serve(async (req) => {
   } catch (error: unknown) {
     console.error("OT API Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+    // Log error call
+    logOtapiCall({
+      method: "unknown",
+      provider: "otapi",
+      error_code: errorMessage.substring(0, 100),
+      is_paid: false,
+      is_cache_hit: false,
+    });
+
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
