@@ -434,10 +434,12 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
   return cachedFetch(cacheKey, async () => fetchProductDetailUncached(itemId), CACHE_TTL.PRODUCT_DETAIL);
 }
 
-// Prefetch product detail (for hover prefetching)
-export function prefetchProductDetail(itemId: string): void {
-  const cacheKey = `product:${itemId}`;
-  cachedFetch(cacheKey, () => fetchProductDetailUncached(itemId), CACHE_TTL.PRODUCT_DETAIL).catch(() => {});
+// Prefetch product detail on hover - DISABLED to save OTAPI calls
+// The cache will serve instantly if user visits a product they've already seen
+// Only prefetch if item is already cached (no new API call)
+export function prefetchProductDetail(_itemId: string): void {
+  // NO-OP: Prefetching was causing excessive OTAPI calls
+  // Product detail will load on navigation with cache support
 }
 
 async function fetchProductDetailUncached(itemId: string): Promise<ProductDetail> {
