@@ -14,6 +14,7 @@ interface PerfEntry {
   duration: number;
   timestamp: number;
   cacheHit: boolean;
+  method?: string;
 }
 
 const cache = new Map<string, CacheEntry<unknown>>();
@@ -47,9 +48,13 @@ function releaseSlot(): void {
 
 // ─── Performance Monitoring ─────────────────────────────────
 const perfLog: PerfEntry[] = [];
-const MAX_PERF_LOG = 100;
+const MAX_PERF_LOG = 200;
 let totalRequests = 0;
 let cacheHits = 0;
+
+// ─── Per-method call tracking ───────────────────────────────
+const methodCallCounts = new Map<string, number>();
+const methodCacheHits = new Map<string, number>();
 
 export function getPerformanceStats() {
   const hitRate = totalRequests > 0 ? Math.round((cacheHits / totalRequests) * 100) : 0;
@@ -57,6 +62,16 @@ export function getPerformanceStats() {
   const avgDuration = perfLog.length > 0
     ? Math.round(perfLog.reduce((s, e) => s + e.duration, 0) / perfLog.length)
     : 0;
+
+  // Top methods by call count
+  const topMethods = Array.from(methodCallCounts.entries())
+    .map(([method, count]) => ({
+      method,
+      totalCalls: count,
+      cacheHits: methodCacheHits.get(method) || 0,
+      hitRate: count > 0 ? Math.round(((methodCacheHits.get(method) || 0) / count) * 100) : 0,
+    }))
+    .sort((a, b) => b.totalCalls - a.totalCalls);
 
   return {
     cacheSize: cache.size,
@@ -69,16 +84,25 @@ export function getPerformanceStats() {
     avgResponseTime: `${avgDuration}ms`,
     recentRequests: perfLog.slice(-20),
     slowRequests: recentSlow,
+    topMethods: topMethods.slice(0, 15),
+    savedApiCalls: cacheHits, // Each cache hit = 1 saved OTAPI paid call
   };
 }
 
 function logPerf(key: string, duration: number, cacheHit: boolean) {
   totalRequests++;
   if (cacheHit) cacheHits++;
-  
-  perfLog.push({ key, duration, timestamp: Date.now(), cacheHit });
+
+  // Extract method from cache key (e.g., "search:..." → "search", "product:..." → "product")
+  const method = key.split(":")[0] || key;
+  methodCallCounts.set(method, (methodCallCounts.get(method) || 0) + 1);
+  if (cacheHit) {
+    methodCacheHits.set(method, (methodCacheHits.get(method) || 0) + 1);
+  }
+
+  perfLog.push({ key, duration, timestamp: Date.now(), cacheHit, method });
   if (perfLog.length > MAX_PERF_LOG) perfLog.splice(0, perfLog.length - MAX_PERF_LOG);
-  
+
   if (!cacheHit && duration > 1500) {
     console.warn(`[Gateway] SLOW: ${key} took ${duration}ms`);
   }
@@ -86,8 +110,8 @@ function logPerf(key: string, duration: number, cacheHit: boolean) {
 
 // ─── Cache Logic ────────────────────────────────────────────
 
-// SWR window: serve stale data for up to 5 minutes beyond TTL
-const SWR_WINDOW = 5 * 60 * 1000;
+// SWR window: serve stale data for up to 10 minutes beyond TTL
+const SWR_WINDOW = 10 * 60 * 1000;
 
 function isStale<T>(entry: CacheEntry<T>): boolean {
   return Date.now() - entry.createdAt > entry.ttl;
@@ -100,10 +124,10 @@ function isExpired<T>(entry: CacheEntry<T>): boolean {
 /**
  * Gateway cached fetch with:
  * - L1 in-memory TTL cache
- * - Stale-while-revalidate (5min window)
+ * - Stale-while-revalidate (10min window)
  * - Request deduplication (single-flight)
  * - Concurrency limiting (max 4 concurrent OTAPI calls)
- * - Performance monitoring
+ * - Performance monitoring with per-method tracking
  */
 export async function cachedFetch<T>(
   key: string,
@@ -152,7 +176,7 @@ async function executeFetch<T>(
 ): Promise<T> {
   // Wait for concurrency slot
   await acquireSlot();
-  
+
   try {
     const data = await fetcher();
     cache.set(key, { data, createdAt: Date.now(), ttl });
@@ -217,15 +241,20 @@ export function clearAllCache(): void {
   totalRequests = 0;
   cacheHits = 0;
   perfLog.length = 0;
+  methodCallCounts.clear();
+  methodCacheHits.clear();
 }
 
-// Cache TTL constants (milliseconds)
+// Cache TTL constants (milliseconds) — AGGRESSIVELY OPTIMIZED
 export const CACHE_TTL = {
-  SEARCH_RESULTS: 60 * 1000,         // 60s for search/category lists
-  PRODUCT_DETAIL: 3 * 60 * 1000,     // 180s for product details
-  CATEGORIES: 10 * 60 * 1000,        // 10min for category metadata
-  CATEGORY_MENU: 30 * 60 * 1000,     // 30min for category menu/tree
-  PRICE_CONFIG: 5 * 60 * 1000,       // 5min for price config
-  BLOCKED_VENDORS: 10 * 60 * 1000,   // 10min for blocked vendors
-  STATIC_CONFIG: 30 * 60 * 1000,     // 30min for static configs
+  SEARCH_RESULTS: 5 * 60 * 1000,       // 5min for search/category lists (was 60s)
+  PRODUCT_DETAIL: 15 * 60 * 1000,      // 15min for product details (was 180s)
+  CATEGORIES: 60 * 60 * 1000,          // 1hr for category metadata (was 10min)
+  CATEGORY_MENU: 2 * 60 * 60 * 1000,   // 2hr for category menu/tree (was 30min)
+  PRICE_CONFIG: 15 * 60 * 1000,        // 15min for price config (was 5min)
+  BLOCKED_VENDORS: 30 * 60 * 1000,     // 30min for blocked vendors (was 10min)
+  STATIC_CONFIG: 60 * 60 * 1000,       // 1hr for static configs (was 30min)
+  CATEGORY_SEARCH_PROPS: 30 * 60 * 1000, // 30min for category search properties
+  ITEM_CARD: 15 * 60 * 1000,           // 15min for individual item cards
+  DESCRIPTION: 30 * 60 * 1000,         // 30min for product descriptions
 } as const;

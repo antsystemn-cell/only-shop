@@ -192,7 +192,9 @@ export async function fetchSubcategories(parentId: string): Promise<OtCategoryCa
   }, CACHE_TTL.CATEGORIES);
 }
 export async function fetchCategorySearchProperties(categoryId: string) {
-  return callProxy("getCategorySearchProperties", { categoryId });
+  return cachedFetch(`cat-search-props:${categoryId}`, async () => {
+    return callProxy("getCategorySearchProperties", { categoryId });
+  }, CACHE_TTL.CATEGORY_SEARCH_PROPS);
 }
 
 // ─── Search ──────────────────────────────────────────────────
@@ -432,10 +434,12 @@ export async function fetchProductDetail(itemId: string): Promise<ProductDetail>
   return cachedFetch(cacheKey, async () => fetchProductDetailUncached(itemId), CACHE_TTL.PRODUCT_DETAIL);
 }
 
-// Prefetch product detail (for hover prefetching)
-export function prefetchProductDetail(itemId: string): void {
-  const cacheKey = `product:${itemId}`;
-  cachedFetch(cacheKey, () => fetchProductDetailUncached(itemId), CACHE_TTL.PRODUCT_DETAIL).catch(() => {});
+// Prefetch product detail on hover - DISABLED to save OTAPI calls
+// The cache will serve instantly if user visits a product they've already seen
+// Only prefetch if item is already cached (no new API call)
+export function prefetchProductDetail(_itemId: string): void {
+  // NO-OP: Prefetching was causing excessive OTAPI calls
+  // Product detail will load on navigation with cache support
 }
 
 async function fetchProductDetailUncached(itemId: string): Promise<ProductDetail> {
@@ -642,7 +646,7 @@ export async function fetchProductDescription(itemId: string): Promise<string> {
     } catch {
       return "";
     }
-  }, CACHE_TTL.PRODUCT_DETAIL);
+  }, CACHE_TTL.DESCRIPTION);
 }
 
 // ─── Cart / Basket ───────────────────────────────────────────

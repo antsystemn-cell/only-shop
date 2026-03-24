@@ -152,6 +152,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Захиалгын тохиргоо", url: "/admin/settings-orders", icon: Settings },
       { title: "Хайлтын тохиргоо", url: "/admin/search-settings", icon: Search },
       { title: "Системийн хэрэгсэл", url: "/admin/system-tools", icon: Activity },
+      { title: "API хяналт", url: "/admin/api-monitoring", icon: Activity },
       { title: "Legacy шилжүүлэг", url: "/admin/migration", icon: DatabaseBackup },
     ],
   },

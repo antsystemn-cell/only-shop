@@ -65,6 +65,7 @@ import AuthSettings from "./pages/admin/AuthSettings";
 import SmsGateway from "./pages/admin/SmsGateway";
 import OrderSettings from "./pages/admin/OrderSettings";
 import SystemTools from "./pages/admin/SystemTools";
+import ApiMonitoring from "./pages/admin/ApiMonitoring";
 import Reviews from "./pages/admin/Reviews";
 import OtDelivery from "./pages/admin/OtDelivery";
 import OtPricing from "./pages/admin/OtPricing";
@@ -194,6 +195,7 @@ const App = () => (
                 <Route path="sms-gateway" element={<SmsGateway />} />
                 <Route path="settings-orders" element={<OrderSettings />} />
                 <Route path="system-tools" element={<SystemTools />} />
+                <Route path="api-monitoring" element={<ApiMonitoring />} />
                 <Route path="reviews" element={<Reviews />} />
                 <Route path="ot-delivery" element={<OtDelivery />} />
                 <Route path="ot-pricing" element={<OtPricing />} />
