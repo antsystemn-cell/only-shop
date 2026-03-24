@@ -73,8 +73,6 @@ export const OtProductCardComponent = memo(function OtProductCardComponent({ pro
     <Link
       to={`/ot/product/${product.id}`}
       className="group block overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
-      onMouseEnter={handlePrefetch}
-      onTouchStart={handlePrefetch}
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-white">
