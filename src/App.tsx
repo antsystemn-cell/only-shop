@@ -65,6 +65,7 @@ import AuthSettings from "./pages/admin/AuthSettings";
 import SmsGateway from "./pages/admin/SmsGateway";
 import OrderSettings from "./pages/admin/OrderSettings";
 import SystemTools from "./pages/admin/SystemTools";
+import ApiMonitoring from "./pages/admin/ApiMonitoring";
 import Reviews from "./pages/admin/Reviews";
 import OtDelivery from "./pages/admin/OtDelivery";
 import OtPricing from "./pages/admin/OtPricing";
