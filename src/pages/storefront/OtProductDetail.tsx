@@ -56,6 +56,7 @@ function formatPrice(price: number, currency: string) {
 
 export default function OtProductDetail() {
   const { itemId } = useParams<{ itemId: string }>();
+  const [activeTab, setActiveTab] = useState("description");
   const navigate = useNavigate();
   const { addItem, isLoading: isCartLoading } = useOtCartSafe();
   const { user } = useAuth();
