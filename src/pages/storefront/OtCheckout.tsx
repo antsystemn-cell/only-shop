@@ -185,8 +185,7 @@ export default function OtCheckout() {
         return;
       }
 
-      // Success — refresh basket to get OTAPI-confirmed prices with proper MNT conversion
-      await refreshBasket();
+      // Success — use check result directly (no extra GetBasket call)
       setCheckResult(result);
       console.log("[OtCheckout] Basket check passed");
     } catch (err: any) {
@@ -203,7 +202,6 @@ export default function OtCheckout() {
         setCheckError("Сагс шалгалтын хүсэлт хугацаа дууссан. Дахин шалгаж байна…");
       } else if (msg.includes("ContractViolation") || msg.includes("configurationId")) {
         setCheckError("Сагсанд тохиргоо дутуу бараа байна. Барааны сонголтыг шалгаад дахин нэмнэ үү.");
-        await refreshBasket();
       } else {
         setCheckError(msg || "Сагс шалгахад алдаа гарлаа");
       }
