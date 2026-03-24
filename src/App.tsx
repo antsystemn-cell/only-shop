@@ -80,6 +80,9 @@ import OtRoles from "./pages/admin/OtRoles";
 import UserActivityLog from "./pages/admin/UserActivityLog";
 import InstanceLogs from "./pages/admin/InstanceLogs";
 import OtCategoryBrowse from "./pages/storefront/OtCategoryBrowse";
+import OtReports from "./pages/admin/OtReports";
+import OtBilling from "./pages/admin/OtBilling";
+import OtDiagnostics from "./pages/admin/OtDiagnostics";
 
 import ProviderPage from "./pages/storefront/ProviderPage";
 import MobileCategories from "./pages/storefront/MobileCategories";
