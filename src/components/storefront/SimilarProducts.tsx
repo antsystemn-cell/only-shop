@@ -31,6 +31,20 @@ export function SimilarProducts({ product, customTitle }: SimilarProductsProps) 
 
   const enabled = !!(categoryId || vendorId || searchQuery);
 
+  // LAZY: Only fetch similar products when component is visible on screen
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setIsVisible(true); observer.disconnect(); } },
+      { rootMargin: "200px" }
+    );
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const { data, isLoading } = useQuery({
     queryKey: ["similar-products", product.id, categoryId, vendorId, searchQuery],
     queryFn: async () => {
@@ -40,14 +54,13 @@ export function SimilarProducts({ product, customTitle }: SimilarProductsProps) 
         query: searchQuery,
         provider: product.providerType,
         page: 0,
-        pageSize: 20,
+        pageSize: 12,
         orderBy: "Volume:Desc",
       });
-      // Filter out the current product
       return result.items.filter((i) => i.id !== product.id).slice(0, 12);
     },
-    enabled,
-    staleTime: 1000 * 60 * 10,
+    enabled: enabled && isVisible,
+    staleTime: 1000 * 60 * 15, // 15min cache
   });
   const similarItemsKey = (data || []).map(p => p.id).join(",");
   const titlesList = useMemo(() => (data || []).map(p => p.title), [similarItemsKey]);
