@@ -4,7 +4,7 @@ import type { OtProductCard } from "@/types/otApi";
 import { Heart, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getGridImageUrl } from "@/utils/imageOptimizer";
-import { prefetchProductDetail } from "@/services/otApi";
+// prefetchProductDetail removed - was causing excessive OTAPI calls
 import { useWishlist } from "@/contexts/WishlistContext";
 
 interface OtProductCardComponentProps {
