@@ -78,6 +78,65 @@ interface OtCartContextType {
 
 const OtCartContext = createContext<OtCartContextType | undefined>(undefined);
 
+// ─── Basket Cache (single-flight + TTL) ─────────────────────
+
+const BASKET_CACHE_TTL_MS = 60_000; // 60 seconds default
+const BASKET_DEDUPE_WINDOW_MS = 5_000; // 5 second dedupe
+
+interface BasketCache {
+  data: any;
+  timestamp: number;
+  sessionId: string;
+}
+
+let _basketCache: BasketCache | null = null;
+let _inflightBasketRequest: Promise<any> | null = null;
+let _lastBasketRequestTime = 0;
+
+/** Centralized GetBasket with TTL cache + single-flight dedupe */
+async function getCachedBasket(sessionId: string, forceRefresh = false): Promise<any> {
+  const now = Date.now();
+
+  // Return cached if fresh and same session
+  if (
+    !forceRefresh &&
+    _basketCache &&
+    _basketCache.sessionId === sessionId &&
+    now - _basketCache.timestamp < BASKET_CACHE_TTL_MS
+  ) {
+    console.log("[BasketCache] HIT (age:", Math.round((now - _basketCache.timestamp) / 1000), "s)");
+    return _basketCache.data;
+  }
+
+  // Dedupe: if a request was made very recently, wait for it
+  if (_inflightBasketRequest && now - _lastBasketRequestTime < BASKET_DEDUPE_WINDOW_MS) {
+    console.log("[BasketCache] DEDUPE - reusing inflight request");
+    return _inflightBasketRequest;
+  }
+
+  // Make new request
+  console.log("[BasketCache] MISS - fetching from OTAPI");
+  _lastBasketRequestTime = now;
+  _inflightBasketRequest = getBasket(sessionId)
+    .then((data) => {
+      _basketCache = { data, timestamp: Date.now(), sessionId };
+      _inflightBasketRequest = null;
+      return data;
+    })
+    .catch((err) => {
+      _inflightBasketRequest = null;
+      throw err;
+    });
+
+  return _inflightBasketRequest;
+}
+
+/** Invalidate basket cache (call after mutations) */
+function invalidateBasketCache() {
+  console.log("[BasketCache] INVALIDATED");
+  _basketCache = null;
+}
+
 // ─── Parse basket response ──────────────────────────────────
 
 function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof getPriceConfig>> | null): OtBasketItem[] {
@@ -96,11 +155,7 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
   return lines.map((line: any) => {
     const quantity = line.Quantity || 1;
 
-    // Minimal debug
-    console.log("[OtCart] Line ItemId:", line.ItemId, "ProviderType:", line.ProviderType, "Price:", JSON.stringify(line.Price));
-
     // ── Price extraction (MNT) ──
-    // Amazon-specific: use isolated adapter for price normalization
     let unitPrice: number;
     let totalPrice: number;
 
@@ -109,7 +164,6 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
       unitPrice = amazonPrice.unitPrice;
       totalPrice = amazonPrice.totalPrice;
     } else {
-      // Non-Amazon providers: use existing OTAPI internal conversion logic
       const fullTotalInternal = line.FullTotalCost?.ConvertedPriceList?.Internal?.Price;
       const totalCostInternal = line.TotalCost?.ConvertedPriceList?.Internal?.Price;
       const priceInternal = line.Price?.ConvertedPriceList?.Internal?.Price;
@@ -119,7 +173,6 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
       totalPrice = fullTotalInternal ?? totalCostInternal ?? (priceInternal ? priceInternal * quantity : rawNumericPrice * quantity);
       unitPrice = totalPrice / (quantity || 1);
 
-      // Fallback for non-Amazon providers without internal conversion
       const hasInternalConversion = fullTotalInternal != null || totalCostInternal != null || priceInternal != null;
       if (!hasInternalConversion && rawNumericPrice > 0 && priceConfig) {
         const currencyCode = getOriginalCurrencyCode(line.Price) || 
@@ -128,7 +181,6 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
         const providerType = line.ProviderType || "Taobao";
         unitPrice = calculateMntPrice(rawNumericPrice, currencyCode, providerType, priceConfig);
         totalPrice = unitPrice * quantity;
-        console.log(`[OtCart] Manual conversion: ${rawNumericPrice} ${currencyCode} → ${unitPrice}₮ (provider: ${providerType})`);
       }
     }
 
@@ -141,10 +193,7 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
       ?? line.Price?.ConvertedPriceList?.Internal?.Sign
       ?? "₮";
 
-    // ── Title: prefer OriginalTitle or ItemTitle over configurator-only title ──
     const mainTitle = line.OriginalTitle || line.ItemTitle || line.Title || "";
-
-    // ── Image: try multiple paths ──
     const imageUrl = line.ImageUrl
       || line.MainPictureUrl
       || line.ItemPicture?.Url
@@ -154,13 +203,11 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
       || line.ThumbUrl
       || "";
 
-    // ── Configurator display text ──
     const configs = line.Configuration?.Configurator || line.Configurators;
     let configList = Array.isArray(configs) ? configs : configs ? [configs] : [];
     const configText = configList
       .map((c: any) => {
         if (typeof c === "string") return c;
-        // Show "PropertyName: Value" format for clarity
         const name = c.Title || c.PropertyName || c.Name || "";
         const val = c.Value || c.ValueTitle || "";
         return name && val ? `${name}: ${val}` : val || name || "";
@@ -213,17 +260,14 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
   const itemInfoCache = useRef<Record<string, { title: string; imageUrl: string }>>({});
 
   const enrichItems = useCallback(async (parsed: OtBasketItem[]): Promise<OtBasketItem[]> => {
-    // Find items missing title or image
     const needsEnrich = parsed.filter(
       (item) => (!item.title || item.title === item.itemId) && item.itemId && !itemInfoCache.current[item.itemId]
     );
-    // Also enrich items that have no imageUrl
     const needsImage = parsed.filter(
       (item) => !item.imageUrl && item.itemId && !itemInfoCache.current[item.itemId] && !needsEnrich.find(n => n.itemId === item.itemId)
     );
     const allNeeds = [...needsEnrich, ...needsImage];
 
-    // Fetch missing info in parallel
     if (allNeeds.length > 0) {
       const uniqueIds = [...new Set(allNeeds.map((i) => i.itemId))];
       const results = await Promise.all(uniqueIds.map((id) => getItemBasicInfo(id)));
@@ -232,7 +276,6 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    // Merge cached info into items
     return parsed.map((item) => {
       const cached = itemInfoCache.current[item.itemId];
       if (!cached) return item;
@@ -244,14 +287,15 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const fetchBasket = useCallback(async () => {
+  /** Core fetch: uses cached GetBasket with TTL + dedupe */
+  const fetchBasket = useCallback(async (force = false) => {
     try {
       setIsLoading(true);
       const [sessionId, priceConfig] = await Promise.all([
         getAnonymousSession(),
         getPriceConfig(),
       ]);
-      const data = await getBasket(sessionId);
+      const data = await getCachedBasket(sessionId, force);
       const parsed = parseBasketResponse(data, priceConfig);
       const enriched = await enrichItems(parsed);
       setItems(enriched);
@@ -262,11 +306,17 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [enrichItems]);
 
-  // Load basket on mount
+  /** Invalidate cache + single controlled refetch */
+  const refreshAfterMutation = useCallback(async () => {
+    invalidateBasketCache();
+    await fetchBasket(true);
+  }, [fetchBasket]);
+
+  // Load basket on mount (uses cache if available)
   useEffect(() => {
     if (!sessionReady.current) {
       sessionReady.current = true;
-      fetchBasket();
+      fetchBasket(false);
     }
   }, [fetchBasket]);
 
@@ -275,10 +325,10 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       const sessionId = await getAnonymousSession();
       await addItemToBasket(sessionId, itemId, quantity, configurators, configurationId, fieldParameters);
-      await fetchBasket();
+      // Invalidate + single refresh after mutation
+      await refreshAfterMutation();
       toast.success("Сагсанд нэмэгдлээ!");
     } catch (err: any) {
-      // Amazon-specific error mapping
       const errorMsg = err.message || "Сагсанд нэмэхэд алдаа гарлаа";
       const friendlyMsg = errorMsg.toLowerCase().includes("configurationid") || errorMsg.toLowerCase().includes("contractviolation")
         ? mapAmazonOtapiError(errorMsg)
@@ -288,54 +338,61 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchBasket]);
+  }, [refreshAfterMutation]);
 
   const updateItemQuantity = useCallback(async (orderLineId: string, quantity: number) => {
     if (quantity <= 0) return;
+    // Optimistic update - NO GetBasket call
+    setItems((prev) =>
+      prev.map((item) =>
+        item.orderLineId === orderLineId
+          ? { ...item, quantity, totalPrice: item.price * quantity }
+          : item
+      )
+    );
     try {
       const sessionId = await getAnonymousSession();
       await editBasketItemQuantity(sessionId, orderLineId, quantity);
-      setItems((prev) =>
-        prev.map((item) =>
-          item.orderLineId === orderLineId
-            ? { ...item, quantity, totalPrice: item.price * quantity }
-            : item
-        )
-      );
+      invalidateBasketCache(); // Mark stale but don't refetch
     } catch (err: any) {
       toast.error("Тоо хэмжээ өөрчлөхөд алдаа гарлаа");
-      await fetchBasket();
+      // Only refetch on error to restore correct state
+      await refreshAfterMutation();
     }
-  }, [fetchBasket]);
+  }, [refreshAfterMutation]);
 
   const removeItem = useCallback(async (orderLineId: string) => {
+    // Optimistic remove - NO GetBasket call
+    setItems((prev) => prev.filter((i) => i.orderLineId !== orderLineId));
+    invalidateBasketCache();
     try {
-      setItems((prev) => prev.filter((i) => i.orderLineId !== orderLineId));
       const sessionId = await getAnonymousSession();
       await removeBasketItem(sessionId, orderLineId);
     } catch (err: any) {
       toast.error("Бараа устгахад алдаа гарлаа");
-      await fetchBasket();
+      await refreshAfterMutation();
     }
-  }, [fetchBasket]);
+  }, [refreshAfterMutation]);
 
   const clearCartFn = useCallback(async () => {
+    // Optimistic clear - NO GetBasket call
+    setItems([]);
+    invalidateBasketCache();
     try {
-      setItems([]);
       const sessionId = await getAnonymousSession();
       await clearBasketApi(sessionId);
     } catch (err: any) {
       toast.error("Сагс хоослоход алдаа гарлаа");
-      await fetchBasket();
+      await refreshAfterMutation();
     }
-  }, [fetchBasket]);
+  }, [refreshAfterMutation]);
 
   const batchAddItemsFn = useCallback(async (xmlParameters: string) => {
     try {
       setIsLoading(true);
       const sessionId = await getAnonymousSession();
       await batchSimplifiedAddItemsToBasket(sessionId, xmlParameters);
-      await fetchBasket();
+      await refreshAfterMutation();
       toast.success("Бараанууд сагсанд нэмэгдлээ!");
     } catch (err: any) {
       toast.error(err.message || "Бараа нэмэхэд алдаа гарлаа");
@@ -343,31 +400,33 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchBasket]);
+  }, [refreshAfterMutation]);
 
   const moveToNote = useCallback(async (orderLineId: string) => {
+    // Optimistic remove from basket view
+    setItems((prev) => prev.filter((i) => i.orderLineId !== orderLineId));
+    invalidateBasketCache();
     try {
       const sessionId = await getAnonymousSession();
       await moveItemsBetweenBasketAndNote(sessionId, orderLineId, "ToNote");
-      setItems((prev) => prev.filter((i) => i.orderLineId !== orderLineId));
       toast.success("Тэмдэглэл рүү зөөгдлөө");
     } catch (err: any) {
       toast.error("Зөөхөд алдаа гарлаа");
-      await fetchBasket();
+      await refreshAfterMutation();
     }
-  }, [fetchBasket]);
+  }, [refreshAfterMutation]);
 
   const moveToBasket = useCallback(async (orderLineId: string) => {
     try {
       const sessionId = await getAnonymousSession();
       await moveItemsBetweenBasketAndNote(sessionId, orderLineId, "ToBasket");
-      await fetchBasket();
+      await refreshAfterMutation();
       toast.success("Сагс руу зөөгдлөө");
     } catch (err: any) {
       toast.error("Зөөхөд алдаа гарлаа");
-      await fetchBasket();
+      await refreshAfterMutation();
     }
-  }, [fetchBasket]);
+  }, [refreshAfterMutation]);
 
   // ─── Basket checking (for checkout) ────────────────────────
 
@@ -384,8 +443,8 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
       setCheckingStatus({ isRunning: true, isComplete: false, result: null, invalidItems: [] });
       const sessionId = await getAnonymousSession();
 
-      // Step 1: Get basket element IDs
-      const basketData = await getBasket(sessionId) as any;
+      // Use cached basket data for element IDs instead of a fresh GetBasket call
+      const basketData = await getCachedBasket(sessionId, false) as any;
       const elements = basketData?.CollectionInfo?.Elements
         || basketData?.Result?.CollectionInfo?.Elements;
       const elementsList = elements ? (Array.isArray(elements) ? elements : [elements]) : [];
@@ -398,22 +457,18 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
       const elementIds = elementsList.map((el: any) => String(el.Id)).filter(Boolean).join(",");
       console.log(`[OtCart][${correlationId}] RunBasketChecking with ${elementsList.length} elements, ids: ${elementIds}`);
 
-      // Step 2: Run basket checking - returns { activityId: string, raw: any }
       const { activityId } = await runBasketChecking(sessionId, elementIds);
       console.log(`[OtCart][${correlationId}] activityId: "${activityId}" (type: ${typeof activityId})`);
 
-      // Safety: activityId must be a string
       if (typeof activityId !== "string" || !activityId) {
         console.error(`[OtCart][${correlationId}] Invalid activityId:`, activityId);
         throw new Error("BASKET_CHECK_NO_ACTIVITY_ID");
       }
 
-      // Step 3: Poll with backoff
       return await pollBasketCheckingResult(sessionId, activityId, correlationId);
     } catch (err: any) {
       console.error(`[OtCart][${correlationId}] checkBasket error:`, err.message);
 
-      // NotFound fallback: retry once with fresh RunBasketChecking
       if (err.message?.includes("NotFound") || err.message?.includes("not found")) {
         console.log(`[OtCart][${correlationId}] NotFound detected, retrying basket check...`);
         try {
@@ -433,7 +488,6 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Extracted polling logic for reuse in retries
   const pollBasketCheckingResult = useCallback(async (sessionId: string, activityId: string, correlationId: string) => {
     const backoffMs = [500, 1000, 1500, 2000, 2500, 3000, 3000, 3000, 3000, 3000, 3000, 3000];
     let attempts = 0;
@@ -449,7 +503,6 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
       console.log(`[OtCart][${correlationId}] Poll #${attempts}, activityId: "${activityId}"`);
       const result = await getBasketCheckingResult(sessionId, activityId) as any;
 
-      // OTAPI returns IsFinished (not IsReady)
       const resultObj = result?.Result || result;
       const isFinished = resultObj?.IsFinished || resultObj?.IsReady;
       console.log(`[OtCart][${correlationId}] Poll #${attempts} IsFinished:`, resultObj?.IsFinished, "ProgressPercent:", resultObj?.ProgressPercent);
@@ -457,8 +510,6 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
       if (isFinished) {
         console.log(`[OtCart][${correlationId}] Check complete after ${attempts} polls`);
 
-        // Parse invalid items from Messages array
-        // OTAPI returns: { Messages: [{ ElementId: {Value}, Status, Code, Text }], IsFinished, ProgressPercent }
         const messages = resultObj?.Messages;
         const msgList = messages ? (Array.isArray(messages) ? messages : [messages]) : [];
 
@@ -484,7 +535,9 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
           });
 
         if (invalidItems.length > 0) {
-          console.log(`[OtCart][${correlationId}] Found ${invalidItems.length} invalid items (price changed: ${invalidItems.filter(i => i.isPriceChanged).length})`);
+          console.log(`[OtCart][${correlationId}] Found ${invalidItems.length} invalid items`);
+          // Invalidate cache since prices may have changed
+          invalidateBasketCache();
           setCheckingStatus({ isRunning: false, isComplete: true, result, invalidItems });
           return { ...result, _invalidItems: invalidItems };
         }
@@ -517,7 +570,7 @@ export function OtCartProvider({ children }: { children: React.ReactNode }) {
         moveToNote,
         moveToBasket,
         clearCart: clearCartFn,
-        refreshBasket: fetchBasket,
+        refreshBasket: () => refreshAfterMutation(),
         checkBasket,
         checkingStatus,
       }}
