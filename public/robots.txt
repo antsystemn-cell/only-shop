@@ -1,8 +1,28 @@
 User-agent: Googlebot
 Allow: /
+Allow: /shop
+Allow: /categories
+Allow: /product/*
+Disallow: /ot/product/*
+Disallow: /ot/category/*
+Disallow: /ot/shop*
+Disallow: /ot/provider/*
+Disallow: /item*
+Disallow: /admin/*
+Disallow: /api/*
 
 User-agent: Bingbot
 Allow: /
+Allow: /shop
+Allow: /categories
+Allow: /product/*
+Disallow: /ot/product/*
+Disallow: /ot/category/*
+Disallow: /ot/shop*
+Disallow: /ot/provider/*
+Disallow: /item*
+Disallow: /admin/*
+Disallow: /api/*
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +32,31 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /ot/product/*
+Disallow: /ot/category/*
+Disallow: /ot/shop*
+Disallow: /ot/provider/*
+Disallow: /item*
+Disallow: /admin/*
+Disallow: /api/*
+
+# Aggressive bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+User-agent: PetalBot
+Disallow: /
+
+Sitemap: https://only.mn/sitemap.xml
