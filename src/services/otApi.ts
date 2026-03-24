@@ -644,7 +644,7 @@ export async function fetchProductDescription(itemId: string): Promise<string> {
     } catch {
       return "";
     }
-  }, CACHE_TTL.PRODUCT_DETAIL);
+  }, CACHE_TTL.DESCRIPTION);
 }
 
 // ─── Cart / Basket ───────────────────────────────────────────
