@@ -58,10 +58,7 @@ export const OtProductCardComponent = memo(function OtProductCardComponent({ pro
   const amazon = isAmazon(product.providerType);
   const inWishlist = isInWishlist(product.id);
   
-  // Prefetch product detail on hover/touch for instant navigation
-  const handlePrefetch = useCallback(() => {
-    prefetchProductDetail(product.id);
-  }, [product.id]);
+  // Prefetch disabled to save OTAPI costs
 
   const handleToggleWishlist = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
