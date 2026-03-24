@@ -196,11 +196,12 @@ export default function OtProductDetail() {
     });
   }, [product?.id]); // Only once per product load
 
+  // LAZY: Only fetch description when the description tab is active
   const { data: description } = useQuery({
     queryKey: ["ot-product-desc", itemId],
     queryFn: () => fetchProductDescription(itemId!),
-    enabled: !!itemId,
-    staleTime: 1000 * 60 * 10,
+    enabled: !!itemId && activeTab === "description",
+    staleTime: 1000 * 60 * 30, // 30min cache
   });
 
   // Amazon variant enrichment: fetch images for each variant ASIN
