@@ -5,16 +5,39 @@ import { Shield, ShoppingBag, Globe } from "lucide-react";
 import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
-import { searchItems, fetchItemsByIds } from "@/services/otApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
 import { useProviderSafe } from "@/contexts/ProviderContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { OtProductCard } from "@/types/otApi";
 import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
+import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
+import type { OtProductCard } from "@/types/otApi";
+import { searchItems, fetchItemsByIds } from "@/services/otApi";
 
-// Shuffle array helper
+// ─── Lightweight card from snapshot ─────────────────────────
+interface SnapshotCard {
+  id: string;
+  title: string;
+  imageUrl: string;
+  price: number;
+  originalPrice?: number;
+  currency: string;
+  providerType?: string;
+}
+
+function snapshotToProductCard(card: SnapshotCard): OtProductCard {
+  return {
+    id: card.id,
+    title: card.title,
+    imageUrl: card.imageUrl,
+    price: card.price,
+    originalPrice: card.originalPrice,
+    currency: card.currency || "¥",
+    providerType: card.providerType,
+  };
+}
+
+// Shuffle helper
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -30,7 +53,7 @@ const HOME_TAOBAO_COUNT_KEY = "home_taobao_count";
 const HOME_AMAZON_COUNT_KEY = "home_amazon_count";
 const HOME_PROVIDER_ORDER_KEY = "home_provider_order";
 
-// Specific Dewu category IDs to show on home
+// Specific Dewu category IDs for fallback live fetching
 const DEWU_HOME_CATEGORIES = ["otc-1368", "otc-1466", "otc-1470", "otc-1471", "otc-1467"];
 const POIZON_GUARANTEED_CATEGORY_IDS = ["otc-1368", "otc-1466"];
 
@@ -40,97 +63,89 @@ function toPositiveInt(value: unknown, fallback: number) {
   return Math.floor(num);
 }
 
-// ─── Static Provider Section (memoized) ────────────────────
-const ProviderShowcase = memo(function ProviderShowcase({
-  title,
-  subtitle,
-  icon,
+// ─── Icon map for segments ──────────────────────────────────
+const ICON_MAP: Record<string, React.ReactNode> = {
+  shield: <Shield className="h-4 w-4" />,
+  shopping: <ShoppingBag className="h-4 w-4" />,
+  globe: <Globe className="h-4 w-4" />,
+};
+
+// ─── Segment Section (snapshot-first, fallback to live) ─────
+const SegmentSection = memo(function SegmentSection({
+  segment,
   logoUrl,
-  providerType,
-  slug,
-  categoryIds,
-  guaranteedCategoryIds = [],
-  guaranteedPerCategory = 0,
-  pageSize = 12,
+  pageSize,
 }: {
-  title: string;
-  subtitle: string;
-  icon: React.ReactNode;
+  segment: {
+    id: string;
+    name: string;
+    slug: string;
+    title: string;
+    subtitle: string;
+    provider_type: string;
+    source_type: string;
+    category_ids: string[];
+    manual_item_ids: string[];
+    item_count: number;
+    pool_size: number;
+    icon_name: string | null;
+    logo_url: string | null;
+  };
   logoUrl?: string | null;
-  providerType: string;
-  slug: string;
-  categoryIds?: string[];
-  guaranteedCategoryIds?: string[];
-  guaranteedPerCategory?: number;
-  pageSize?: number;
+  pageSize: number;
 }) {
   const navigate = useNavigate();
   const { setSelectedProvider } = useProviderSafe();
-  // Fetch category IDs: use provided list or fetch up to 4 root categories
-  const { data: resolvedCatIds } = useQuery({
-    queryKey: ["home-cat-ids", providerType, categoryIds],
+
+  // 1. Try to load cached snapshot first
+  const { data: snapshot, isLoading: snapshotLoading } = useQuery({
+    queryKey: ["homepage-snapshot", segment.id],
     queryFn: async () => {
-      if (categoryIds && categoryIds.length > 0) return categoryIds;
-      // First try root categories
-      const { data: roots } = await supabase
-        .from("ot_categories")
-        .select("internal_id, external_id")
-        .is("parent_internal_id", null)
-        .eq("is_active", true)
-        .eq("provider_type", providerType)
-        .order("display_order")
-        .limit(4);
-      const rootIds = roots?.map((c) => c.external_id || c.internal_id) || [];
-      const rootInternalIds = roots?.map((c) => c.internal_id) || [];
-      // If only 1 root (like Amazon), fetch its subcategories instead
-      if (rootIds.length <= 1 && rootInternalIds.length > 0) {
-        const { data: subs } = await supabase
-          .from("ot_categories")
-          .select("internal_id, external_id")
-          .eq("parent_internal_id", rootInternalIds[0])
-          .eq("is_active", true)
-          .eq("provider_type", providerType)
-          .order("display_order")
-          .limit(6);
-        const subIds = subs?.map((c) => c.external_id || c.internal_id) || [];
-        return subIds.length > 0 ? subIds : rootIds;
-      }
-      return rootIds;
+      const { data } = await supabase
+        .from("homepage_segment_snapshots")
+        .select("items, item_count, generated_at, expires_at")
+        .eq("segment_id", segment.id)
+        .gte("expires_at", new Date().toISOString())
+        .order("generated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
     },
-    staleTime: 1000 * 60 * 60,
+    staleTime: 1000 * 60 * 30, // 30min client-side
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
-  // Fetch products — max 3 OTAPI calls total (guaranteed + limited non-guaranteed)
-  const { data: items, isLoading } = useQuery({
-    queryKey: ["home-showcase", providerType, resolvedCatIds, pageSize, guaranteedCategoryIds, guaranteedPerCategory],
+  // 2. If no snapshot, fallback to live OTAPI (existing behavior)
+  const hasSnapshot = !!snapshot && Array.isArray(snapshot.items) && snapshot.items.length > 0;
+
+  const { data: liveItems, isLoading: liveLoading } = useQuery({
+    queryKey: ["home-showcase-live", segment.provider_type, segment.category_ids, pageSize],
     queryFn: async () => {
-      if (!resolvedCatIds || resolvedCatIds.length === 0) return [];
+      // Fallback: live fetch from OTAPI (same as old ProviderShowcase)
+      const catIds = segment.category_ids.length > 0 ? segment.category_ids : [];
+      let resolvedCatIds = catIds;
 
-      const guaranteedSet = new Set(guaranteedCategoryIds.filter((id) => resolvedCatIds.includes(id)));
-      const targetGuaranteed = Math.max(0, guaranteedPerCategory);
-
-      // Fetch guaranteed items from DB item_ids
-      const guaranteedItemIdsMap = new Map<string, string[]>();
-      if (guaranteedSet.size > 0) {
-        const { data: catRows } = await supabase
+      if (resolvedCatIds.length === 0) {
+        const { data: roots } = await supabase
           .from("ot_categories")
-          .select("internal_id, item_ids")
-          .in("internal_id", [...guaranteedSet]);
-        for (const row of catRows || []) {
-          if (row.item_ids && row.item_ids.length > 0) {
-            guaranteedItemIdsMap.set(row.internal_id, row.item_ids);
-          }
-        }
+          .select("internal_id, external_id")
+          .is("parent_internal_id", null)
+          .eq("is_active", true)
+          .eq("provider_type", segment.provider_type)
+          .order("display_order")
+          .limit(4);
+        resolvedCatIds = (roots || []).map(c => c.external_id || c.internal_id);
       }
 
-      // Non-guaranteed: pick at most 2 categories to search (not all 20!)
-      const nonGuaranteedCatIds = resolvedCatIds.filter((id) => !guaranteedSet.has(id)).slice(0, 2);
+      if (resolvedCatIds.length === 0) return [];
 
+      const nonGuaranteedCatIds = resolvedCatIds.slice(0, 2);
       const results = await Promise.allSettled(
         nonGuaranteedCatIds.map(async (catId) => {
           const result = await searchItems({
             categoryId: catId,
-            provider: providerType,
+            provider: segment.provider_type,
             page: 0,
             pageSize: Math.min(pageSize, 24),
             orderBy: "Volume:Desc",
@@ -139,88 +154,70 @@ const ProviderShowcase = memo(function ProviderShowcase({
         })
       );
 
-      // Fetch guaranteed items
-      const guaranteedFetchResults = await Promise.allSettled(
-        [...guaranteedSet].map(async (catId) => {
-          const allIds = guaranteedItemIdsMap.get(catId) || [];
-          if (allIds.length === 0) return [] as OtProductCard[];
-          const poolSize = Math.min(allIds.length, targetGuaranteed * 4);
-          const shuffledIds = shuffle(allIds).slice(0, poolSize);
-          return fetchItemsByIds(shuffledIds, 6);
-        })
-      );
-
-      // Collect guaranteed
-      const guaranteed: OtProductCard[] = [];
-      const guaranteedIds = new Set<string>();
-      [...guaranteedSet].forEach((catId, idx) => {
-        const r = guaranteedFetchResults[idx];
-        if (r.status === "fulfilled" && r.value.length > 0) {
-          const picked = shuffle(r.value).slice(0, targetGuaranteed);
-          for (const product of picked) {
-            if (!guaranteedIds.has(product.id)) {
-              guaranteed.push(product);
-              guaranteedIds.add(product.id);
-            }
-          }
-        }
-      });
-
-      // Collect rest from non-guaranteed
       const rest: OtProductCard[] = [];
-      const restSeen = new Set<string>();
-      nonGuaranteedCatIds.forEach((catId, idx) => {
-        const r = results[idx];
+      const seen = new Set<string>();
+      for (const r of results) {
         if (r.status === "fulfilled") {
           for (const item of r.value) {
-            if (!guaranteedIds.has(item.id) && !restSeen.has(item.id)) {
-              restSeen.add(item.id);
+            if (!seen.has(item.id)) {
+              seen.add(item.id);
               rest.push(item);
             }
           }
         }
-      });
+      }
 
-      // Filter warehouse items
-      const isWarehouse = (item: OtProductCard) =>
-        item.id.startsWith("wh-") || item.providerType?.toLowerCase() === "warehouse";
-
-      const filteredGuaranteed = guaranteed.filter((i) => !isWarehouse(i));
-      const filteredRest = rest.filter((i) => !isWarehouse(i));
-
-      const fillCount = Math.max(0, pageSize - filteredGuaranteed.length);
-      return [...filteredGuaranteed, ...shuffle(filteredRest).slice(0, fillCount)];
+      const filtered = rest.filter(i => !i.id.startsWith("wh-") && i.providerType?.toLowerCase() !== "warehouse");
+      return shuffle(filtered).slice(0, pageSize);
     },
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 15,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    enabled: !!resolvedCatIds && resolvedCatIds.length > 0,
+    enabled: !hasSnapshot && !snapshotLoading,
   });
 
-  const itemsKey = (items || []).map(p => p.id).join(",");
-  const homeTitlesList = useMemo(() => (items || []).map(p => p.title), [itemsKey]);
-  const homeTranslations = useTranslatedTitles(homeTitlesList);
+  // Determine final items
+  const items: OtProductCard[] = useMemo(() => {
+    if (hasSnapshot) {
+      return (snapshot.items as SnapshotCard[]).slice(0, pageSize).map(snapshotToProductCard);
+    }
+    return liveItems || [];
+  }, [hasSnapshot, snapshot, liveItems, pageSize]);
+
+  const loading = snapshotLoading || (!hasSnapshot && liveLoading);
+
+  const itemsKey = items.map(p => p.id).join(",");
+  const titlesList = useMemo(() => items.map(p => p.title), [itemsKey]);
+  const translations = useTranslatedTitles(titlesList);
+
+  const effectiveLogo = segment.logo_url || logoUrl;
+  const icon = ICON_MAP[segment.icon_name || ""] || <ShoppingBag className="h-4 w-4" />;
 
   const handleViewAll = () => {
-    const filter = providerType === "Poizon" ? ("Poizon" as const) : providerType === "Amazon" ? ("Amazon" as const) : ("Taobao" as const);
+    const provType = segment.provider_type;
+    const filter = provType === "Poizon" ? ("Poizon" as const) : provType === "Amazon" ? ("Amazon" as const) : ("Taobao" as const);
     setSelectedProvider(filter);
-    navigate(`/ot/provider/${slug}`);
+    if (provType === "Amazon") {
+      navigate("/amazon");
+    } else {
+      navigate(`/ot/provider/${segment.slug}`);
+    }
   };
 
-  const loading = isLoading || !resolvedCatIds;
+  if (!loading && items.length === 0) return null;
 
   return (
     <section className="mb-6">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-md bg-primary/10 text-primary">
-            {logoUrl ? (
-              <img src={logoUrl} alt="" className="h-5 w-5 object-contain rounded-full" />
+            {effectiveLogo ? (
+              <img src={effectiveLogo} alt="" className="h-5 w-5 object-contain rounded-full" />
             ) : icon}
           </div>
           <div>
-            <h2 className="text-sm md:text-lg font-bold">{title}</h2>
-            <p className="text-[10px] md:text-xs text-muted-foreground">{subtitle}</p>
+            <h2 className="text-sm md:text-lg font-bold">{segment.title || segment.name}</h2>
+            <p className="text-[10px] md:text-xs text-muted-foreground">{segment.subtitle}</p>
           </div>
         </div>
         <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" onClick={handleViewAll}>
@@ -243,11 +240,11 @@ const ProviderShowcase = memo(function ProviderShowcase({
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
-            {(items || []).map((product) => (
-              <OtProductCardComponent key={product.id} product={product} translatedTitle={homeTranslations[product.title]} />
+            {items.map((product) => (
+              <OtProductCardComponent key={product.id} product={product} translatedTitle={translations[product.title]} />
             ))}
           </div>
-          {items && items.length > 0 && (
+          {items.length > 0 && (
             <div className="flex justify-center mt-4">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleViewAll}>
                 Бүгдийг үзэх
@@ -260,10 +257,28 @@ const ProviderShowcase = memo(function ProviderShowcase({
   );
 });
 
+// ─── Home Page ───────────────────────────────────────────────
 export default function Home() {
   const isMobile = useIsMobile();
   const { data: stripItems } = useProviderLogos();
 
+  // Fetch segments from DB
+  const { data: segments } = useQuery({
+    queryKey: ["homepage-segments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("homepage_segments")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order");
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+  });
+
+  // Fetch page sizes from admin settings (backward compat)
   const { data: homeShowcaseSettings } = useQuery({
     queryKey: ["home-showcase-settings"],
     queryFn: async () => {
@@ -278,6 +293,13 @@ export default function Home() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const pageSizes: Record<string, number> = {
+    Poizon: toPositiveInt(homeShowcaseSettings?.find(s => s.setting_key === HOME_POIZON_COUNT_KEY)?.setting_value, DEFAULT_HOME_PAGE_SIZE),
+    Taobao: toPositiveInt(homeShowcaseSettings?.find(s => s.setting_key === HOME_TAOBAO_COUNT_KEY)?.setting_value, DEFAULT_HOME_PAGE_SIZE),
+    Amazon: toPositiveInt(homeShowcaseSettings?.find(s => s.setting_key === HOME_AMAZON_COUNT_KEY)?.setting_value, DEFAULT_HOME_PAGE_SIZE),
+  };
+
+  // If no segments configured yet, use legacy provider order
   const { data: providerOrder } = useQuery({
     queryKey: ["home-provider-order"],
     queryFn: async () => {
@@ -290,70 +312,40 @@ export default function Home() {
       return Array.isArray(data?.setting_value) ? (data.setting_value as string[]) : ["Poizon", "Taobao", "Amazon"];
     },
     staleTime: 1000 * 60 * 5,
+    enabled: !segments || segments.length === 0,
   });
 
-  const poizonPageSize = toPositiveInt(
-    homeShowcaseSettings?.find((s) => s.setting_key === HOME_POIZON_COUNT_KEY)?.setting_value,
-    DEFAULT_HOME_PAGE_SIZE
-  );
+  // Default segment configs for fallback when no DB segments exist
+  const defaultSegments = useMemo(() => {
+    if (segments && segments.length > 0) return null;
+    const order = providerOrder || ["Poizon", "Taobao", "Amazon"];
+    const defaults: Record<string, any> = {
+      Poizon: {
+        id: "default-poizon", name: "Poizon", slug: "poizon", title: "Poizon, Dewu",
+        subtitle: "100% Оригинал", provider_type: "Poizon", source_type: "category_based",
+        category_ids: DEWU_HOME_CATEGORIES, manual_item_ids: [], item_count: 24, pool_size: 60,
+        icon_name: "shield", logo_url: null,
+      },
+      Taobao: {
+        id: "default-taobao", name: "Taobao", slug: "taobao", title: "Taobao",
+        subtitle: "Хүссэн бүхэн нэг дор", provider_type: "Taobao", source_type: "category_based",
+        category_ids: [], manual_item_ids: [], item_count: 24, pool_size: 60,
+        icon_name: "shopping", logo_url: null,
+      },
+      Amazon: {
+        id: "default-amazon", name: "Amazon", slug: "amazon", title: "Amazon USA",
+        subtitle: "Америкаас шууд", provider_type: "Amazon", source_type: "category_based",
+        category_ids: [], manual_item_ids: [], item_count: 24, pool_size: 60,
+        icon_name: "globe", logo_url: null,
+      },
+    };
+    return order.map(p => defaults[p]).filter(Boolean);
+  }, [segments, providerOrder]);
 
-  const taobaoPageSize = toPositiveInt(
-    homeShowcaseSettings?.find((s) => s.setting_key === HOME_TAOBAO_COUNT_KEY)?.setting_value,
-    DEFAULT_HOME_PAGE_SIZE
-  );
-
-  const amazonPageSize = toPositiveInt(
-    homeShowcaseSettings?.find((s) => s.setting_key === HOME_AMAZON_COUNT_KEY)?.setting_value,
-    DEFAULT_HOME_PAGE_SIZE
-  );
-
-  const providerConfigs: Record<string, React.ReactNode> = {
-    Poizon: (
-      <ProviderShowcase
-        key="Poizon"
-        title="Poizon, Dewu"
-        subtitle="100% Оригинал"
-        icon={<Shield className="h-4 w-4" />}
-        logoUrl={getProviderLogo(stripItems, "Poizon")}
-        providerType="Poizon"
-        slug="poizon"
-        categoryIds={DEWU_HOME_CATEGORIES}
-        guaranteedCategoryIds={POIZON_GUARANTEED_CATEGORY_IDS}
-        guaranteedPerCategory={3}
-        pageSize={poizonPageSize}
-      />
-    ),
-    Taobao: (
-      <ProviderShowcase
-        key="Taobao"
-        title="Taobao"
-        subtitle="Хүссэн бүхэн нэг дор"
-        icon={<ShoppingBag className="h-4 w-4" />}
-        logoUrl={getProviderLogo(stripItems, "Taobao")}
-        providerType="Taobao"
-        slug="taobao"
-        pageSize={taobaoPageSize}
-      />
-    ),
-    Amazon: (
-      <ProviderShowcase
-        key="Amazon"
-        title="Amazon USA"
-        subtitle="Америкаас шууд"
-        icon={<Globe className="h-4 w-4" />}
-        logoUrl={getProviderLogo(stripItems, "Amazon")}
-        providerType="Amazon"
-        slug="amazon"
-        pageSize={amazonPageSize}
-      />
-    ),
-  };
-
-  const orderedProviders = (providerOrder || ["Poizon", "Taobao", "Amazon"]);
+  const displaySegments = (segments && segments.length > 0) ? segments : (defaultSegments || []);
 
   return (
     <div className="animate-fade-in">
-      {/* Mobile search */}
       {isMobile && (
         <div className="sticky top-0 z-30 bg-background px-3 pt-3 pb-2">
           <HeaderSearch />
@@ -361,9 +353,15 @@ export default function Home() {
       )}
 
       <div className="px-1 md:container py-2 md:py-6 space-y-2">
-        {orderedProviders.map((provider) => providerConfigs[provider] || null)}
+        {displaySegments.map((segment: any) => (
+          <SegmentSection
+            key={segment.id}
+            segment={segment}
+            logoUrl={getProviderLogo(stripItems, segment.provider_type)}
+            pageSize={pageSizes[segment.provider_type] || segment.item_count || DEFAULT_HOME_PAGE_SIZE}
+          />
+        ))}
       </div>
     </div>
   );
 }
-
