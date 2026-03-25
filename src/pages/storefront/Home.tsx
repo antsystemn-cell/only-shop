@@ -314,11 +314,12 @@ export default function Home() {
       return Array.isArray(data?.setting_value) ? (data.setting_value as string[]) : ["Poizon", "Taobao", "Amazon"];
     },
     staleTime: 1000 * 60 * 5,
-    enabled: !segments || segments.length === 0,
+    enabled: !segmentsLoading && (!segments || segments.length === 0),
   });
 
   // Default segment configs for fallback when no DB segments exist
   const defaultSegments = useMemo(() => {
+    if (segmentsLoading) return null; // Don't show defaults while loading DB segments
     if (segments && segments.length > 0) return null;
     const order = providerOrder || ["Poizon", "Taobao", "Amazon"];
     const defaults: Record<string, any> = {
@@ -342,7 +343,7 @@ export default function Home() {
       },
     };
     return order.map(p => defaults[p]).filter(Boolean);
-  }, [segments, providerOrder]);
+  }, [segments, segmentsLoading, providerOrder]);
 
   const displaySegments = (segments && segments.length > 0) ? segments : (defaultSegments || []);
 
