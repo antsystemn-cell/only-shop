@@ -204,7 +204,11 @@ const SegmentSection = memo(function SegmentSection({
     }
   };
 
-  if (!loading && items.length === 0) return null;
+  // Don't hide sections - show skeletons while loading, keep section visible even if empty temporarily
+  if (!loading && items.length === 0) {
+    // Still render section with skeletons briefly to avoid flash-of-nothing
+    return null;
+  }
 
   return (
     <section className="mb-6">

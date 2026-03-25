@@ -270,7 +270,7 @@ async function callOtApiSearch(
     instanceKey: apiKey,
     language: lang,
     categoryId: params.categoryId || "",
-    xmlSearchParameters: xmlSearch,
+    xmlParameters: xmlSearch,
     framePosition: "0",
     frameSize: String(params.pageSize),
     blockList: "",
