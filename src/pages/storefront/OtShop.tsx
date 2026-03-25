@@ -31,7 +31,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
-import { searchItems, fetchRootCategories, fetchSubcategories } from "@/services/otApi";
+import { searchItems } from "@/services/otApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import SearchFilters from "@/components/storefront/SearchFilters";
 import { useIsMobile } from "@/hooks/use-mobile";

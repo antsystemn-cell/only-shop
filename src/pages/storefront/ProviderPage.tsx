@@ -256,7 +256,9 @@ function InfiniteProductFeed({
       return undefined;
     },
     initialPageParam: 0,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 20, // 20min — avoid re-fetching on tab switch
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     enabled: apiEnabled,
   });
 
