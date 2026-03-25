@@ -87,6 +87,7 @@ import OtDiagnostics from "./pages/admin/OtDiagnostics";
 import ProviderPage from "./pages/storefront/ProviderPage";
 import MobileCategories from "./pages/storefront/MobileCategories";
 import ProviderSectionsAdmin from "./pages/admin/ProviderSections";
+import HomepageSegments from "./pages/admin/HomepageSegments";
 import Migration from "./pages/admin/Migration";
 import DynamicContentPage from "./pages/storefront/DynamicContentPage";
 
