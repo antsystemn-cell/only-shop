@@ -193,7 +193,9 @@ function HomeSection({ title, icon, iconBg, queryKey, searchParams, initialPageS
       return undefined;
     },
     initialPageParam: 0,
-    staleTime: 1000 * 60 * 15,
+    staleTime: 1000 * 60 * 30, // 30min — avoid refetching on tab switches
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const allItems = data?.pages.flatMap(p => p.items) || [];
