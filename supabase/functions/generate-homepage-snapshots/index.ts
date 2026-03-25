@@ -264,34 +264,31 @@ async function callOtApiSearch(
   const xmlParts: string[] = [];
   if (params.provider) xmlParts.push(`<Provider>${params.provider}</Provider>`);
   if (params.query) xmlParts.push(`<ItemTitle>${escapeXml(params.query)}</ItemTitle>`);
+  if (params.categoryId) xmlParts.push(`<CategoryId>${escapeXml(params.categoryId)}</CategoryId>`);
+  if (params.orderBy) xmlParts.push(`<OrderBy>${escapeXml(params.orderBy)}</OrderBy>`);
   const xmlSearch = `<SearchItemsParameters>${xmlParts.join("")}</SearchItemsParameters>`;
 
   const urlParams = new URLSearchParams({
     instanceKey: apiKey,
     language: lang,
-    categoryId: params.categoryId || "",
     xmlParameters: xmlSearch,
     framePosition: "0",
     frameSize: String(params.pageSize),
     blockList: "",
-    orderBy: params.orderBy,
   });
 
   const url = `${OT_API_BASE}/BatchSearchItemsFrame?${urlParams.toString()}`;
+  console.log(`[generate-homepage-snapshots] Calling OTAPI: cat=${params.categoryId}, provider=${params.provider}`);
   const res = await fetch(url);
   if (!res.ok) throw new Error(`OTAPI search failed: ${res.status}`);
   const json = await res.json();
-  console.log(`[generate-homepage-snapshots] OTAPI search response keys:`, JSON.stringify(Object.keys(json || {})));
-  if (json?.Result) {
-    console.log(`[generate-homepage-snapshots] Result keys:`, JSON.stringify(Object.keys(json.Result)));
-    if (json.Result.Items) {
-      console.log(`[generate-homepage-snapshots] Items keys:`, JSON.stringify(Object.keys(json.Result.Items)));
-      const content = json.Result.Items.Items || json.Result.Items.Content;
-      console.log(`[generate-homepage-snapshots] Items count:`, Array.isArray(content) ? content.length : (content?.Content ? content.Content.length : 'N/A'));
-    }
-  }
+  
   if (json?.ErrorCode && json.ErrorCode !== "Ok") {
-    console.error(`[generate-homepage-snapshots] OTAPI error:`, json.ErrorCode, json.ErrorMessage);
+    console.error(`[generate-homepage-snapshots] OTAPI error:`, json.ErrorCode, json.ErrorDescription);
+  } else {
+    const rawItems = json?.Result?.Items?.Items;
+    const itemsArray = Array.isArray(rawItems) ? rawItems : rawItems?.Content || [];
+    console.log(`[generate-homepage-snapshots] Got ${itemsArray.length} items for cat=${params.categoryId}`);
   }
   return json;
 }
