@@ -478,15 +478,12 @@ function MobileCategoryStrip({ onSelect, selectedId }: { onSelect: (id: string) 
     staleTime: 1000 * 60 * 30,
   });
 
-  const { data: apiCategories } = useQuery({
-    queryKey: ["ot-root-categories"],
-    queryFn: fetchRootCategories,
-    staleTime: 1000 * 60 * 30,
-  });
+  // Removed: fetchRootCategories OTAPI call - DB categories are sufficient
+  const apiCategories: any[] | null = null;
 
   const cats = dbCategories && dbCategories.length > 0
     ? dbCategories.map(c => ({ id: c.internal_id, name: c.name_mn || c.name_en || c.internal_id, iconUrl: c.icon_url }))
-    : (apiCategories || []).map(c => ({ id: c.id, name: c.name, iconUrl: c.iconUrl }));
+    : (apiCategories || []).map((c: any) => ({ id: c.id, name: c.name, iconUrl: c.iconUrl }));
 
   if (cats.length === 0) return null;
 
