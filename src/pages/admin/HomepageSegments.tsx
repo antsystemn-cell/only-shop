@@ -99,8 +99,11 @@ export default function HomepageSegments() {
     },
   });
 
+  const [refreshingSegmentId, setRefreshingSegmentId] = useState<string | null>(null);
+
   const regenerateSegment = useMutation({
     mutationFn: async (segmentId: string) => {
+      setRefreshingSegmentId(segmentId);
       const { data, error } = await supabase.functions.invoke("generate-homepage-snapshots", {
         body: { segmentId },
       });
@@ -113,6 +116,7 @@ export default function HomepageSegments() {
       toast.success(`Snapshot шинэчлэгдлээ (${data?.results?.[0]?.itemCount || 0} бараа)`);
     },
     onError: (err: any) => toast.error(err.message),
+    onSettled: () => setRefreshingSegmentId(null),
   });
 
   const regenerateAll = useMutation({
