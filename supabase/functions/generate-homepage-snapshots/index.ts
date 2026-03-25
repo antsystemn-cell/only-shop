@@ -206,7 +206,10 @@ async function generateSegmentItems(
   // Category-based or search-based
   let catIds = segment.category_ids?.length > 0 ? [...segment.category_ids] : [];
 
-  if (catIds.length === 0 && segment.provider_type !== "all") {
+  // If no categories but has a search query, use a synthetic "search" category
+  if (catIds.length === 0 && segment.search_query) {
+    catIds = ["__search__"];
+  } else if (catIds.length === 0 && segment.provider_type !== "all") {
     const catRes = await fetch(
       `${supabaseUrl}/rest/v1/ot_categories?provider_type=eq.${segment.provider_type}&is_active=eq.true&parent_internal_id=is.null&order=display_order&limit=4&select=internal_id,external_id`,
       { headers: dbHeaders }
