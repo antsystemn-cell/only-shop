@@ -215,11 +215,18 @@ async function generateSegmentItems(
     catIds = cats.map((c: any) => c.external_id || c.internal_id);
   }
 
+  // Guaranteed minimum items per category (e.g. perfumes otc-1368 must have ≥4)
+  const GUARANTEED_MINIMUMS: Record<string, number> = {
+    "otc-1368": 4, // Perfumes / Үнэртэй ус
+  };
+
   const allItems: CardSnapshot[] = [];
+  const perCatItems: Record<string, CardSnapshot[]> = {};
   const seen = new Set<string>();
   const searchCatIds = catIds.slice(0, 5);
 
   for (const catId of searchCatIds) {
+    perCatItems[catId] = [];
     try {
       console.log(`[generate-homepage-snapshots] Searching cat=${catId}, provider=${segment.provider_type}`);
       const data = await callOtApiProxy(supabaseUrl, anonKey, "searchItems", {
@@ -232,7 +239,6 @@ async function generateSegmentItems(
       });
       otapiCalls++;
 
-      // Parse response from ot-api proxy
       const rawItems = data?.Result?.Items?.Items;
       const itemsArray = Array.isArray(rawItems) ? rawItems : rawItems?.Content || [];
       console.log(`[generate-homepage-snapshots] Got ${itemsArray.length} items for cat=${catId}`);
@@ -242,18 +248,16 @@ async function generateSegmentItems(
         if (item.IsAuction || item.IsSoldOut) continue;
         seen.add(item.Id);
 
-        // Extract original price in foreign currency and convert to MNT
         const rawOrigPrice = extractRawOriginalPrice(item);
         const currencyCode = item.Price?.OriginalCurrencyCode || item.Price?.PriceWithoutDelivery?.OriginalCurrencyCode || "CNY";
         const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
 
-        // Extract original price for strikethrough (promotion handling)
         const rawComparePrice = extractRawComparePrice(item);
         const mntOriginalPrice = rawComparePrice > rawOrigPrice
           ? calculateMntPrice(rawComparePrice, currencyCode, segment.provider_type, priceConfig)
           : undefined;
 
-        allItems.push({
+        const card: CardSnapshot = {
           id: item.Id,
           title: item.Title || item.ExternalTitle || "",
           imageUrl: item.MainPictureUrl || "",
@@ -261,16 +265,41 @@ async function generateSegmentItems(
           originalPrice: mntOriginalPrice,
           currency: "₮",
           providerType: item.ProviderType || segment.provider_type,
-        });
+        };
+
+        allItems.push(card);
+        perCatItems[catId].push(card);
       }
     } catch (err) {
       console.error(`[generate-homepage-snapshots] Search error for cat ${catId}:`, err);
     }
   }
 
-  const shuffled = shuffleArray(allItems);
-  const finalItems = shuffled.slice(0, segment.item_count);
-  return { items: finalItems, otapiCalls };
+  // Build final list: first reserve guaranteed minimums, then fill rest randomly
+  const finalItems: CardSnapshot[] = [];
+  const usedIds = new Set<string>();
+
+  for (const catId of searchCatIds) {
+    const min = GUARANTEED_MINIMUMS[catId];
+    if (min && min > 0) {
+      const catPool = shuffleArray(perCatItems[catId] || []);
+      const reserved = catPool.slice(0, min);
+      for (const item of reserved) {
+        finalItems.push(item);
+        usedIds.add(item.id);
+      }
+      console.log(`[generate-homepage-snapshots] Reserved ${reserved.length}/${min} guaranteed items for cat=${catId}`);
+    }
+  }
+
+  // Fill remaining slots from shuffled pool (excluding already reserved)
+  const remaining = shuffleArray(allItems.filter(item => !usedIds.has(item.id)));
+  const slotsLeft = segment.item_count - finalItems.length;
+  finalItems.push(...remaining.slice(0, Math.max(0, slotsLeft)));
+
+  // Shuffle the final list so guaranteed items aren't always first
+  const result = shuffleArray(finalItems);
+  return { items: result, otapiCalls };
 }
 
 async function fetchManualItems(
