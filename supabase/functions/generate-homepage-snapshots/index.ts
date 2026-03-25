@@ -255,29 +255,33 @@ async function generateSegmentItems(
         if (child.item_ids) for (const id of child.item_ids) allItemIds.add(id);
       }
 
-      // Pick a random subset to fetch
-      const poolSize = Math.min(allItemIds.size, segment.pool_size || 60);
+      // Pick a random subset — only fetch what we need (guaranteed min + small buffer)
+      const minNeeded = GUARANTEED_MINIMUMS[catId] || 4;
+      const fetchCount = Math.min(minNeeded * 3, allItemIds.size, 15); // fetch 3x needed, max 15
       const shuffledIds = shuffleArray([...allItemIds]);
-      const selectedIds = shuffledIds.slice(0, poolSize);
+      const selectedIds = shuffledIds.slice(0, fetchCount);
 
       console.log(`[generate-homepage-snapshots] Manual cat=${catId}: ${allItemIds.size} total items, fetching ${selectedIds.length}`);
 
-      // Fetch items in batches via ot-api proxy (getItemFullInfo supports comma-separated IDs)
-      const batchSize = 20;
-      for (let i = 0; i < selectedIds.length; i += batchSize) {
-        const batch = selectedIds.slice(i, i + batchSize);
-        // Strip provider prefix (pz-, tb- etc) to get raw IDs
-        const rawIds = batch.map(id => id.replace(/^(pz-|tb-|am-)/, ""));
+      // Strip provider prefix and use GetItemInfoList for batch fetch
+      const rawIds = selectedIds.map(id => id.replace(/^(pz-|tb-|am-)/, ""));
 
-        for (const rawId of rawIds) {
-          try {
-            const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemFullInfo", {
-              itemId: rawId,
-              blockList: "Description,Vendor,RootPath,Promotions",
-            });
-            otapiCalls++;
+      // Fetch in batches of 5 via GetItemInfoList (comma-separated)
+      const batchSize = 5;
+      for (let i = 0; i < rawIds.length; i += batchSize) {
+        const batch = rawIds.slice(i, i + batchSize);
+        try {
+          // Use getItemInfoList for batch fetching
+          const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemInfoList", {
+            itemId: batch.join(","),
+          });
+          otapiCalls++;
 
-            const item = data?.Result?.Item || data?.Result;
+          // GetItemInfoList returns array of items
+          const items = data?.Result?.Items?.Content || data?.Result?.Content || data?.Result || [];
+          const itemsArr = Array.isArray(items) ? items : [items];
+
+          for (const item of itemsArr) {
             if (!item || !item.Id) continue;
             if (seen.has(item.Id)) continue;
             seen.add(item.Id);
@@ -305,8 +309,39 @@ async function generateSegmentItems(
               allItems.push(card);
               perCatItems[catId].push(card);
             }
-          } catch (err) {
-            console.error(`[generate-homepage-snapshots] Error fetching item ${rawId}:`, err);
+          }
+        } catch (err) {
+          // Fallback: try individual fetch
+          for (const rawId of batch) {
+            try {
+              const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemBasicInfo", {
+                itemId: rawId,
+              });
+              otapiCalls++;
+              const item = data?.Result?.Item || data?.Result;
+              if (!item || !item.Id || seen.has(item.Id)) continue;
+              seen.add(item.Id);
+
+              const rawOrigPrice = extractRawOriginalPrice(item);
+              const currencyCode = item.Price?.OriginalCurrencyCode || "CNY";
+              const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
+
+              const card: CardSnapshot = {
+                id: item.Id,
+                title: item.Title || item.ExternalTitle || "",
+                imageUrl: item.MainPictureUrl || "",
+                price: mntPrice,
+                currency: "₮",
+                providerType: item.ProviderType || segment.provider_type,
+              };
+
+              if (card.price > 0 && card.imageUrl) {
+                allItems.push(card);
+                perCatItems[catId].push(card);
+              }
+            } catch (e) {
+              console.error(`[generate-homepage-snapshots] Error fetching item ${rawId}:`, e);
+            }
           }
         }
       }
