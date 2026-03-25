@@ -912,6 +912,122 @@ export type Database = {
         }
         Relationships: []
       }
+      homepage_segment_snapshots: {
+        Row: {
+          expires_at: string
+          generated_at: string
+          generation_source: string | null
+          id: string
+          item_count: number
+          items: Json
+          otapi_calls_used: number | null
+          segment_id: string
+          version: number
+        }
+        Insert: {
+          expires_at?: string
+          generated_at?: string
+          generation_source?: string | null
+          id?: string
+          item_count?: number
+          items?: Json
+          otapi_calls_used?: number | null
+          segment_id: string
+          version?: number
+        }
+        Update: {
+          expires_at?: string
+          generated_at?: string
+          generation_source?: string | null
+          id?: string
+          item_count?: number
+          items?: Json
+          otapi_calls_used?: number | null
+          segment_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homepage_segment_snapshots_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homepage_segments: {
+        Row: {
+          cache_duration_days: number
+          category_ids: string[] | null
+          created_at: string
+          display_order: number
+          icon_name: string | null
+          id: string
+          is_active: boolean
+          item_count: number
+          logo_url: string | null
+          manual_item_ids: string[] | null
+          name: string
+          pool_size: number
+          provider_type: string | null
+          search_order_by: string | null
+          search_query: string | null
+          slug: string
+          source_type: string
+          subtitle: string | null
+          title: string
+          updated_at: string
+          visible_on: string
+        }
+        Insert: {
+          cache_duration_days?: number
+          category_ids?: string[] | null
+          created_at?: string
+          display_order?: number
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean
+          item_count?: number
+          logo_url?: string | null
+          manual_item_ids?: string[] | null
+          name: string
+          pool_size?: number
+          provider_type?: string | null
+          search_order_by?: string | null
+          search_query?: string | null
+          slug: string
+          source_type?: string
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+          visible_on?: string
+        }
+        Update: {
+          cache_duration_days?: number
+          category_ids?: string[] | null
+          created_at?: string
+          display_order?: number
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean
+          item_count?: number
+          logo_url?: string | null
+          manual_item_ids?: string[] | null
+          name?: string
+          pool_size?: number
+          provider_type?: string | null
+          search_order_by?: string | null
+          search_query?: string | null
+          slug?: string
+          source_type?: string
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+          visible_on?: string
+        }
+        Relationships: []
+      }
       migration_jobs: {
         Row: {
           completed_at: string | null
