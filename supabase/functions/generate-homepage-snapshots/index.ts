@@ -258,18 +258,19 @@ async function generateSegmentItems(
         if (child.item_ids) for (const id of child.item_ids) allItemIds.add(id);
       }
 
-      // Pick a random subset — only fetch what we need (guaranteed min + small buffer)
+      // Pick a random subset — fetch just enough (min + small buffer)
       const minNeeded = GUARANTEED_MINIMUMS[catId] || 4;
-      const fetchCount = Math.min(minNeeded * 3, allItemIds.size, 15); // fetch 3x needed, max 15
+      const fetchCount = Math.min(minNeeded + 2, allItemIds.size, 8);
       const shuffledIds = shuffleArray([...allItemIds]);
       const selectedIds = shuffledIds.slice(0, fetchCount);
 
       console.log(`[generate-homepage-snapshots] Manual cat=${catId}: ${allItemIds.size} total items, fetching ${selectedIds.length}`);
 
-      // Strip provider prefix and fetch individually via getItemBasicInfo
+      // Strip provider prefix
       const rawIds = selectedIds.map(id => id.replace(/^(pz-|tb-|am-)/, ""));
 
-      for (const rawId of rawIds) {
+      // Fetch in parallel (all at once)
+      const fetchPromises = rawIds.map(async (rawId) => {
         try {
           const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemFullInfo", {
             itemId: rawId,
@@ -277,19 +278,13 @@ async function generateSegmentItems(
           });
           otapiCalls++;
 
-          // Check for API-level errors
           if (data?.success === false || data?.ErrorCode) {
-            console.log(`[generate-homepage-snapshots] Item ${rawId} returned error: ${data?.error || data?.ErrorCode}`);
-            continue;
+            console.log(`[generate-homepage-snapshots] Item ${rawId} error: ${data?.error || data?.ErrorCode}`);
+            return null;
           }
 
           const item = data?.Result?.Item || data?.Result;
-          if (!item || !item.Id) {
-            console.log(`[generate-homepage-snapshots] Item ${rawId} returned no data`);
-            continue;
-          }
-          if (seen.has(item.Id)) continue;
-          seen.add(item.Id);
+          if (!item || !item.Id) return null;
 
           const rawOrigPrice = extractRawOriginalPrice(item);
           const currencyCode = item.Price?.OriginalCurrencyCode || item.Price?.PriceWithoutDelivery?.OriginalCurrencyCode || "CNY";
@@ -300,7 +295,7 @@ async function generateSegmentItems(
             ? calculateMntPrice(rawComparePrice, currencyCode, segment.provider_type, priceConfig)
             : undefined;
 
-          const card: CardSnapshot = {
+          return {
             id: item.Id,
             title: item.Title || item.ExternalTitle || "",
             imageUrl: item.MainPictureUrl || "",
@@ -308,14 +303,19 @@ async function generateSegmentItems(
             originalPrice: mntOriginalPrice,
             currency: "₮",
             providerType: item.ProviderType || segment.provider_type,
-          };
-
-          if (card.price > 0 && card.imageUrl) {
-            allItems.push(card);
-            perCatItems[catId].push(card);
-          }
+          } as CardSnapshot;
         } catch (e) {
           console.error(`[generate-homepage-snapshots] Error fetching item ${rawId}:`, e);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(fetchPromises);
+      for (const card of results) {
+        if (card && card.price > 0 && card.imageUrl && !seen.has(card.id)) {
+          seen.add(card.id);
+          allItems.push(card);
+          perCatItems[catId].push(card);
         }
       }
       console.log(`[generate-homepage-snapshots] Manual cat=${catId}: got ${perCatItems[catId].length} valid items`);
