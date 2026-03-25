@@ -12,7 +12,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
 import type { OtProductCard } from "@/types/otApi";
-import { searchItems, fetchItemsByIds } from "@/services/otApi";
 
 // ─── Lightweight card from snapshot ─────────────────────────
 interface SnapshotCard {
