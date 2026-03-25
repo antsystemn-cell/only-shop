@@ -265,7 +265,7 @@ export default function Home() {
   const { data: stripItems } = useProviderLogos();
 
   // Fetch segments from DB
-  const { data: segments } = useQuery({
+  const { data: segments, isLoading: segmentsLoading } = useQuery({
     queryKey: ["homepage-segments"],
     queryFn: async () => {
       const { data, error } = await supabase
