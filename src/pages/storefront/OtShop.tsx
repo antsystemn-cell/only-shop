@@ -56,11 +56,8 @@ function CategorySidebar({ onSelect, selectedId }: { onSelect: (id: string) => v
     staleTime: 1000 * 60 * 30,
   });
 
-  const { data: apiCategories } = useQuery({
-    queryKey: ["ot-root-categories"],
-    queryFn: fetchRootCategories,
-    staleTime: 1000 * 60 * 30,
-  });
+  // Removed: fetchRootCategories OTAPI call - DB categories are sufficient
+  const apiCategories = null;
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
