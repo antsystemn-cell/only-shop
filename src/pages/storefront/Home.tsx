@@ -116,73 +116,17 @@ const SegmentSection = memo(function SegmentSection({
     refetchOnMount: false,
   });
 
-  // 2. If no snapshot, fallback to live OTAPI (existing behavior)
+  // 2. Snapshot-only: NO live OTAPI fallback to prevent per-request cost
   const hasSnapshot = !!snapshot && Array.isArray(snapshot.items) && snapshot.items.length > 0;
 
-  const { data: liveItems, isLoading: liveLoading } = useQuery({
-    queryKey: ["home-showcase-live", segment.provider_type, JSON.stringify(segment.category_ids), pageSize],
-    queryFn: async () => {
-      const catIds = segment.category_ids.length > 0 ? segment.category_ids : [];
-      let resolvedCatIds = catIds;
-
-      if (resolvedCatIds.length === 0) {
-        const { data: roots } = await supabase
-          .from("ot_categories")
-          .select("internal_id, external_id")
-          .is("parent_internal_id", null)
-          .eq("is_active", true)
-          .eq("provider_type", segment.provider_type)
-          .order("display_order")
-          .limit(4);
-        resolvedCatIds = (roots || []).map(c => c.external_id || c.internal_id);
-      }
-
-      if (resolvedCatIds.length === 0) return [];
-
-      const nonGuaranteedCatIds = resolvedCatIds.slice(0, 2);
-      const results = await Promise.allSettled(
-        nonGuaranteedCatIds.map(async (catId) => {
-          const result = await searchItems({
-            categoryId: catId,
-            provider: segment.provider_type,
-            page: 0,
-            pageSize: Math.min(pageSize, 24),
-            orderBy: "Volume:Desc",
-          });
-          return result.items;
-        })
-      );
-
-      const rest: OtProductCard[] = [];
-      const seen = new Set<string>();
-      for (const r of results) {
-        if (r.status === "fulfilled") {
-          for (const item of r.value) {
-            if (!seen.has(item.id)) {
-              seen.add(item.id);
-              rest.push(item);
-            }
-          }
-        }
-      }
-
-      const filtered = rest.filter(i => !i.id.startsWith("wh-") && i.providerType?.toLowerCase() !== "warehouse");
-      return shuffle(filtered).slice(0, pageSize);
-    },
-    staleTime: 1000 * 60 * 15,
-    refetchOnWindowFocus: false,
-    enabled: !hasSnapshot && !snapshotLoading,
-  });
-
-  // Determine final items
   const items: OtProductCard[] = useMemo(() => {
     if (hasSnapshot) {
       return (snapshot.items as unknown as SnapshotCard[]).slice(0, pageSize).map(snapshotToProductCard);
     }
-    return liveItems || [];
-  }, [hasSnapshot, snapshot, liveItems, pageSize]);
+    return [];
+  }, [hasSnapshot, snapshot, pageSize]);
 
-  const loading = snapshotLoading || (!hasSnapshot && liveLoading);
+  const loading = snapshotLoading;
 
   const itemsKey = items.map(p => p.id).join(",");
   const titlesList = useMemo(() => items.map(p => p.title), [itemsKey]);
