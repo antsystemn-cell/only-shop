@@ -14,6 +14,109 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import type { OtProductCard } from "@/types/otApi";
 import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
 
+// ─── Snapshot-cached feed for "All" tab ─────────────────────
+function SnapshotFeed({ providerType }: { providerType: string }) {
+  // Fetch all homepage segments for this provider
+  const { data: segments, isLoading: segLoading } = useQuery({
+    queryKey: ["provider-page-segments", providerType],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("homepage_segments")
+        .select("id, title, subtitle, icon_name, logo_url")
+        .eq("provider_type", providerType)
+        .eq("is_active", true)
+        .order("display_order");
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 30,
+  });
+
+  // Fetch snapshots for all segments of this provider
+  const segmentIds = segments?.map((s) => s.id) || [];
+  const { data: snapshots, isLoading: snapLoading } = useQuery({
+    queryKey: ["provider-page-snapshots", segmentIds.join(",")],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("homepage_segment_snapshots")
+        .select("segment_id, items, item_count")
+        .in("segment_id", segmentIds)
+        .gte("expires_at", new Date().toISOString())
+        .order("generated_at", { ascending: false });
+      // Keep only the latest per segment
+      const map = new Map<string, any>();
+      (data || []).forEach((s) => {
+        if (!map.has(s.segment_id)) map.set(s.segment_id, s);
+      });
+      return map;
+    },
+    staleTime: 1000 * 60 * 30,
+    enabled: segmentIds.length > 0,
+  });
+
+  const loading = segLoading || snapLoading;
+
+  // Merge all snapshot items, deduped
+  const allItems: OtProductCard[] = useMemo(() => {
+    if (!segments || !snapshots) return [];
+    const seen = new Set<string>();
+    const items: OtProductCard[] = [];
+    for (const seg of segments) {
+      const snap = snapshots.get(seg.id);
+      if (!snap?.items || !Array.isArray(snap.items)) continue;
+      for (const card of snap.items as any[]) {
+        if (seen.has(card.id)) continue;
+        seen.add(card.id);
+        items.push({
+          id: card.id,
+          title: card.title,
+          imageUrl: card.imageUrl,
+          price: card.price,
+          originalPrice: card.originalPrice,
+          currency: card.currency || "₮",
+          providerType: card.providerType,
+        });
+      }
+    }
+    return items;
+  }, [segments, snapshots]);
+
+  const itemsKey = allItems.map((p) => p.id).join(",");
+  const titlesList = useMemo(() => allItems.map((p) => p.title), [itemsKey]);
+  const translations = useTranslatedTitles(titlesList);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div key={i} className="overflow-hidden">
+            <Skeleton className="aspect-square" />
+            <div className="p-2 space-y-1.5">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (allItems.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground text-sm">
+        Бараа олдсонгүй
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
+      {allItems.map((product) => (
+        <OtProductCardComponent key={product.id} product={product} translatedTitle={translations[product.title]} />
+      ))}
+    </div>
+  );
+}
+
 const ICON_MAP: Record<string, React.ReactNode> = {
   sparkles: <Sparkles className="h-4 w-4" />,
   star: <Star className="h-4 w-4" />,
@@ -502,20 +605,24 @@ export default function ProviderPage() {
         onTouchEnd={isMobile ? handleTouchEnd : undefined}
       >
         {activeCategoryId && <SubcategoryDropdown parentId={activeCategoryId} onSelect={(id) => {
-          // Navigate to browse page for the selected subcategory
           window.location.href = `/category/${id}`;
         }} />}
 
-        <InfiniteProductFeed
-          categoryId={activeCategoryId}
-          categoryMetas={categoryList.map((c) => ({
-            internal_id: c.internal_id,
-            external_id: c.external_id,
-            has_api: !!c.external_id,
-            item_ids: c.item_ids,
-          }))}
-          providerType={providerType!}
-        />
+        {/* "All" tab: show cached snapshots; specific category: live OTAPI feed */}
+        {activeCategoryId === null ? (
+          <SnapshotFeed providerType={providerType!} />
+        ) : (
+          <InfiniteProductFeed
+            categoryId={activeCategoryId}
+            categoryMetas={categoryList.map((c) => ({
+              internal_id: c.internal_id,
+              external_id: c.external_id,
+              has_api: !!c.external_id,
+              item_ids: c.item_ids,
+            }))}
+            providerType={providerType!}
+          />
+        )}
       </div>
     </div>
   );
