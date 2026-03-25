@@ -258,49 +258,18 @@ async function generateSegmentItems(
         if (child.item_ids) for (const id of child.item_ids) allItemIds.add(id);
       }
 
-      // Separate wh-* (warehouse) items from pz-/tb-/am-* (OTAPI) items
-      const whItemIds = [...allItemIds].filter(id => id.startsWith("wh-"));
+      // Only use pz-/tb-/am-* (OTAPI) items, skip wh-* warehouse items
       const otItemIds = [...allItemIds].filter(id => !id.startsWith("wh-"));
 
       const minNeeded = GUARANTEED_MINIMUMS[catId] || 4;
 
-      // Fetch warehouse items from DB
-      if (whItemIds.length > 0) {
-        const whSubset = shuffleArray(whItemIds).slice(0, minNeeded);
-        const idsStr = whSubset.map(id => `"${id}"`).join(",");
-        const whRes = await fetch(
-          `${supabaseUrl}/rest/v1/warehouse_items?item_id=in.(${idsStr})&is_active=eq.true`,
-          { headers: dbHeaders }
-        );
-        const whItems = await whRes.json();
-        for (const wh of whItems) {
-          if (seen.has(wh.item_id)) continue;
-          seen.add(wh.item_id);
-          const card: CardSnapshot = {
-            id: wh.item_id,
-            title: wh.title || "",
-            imageUrl: wh.image_url || "",
-            price: Number(wh.price_mnt) || 0,
-            originalPrice: wh.original_price_mnt ? Number(wh.original_price_mnt) : undefined,
-            currency: "₮",
-            providerType: "warehouse",
-          };
-          if (card.price > 0 && card.imageUrl) {
-            allItems.push(card);
-            perCatItems[catId].push(card);
-          }
-        }
-        console.log(`[generate-homepage-snapshots] Manual cat=${catId}: ${whItems.length} warehouse items fetched`);
-      }
-
-      // Fetch OTAPI items — pick more than needed since many may be stale/NotFound
       if (otItemIds.length > 0) {
-        const stillNeeded = Math.max(0, minNeeded - perCatItems[catId].length);
-        const fetchCount = Math.min(stillNeeded * 4, otItemIds.length, 20);
+        // Fetch more than needed since many may be stale/NotFound
+        const fetchCount = Math.min(minNeeded * 5, otItemIds.length, 24);
         const selectedOtIds = shuffleArray(otItemIds).slice(0, fetchCount);
         const rawIds = selectedOtIds.map(id => id.replace(/^(pz-|tb-|am-)/, ""));
 
-        console.log(`[generate-homepage-snapshots] Manual cat=${catId}: fetching ${rawIds.length} OTAPI items`);
+        console.log(`[generate-homepage-snapshots] Manual cat=${catId}: ${otItemIds.length} OT items available, fetching ${rawIds.length}`);
 
         // Fetch in parallel
         const fetchPromises = rawIds.map(async (rawId) => {
@@ -311,10 +280,7 @@ async function generateSegmentItems(
             });
             otapiCalls++;
 
-            // Check for real errors (not "Ok")
-            if (data?.success === false) {
-              return null;
-            }
+            if (data?.success === false) return null;
 
             const item = data?.Result?.Item || data?.Result;
             if (!item || !item.Id) return null;
@@ -350,6 +316,8 @@ async function generateSegmentItems(
             perCatItems[catId].push(card);
           }
         }
+      } else {
+        console.log(`[generate-homepage-snapshots] Manual cat=${catId}: no OTAPI items found (only wh-* items)`);
       }
       console.log(`[generate-homepage-snapshots] Manual cat=${catId}: got ${perCatItems[catId].length} valid items`);
     } catch (err) {
