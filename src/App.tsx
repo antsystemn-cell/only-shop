@@ -214,6 +214,7 @@ const App = () => (
                 <Route path="user-activity-log" element={<UserActivityLog />} />
                 <Route path="instance-logs" element={<InstanceLogs />} />
                 <Route path="provider-sections" element={<ProviderSectionsAdmin />} />
+                <Route path="homepage-segments" element={<HomepageSegments />} />
                 <Route path="migration" element={<Migration />} />
                 <Route path="ot-reports" element={<OtReports />} />
                 <Route path="ot-billing" element={<OtBilling />} />

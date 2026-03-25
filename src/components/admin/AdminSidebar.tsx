@@ -93,6 +93,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "OT Категори", url: "/admin/ot-categories", icon: FolderTree },
       { title: "Провайдер тохиргоо", url: "/admin/provider-sections", icon: LayoutList },
+      { title: "Нүүр хуудас сегмент", url: "/admin/homepage-segments", icon: LayoutList },
       { title: "Нийлүүлэгч & Markup", url: "/admin/ot-providers", icon: Store },
       { title: "OT Валют & Хөнгөлөлт", url: "/admin/ot-pricing", icon: Percent },
       { title: "OT Хүргэлт", url: "/admin/ot-delivery", icon: Globe },
