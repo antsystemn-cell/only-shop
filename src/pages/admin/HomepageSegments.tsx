@@ -219,7 +219,7 @@ export default function HomepageSegments() {
                             {expired ? (
                               <Badge variant="destructive" className="text-[10px]">Хугацаа дууссан</Badge>
                             ) : (
-                              <Badge className="text-[10px] bg-blue-100 text-blue-700">
+                              <Badge className="text-[10px] bg-accent text-accent-foreground">
                                 {format(new Date(snap.expires_at), "MM/dd")} хүртэл
                               </Badge>
                             )}
