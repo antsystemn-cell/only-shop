@@ -240,10 +240,10 @@ export default function HomepageSegments() {
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => regenerateSegment.mutate(seg.id)}
-                        disabled={regenerateSegment.isPending}
+                        disabled={refreshingSegmentId === seg.id}
                         title="Snapshot шинэчлэх"
                       >
-                        <RefreshCw className={`h-3.5 w-3.5 ${regenerateSegment.isPending ? "animate-spin" : ""}`} />
+                        <RefreshCw className={`h-3.5 w-3.5 ${refreshingSegmentId === seg.id ? "animate-spin" : ""}`} />
                       </Button>
                       <Button
                         variant="ghost"
