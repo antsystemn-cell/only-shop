@@ -266,86 +266,55 @@ async function generateSegmentItems(
 
       console.log(`[generate-homepage-snapshots] Manual cat=${catId}: ${allItemIds.size} total items, fetching ${selectedIds.length}`);
 
-      // Strip provider prefix and use GetItemInfoList for batch fetch
+      // Strip provider prefix and fetch individually via getItemBasicInfo
       const rawIds = selectedIds.map(id => id.replace(/^(pz-|tb-|am-)/, ""));
 
-      // Fetch in batches of 5 via GetItemInfoList (comma-separated)
-      const batchSize = 5;
-      for (let i = 0; i < rawIds.length; i += batchSize) {
-        const batch = rawIds.slice(i, i + batchSize);
+      for (const rawId of rawIds) {
         try {
-          // Use getItemInfoList for batch fetching
-          const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemInfoList", {
-            itemId: batch.join(","),
+          const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemBasicInfo", {
+            itemId: rawId,
           });
           otapiCalls++;
 
-          // GetItemInfoList returns array of items
-          const items = data?.Result?.Items?.Content || data?.Result?.Content || data?.Result || [];
-          const itemsArr = Array.isArray(items) ? items : [items];
-
-          for (const item of itemsArr) {
-            if (!item || !item.Id) continue;
-            if (seen.has(item.Id)) continue;
-            seen.add(item.Id);
-
-            const rawOrigPrice = extractRawOriginalPrice(item);
-            const currencyCode = item.Price?.OriginalCurrencyCode || item.Price?.PriceWithoutDelivery?.OriginalCurrencyCode || "CNY";
-            const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
-
-            const rawComparePrice = extractRawComparePrice(item);
-            const mntOriginalPrice = rawComparePrice > rawOrigPrice
-              ? calculateMntPrice(rawComparePrice, currencyCode, segment.provider_type, priceConfig)
-              : undefined;
-
-            const card: CardSnapshot = {
-              id: item.Id,
-              title: item.Title || item.ExternalTitle || "",
-              imageUrl: item.MainPictureUrl || "",
-              price: mntPrice,
-              originalPrice: mntOriginalPrice,
-              currency: "₮",
-              providerType: item.ProviderType || segment.provider_type,
-            };
-
-            if (card.price > 0 && card.imageUrl) {
-              allItems.push(card);
-              perCatItems[catId].push(card);
-            }
+          // Check for API-level errors
+          if (data?.success === false || data?.ErrorCode) {
+            console.log(`[generate-homepage-snapshots] Item ${rawId} returned error: ${data?.error || data?.ErrorCode}`);
+            continue;
           }
-        } catch (err) {
-          // Fallback: try individual fetch
-          for (const rawId of batch) {
-            try {
-              const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemBasicInfo", {
-                itemId: rawId,
-              });
-              otapiCalls++;
-              const item = data?.Result?.Item || data?.Result;
-              if (!item || !item.Id || seen.has(item.Id)) continue;
-              seen.add(item.Id);
 
-              const rawOrigPrice = extractRawOriginalPrice(item);
-              const currencyCode = item.Price?.OriginalCurrencyCode || "CNY";
-              const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
-
-              const card: CardSnapshot = {
-                id: item.Id,
-                title: item.Title || item.ExternalTitle || "",
-                imageUrl: item.MainPictureUrl || "",
-                price: mntPrice,
-                currency: "₮",
-                providerType: item.ProviderType || segment.provider_type,
-              };
-
-              if (card.price > 0 && card.imageUrl) {
-                allItems.push(card);
-                perCatItems[catId].push(card);
-              }
-            } catch (e) {
-              console.error(`[generate-homepage-snapshots] Error fetching item ${rawId}:`, e);
-            }
+          const item = data?.Result?.Item || data?.Result;
+          if (!item || !item.Id) {
+            console.log(`[generate-homepage-snapshots] Item ${rawId} returned no data`);
+            continue;
           }
+          if (seen.has(item.Id)) continue;
+          seen.add(item.Id);
+
+          const rawOrigPrice = extractRawOriginalPrice(item);
+          const currencyCode = item.Price?.OriginalCurrencyCode || item.Price?.PriceWithoutDelivery?.OriginalCurrencyCode || "CNY";
+          const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
+
+          const rawComparePrice = extractRawComparePrice(item);
+          const mntOriginalPrice = rawComparePrice > rawOrigPrice
+            ? calculateMntPrice(rawComparePrice, currencyCode, segment.provider_type, priceConfig)
+            : undefined;
+
+          const card: CardSnapshot = {
+            id: item.Id,
+            title: item.Title || item.ExternalTitle || "",
+            imageUrl: item.MainPictureUrl || "",
+            price: mntPrice,
+            originalPrice: mntOriginalPrice,
+            currency: "₮",
+            providerType: item.ProviderType || segment.provider_type,
+          };
+
+          if (card.price > 0 && card.imageUrl) {
+            allItems.push(card);
+            perCatItems[catId].push(card);
+          }
+        } catch (e) {
+          console.error(`[generate-homepage-snapshots] Error fetching item ${rawId}:`, e);
         }
       }
       console.log(`[generate-homepage-snapshots] Manual cat=${catId}: got ${perCatItems[catId].length} valid items`);
