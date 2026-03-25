@@ -138,6 +138,54 @@ async function callOtApiProxy(
   return res.json();
 }
 
+async function fetchPriceConfig(supabaseUrl: string, dbHeaders: Record<string, string>) {
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/price_config?select=config_key,config_value`,
+    { headers: dbHeaders }
+  );
+  const rows = await res.json();
+  const map: Record<string, any> = {};
+  for (const r of rows) map[r.config_key] = r.config_value;
+  return {
+    exchangeRates: map.exchange_rates || { CNY_MNT: 525 },
+    providerMarkups: map.provider_markups || { default: 25 },
+    priceTiers: map.price_tiers?.tiers || [],
+    roundEnabled: map.round_prices?.enabled ?? true,
+    roundPrecision: map.round_prices?.precision ?? 0,
+  };
+}
+
+function calculateMntPrice(
+  originalPrice: number,
+  currencyCode: string,
+  providerType: string | undefined,
+  config: any
+): number {
+  if (!originalPrice || originalPrice <= 0) return 0;
+  const rateKey = `${currencyCode}_MNT`;
+  const rate = config.exchangeRates[rateKey] || config.exchangeRates.CNY_MNT || 525;
+  const baseMnt = originalPrice * rate;
+  let markupPct: number | null = null;
+  const sortedTiers = [...config.priceTiers].sort((a: any, b: any) => a.min - b.min);
+  for (const tier of sortedTiers) {
+    const min = tier.min ?? 0;
+    const max = tier.max ?? Infinity;
+    if (baseMnt >= min && baseMnt <= max) { markupPct = tier.markup_pct; break; }
+  }
+  if (markupPct === null) {
+    const provider = providerType?.toLowerCase() || "default";
+    markupPct = config.providerMarkups[provider] ?? config.providerMarkups.default ?? 25;
+  }
+  const finalPrice = baseMnt * (1 + markupPct / 100);
+  if (config.roundEnabled) {
+    const precision = config.roundPrecision ?? 0;
+    if (precision === 0) return Math.round(finalPrice);
+    const factor = Math.pow(10, precision);
+    return Math.round(finalPrice / factor) * factor;
+  }
+  return Math.round(finalPrice);
+}
+
 async function generateSegmentItems(
   segment: Segment,
   supabaseUrl: string,
@@ -151,6 +199,9 @@ async function generateSegmentItems(
     const items = await fetchManualItems(segment.manual_item_ids, supabaseUrl, dbHeaders);
     return { items, otapiCalls: 0 };
   }
+
+  // Fetch price config for MNT conversion
+  const priceConfig = await fetchPriceConfig(supabaseUrl, dbHeaders);
 
   // Category-based or search-based: use ot-api proxy searchItems
   let catIds = segment.category_ids?.length > 0 ? [...segment.category_ids] : [];
@@ -166,7 +217,7 @@ async function generateSegmentItems(
 
   const allItems: CardSnapshot[] = [];
   const seen = new Set<string>();
-  const searchCatIds = catIds.slice(0, 3);
+  const searchCatIds = catIds.slice(0, 5);
 
   for (const catId of searchCatIds) {
     try {
@@ -181,7 +232,7 @@ async function generateSegmentItems(
       });
       otapiCalls++;
 
-      // Parse response from ot-api proxy (same format as BatchSearchItemsFrame)
+      // Parse response from ot-api proxy
       const rawItems = data?.Result?.Items?.Items;
       const itemsArray = Array.isArray(rawItems) ? rawItems : rawItems?.Content || [];
       console.log(`[generate-homepage-snapshots] Got ${itemsArray.length} items for cat=${catId}`);
@@ -191,13 +242,24 @@ async function generateSegmentItems(
         if (item.IsAuction || item.IsSoldOut) continue;
         seen.add(item.Id);
 
+        // Extract original price in foreign currency and convert to MNT
+        const rawOrigPrice = extractRawOriginalPrice(item);
+        const currencyCode = item.Price?.OriginalCurrencyCode || item.Price?.PriceWithoutDelivery?.OriginalCurrencyCode || "CNY";
+        const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
+
+        // Extract original price for strikethrough (promotion handling)
+        const rawComparePrice = extractRawComparePrice(item);
+        const mntOriginalPrice = rawComparePrice > rawOrigPrice
+          ? calculateMntPrice(rawComparePrice, currencyCode, segment.provider_type, priceConfig)
+          : undefined;
+
         allItems.push({
           id: item.Id,
           title: item.Title || item.ExternalTitle || "",
           imageUrl: item.MainPictureUrl || "",
-          price: extractPrice(item),
-          originalPrice: extractOriginalPrice(item),
-          currency: "¥",
+          price: mntPrice,
+          originalPrice: mntOriginalPrice,
+          currency: "₮",
           providerType: item.ProviderType || segment.provider_type,
         });
       }
@@ -242,22 +304,31 @@ async function fetchManualItems(
   return items;
 }
 
-function extractPrice(item: any): number {
+// Extract the raw original price in foreign currency (CNY/USD)
+function extractRawOriginalPrice(item: any): number {
   const price = item.Price;
   if (!price) return 0;
-  if (typeof price === "number") return price;
-  if (price.ConvertedPriceList?.Internal?.Price) return Number(price.ConvertedPriceList.Internal.Price) || 0;
-  if (price.OriginalPrice) return Number(price.OriginalPrice) || 0;
-  if (price.MarginPrice) return Number(price.MarginPrice) || 0;
+  // Prefer PromotionPrice (sale price)
+  const promo = price.PromotionPrice;
+  if (typeof promo === "number" && promo > 0) return promo;
+  // Then OriginalPrice
+  const orig = price.OriginalPrice;
+  if (typeof orig === "number" && orig > 0) return orig;
+  const pwod = price.PriceWithoutDelivery?.OriginalPrice;
+  if (typeof pwod === "number" && pwod > 0) return pwod;
+  const margin = price.MarginPrice;
+  if (typeof margin === "number" && margin > 0) return margin;
   return 0;
 }
 
-function extractOriginalPrice(item: any): number | undefined {
-  const op = item.OriginalPrice;
-  if (!op) return undefined;
-  if (typeof op === "number") return op;
-  if (op.OriginalPrice) return Number(op.OriginalPrice) || undefined;
-  return undefined;
+// Extract compare/original price for strikethrough display
+function extractRawComparePrice(item: any): number {
+  const price = item.Price;
+  if (!price) return 0;
+  // If there's a promotion, the "original" is the non-promo price
+  const orig = price.OriginalPrice;
+  if (typeof orig === "number" && orig > 0) return orig;
+  return 0;
 }
 
 function shuffleArray<T>(arr: T[]): T[] {
