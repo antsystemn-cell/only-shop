@@ -177,9 +177,9 @@ function InfiniteProductFeed({
   providerType: string;
 }) {
   const observerTarget = useRef<HTMLDivElement>(null);
-  const [randomPageOffset] = useState(() => Math.floor(Math.random() * 10));
-  const orderOptions = ["Volume:Desc", "Price:Asc", "Price:Desc"];
-  const [randomOrder] = useState(() => orderOptions[Math.floor(Math.random() * orderOptions.length)]);
+  // Fixed order for cache efficiency — randomization breaks cache keys
+  const randomPageOffset = 0;
+  const randomOrder = "Volume:Desc";
 
   // Find the active category's metadata
   const activeMeta = categoryId ? categoryMetas.find((m) => m.internal_id === categoryId) : null;
