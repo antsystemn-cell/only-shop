@@ -31,7 +31,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
-import { searchItems, fetchRootCategories, fetchSubcategories } from "@/services/otApi";
+import { searchItems } from "@/services/otApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import SearchFilters from "@/components/storefront/SearchFilters";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -56,11 +56,8 @@ function CategorySidebar({ onSelect, selectedId }: { onSelect: (id: string) => v
     staleTime: 1000 * 60 * 30,
   });
 
-  const { data: apiCategories } = useQuery({
-    queryKey: ["ot-root-categories"],
-    queryFn: fetchRootCategories,
-    staleTime: 1000 * 60 * 30,
-  });
+  // Removed: fetchRootCategories OTAPI call - DB categories are sufficient
+  const apiCategories = null;
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -193,7 +190,9 @@ function HomeSection({ title, icon, iconBg, queryKey, searchParams, initialPageS
       return undefined;
     },
     initialPageParam: 0,
-    staleTime: 1000 * 60 * 15,
+    staleTime: 1000 * 60 * 30, // 30min — avoid refetching on tab switches
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const allItems = data?.pages.flatMap(p => p.items) || [];
@@ -316,7 +315,8 @@ function SearchResultsSection({
     },
     initialPageParam: 0,
     enabled: !!(query || categoryId || imageUrl || vendorId),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 15, // 15min — reuse cached search results
+    refetchOnWindowFocus: false,
   });
 
   const firstPage = data?.pages[0];
@@ -479,15 +479,12 @@ function MobileCategoryStrip({ onSelect, selectedId }: { onSelect: (id: string) 
     staleTime: 1000 * 60 * 30,
   });
 
-  const { data: apiCategories } = useQuery({
-    queryKey: ["ot-root-categories"],
-    queryFn: fetchRootCategories,
-    staleTime: 1000 * 60 * 30,
-  });
+  // Removed: fetchRootCategories OTAPI call - DB categories are sufficient
+  const apiCategories: any[] | null = null;
 
   const cats = dbCategories && dbCategories.length > 0
     ? dbCategories.map(c => ({ id: c.internal_id, name: c.name_mn || c.name_en || c.internal_id, iconUrl: c.icon_url }))
-    : (apiCategories || []).map(c => ({ id: c.id, name: c.name, iconUrl: c.iconUrl }));
+    : (apiCategories || []).map((c: any) => ({ id: c.id, name: c.name, iconUrl: c.iconUrl }));
 
   if (cats.length === 0) return null;
 

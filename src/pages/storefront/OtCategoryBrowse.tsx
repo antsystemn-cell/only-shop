@@ -203,7 +203,8 @@ export default function OtCategoryBrowse() {
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     enabled: !!category && hasProducts,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 15, // 15min — avoid re-fetching on back navigation
+    refetchOnWindowFocus: false,
   });
 
   // Flatten all pages into single product list

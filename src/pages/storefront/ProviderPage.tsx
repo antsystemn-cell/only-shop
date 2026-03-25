@@ -177,9 +177,9 @@ function InfiniteProductFeed({
   providerType: string;
 }) {
   const observerTarget = useRef<HTMLDivElement>(null);
-  const [randomPageOffset] = useState(() => Math.floor(Math.random() * 10));
-  const orderOptions = ["Volume:Desc", "Price:Asc", "Price:Desc"];
-  const [randomOrder] = useState(() => orderOptions[Math.floor(Math.random() * orderOptions.length)]);
+  // Fixed order for cache efficiency — randomization breaks cache keys
+  const randomPageOffset = 0;
+  const randomOrder = "Volume:Desc";
 
   // Find the active category's metadata
   const activeMeta = categoryId ? categoryMetas.find((m) => m.internal_id === categoryId) : null;
@@ -231,7 +231,7 @@ function InfiniteProductFeed({
     isFetchingNextPage,
     isLoading: apiLoading,
   } = useInfiniteQuery({
-    queryKey: ["provider-infinite-feed", providerType, categoryId, randomPageOffset, randomOrder, apiCategoryIds.join(",")],
+    queryKey: ["provider-infinite-feed", providerType, categoryId, apiCategoryIds.join(",")],
     queryFn: ({ pageParam = 0 }) => {
       let catId: string | undefined;
       if (activeHasApi && activeMeta) {
@@ -256,7 +256,9 @@ function InfiniteProductFeed({
       return undefined;
     },
     initialPageParam: 0,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 20, // 20min — avoid re-fetching on tab switch
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     enabled: apiEnabled,
   });
 
