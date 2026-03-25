@@ -315,7 +315,8 @@ function SearchResultsSection({
     },
     initialPageParam: 0,
     enabled: !!(query || categoryId || imageUrl || vendorId),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 15, // 15min — reuse cached search results
+    refetchOnWindowFocus: false,
   });
 
   const firstPage = data?.pages[0];

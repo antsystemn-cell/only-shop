@@ -21,27 +21,27 @@ const SERVER_CACHE_MAX_SIZE = 500;
 
 // TTLs for different action types (in ms) — AGGRESSIVELY OPTIMIZED
 const SERVER_CACHE_TTLS: Record<string, number> = {
-  getRootCategories: 4 * 60 * 60 * 1000,      // 4hr
-  getSubcategories: 4 * 60 * 60 * 1000,        // 4hr
-  getCategoryInfo: 2 * 60 * 60 * 1000,         // 2hr
-  getCategoryInfoList: 2 * 60 * 60 * 1000,     // 2hr
-  getCategorySearchProperties: 2 * 60 * 60 * 1000, // 2hr
-  getItemFullInfo: 15 * 60 * 1000,             // 15min
-  getItemBasicInfo: 30 * 60 * 1000,            // 30min (lightweight)
-  getItemDescription: 60 * 60 * 1000,          // 1hr
-  searchItems: 5 * 60 * 1000,                  // 5min
-  searchItemsFrame: 5 * 60 * 1000,             // 5min
-  getCurrencyList: 2 * 60 * 60 * 1000,         // 2hr
-  getProviderInfoList: 2 * 60 * 60 * 1000,     // 2hr
-  getProviderSettings: 2 * 60 * 60 * 1000,     // 2hr
-  getCommonInstanceOptionsInfo: 2 * 60 * 60 * 1000, // 2hr
-  getInstanceOptionsInfo: 2 * 60 * 60 * 1000,  // 2hr
-  getDeliveryCountryInfoList: 2 * 60 * 60 * 1000, // 2hr
-  getBannerSettings: 60 * 60 * 1000,           // 1hr
-  getApplicationDesignSettings: 60 * 60 * 1000, // 1hr
-  getContentMenuItemTree: 60 * 60 * 1000,      // 1hr
-  getAvailableRoleList: 2 * 60 * 60 * 1000,    // 2hr
-  getOrderStatusList: 2 * 60 * 60 * 1000,      // 2hr
+  getRootCategories: 8 * 60 * 60 * 1000,      // 8hr
+  getSubcategories: 8 * 60 * 60 * 1000,        // 8hr
+  getCategoryInfo: 4 * 60 * 60 * 1000,         // 4hr
+  getCategoryInfoList: 4 * 60 * 60 * 1000,     // 4hr
+  getCategorySearchProperties: 4 * 60 * 60 * 1000, // 4hr
+  getItemFullInfo: 30 * 60 * 1000,             // 30min
+  getItemBasicInfo: 60 * 60 * 1000,            // 1hr (lightweight)
+  getItemDescription: 2 * 60 * 60 * 1000,      // 2hr
+  searchItems: 15 * 60 * 1000,                 // 15min
+  searchItemsFrame: 15 * 60 * 1000,            // 15min
+  getCurrencyList: 4 * 60 * 60 * 1000,         // 4hr
+  getProviderInfoList: 4 * 60 * 60 * 1000,     // 4hr
+  getProviderSettings: 4 * 60 * 60 * 1000,     // 4hr
+  getCommonInstanceOptionsInfo: 4 * 60 * 60 * 1000, // 4hr
+  getInstanceOptionsInfo: 4 * 60 * 60 * 1000,  // 4hr
+  getDeliveryCountryInfoList: 4 * 60 * 60 * 1000, // 4hr
+  getBannerSettings: 2 * 60 * 60 * 1000,       // 2hr
+  getApplicationDesignSettings: 2 * 60 * 60 * 1000, // 2hr
+  getContentMenuItemTree: 2 * 60 * 60 * 1000,  // 2hr
+  getAvailableRoleList: 4 * 60 * 60 * 1000,    // 4hr
+  getOrderStatusList: 4 * 60 * 60 * 1000,      // 4hr
 };
 
 // Actions that should NEVER be cached (mutations, session-dependent, basket)
