@@ -360,7 +360,7 @@ async function generateSegmentItems(
     try {
       console.log(`[generate-homepage-snapshots] Searching cat=${catId}, provider=${segment.provider_type}`);
       const data = await callOtApiProxy(supabaseUrl, anonKey, "searchItems", {
-        categoryId: catId,
+        categoryId: catId === "__search__" ? undefined : catId,
         provider: segment.provider_type === "all" ? undefined : segment.provider_type,
         page: 0,
         pageSize: Math.min(segment.pool_size, 60),
