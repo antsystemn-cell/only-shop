@@ -267,7 +267,8 @@ async function generateSegmentItems(
         // Fetch more than needed since many may be stale/NotFound
         const fetchCount = Math.min(minNeeded * 5, otItemIds.length, 24);
         const selectedOtIds = shuffleArray(otItemIds).slice(0, fetchCount);
-        const rawIds = selectedOtIds.map(id => id.replace(/^(pz-|tb-|am-)/, ""));
+        // Keep provider prefix (pz-, tb-, am-) — OTAPI requires it for correct routing
+        const rawIds = selectedOtIds.map(id => id.trim());
 
         console.log(`[generate-homepage-snapshots] Manual cat=${catId}: ${otItemIds.length} OT items available, fetching ${rawIds.length}`);
 
