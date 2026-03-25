@@ -605,20 +605,24 @@ export default function ProviderPage() {
         onTouchEnd={isMobile ? handleTouchEnd : undefined}
       >
         {activeCategoryId && <SubcategoryDropdown parentId={activeCategoryId} onSelect={(id) => {
-          // Navigate to browse page for the selected subcategory
           window.location.href = `/category/${id}`;
         }} />}
 
-        <InfiniteProductFeed
-          categoryId={activeCategoryId}
-          categoryMetas={categoryList.map((c) => ({
-            internal_id: c.internal_id,
-            external_id: c.external_id,
-            has_api: !!c.external_id,
-            item_ids: c.item_ids,
-          }))}
-          providerType={providerType!}
-        />
+        {/* "All" tab: show cached snapshots; specific category: live OTAPI feed */}
+        {activeCategoryId === null ? (
+          <SnapshotFeed providerType={providerType!} />
+        ) : (
+          <InfiniteProductFeed
+            categoryId={activeCategoryId}
+            categoryMetas={categoryList.map((c) => ({
+              internal_id: c.internal_id,
+              external_id: c.external_id,
+              has_api: !!c.external_id,
+              item_ids: c.item_ids,
+            }))}
+            providerType={providerType!}
+          />
+        )}
       </div>
     </div>
   );
