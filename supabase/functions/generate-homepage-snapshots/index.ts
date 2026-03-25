@@ -194,7 +194,7 @@ async function generateSegmentItems(
 ): Promise<{ items: CardSnapshot[]; otapiCalls: number }> {
   let otapiCalls = 0;
 
-  // Manual segments
+  // Manual segments (wh- items)
   if (segment.source_type === "manual" && segment.manual_item_ids?.length > 0) {
     const items = await fetchManualItems(segment.manual_item_ids, supabaseUrl, dbHeaders);
     return { items, otapiCalls: 0 };
@@ -203,7 +203,7 @@ async function generateSegmentItems(
   // Fetch price config for MNT conversion
   const priceConfig = await fetchPriceConfig(supabaseUrl, dbHeaders);
 
-  // Category-based or search-based: use ot-api proxy searchItems
+  // Category-based or search-based
   let catIds = segment.category_ids?.length > 0 ? [...segment.category_ids] : [];
 
   if (catIds.length === 0 && segment.provider_type !== "all") {
@@ -220,11 +220,103 @@ async function generateSegmentItems(
     "otc-1368": 4, // Perfumes / Үнэртэй ус
   };
 
+  // Split into manual (otc-*) and searchable categories
+  const manualCatIds = catIds.filter(id => id.startsWith("otc-"));
+  const searchCatIds = catIds.filter(id => !id.startsWith("otc-")).slice(0, 5);
+
   const allItems: CardSnapshot[] = [];
   const perCatItems: Record<string, CardSnapshot[]> = {};
   const seen = new Set<string>();
-  const searchCatIds = catIds.slice(0, 5);
 
+  // ─── Fetch items from manual OT categories (item_ids based) ───
+  for (const catId of manualCatIds) {
+    perCatItems[catId] = [];
+    try {
+      // Fetch category's item_ids from DB
+      const catRes = await fetch(
+        `${supabaseUrl}/rest/v1/ot_categories?internal_id=eq.${catId}&select=item_ids`,
+        { headers: dbHeaders }
+      );
+      const catRows = await catRes.json();
+      const itemIds: string[] = catRows?.[0]?.item_ids || [];
+      if (itemIds.length === 0) {
+        console.log(`[generate-homepage-snapshots] No item_ids for manual cat=${catId}`);
+        continue;
+      }
+
+      // Also gather child category item_ids for richer pool
+      const childRes = await fetch(
+        `${supabaseUrl}/rest/v1/ot_categories?parent_internal_id=eq.${catId}&select=item_ids&is_active=eq.true`,
+        { headers: dbHeaders }
+      );
+      const childRows = await childRes.json();
+      const allItemIds = new Set(itemIds);
+      for (const child of childRows) {
+        if (child.item_ids) for (const id of child.item_ids) allItemIds.add(id);
+      }
+
+      // Pick a random subset to fetch
+      const poolSize = Math.min(allItemIds.size, segment.pool_size || 60);
+      const shuffledIds = shuffleArray([...allItemIds]);
+      const selectedIds = shuffledIds.slice(0, poolSize);
+
+      console.log(`[generate-homepage-snapshots] Manual cat=${catId}: ${allItemIds.size} total items, fetching ${selectedIds.length}`);
+
+      // Fetch items in batches via ot-api proxy (getItemFullInfo supports comma-separated IDs)
+      const batchSize = 20;
+      for (let i = 0; i < selectedIds.length; i += batchSize) {
+        const batch = selectedIds.slice(i, i + batchSize);
+        // Strip provider prefix (pz-, tb- etc) to get raw IDs
+        const rawIds = batch.map(id => id.replace(/^(pz-|tb-|am-)/, ""));
+
+        for (const rawId of rawIds) {
+          try {
+            const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemFullInfo", {
+              itemId: rawId,
+              blockList: "Description,Vendor,RootPath,Promotions",
+            });
+            otapiCalls++;
+
+            const item = data?.Result?.Item || data?.Result;
+            if (!item || !item.Id) continue;
+            if (seen.has(item.Id)) continue;
+            seen.add(item.Id);
+
+            const rawOrigPrice = extractRawOriginalPrice(item);
+            const currencyCode = item.Price?.OriginalCurrencyCode || item.Price?.PriceWithoutDelivery?.OriginalCurrencyCode || "CNY";
+            const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
+
+            const rawComparePrice = extractRawComparePrice(item);
+            const mntOriginalPrice = rawComparePrice > rawOrigPrice
+              ? calculateMntPrice(rawComparePrice, currencyCode, segment.provider_type, priceConfig)
+              : undefined;
+
+            const card: CardSnapshot = {
+              id: item.Id,
+              title: item.Title || item.ExternalTitle || "",
+              imageUrl: item.MainPictureUrl || "",
+              price: mntPrice,
+              originalPrice: mntOriginalPrice,
+              currency: "₮",
+              providerType: item.ProviderType || segment.provider_type,
+            };
+
+            if (card.price > 0 && card.imageUrl) {
+              allItems.push(card);
+              perCatItems[catId].push(card);
+            }
+          } catch (err) {
+            console.error(`[generate-homepage-snapshots] Error fetching item ${rawId}:`, err);
+          }
+        }
+      }
+      console.log(`[generate-homepage-snapshots] Manual cat=${catId}: got ${perCatItems[catId].length} valid items`);
+    } catch (err) {
+      console.error(`[generate-homepage-snapshots] Manual cat error ${catId}:`, err);
+    }
+  }
+
+  // ─── Fetch items from searchable categories (OTAPI search) ───
   for (const catId of searchCatIds) {
     perCatItems[catId] = [];
     try {
@@ -276,10 +368,11 @@ async function generateSegmentItems(
   }
 
   // Build final list: first reserve guaranteed minimums, then fill rest randomly
+  const allCatIds = [...manualCatIds, ...searchCatIds];
   const finalItems: CardSnapshot[] = [];
   const usedIds = new Set<string>();
 
-  for (const catId of searchCatIds) {
+  for (const catId of allCatIds) {
     const min = GUARANTEED_MINIMUMS[catId];
     if (min && min > 0) {
       const catPool = shuffleArray(perCatItems[catId] || []);
