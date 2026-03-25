@@ -179,7 +179,7 @@ const SegmentSection = memo(function SegmentSection({
   // Determine final items
   const items: OtProductCard[] = useMemo(() => {
     if (hasSnapshot) {
-      return (snapshot.items as SnapshotCard[]).slice(0, pageSize).map(snapshotToProductCard);
+      return (snapshot.items as unknown as SnapshotCard[]).slice(0, pageSize).map(snapshotToProductCard);
     }
     return liveItems || [];
   }, [hasSnapshot, snapshot, liveItems, pageSize]);
