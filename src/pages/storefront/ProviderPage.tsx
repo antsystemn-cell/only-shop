@@ -231,7 +231,7 @@ function InfiniteProductFeed({
     isFetchingNextPage,
     isLoading: apiLoading,
   } = useInfiniteQuery({
-    queryKey: ["provider-infinite-feed", providerType, categoryId, randomPageOffset, randomOrder, apiCategoryIds.join(",")],
+    queryKey: ["provider-infinite-feed", providerType, categoryId, apiCategoryIds.join(",")],
     queryFn: ({ pageParam = 0 }) => {
       let catId: string | undefined;
       if (activeHasApi && activeMeta) {
