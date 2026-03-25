@@ -271,8 +271,9 @@ async function generateSegmentItems(
 
       for (const rawId of rawIds) {
         try {
-          const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemBasicInfo", {
+          const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemFullInfo", {
             itemId: rawId,
+            blockList: "Description,Vendor,RootPath,Promotions",
           });
           otapiCalls++;
 
