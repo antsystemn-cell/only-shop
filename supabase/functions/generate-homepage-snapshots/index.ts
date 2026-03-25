@@ -280,7 +280,20 @@ async function callOtApiSearch(
   const url = `${OT_API_BASE}/BatchSearchItemsFrame?${urlParams.toString()}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`OTAPI search failed: ${res.status}`);
-  return res.json();
+  const json = await res.json();
+  console.log(`[generate-homepage-snapshots] OTAPI search response keys:`, JSON.stringify(Object.keys(json || {})));
+  if (json?.Result) {
+    console.log(`[generate-homepage-snapshots] Result keys:`, JSON.stringify(Object.keys(json.Result)));
+    if (json.Result.Items) {
+      console.log(`[generate-homepage-snapshots] Items keys:`, JSON.stringify(Object.keys(json.Result.Items)));
+      const content = json.Result.Items.Items || json.Result.Items.Content;
+      console.log(`[generate-homepage-snapshots] Items count:`, Array.isArray(content) ? content.length : (content?.Content ? content.Content.length : 'N/A'));
+    }
+  }
+  if (json?.ErrorCode && json.ErrorCode !== "Ok") {
+    console.error(`[generate-homepage-snapshots] OTAPI error:`, json.ErrorCode, json.ErrorMessage);
+  }
+  return json;
 }
 
 async function fetchOtItemsByIds(apiKey: string, itemIds: string[]): Promise<CardSnapshot[]> {
