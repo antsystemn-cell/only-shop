@@ -125,7 +125,8 @@ export default function OtProductDetail() {
     queryKey: ["ot-product", itemId],
     queryFn: () => fetchProductDetail(itemId!),
     enabled: !!itemId,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 20, // 20min — aggressive reuse for back navigation
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 
