@@ -87,6 +87,7 @@ import OtDiagnostics from "./pages/admin/OtDiagnostics";
 import ProviderPage from "./pages/storefront/ProviderPage";
 import MobileCategories from "./pages/storefront/MobileCategories";
 import ProviderSectionsAdmin from "./pages/admin/ProviderSections";
+import HomepageSegments from "./pages/admin/HomepageSegments";
 import Migration from "./pages/admin/Migration";
 import DynamicContentPage from "./pages/storefront/DynamicContentPage";
 
@@ -213,6 +214,7 @@ const App = () => (
                 <Route path="user-activity-log" element={<UserActivityLog />} />
                 <Route path="instance-logs" element={<InstanceLogs />} />
                 <Route path="provider-sections" element={<ProviderSectionsAdmin />} />
+                <Route path="homepage-segments" element={<HomepageSegments />} />
                 <Route path="migration" element={<Migration />} />
                 <Route path="ot-reports" element={<OtReports />} />
                 <Route path="ot-billing" element={<OtBilling />} />
