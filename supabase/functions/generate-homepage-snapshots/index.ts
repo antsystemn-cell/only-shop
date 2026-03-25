@@ -304,22 +304,31 @@ async function fetchManualItems(
   return items;
 }
 
-function extractPrice(item: any): number {
+// Extract the raw original price in foreign currency (CNY/USD)
+function extractRawOriginalPrice(item: any): number {
   const price = item.Price;
   if (!price) return 0;
-  if (typeof price === "number") return price;
-  if (price.ConvertedPriceList?.Internal?.Price) return Number(price.ConvertedPriceList.Internal.Price) || 0;
-  if (price.OriginalPrice) return Number(price.OriginalPrice) || 0;
-  if (price.MarginPrice) return Number(price.MarginPrice) || 0;
+  // Prefer PromotionPrice (sale price)
+  const promo = price.PromotionPrice;
+  if (typeof promo === "number" && promo > 0) return promo;
+  // Then OriginalPrice
+  const orig = price.OriginalPrice;
+  if (typeof orig === "number" && orig > 0) return orig;
+  const pwod = price.PriceWithoutDelivery?.OriginalPrice;
+  if (typeof pwod === "number" && pwod > 0) return pwod;
+  const margin = price.MarginPrice;
+  if (typeof margin === "number" && margin > 0) return margin;
   return 0;
 }
 
-function extractOriginalPrice(item: any): number | undefined {
-  const op = item.OriginalPrice;
-  if (!op) return undefined;
-  if (typeof op === "number") return op;
-  if (op.OriginalPrice) return Number(op.OriginalPrice) || undefined;
-  return undefined;
+// Extract compare/original price for strikethrough display
+function extractRawComparePrice(item: any): number {
+  const price = item.Price;
+  if (!price) return 0;
+  // If there's a promotion, the "original" is the non-promo price
+  const orig = price.OriginalPrice;
+  if (typeof orig === "number" && orig > 0) return orig;
+  return 0;
 }
 
 function shuffleArray<T>(arr: T[]): T[] {
