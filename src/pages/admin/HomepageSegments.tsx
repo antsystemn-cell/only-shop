@@ -197,7 +197,7 @@ export default function HomepageSegments() {
                         <Badge variant="outline" className="text-[10px]">{seg.provider_type}</Badge>
                         <Badge variant="secondary" className="text-[10px]">{seg.source_type}</Badge>
                         {seg.is_active ? (
-                          <Badge className="text-[10px] bg-green-100 text-green-700">Идэвхтэй</Badge>
+                          <Badge className="text-[10px] bg-primary/10 text-primary">Идэвхтэй</Badge>
                         ) : (
                           <Badge variant="destructive" className="text-[10px]">Идэвхгүй</Badge>
                         )}
