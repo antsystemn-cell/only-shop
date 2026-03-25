@@ -120,9 +120,8 @@ const SegmentSection = memo(function SegmentSection({
   const hasSnapshot = !!snapshot && Array.isArray(snapshot.items) && snapshot.items.length > 0;
 
   const { data: liveItems, isLoading: liveLoading } = useQuery({
-    queryKey: ["home-showcase-live", segment.provider_type, segment.category_ids, pageSize],
+    queryKey: ["home-showcase-live", segment.provider_type, JSON.stringify(segment.category_ids), pageSize],
     queryFn: async () => {
-      // Fallback: live fetch from OTAPI (same as old ProviderShowcase)
       const catIds = segment.category_ids.length > 0 ? segment.category_ids : [];
       let resolvedCatIds = catIds;
 
@@ -172,7 +171,6 @@ const SegmentSection = memo(function SegmentSection({
     },
     staleTime: 1000 * 60 * 15,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
     enabled: !hasSnapshot && !snapshotLoading,
   });
 
@@ -204,7 +202,11 @@ const SegmentSection = memo(function SegmentSection({
     }
   };
 
-  if (!loading && items.length === 0) return null;
+  // Don't hide sections - show skeletons while loading, keep section visible even if empty temporarily
+  if (!loading && items.length === 0) {
+    // Still render section with skeletons briefly to avoid flash-of-nothing
+    return null;
+  }
 
   return (
     <section className="mb-6">
@@ -263,7 +265,7 @@ export default function Home() {
   const { data: stripItems } = useProviderLogos();
 
   // Fetch segments from DB
-  const { data: segments } = useQuery({
+  const { data: segments, isLoading: segmentsLoading } = useQuery({
     queryKey: ["homepage-segments"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -312,11 +314,12 @@ export default function Home() {
       return Array.isArray(data?.setting_value) ? (data.setting_value as string[]) : ["Poizon", "Taobao", "Amazon"];
     },
     staleTime: 1000 * 60 * 5,
-    enabled: !segments || segments.length === 0,
+    enabled: !segmentsLoading && (!segments || segments.length === 0),
   });
 
   // Default segment configs for fallback when no DB segments exist
   const defaultSegments = useMemo(() => {
+    if (segmentsLoading) return null; // Don't show defaults while loading DB segments
     if (segments && segments.length > 0) return null;
     const order = providerOrder || ["Poizon", "Taobao", "Amazon"];
     const defaults: Record<string, any> = {
@@ -340,7 +343,7 @@ export default function Home() {
       },
     };
     return order.map(p => defaults[p]).filter(Boolean);
-  }, [segments, providerOrder]);
+  }, [segments, segmentsLoading, providerOrder]);
 
   const displaySegments = (segments && segments.length > 0) ? segments : (defaultSegments || []);
 
@@ -353,14 +356,40 @@ export default function Home() {
       )}
 
       <div className="px-1 md:container py-2 md:py-6 space-y-2">
-        {displaySegments.map((segment: any) => (
-          <SegmentSection
-            key={segment.id}
-            segment={segment}
-            logoUrl={getProviderLogo(stripItems, segment.provider_type)}
-            pageSize={pageSizes[segment.provider_type] || segment.item_count || DEFAULT_HOME_PAGE_SIZE}
-          />
-        ))}
+      {segmentsLoading ? (
+          // Show skeleton sections while segments load
+          Array.from({ length: 3 }).map((_, i) => (
+            <section key={`skel-${i}`} className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Skeleton className="h-8 w-8 rounded-md" />
+                <div>
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24 mt-1" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
+                {Array.from({ length: 6 }).map((_, j) => (
+                  <div key={j} className="overflow-hidden">
+                    <Skeleton className="aspect-square" />
+                    <div className="p-2 space-y-1.5">
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))
+        ) : (
+          displaySegments.map((segment: any) => (
+            <SegmentSection
+              key={segment.id}
+              segment={segment}
+              logoUrl={getProviderLogo(stripItems, segment.provider_type)}
+              pageSize={pageSizes[segment.provider_type] || segment.item_count || DEFAULT_HOME_PAGE_SIZE}
+            />
+          ))
+        )}
       </div>
     </div>
   );
