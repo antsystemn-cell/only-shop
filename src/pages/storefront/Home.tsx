@@ -120,9 +120,8 @@ const SegmentSection = memo(function SegmentSection({
   const hasSnapshot = !!snapshot && Array.isArray(snapshot.items) && snapshot.items.length > 0;
 
   const { data: liveItems, isLoading: liveLoading } = useQuery({
-    queryKey: ["home-showcase-live", segment.provider_type, segment.category_ids, pageSize],
+    queryKey: ["home-showcase-live", segment.provider_type, JSON.stringify(segment.category_ids), pageSize],
     queryFn: async () => {
-      // Fallback: live fetch from OTAPI (same as old ProviderShowcase)
       const catIds = segment.category_ids.length > 0 ? segment.category_ids : [];
       let resolvedCatIds = catIds;
 
@@ -172,7 +171,6 @@ const SegmentSection = memo(function SegmentSection({
     },
     staleTime: 1000 * 60 * 15,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
     enabled: !hasSnapshot && !snapshotLoading,
   });
 
