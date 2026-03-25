@@ -356,14 +356,40 @@ export default function Home() {
       )}
 
       <div className="px-1 md:container py-2 md:py-6 space-y-2">
-        {displaySegments.map((segment: any) => (
-          <SegmentSection
-            key={segment.id}
-            segment={segment}
-            logoUrl={getProviderLogo(stripItems, segment.provider_type)}
-            pageSize={pageSizes[segment.provider_type] || segment.item_count || DEFAULT_HOME_PAGE_SIZE}
-          />
-        ))}
+      {segmentsLoading ? (
+          // Show skeleton sections while segments load
+          Array.from({ length: 3 }).map((_, i) => (
+            <section key={`skel-${i}`} className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Skeleton className="h-8 w-8 rounded-md" />
+                <div>
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24 mt-1" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
+                {Array.from({ length: 6 }).map((_, j) => (
+                  <div key={j} className="overflow-hidden">
+                    <Skeleton className="aspect-square" />
+                    <div className="p-2 space-y-1.5">
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))
+        ) : (
+          displaySegments.map((segment: any) => (
+            <SegmentSection
+              key={segment.id}
+              segment={segment}
+              logoUrl={getProviderLogo(stripItems, segment.provider_type)}
+              pageSize={pageSizes[segment.provider_type] || segment.item_count || DEFAULT_HOME_PAGE_SIZE}
+            />
+          ))
+        )}
       </div>
     </div>
   );
