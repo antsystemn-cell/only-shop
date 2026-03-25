@@ -258,64 +258,97 @@ async function generateSegmentItems(
         if (child.item_ids) for (const id of child.item_ids) allItemIds.add(id);
       }
 
-      // Pick a random subset — fetch just enough (min + small buffer)
+      // Separate wh-* (warehouse) items from pz-/tb-/am-* (OTAPI) items
+      const whItemIds = [...allItemIds].filter(id => id.startsWith("wh-"));
+      const otItemIds = [...allItemIds].filter(id => !id.startsWith("wh-"));
+
       const minNeeded = GUARANTEED_MINIMUMS[catId] || 4;
-      const fetchCount = Math.min(minNeeded + 2, allItemIds.size, 8);
-      const shuffledIds = shuffleArray([...allItemIds]);
-      const selectedIds = shuffledIds.slice(0, fetchCount);
 
-      console.log(`[generate-homepage-snapshots] Manual cat=${catId}: ${allItemIds.size} total items, fetching ${selectedIds.length}`);
+      // Fetch warehouse items from DB
+      if (whItemIds.length > 0) {
+        const whSubset = shuffleArray(whItemIds).slice(0, minNeeded);
+        const idsStr = whSubset.map(id => `"${id}"`).join(",");
+        const whRes = await fetch(
+          `${supabaseUrl}/rest/v1/warehouse_items?item_id=in.(${idsStr})&is_active=eq.true`,
+          { headers: dbHeaders }
+        );
+        const whItems = await whRes.json();
+        for (const wh of whItems) {
+          if (seen.has(wh.item_id)) continue;
+          seen.add(wh.item_id);
+          const card: CardSnapshot = {
+            id: wh.item_id,
+            title: wh.title || "",
+            imageUrl: wh.image_url || "",
+            price: Number(wh.price_mnt) || 0,
+            originalPrice: wh.original_price_mnt ? Number(wh.original_price_mnt) : undefined,
+            currency: "₮",
+            providerType: "warehouse",
+          };
+          if (card.price > 0 && card.imageUrl) {
+            allItems.push(card);
+            perCatItems[catId].push(card);
+          }
+        }
+        console.log(`[generate-homepage-snapshots] Manual cat=${catId}: ${whItems.length} warehouse items fetched`);
+      }
 
-      // Strip provider prefix
-      const rawIds = selectedIds.map(id => id.replace(/^(pz-|tb-|am-)/, ""));
+      // Fetch OTAPI items — pick more than needed since many may be stale/NotFound
+      if (otItemIds.length > 0) {
+        const stillNeeded = Math.max(0, minNeeded - perCatItems[catId].length);
+        const fetchCount = Math.min(stillNeeded * 4, otItemIds.length, 20);
+        const selectedOtIds = shuffleArray(otItemIds).slice(0, fetchCount);
+        const rawIds = selectedOtIds.map(id => id.replace(/^(pz-|tb-|am-)/, ""));
 
-      // Fetch in parallel (all at once)
-      const fetchPromises = rawIds.map(async (rawId) => {
-        try {
-          const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemFullInfo", {
-            itemId: rawId,
-            blockList: "Description,Vendor,RootPath,Promotions",
-          });
-          otapiCalls++;
+        console.log(`[generate-homepage-snapshots] Manual cat=${catId}: fetching ${rawIds.length} OTAPI items`);
 
-          if (data?.success === false || data?.ErrorCode) {
-            console.log(`[generate-homepage-snapshots] Item ${rawId} error: ${data?.error || data?.ErrorCode}`);
+        // Fetch in parallel
+        const fetchPromises = rawIds.map(async (rawId) => {
+          try {
+            const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemFullInfo", {
+              itemId: rawId,
+              blockList: "Description,Vendor,RootPath,Promotions",
+            });
+            otapiCalls++;
+
+            // Check for real errors (not "Ok")
+            if (data?.success === false) {
+              return null;
+            }
+
+            const item = data?.Result?.Item || data?.Result;
+            if (!item || !item.Id) return null;
+
+            const rawOrigPrice = extractRawOriginalPrice(item);
+            const currencyCode = item.Price?.OriginalCurrencyCode || item.Price?.PriceWithoutDelivery?.OriginalCurrencyCode || "CNY";
+            const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
+
+            const rawComparePrice = extractRawComparePrice(item);
+            const mntOriginalPrice = rawComparePrice > rawOrigPrice
+              ? calculateMntPrice(rawComparePrice, currencyCode, segment.provider_type, priceConfig)
+              : undefined;
+
+            return {
+              id: item.Id,
+              title: item.Title || item.ExternalTitle || "",
+              imageUrl: item.MainPictureUrl || "",
+              price: mntPrice,
+              originalPrice: mntOriginalPrice,
+              currency: "₮",
+              providerType: item.ProviderType || segment.provider_type,
+            } as CardSnapshot;
+          } catch (e) {
             return null;
           }
+        });
 
-          const item = data?.Result?.Item || data?.Result;
-          if (!item || !item.Id) return null;
-
-          const rawOrigPrice = extractRawOriginalPrice(item);
-          const currencyCode = item.Price?.OriginalCurrencyCode || item.Price?.PriceWithoutDelivery?.OriginalCurrencyCode || "CNY";
-          const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
-
-          const rawComparePrice = extractRawComparePrice(item);
-          const mntOriginalPrice = rawComparePrice > rawOrigPrice
-            ? calculateMntPrice(rawComparePrice, currencyCode, segment.provider_type, priceConfig)
-            : undefined;
-
-          return {
-            id: item.Id,
-            title: item.Title || item.ExternalTitle || "",
-            imageUrl: item.MainPictureUrl || "",
-            price: mntPrice,
-            originalPrice: mntOriginalPrice,
-            currency: "₮",
-            providerType: item.ProviderType || segment.provider_type,
-          } as CardSnapshot;
-        } catch (e) {
-          console.error(`[generate-homepage-snapshots] Error fetching item ${rawId}:`, e);
-          return null;
-        }
-      });
-
-      const results = await Promise.all(fetchPromises);
-      for (const card of results) {
-        if (card && card.price > 0 && card.imageUrl && !seen.has(card.id)) {
-          seen.add(card.id);
-          allItems.push(card);
-          perCatItems[catId].push(card);
+        const results = await Promise.all(fetchPromises);
+        for (const card of results) {
+          if (card && card.price > 0 && card.imageUrl && !seen.has(card.id)) {
+            seen.add(card.id);
+            allItems.push(card);
+            perCatItems[catId].push(card);
+          }
         }
       }
       console.log(`[generate-homepage-snapshots] Manual cat=${catId}: got ${perCatItems[catId].length} valid items`);
