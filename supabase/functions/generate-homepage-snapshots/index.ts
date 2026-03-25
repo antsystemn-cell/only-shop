@@ -194,7 +194,7 @@ async function generateSegmentItems(
 ): Promise<{ items: CardSnapshot[]; otapiCalls: number }> {
   let otapiCalls = 0;
 
-  // Manual segments
+  // Manual segments (wh- items)
   if (segment.source_type === "manual" && segment.manual_item_ids?.length > 0) {
     const items = await fetchManualItems(segment.manual_item_ids, supabaseUrl, dbHeaders);
     return { items, otapiCalls: 0 };
@@ -203,10 +203,13 @@ async function generateSegmentItems(
   // Fetch price config for MNT conversion
   const priceConfig = await fetchPriceConfig(supabaseUrl, dbHeaders);
 
-  // Category-based or search-based: use ot-api proxy searchItems
+  // Category-based or search-based
   let catIds = segment.category_ids?.length > 0 ? [...segment.category_ids] : [];
 
-  if (catIds.length === 0 && segment.provider_type !== "all") {
+  // If no categories but has a search query, use a synthetic "search" category
+  if (catIds.length === 0 && segment.search_query) {
+    catIds = ["__search__"];
+  } else if (catIds.length === 0 && segment.provider_type !== "all") {
     const catRes = await fetch(
       `${supabaseUrl}/rest/v1/ot_categories?provider_type=eq.${segment.provider_type}&is_active=eq.true&parent_internal_id=is.null&order=display_order&limit=4&select=internal_id,external_id`,
       { headers: dbHeaders }
@@ -220,17 +223,144 @@ async function generateSegmentItems(
     "otc-1368": 4, // Perfumes / Үнэртэй ус
   };
 
+  // Split into manual (otc-*) and searchable categories
+  const manualCatIds = catIds.filter(id => id.startsWith("otc-"));
+  const searchCatIds = catIds.filter(id => !id.startsWith("otc-")).slice(0, 5);
+
   const allItems: CardSnapshot[] = [];
   const perCatItems: Record<string, CardSnapshot[]> = {};
   const seen = new Set<string>();
-  const searchCatIds = catIds.slice(0, 5);
 
+  // ─── Fetch items from manual OT categories (item_ids based) ───
+  for (const catId of manualCatIds) {
+    perCatItems[catId] = [];
+    try {
+      // Fetch category's item_ids from DB
+      const catRes = await fetch(
+        `${supabaseUrl}/rest/v1/ot_categories?internal_id=eq.${catId}&select=item_ids`,
+        { headers: dbHeaders }
+      );
+      const catRows = await catRes.json();
+      const itemIds: string[] = catRows?.[0]?.item_ids || [];
+      if (itemIds.length === 0) {
+        console.log(`[generate-homepage-snapshots] No item_ids for manual cat=${catId}`);
+        continue;
+      }
+
+      // Also gather child category item_ids for richer pool
+      const childRes = await fetch(
+        `${supabaseUrl}/rest/v1/ot_categories?parent_internal_id=eq.${catId}&select=item_ids&is_active=eq.true`,
+        { headers: dbHeaders }
+      );
+      const childRows = await childRes.json();
+      const allItemIds = new Set(itemIds);
+      for (const child of childRows) {
+        if (child.item_ids) for (const id of child.item_ids) allItemIds.add(id);
+      }
+
+      // Pick a random subset — only fetch what we need (guaranteed min + small buffer)
+      const minNeeded = GUARANTEED_MINIMUMS[catId] || 4;
+      const fetchCount = Math.min(minNeeded * 3, allItemIds.size, 15); // fetch 3x needed, max 15
+      const shuffledIds = shuffleArray([...allItemIds]);
+      const selectedIds = shuffledIds.slice(0, fetchCount);
+
+      console.log(`[generate-homepage-snapshots] Manual cat=${catId}: ${allItemIds.size} total items, fetching ${selectedIds.length}`);
+
+      // Strip provider prefix and use GetItemInfoList for batch fetch
+      const rawIds = selectedIds.map(id => id.replace(/^(pz-|tb-|am-)/, ""));
+
+      // Fetch in batches of 5 via GetItemInfoList (comma-separated)
+      const batchSize = 5;
+      for (let i = 0; i < rawIds.length; i += batchSize) {
+        const batch = rawIds.slice(i, i + batchSize);
+        try {
+          // Use getItemInfoList for batch fetching
+          const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemInfoList", {
+            itemId: batch.join(","),
+          });
+          otapiCalls++;
+
+          // GetItemInfoList returns array of items
+          const items = data?.Result?.Items?.Content || data?.Result?.Content || data?.Result || [];
+          const itemsArr = Array.isArray(items) ? items : [items];
+
+          for (const item of itemsArr) {
+            if (!item || !item.Id) continue;
+            if (seen.has(item.Id)) continue;
+            seen.add(item.Id);
+
+            const rawOrigPrice = extractRawOriginalPrice(item);
+            const currencyCode = item.Price?.OriginalCurrencyCode || item.Price?.PriceWithoutDelivery?.OriginalCurrencyCode || "CNY";
+            const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
+
+            const rawComparePrice = extractRawComparePrice(item);
+            const mntOriginalPrice = rawComparePrice > rawOrigPrice
+              ? calculateMntPrice(rawComparePrice, currencyCode, segment.provider_type, priceConfig)
+              : undefined;
+
+            const card: CardSnapshot = {
+              id: item.Id,
+              title: item.Title || item.ExternalTitle || "",
+              imageUrl: item.MainPictureUrl || "",
+              price: mntPrice,
+              originalPrice: mntOriginalPrice,
+              currency: "₮",
+              providerType: item.ProviderType || segment.provider_type,
+            };
+
+            if (card.price > 0 && card.imageUrl) {
+              allItems.push(card);
+              perCatItems[catId].push(card);
+            }
+          }
+        } catch (err) {
+          // Fallback: try individual fetch
+          for (const rawId of batch) {
+            try {
+              const data = await callOtApiProxy(supabaseUrl, anonKey, "getItemBasicInfo", {
+                itemId: rawId,
+              });
+              otapiCalls++;
+              const item = data?.Result?.Item || data?.Result;
+              if (!item || !item.Id || seen.has(item.Id)) continue;
+              seen.add(item.Id);
+
+              const rawOrigPrice = extractRawOriginalPrice(item);
+              const currencyCode = item.Price?.OriginalCurrencyCode || "CNY";
+              const mntPrice = calculateMntPrice(rawOrigPrice, currencyCode, segment.provider_type, priceConfig);
+
+              const card: CardSnapshot = {
+                id: item.Id,
+                title: item.Title || item.ExternalTitle || "",
+                imageUrl: item.MainPictureUrl || "",
+                price: mntPrice,
+                currency: "₮",
+                providerType: item.ProviderType || segment.provider_type,
+              };
+
+              if (card.price > 0 && card.imageUrl) {
+                allItems.push(card);
+                perCatItems[catId].push(card);
+              }
+            } catch (e) {
+              console.error(`[generate-homepage-snapshots] Error fetching item ${rawId}:`, e);
+            }
+          }
+        }
+      }
+      console.log(`[generate-homepage-snapshots] Manual cat=${catId}: got ${perCatItems[catId].length} valid items`);
+    } catch (err) {
+      console.error(`[generate-homepage-snapshots] Manual cat error ${catId}:`, err);
+    }
+  }
+
+  // ─── Fetch items from searchable categories (OTAPI search) ───
   for (const catId of searchCatIds) {
     perCatItems[catId] = [];
     try {
       console.log(`[generate-homepage-snapshots] Searching cat=${catId}, provider=${segment.provider_type}`);
       const data = await callOtApiProxy(supabaseUrl, anonKey, "searchItems", {
-        categoryId: catId,
+        categoryId: catId === "__search__" ? undefined : catId,
         provider: segment.provider_type === "all" ? undefined : segment.provider_type,
         page: 0,
         pageSize: Math.min(segment.pool_size, 60),
@@ -276,10 +406,11 @@ async function generateSegmentItems(
   }
 
   // Build final list: first reserve guaranteed minimums, then fill rest randomly
+  const allCatIds = [...manualCatIds, ...searchCatIds];
   const finalItems: CardSnapshot[] = [];
   const usedIds = new Set<string>();
 
-  for (const catId of searchCatIds) {
+  for (const catId of allCatIds) {
     const min = GUARANTEED_MINIMUMS[catId];
     if (min && min > 0) {
       const catPool = shuffleArray(perCatItems[catId] || []);
