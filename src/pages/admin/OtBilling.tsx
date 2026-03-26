@@ -11,6 +11,8 @@ import { format, subDays, startOfDay } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function OtBilling() {
+  const [costPerCall, setCostPerCall] = useState(0.01); // Default $0.01 per paid call
+
   // Get last 30 days paid calls
   const { data: recentLogs } = useQuery({
     queryKey: ["otapi-billing-logs"],
