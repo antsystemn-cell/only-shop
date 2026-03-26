@@ -1,12 +1,18 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, TrendingDown, Clock, AlertTriangle, ExternalLink, Zap } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DollarSign, TrendingDown, Clock, AlertTriangle, ExternalLink, Zap, CalendarDays } from "lucide-react";
 import { format, subDays, startOfDay } from "date-fns";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function OtBilling() {
+  const [costPerCall, setCostPerCall] = useState(0.01); // Default $0.01 per paid call
+
   // Get last 30 days paid calls
   const { data: recentLogs } = useQuery({
     queryKey: ["otapi-billing-logs"],
@@ -181,6 +187,130 @@ export default function OtBilling() {
               <p className="text-sm text-muted-foreground text-center py-4">Хангалттай мэдээлэл цуглаагүй байна. Логууд ирж эхэлсний дараа зөвлөмж харагдана.</p>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Daily cost history */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" /> Өдөр тутмын зардлын түүх
+              </CardTitle>
+              <CardDescription>Сүүлийн 30 хоногийн төлбөртэй дуудлага & тооцоолсон зардал</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">$/дуудлага:</span>
+              <Input
+                type="number"
+                step="0.001"
+                min="0"
+                value={costPerCall}
+                onChange={(e) => setCostPerCall(Number(e.target.value) || 0)}
+                className="w-24 h-8 text-xs"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            // Build daily breakdown
+            const dailyMap = new Map<string, { paid: number; cached: number; total: number }>();
+            recentLogs?.forEach((l) => {
+              const day = format(new Date(l.created_at), "yyyy-MM-dd");
+              const entry = dailyMap.get(day) || { paid: 0, cached: 0, total: 0 };
+              entry.total++;
+              if (l.is_paid && !l.is_cache_hit) entry.paid++;
+              if (l.is_cache_hit) entry.cached++;
+              dailyMap.set(day, entry);
+            });
+
+            const chartData = Array.from(dailyMap.entries())
+              .sort((a, b) => a[0].localeCompare(b[0]))
+              .map(([day, v]) => ({
+                date: format(new Date(day), "MM/dd"),
+                fullDate: day,
+                paid: v.paid,
+                cached: v.cached,
+                total: v.total,
+                cost: Number((v.paid * costPerCall).toFixed(3)),
+              }));
+
+            const totalEstCost = chartData.reduce((s, d) => s + d.cost, 0);
+
+            return (
+              <div className="space-y-4">
+                {/* Summary */}
+                <div className="flex gap-4 text-sm">
+                  <span>Нийт тооцоолсон зардал: <strong className="text-primary">${totalEstCost.toFixed(2)}</strong></span>
+                  <span className="text-muted-foreground">({paidCalls30d} төлбөртэй × ${costPerCall})</span>
+                </div>
+
+                {/* Chart */}
+                {chartData.length > 0 && (
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                        <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
+                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-popover border rounded-lg p-3 shadow-md text-xs space-y-1">
+                                <p className="font-medium">{d.fullDate}</p>
+                                <p>Төлбөртэй: <strong>{d.paid}</strong></p>
+                                <p>Кэш: <strong>{d.cached}</strong></p>
+                                <p>Нийт: <strong>{d.total}</strong></p>
+                                <p className="text-primary font-bold">Зардал: ${d.cost.toFixed(3)}</p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar yAxisId="left" dataKey="paid" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} name="Төлбөртэй" />
+                        <Bar yAxisId="right" dataKey="cost" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} name="Зардал ($)" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Table */}
+                <div className="max-h-80 overflow-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Огноо</TableHead>
+                        <TableHead className="text-right">Нийт</TableHead>
+                        <TableHead className="text-right">Төлбөртэй</TableHead>
+                        <TableHead className="text-right">Кэш</TableHead>
+                        <TableHead className="text-right">Зардал ($)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {chartData.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Мэдээлэл алга</TableCell>
+                        </TableRow>
+                      )}
+                      {[...chartData].reverse().map((d) => (
+                        <TableRow key={d.fullDate}>
+                          <TableCell className="font-mono text-xs">{d.fullDate}</TableCell>
+                          <TableCell className="text-right">{d.total}</TableCell>
+                          <TableCell className="text-right font-medium">{d.paid}</TableCell>
+                          <TableCell className="text-right text-muted-foreground">{d.cached}</TableCell>
+                          <TableCell className="text-right font-bold text-primary">${d.cost.toFixed(3)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>
