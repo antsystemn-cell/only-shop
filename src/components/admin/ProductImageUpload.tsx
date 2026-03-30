@@ -152,27 +152,50 @@ export function ProductImageUpload({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <span className="text-sm font-medium">
           Барааны зураг ({images.length}/{maxImages})
         </span>
         {images.length < maxImages && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            {isUploading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <ImagePlus className="h-4 w-4 mr-2" />
-            )}
-            Зураг нэмэх
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4 mr-2" />
+              )}
+              Файл оруулах
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowUrlInput(!showUrlInput)}
+            >
+              🔗 URL оруулах
+            </Button>
+          </div>
         )}
       </div>
+
+      {showUrlInput && images.length < maxImages && (
+        <div className="flex gap-2">
+          <Input
+            placeholder="https://example.com/image.jpg"
+            value={externalUrl}
+            onChange={(e) => setExternalUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddExternalUrl())}
+            className="flex-1"
+          />
+          <Button type="button" size="sm" onClick={handleAddExternalUrl}>Нэмэх</Button>
+        </div>
+      )}
 
       <input
         ref={fileInputRef}
