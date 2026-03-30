@@ -413,7 +413,7 @@ export default function ProductDetail() {
                       : "border-transparent hover:border-muted-foreground/30"
                   }`}
                 >
-                  <img src={image} alt={`${product.name_mn} ${index + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={image} alt={`${product.name_mn} ${index + 1}`} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
