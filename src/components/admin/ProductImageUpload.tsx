@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ImagePlus, X, Loader2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,8 +19,29 @@ export function ProductImageUpload({
 }: ProductImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [externalUrl, setExternalUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const handleAddExternalUrl = () => {
+    const url = externalUrl.trim();
+    if (!url) return;
+    try {
+      new URL(url);
+    } catch {
+      toast({ title: "URL буруу байна", variant: "destructive" });
+      return;
+    }
+    if (images.length >= maxImages) {
+      toast({ title: `Хамгийн ихдээ ${maxImages} зураг`, variant: "destructive" });
+      return;
+    }
+    onImagesChange([...images, url]);
+    setExternalUrl("");
+    setShowUrlInput(false);
+    toast({ title: "Зураг нэмэгдлээ" });
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -131,27 +153,50 @@ export function ProductImageUpload({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <span className="text-sm font-medium">
           Барааны зураг ({images.length}/{maxImages})
         </span>
         {images.length < maxImages && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            {isUploading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <ImagePlus className="h-4 w-4 mr-2" />
-            )}
-            Зураг нэмэх
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4 mr-2" />
+              )}
+              Файл оруулах
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowUrlInput(!showUrlInput)}
+            >
+              🔗 URL оруулах
+            </Button>
+          </div>
         )}
       </div>
+
+      {showUrlInput && images.length < maxImages && (
+        <div className="flex gap-2">
+          <Input
+            placeholder="https://example.com/image.jpg"
+            value={externalUrl}
+            onChange={(e) => setExternalUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddExternalUrl())}
+            className="flex-1"
+          />
+          <Button type="button" size="sm" onClick={handleAddExternalUrl}>Нэмэх</Button>
+        </div>
+      )}
 
       <input
         ref={fileInputRef}
