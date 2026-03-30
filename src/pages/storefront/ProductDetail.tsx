@@ -343,7 +343,7 @@ export default function ProductDetail() {
                 <div className="flex">
                   {displayImages.map((image, index) => (
                     <div key={index} className="flex-[0_0_100%] min-w-0 aspect-[4/5] md:aspect-square bg-muted">
-                      <img src={image} alt={`${product.name_mn} ${index + 1}`} className="w-full h-full object-cover" />
+                      <img src={image} alt={`${product.name_mn} ${index + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     </div>
                   ))}
                 </div>
