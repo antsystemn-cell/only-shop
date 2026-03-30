@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ImagePlus, X, Loader2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
