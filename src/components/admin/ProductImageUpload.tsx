@@ -18,8 +18,29 @@ export function ProductImageUpload({
 }: ProductImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [externalUrl, setExternalUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const handleAddExternalUrl = () => {
+    const url = externalUrl.trim();
+    if (!url) return;
+    try {
+      new URL(url);
+    } catch {
+      toast({ title: "URL буруу байна", variant: "destructive" });
+      return;
+    }
+    if (images.length >= maxImages) {
+      toast({ title: `Хамгийн ихдээ ${maxImages} зураг`, variant: "destructive" });
+      return;
+    }
+    onImagesChange([...images, url]);
+    setExternalUrl("");
+    setShowUrlInput(false);
+    toast({ title: "Зураг нэмэгдлээ" });
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
