@@ -103,6 +103,7 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
               src={product.images[0]}
               alt={product.name_mn}
               className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-500"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
