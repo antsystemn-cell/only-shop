@@ -347,6 +347,7 @@ export default function OtCheckout() {
         providerType: item.providerType,
         vendorName: item.vendorName,
         configurators: item.configurators,
+        rawConfigurators: item.rawConfigurators,
         originalCnyPrice: item.originalCnyPrice,
         originalCnyCurrency: item.originalCnyCurrency,
         externalUrl: item.providerType === "Poizon"

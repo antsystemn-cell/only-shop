@@ -30,6 +30,7 @@ export interface OtBasketItem {
   providerType?: string;
   vendorName?: string;
   configurators?: string;
+  rawConfigurators?: string;
   weight?: number;
   totalPrice: number;
   originalCnyPrice?: number;
@@ -215,6 +216,24 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
       .filter(Boolean)
       .join(", ");
 
+    // Build raw/original configurator text (Chinese/original language)
+    const rawConfigText = configList
+      .map((c: any) => {
+        if (typeof c === "string") return c;
+        const name = c.OriginalTitle || c.OriginalPropertyName || c.OriginalName || "";
+        const val = c.OriginalValue || c.OriginalValueTitle || "";
+        // Fall back to Pid/Vid identifiers if no original text available
+        const pid = c.Pid || c.PropertyId || "";
+        const vid = c.Vid || c.ValueId || "";
+        if (name && val) return `${name}: ${val}`;
+        if (val) return val;
+        if (name) return name;
+        if (pid && vid) return `${pid}:${vid}`;
+        return "";
+      })
+      .filter(Boolean)
+      .join(", ");
+
     return {
       orderLineId: String(line.Id || ""),
       itemId: line.ItemId || "",
@@ -227,6 +246,7 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
       providerType: line.ProviderType || "Taobao",
       vendorName: line.VendorName || "",
       configurators: configText || "",
+      rawConfigurators: rawConfigText || "",
       weight: line.Weight,
       totalPrice,
       originalCnyPrice,
