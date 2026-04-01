@@ -246,6 +246,7 @@ function parseBasketResponse(data: any, priceConfig?: Awaited<ReturnType<typeof 
       providerType: line.ProviderType || "Taobao",
       vendorName: line.VendorName || "",
       configurators: configText || "",
+      rawConfigurators: rawConfigText || "",
       weight: line.Weight,
       totalPrice,
       originalCnyPrice,
