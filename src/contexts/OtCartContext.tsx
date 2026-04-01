@@ -30,6 +30,7 @@ export interface OtBasketItem {
   providerType?: string;
   vendorName?: string;
   configurators?: string;
+  rawConfigurators?: string;
   weight?: number;
   totalPrice: number;
   originalCnyPrice?: number;
