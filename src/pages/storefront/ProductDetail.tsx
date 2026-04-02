@@ -25,9 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { ProductCard } from "@/components/storefront/ProductCard";
-import { useTrackRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
-import { getSeoImage } from "@/utils/seoHelpers";
 
 interface ProductVariant {
   id: string;
