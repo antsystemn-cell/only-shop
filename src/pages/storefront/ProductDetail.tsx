@@ -626,7 +626,7 @@ export default function ProductDetail() {
           {/* Features */}
           <div className="grid grid-cols-3 gap-2 pt-4">
             {[
-              { icon: Truck, title: "Хурдан хүргэлт", sub: "24 цагийн дотор" },
+              { icon: Truck, title: product.delivery_fee_type === "free" ? "Үнэгүй хүргэлт" : "Хурдан хүргэлт", sub: product.delivery_fee_type === "free" ? "Хүргэлт үнэгүй" : "24 цагийн дотор" },
               { icon: Shield, title: "Баталгаат", sub: "Чанарын баталгаа" },
               { icon: Package, title: "Найдвартай", sub: "Төлбөрийн систем" },
             ].map((f) => (
