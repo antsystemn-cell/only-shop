@@ -89,46 +89,12 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "OT Commerce",
-    items: [
-      { title: "OT Категори", url: "/admin/ot-categories", icon: FolderTree },
-      { title: "Провайдер тохиргоо", url: "/admin/provider-sections", icon: LayoutList },
-      { title: "Нүүр хуудас сегмент", url: "/admin/homepage-segments", icon: LayoutList },
-      { title: "Нийлүүлэгч & Markup", url: "/admin/ot-providers", icon: Store },
-      { title: "OT Валют & Хөнгөлөлт", url: "/admin/ot-pricing", icon: Percent },
-      { title: "OT Хүргэлт", url: "/admin/ot-delivery", icon: Globe },
-      { title: "Агуулах", url: "/admin/ot-warehouse", icon: Warehouse },
-      { title: "Рэйтинг жагсаалт", url: "/admin/ot-rating-lists", icon: LayoutList },
-      { title: "OT Контент", url: "/admin/ot-content", icon: Palette },
-      { title: "OT Роль & Эрх", url: "/admin/ot-roles", icon: Globe },
-      { title: "OT тохиргоо", url: "/admin/ot-settings", icon: Settings },
-      { title: "Цуглуулга", url: "/admin/collections", icon: Library },
-      { title: "Хязгаарлалт", url: "/admin/restrictions", icon: Package },
-      { title: "Бараа засах", url: "/admin/catalog-items", icon: Package },
-      { title: "SEO тохиргоо", url: "/admin/seo", icon: Megaphone },
-      { title: "Мэдээллийн товхимол", url: "/admin/newsletter", icon: Megaphone },
-      { title: "Тайлан & Аналитик", url: "/admin/ot-reports", icon: Activity },
-      { title: "Биллинг", url: "/admin/ot-billing", icon: DollarSign },
-      { title: "Оношлогоо", url: "/admin/ot-diagnostics", icon: Activity },
-    ],
-  },
-  {
-    label: "Amazon",
-    items: [
-      { title: "Холболт", url: "/admin/amazon/connection", icon: Settings },
-      { title: "Marketplace", url: "/admin/amazon/marketplaces", icon: Globe },
-      { title: "Ангилал маппинг", url: "/admin/amazon/categories", icon: FolderTree },
-      { title: "Бараа импорт", url: "/admin/amazon/import", icon: Package },
-      { title: "Импорт бараа", url: "/admin/amazon/products", icon: Package },
-      { title: "Үнийн дүрэм", url: "/admin/amazon/pricing", icon: DollarSign },
-      { title: "Синк & Лог", url: "/admin/amazon/sync", icon: Activity },
-    ],
-  },
-  {
     label: "Контент",
     items: [
       { title: "Хуудсууд", url: "/admin/content", icon: FileText },
       { title: "Баннер удирдах", url: "/admin/banners", icon: Image },
+      { title: "SEO тохиргоо", url: "/admin/seo", icon: Megaphone },
+      { title: "Мэдээллийн товхимол", url: "/admin/newsletter", icon: Megaphone },
     ],
   },
   {
@@ -142,7 +108,6 @@ const menuGroups: MenuGroup[] = [
     label: "Мониторинг & Лог",
     items: [
       { title: "Хэрэглэгчийн лог", url: "/admin/user-activity-log", icon: Users },
-      { title: "Инстанс логууд", url: "/admin/instance-logs", icon: Activity },
     ],
   },
   {
@@ -154,10 +119,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Нэвтрэлтийн тохиргоо", url: "/admin/auth-settings", icon: Shield },
       { title: "SMS Gateway", url: "/admin/sms-gateway", icon: MessageSquare },
       { title: "Захиалгын тохиргоо", url: "/admin/settings-orders", icon: Settings },
-      { title: "Хайлтын тохиргоо", url: "/admin/search-settings", icon: Search },
       { title: "Системийн хэрэгсэл", url: "/admin/system-tools", icon: Activity },
-      { title: "API хяналт", url: "/admin/api-monitoring", icon: Activity },
-      { title: "Legacy шилжүүлэг", url: "/admin/migration", icon: DatabaseBackup },
     ],
   },
 ];
