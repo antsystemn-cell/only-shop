@@ -12,9 +12,6 @@ interface WishlistContextType {
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
-const isUuid = (value: string) =>
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -32,16 +29,14 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const fetchWishlist = async () => {
     if (!user) return;
 
-    const [localRes, otRes] = await Promise.all([
-      supabase.from("wishlists").select("product_id").eq("user_id", user.id),
-      supabase.from("ot_wishlists" as any).select("product_id").eq("user_id", user.id),
-    ]);
+    const { data, error } = await supabase
+      .from("ot_wishlists")
+      .select("product_id")
+      .eq("user_id", user.id);
 
-    const localIds = (localRes.data || []).map((item) => item.product_id);
-    const otData = (otRes.data as unknown as Array<{ product_id: string }>) || [];
-    const otIds = otData.map((item) => item.product_id);
-
-    setWishlistIds(Array.from(new Set([...localIds, ...otIds])));
+    if (!error && data) {
+      setWishlistIds(data.map((item) => item.product_id));
+    }
   };
 
   const isInWishlist = (productId: string) => {
@@ -59,13 +54,14 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(true);
-    const localProduct = isUuid(productId);
 
     try {
       if (isInWishlist(productId)) {
-        const { error } = localProduct
-          ? await supabase.from("wishlists").delete().eq("user_id", user.id).eq("product_id", productId)
-          : await supabase.from("ot_wishlists" as any).delete().eq("user_id", user.id).eq("product_id", productId);
+        const { error } = await supabase
+          .from("ot_wishlists")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("product_id", productId);
 
         if (error) throw error;
 
@@ -75,9 +71,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
           description: "Хүслийн жагсаалтаас хасагдлаа",
         });
       } else {
-        const { error } = localProduct
-          ? await supabase.from("wishlists").insert({ user_id: user.id, product_id: productId })
-          : await supabase.from("ot_wishlists" as any).insert({ user_id: user.id, product_id: productId });
+        const { error } = await supabase
+          .from("ot_wishlists")
+          .insert({ user_id: user.id, product_id: productId });
 
         if (error) throw error;
 

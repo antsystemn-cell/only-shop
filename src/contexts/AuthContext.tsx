@@ -20,7 +20,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
@@ -29,7 +28,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -42,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, fullName?: string, phone?: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -54,15 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     
     if (error) return { error: error as Error };
-
-    // After successful Supabase signup, register with OT API (fire-and-forget)
-    // This runs in the background and doesn't block the signup flow
-    if (data.user) {
-      registerWithOtApi(email, password, fullName, phone, data.session?.access_token).catch((err) => {
-        console.warn("[Auth] OT API registration failed (non-blocking):", err.message);
-      });
-    }
-
     return { error: null };
   };
 
@@ -71,7 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
-    
     return { error: error as Error | null };
   };
 
@@ -81,14 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithPhone = async (phone: string, password: string) => {
     try {
-      // Resolve phone to email via edge function
       const { data, error: fnErr } = await supabase.functions.invoke("phone-auth", {
         body: { action: "resolve-phone", phone },
       });
       if (fnErr || data?.error) {
         return { error: new Error(data?.error || "Утасны дугаартай бүртгэл олдсонгүй") };
       }
-      // Sign in with resolved email
       return signIn(data.email, password);
     } catch (err: any) {
       return { error: err };
@@ -110,33 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-// ─── OT API Registration (background) ───────────────────────
-
-async function registerWithOtApi(
-  email: string,
-  password: string,
-  fullName?: string,
-  phone?: string,
-  accessToken?: string
-) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
-
-  const { data, error } = await supabase.functions.invoke("register-ot-user", {
-    body: { email, password, fullName, phone },
-  });
-
-  if (error) {
-    console.warn("[Auth] OT registration edge function error:", error.message);
-  } else {
-    console.log("[Auth] OT registration result:", data?.success ? "success" : "failed");
-  }
 }
 
 export function useAuth() {
