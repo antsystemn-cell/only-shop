@@ -6,14 +6,6 @@ import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   InputOTP,
@@ -114,32 +106,31 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 text-sm"
         >
           <ArrowLeft className="h-4 w-4" />
-          Нүүр хуудас руу буцах
+          Нүүр хуудас
         </Link>
 
-        <Card className="border-border/50 shadow-xl">
-          <CardHeader className="text-center space-y-4">
-            <div className="flex justify-center">
+        <div className="bg-card rounded-2xl border shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-primary to-primary/80 p-6 text-center text-primary-foreground">
+            <div className="flex justify-center mb-3">
               <img src={onlyLogo} alt="Only" className="h-12 w-12" />
             </div>
-            <div>
-              <CardTitle className="text-2xl">Тавтай морил</CardTitle>
-              <CardDescription>Only дэлгүүрт нэвтрэх</CardDescription>
-            </div>
-          </CardHeader>
+            <h1 className="text-xl font-bold">Тавтай морил</h1>
+            <p className="text-primary-foreground/70 text-sm mt-1">Only дэлгүүрт нэвтрэх</p>
+          </div>
 
-          <CardContent>
+          <div className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Нэвтрэх</TabsTrigger>
-                <TabsTrigger value="signup">Бүртгүүлэх</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 mb-6 rounded-xl bg-muted/50 p-1">
+                <TabsTrigger value="login" className="rounded-lg">Нэвтрэх</TabsTrigger>
+                <TabsTrigger value="signup" className="rounded-lg">Бүртгүүлэх</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login">
@@ -159,7 +150,7 @@ export default function Auth() {
                 <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Эсвэл</span>
+                <span className="bg-card px-3 text-muted-foreground">Эсвэл</span>
               </div>
             </div>
 
@@ -167,18 +158,18 @@ export default function Auth() {
               <GoogleSignInButton />
               <FacebookSignInButton />
             </div>
-          </CardContent>
+          </div>
 
-          <CardFooter className="flex justify-center text-sm text-muted-foreground">
-            <p>
+          <div className="px-6 pb-6 text-center">
+            <p className="text-xs text-muted-foreground">
               Бүртгүүлснээр та манай{" "}
               <Link to="/page/terms_of_use" className="text-primary hover:underline">
                 үйлчилгээний нөхцөл
               </Link>
               -ийг зөвшөөрч байна.
             </p>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

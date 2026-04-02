@@ -107,20 +107,17 @@ export default function MyOrders() {
   const totalCount = (localOrders?.length || 0) + (otOrders?.length || 0);
 
   return (
-    <div className="container py-8 max-w-4xl">
-      <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6">
-        <ArrowLeft className="h-4 w-4" /> Нүүр хуудас руу буцах
-      </Link>
-
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Миний захиалгууд</h1>
-        <p className="text-muted-foreground mt-1">Таны бүх захиалгуудын түүх</p>
+    <div className="container py-6 max-w-2xl animate-fade-in">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-2xl p-5 mb-5">
+        <h1 className="text-xl font-bold">Миний захиалгууд</h1>
+        <p className="text-sm text-muted-foreground mt-1">Таны бүх захиалгуудын түүх</p>
       </div>
 
       <Tabs defaultValue="ot" className="w-full">
-        <TabsList className="w-full grid grid-cols-2">
-          <TabsTrigger value="ot">Гадаадаас захиалга ({otOrders?.length || 0})</TabsTrigger>
-          <TabsTrigger value="local">Бэлэн бараа захиалга ({localOrders?.length || 0})</TabsTrigger>
+        <TabsList className="w-full grid grid-cols-2 rounded-xl bg-muted/50 p-1">
+          <TabsTrigger value="ot" className="rounded-lg text-xs">Гадаадаас ({otOrders?.length || 0})</TabsTrigger>
+          <TabsTrigger value="local" className="rounded-lg text-xs">Бэлэн бараа ({localOrders?.length || 0})</TabsTrigger>
         </TabsList>
 
         {/* OT Orders Tab */}
@@ -135,7 +132,7 @@ export default function MyOrders() {
                 const st = OT_STATUS[order.status] || { label: order.status, variant: "outline" as const };
                 const items = (order.items as any[]) || [];
                 return (
-                  <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow rounded-2xl">
                     <CardContent className="p-4 sm:p-6">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                         <div className="flex items-center gap-3">
@@ -220,7 +217,7 @@ export default function MyOrders() {
                 const st = LOCAL_STATUS[order.status] || LOCAL_STATUS.pending;
                 const itemCount = order.order_items.reduce((s, i) => s + i.quantity, 0);
                 return (
-                  <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow rounded-2xl">
                     <CardContent className="p-0">
                       <Link to={`/order-confirmation/${order.id}`}>
                         <div className="p-4 sm:p-6">

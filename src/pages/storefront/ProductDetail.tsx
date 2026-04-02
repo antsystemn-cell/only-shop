@@ -293,29 +293,25 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="container py-8 animate-fade-in">
+    <div className="container py-4 md:py-8 animate-fade-in">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link to="/" className="hover:text-foreground">
-          Нүүр
-        </Link>
-        <span>/</span>
-        <Link to="/shop" className="hover:text-foreground">
-          Дэлгүүр
-        </Link>
+      <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4 overflow-x-auto whitespace-nowrap">
+        <Link to="/" className="hover:text-primary transition-colors">Нүүр</Link>
+        <span className="text-muted-foreground/50">/</span>
+        <Link to="/shop" className="hover:text-primary transition-colors">Дэлгүүр</Link>
         {product.categories && (
           <>
-            <span>/</span>
-            <Link to={`/shop?category=${product.category_id}`} className="hover:text-foreground">
+            <span className="text-muted-foreground/50">/</span>
+            <Link to={`/shop?category=${product.category_id}`} className="hover:text-primary transition-colors">
               {(product.categories as { name_mn: string }).name_mn}
             </Link>
           </>
         )}
-        <span>/</span>
-        <span className="text-foreground">{product.name_mn}</span>
+        <span className="text-muted-foreground/50">/</span>
+        <span className="text-foreground truncate max-w-[150px]">{product.name_mn}</span>
       </nav>
 
-      <div className="grid lg:grid-cols-2 gap-6 lg:gap-12">
+      <div className="grid lg:grid-cols-2 gap-4 lg:gap-10">
         {/* Image Gallery with Swipe */}
         <div className="space-y-4">
           {/* Main Image Carousel */}
@@ -580,90 +576,67 @@ export default function ProductDetail() {
           </div>
 
           {/* Quantity & Add to Cart */}
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center border rounded-lg">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={quantity <= 1}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="w-12 text-center font-medium">{quantity}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setQuantity((q) => Math.min(selectedVariant?.stock || effectiveStock, q + 1))}
-                disabled={quantity >= (selectedVariant?.stock || effectiveStock) || !hasAnyStock}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground">Тоо:</span>
+              <div className="flex items-center border rounded-xl overflow-hidden">
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-none" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1}>
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="w-12 text-center font-semibold">{quantity}</span>
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-none" onClick={() => setQuantity((q) => Math.min(selectedVariant?.stock || effectiveStock, q + 1))} disabled={quantity >= (selectedVariant?.stock || effectiveStock) || !hasAnyStock}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
-            <Button
-              size="lg"
-              className="flex-1 gap-2"
-              variant="outline"
-              onClick={handleAddToCart}
-              disabled={
-                !hasAnyStock ||
-                (variants.length > 0 && !selectedVariant) ||
-                (selectedVariant && selectedVariant.stock === 0)
-              }
-            >
-              <ShoppingCart className="h-5 w-5" />
-              Сагсанд нэмэх
-            </Button>
-            <Button
-              size="lg"
-              className="flex-1 gap-2"
-              onClick={() => {
-                handleAddToCart();
-                navigate("/checkout", { state: { buyNowProductId: product.id } });
-              }}
-              disabled={
-                !hasAnyStock ||
-                (variants.length > 0 && !selectedVariant) ||
-                (selectedVariant && selectedVariant.stock === 0)
-              }
-            >
-              <Zap className="h-5 w-5" />
-              Шууд захиалах
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                size="lg"
+                className="flex-1 gap-2 rounded-xl h-12"
+                variant="outline"
+                onClick={handleAddToCart}
+                disabled={!hasAnyStock || (variants.length > 0 && !selectedVariant) || (selectedVariant && selectedVariant.stock === 0)}
+              >
+                <ShoppingCart className="h-5 w-5" />
+                Сагсанд нэмэх
+              </Button>
+              <Button
+                size="lg"
+                className="flex-1 gap-2 rounded-xl h-12"
+                onClick={() => {
+                  handleAddToCart();
+                  navigate("/checkout", { state: { buyNowProductId: product.id } });
+                }}
+                disabled={!hasAnyStock || (variants.length > 0 && !selectedVariant) || (selectedVariant && selectedVariant.stock === 0)}
+              >
+                <Zap className="h-5 w-5" />
+                Шууд захиалах
+              </Button>
+            </div>
           </div>
 
           {/* Features */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <Truck className="h-5 w-5 text-primary" />
-              <div className="text-sm">
-                <p className="font-medium">Хурдан хүргэлт</p>
-                <p className="text-muted-foreground">24 цагийн дотор</p>
+          <div className="grid grid-cols-3 gap-2 pt-4">
+            {[
+              { icon: Truck, title: "Хурдан хүргэлт", sub: "24 цагийн дотор" },
+              { icon: Shield, title: "Баталгаат", sub: "Чанарын баталгаа" },
+              { icon: Package, title: "Найдвартай", sub: "Төлбөрийн систем" },
+            ].map((f) => (
+              <div key={f.title} className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-primary/5 text-center">
+                <f.icon className="h-5 w-5 text-primary" />
+                <p className="text-xs font-medium leading-tight">{f.title}</p>
+                <p className="text-[10px] text-muted-foreground">{f.sub}</p>
               </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <Shield className="h-5 w-5 text-primary" />
-              <div className="text-sm">
-                <p className="font-medium">Баталгаат</p>
-                <p className="text-muted-foreground">Чанарын баталгаа</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <Package className="h-5 w-5 text-primary" />
-              <div className="text-sm">
-                <p className="font-medium">Найдвартай</p>
-                <p className="text-muted-foreground">Төлбөрийн систем</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Tabs: Specs & Description */}
-      <div className="mt-12">
+      <div className="mt-8">
         <Tabs defaultValue="description">
-          <TabsList>
+          <TabsList className="rounded-xl bg-muted/50 p-1">
             <TabsTrigger value="description">Тайлбар</TabsTrigger>
             <TabsTrigger value="specs">Техникийн үзүүлэлт</TabsTrigger>
           </TabsList>
@@ -729,9 +702,9 @@ export default function ProductDetail() {
 
       {/* Related Products */}
       {relatedProducts && relatedProducts.length > 0 && (
-        <section className="mt-16">
-          <h2 className="text-2xl font-bold mb-6">Төстэй бараанууд</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <section className="mt-10">
+          <h2 className="text-lg font-bold mb-4">Төстэй бараанууд</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {relatedProducts.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
