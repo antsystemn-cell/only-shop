@@ -25,9 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { ProductCard } from "@/components/storefront/ProductCard";
-import { useTrackRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
-import { getSeoImage } from "@/utils/seoHelpers";
 
 interface ProductVariant {
   id: string;
@@ -123,29 +121,13 @@ export default function ProductDetail() {
     enabled: !!id,
   });
 
-  // Track recently viewed (fire-and-forget)
-  const trackView = useTrackRecentlyViewed();
-  useEffect(() => {
-    if (!product) return;
-    trackView({
-      provider: "local",
-      provider_product_id: product.id,
-      canonical_key: `local:${product.id}`,
-      title_snapshot: product.name_mn || product.name,
-      image_snapshot: product.images?.[0] || "",
-      price_snapshot: product.price,
-      currency: "₮",
-      product_url: `/product/${product.slug || product.id}`,
-    });
-  }, [product?.id]);
-
   // Dynamic OG meta tags for link previews
   useDocumentMeta({
     title: product ? `${product.seo_title || product.name_mn} | Онли` : undefined,
     description:
       product?.seo_description ||
       (product?.description_mn ? product.description_mn.replace(/<[^>]*>/g, "").slice(0, 160) : undefined),
-    image: product ? getSeoImage({ type: "product", images: product.images }) : undefined,
+    image: product?.images?.[0] || undefined,
     url: product ? `https://only.mn/product/${product.slug || product.id}` : undefined,
     type: "product",
   });

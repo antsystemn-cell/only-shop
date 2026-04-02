@@ -11,8 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { DollarSign, Save, Plus, Trash2, RefreshCw, Loader2, TrendingUp, Percent, Calculator } from "lucide-react";
-import { callWithOperatorSession } from "@/services/otSession";
-import { normalizeOtResponse } from "@/utils/otNormalizer";
 
 export default function Pricing() {
   const queryClient = useQueryClient();
@@ -26,19 +24,6 @@ export default function Pricing() {
     },
   });
 
-  // Fetch OT currency rates for reference
-  const { data: otRates, isLoading: otRatesLoading, refetch: refetchOtRates } = useQuery({
-    queryKey: ["admin", "ot-currency-rates"],
-    queryFn: async () => {
-      try {
-        const raw = await callWithOperatorSession("getCurrencyList");
-        const norm = normalizeOtResponse<any>(raw);
-        const currencies = norm.data?.Content || [];
-        return currencies;
-      } catch { return []; }
-    },
-    staleTime: 5 * 60 * 1000,
-  });
 
   const updateMutation = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: any }) => {
@@ -73,30 +58,7 @@ export default function Pricing() {
           <h1 className="text-3xl font-bold">Үнийн тохиргоо</h1>
           <p className="text-muted-foreground mt-1">Валют, нэмэгдэл, хөнгөлөлтийн тохиргоо</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetchOtRates()} disabled={otRatesLoading}>
-          {otRatesLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
-          OT ханш шинэчлэх
-        </Button>
       </div>
-
-      {/* OT Reference Currencies */}
-      {otRates && otRates.length > 0 && (
-        <Card className="border-dashed">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-muted-foreground">OT API валют (лавлагаа)</span>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {otRates.map((c: any) => (
-                <Badge key={c.Code} variant="outline" className="text-sm px-3 py-1">
-                  {c.Sign} {c.Code} — {c.Description}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <Tabs defaultValue="rates">
         <TabsList>

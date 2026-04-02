@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import DOMPurify from "dompurify";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
-import { getSeoImage } from "@/utils/seoHelpers";
 
 interface DynamicContentPageProps {
   slug?: string;
@@ -16,7 +15,7 @@ export default function DynamicContentPage({ slug: propSlug }: DynamicContentPag
   const { slug: paramSlug } = useParams();
   const slug = propSlug || paramSlug;
 
-  const { data: page, isLoading, error } = useQuery({
+  const { data: page, isLoading } = useQuery({
     queryKey: ["content-page", slug],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -34,7 +33,7 @@ export default function DynamicContentPage({ slug: propSlug }: DynamicContentPag
   useDocumentMeta({
     title: page?.seo_title || page?.title ? `${page.seo_title || page.title} | Онли` : undefined,
     description: page?.seo_description || undefined,
-    image: page ? getSeoImage({ type: "page", coverImage: page.seo_image }) : undefined,
+    image: page?.seo_image || undefined,
     url: slug ? `https://only.mn/page/${slug}` : undefined,
   });
 
@@ -47,8 +46,6 @@ export default function DynamicContentPage({ slug: propSlug }: DynamicContentPag
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-5/6" />
           <Skeleton className="h-4 w-4/5" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
         </div>
       </div>
     );
@@ -76,9 +73,7 @@ export default function DynamicContentPage({ slug: propSlug }: DynamicContentPag
       <Button variant="ghost" size="sm" asChild className="mb-4">
         <Link to="/"><ArrowLeft className="h-4 w-4 mr-2" />Нүүр</Link>
       </Button>
-
       <h1 className="text-2xl font-bold mb-6">{page.title}</h1>
-
       <div
         className="prose prose-sm max-w-none [&_table]:border-collapse [&_table]:w-full [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_th]:font-semibold [&_img]:rounded-lg [&_img]:max-w-full [&_iframe]:rounded-lg [&_iframe]:max-w-full [&_iframe]:aspect-video [&_iframe]:w-full"
         dangerouslySetInnerHTML={{ __html: sanitizedContent }}
