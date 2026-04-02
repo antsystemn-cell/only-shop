@@ -167,7 +167,7 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
 
           {/* Action buttons */}
           {effectiveStock > 0 && (
-            <div className="flex flex-col gap-1 mt-2">
+            <div className="flex flex-col sm:flex-row gap-1 mt-2">
               <Button
                 size="sm"
                 variant="outline"
