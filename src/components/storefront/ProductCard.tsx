@@ -167,7 +167,7 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
 
           {/* Action buttons */}
           {effectiveStock > 0 && (
-            <div className="flex gap-1.5 mt-2">
+            <div className="flex flex-col sm:flex-row gap-1 mt-2">
               <Button
                 size="sm"
                 variant="outline"
@@ -183,7 +183,7 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
                 onClick={handleBuyNow}
               >
                 <Zap className="h-3 w-3 mr-0.5 shrink-0" />
-                Шууд захиалах
+                Захиалах
               </Button>
             </div>
           )}
