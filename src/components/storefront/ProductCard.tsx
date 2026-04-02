@@ -167,23 +167,23 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
 
           {/* Action buttons */}
           {effectiveStock > 0 && (
-            <div className="flex flex-col sm:flex-row gap-1 mt-2">
+            <div className="flex flex-col gap-1 mt-2">
               <Button
                 size="sm"
                 variant="outline"
-                className="flex-1 h-7 text-[10px] rounded-full font-semibold px-1"
+                className="w-full h-8 text-[11px] rounded-full font-semibold"
                 onClick={handleAddToCart}
               >
-                <ShoppingCart className="h-3 w-3 mr-0.5 shrink-0" />
+                <ShoppingCart className="h-3.5 w-3.5 mr-1 shrink-0" />
                 Сагслах
               </Button>
               <Button
                 size="sm"
-                className="flex-1 h-7 text-[10px] rounded-full font-semibold px-1"
+                className="w-full h-8 text-[11px] rounded-full font-semibold"
                 onClick={handleBuyNow}
               >
-                <Zap className="h-3 w-3 mr-0.5 shrink-0" />
-                Захиалах
+                <Zap className="h-3.5 w-3.5 mr-1 shrink-0" />
+                Шууд захиалах
               </Button>
             </div>
           )}
