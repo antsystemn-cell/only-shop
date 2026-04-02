@@ -473,7 +473,9 @@ export default function Checkout() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Хүргэлт</span>
-                    <span>{selectedZone ? formatMntPrice(deliveryFee) : "-"}</span>
+                    <span className={allItemsFreeDelivery ? "text-primary font-medium" : ""}>
+                      {allItemsFreeDelivery ? "Үнэгүй" : selectedZone ? formatMntPrice(deliveryFee) : "-"}
+                    </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
