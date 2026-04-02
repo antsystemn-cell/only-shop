@@ -11,8 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { DollarSign, Save, Plus, Trash2, RefreshCw, Loader2, TrendingUp, Percent, Calculator } from "lucide-react";
-import { callWithOperatorSession } from "@/services/otSession";
-import { normalizeOtResponse } from "@/utils/otNormalizer";
 
 export default function Pricing() {
   const queryClient = useQueryClient();
