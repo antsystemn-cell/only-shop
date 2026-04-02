@@ -91,31 +91,6 @@ export default function Home() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const renderProductGrid = (products: any[] | undefined, loading: boolean) => {
-    if (loading) {
-      return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-card rounded-xl overflow-hidden">
-              <Skeleton className="aspect-square" />
-              <div className="p-2.5 space-y-1.5">
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-2/3" />
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    if (!products || products.length === 0) return null;
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-3">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
-    );
-  };
 
   const SectionHeader = ({ icon: Icon, title, onViewAll, iconColor = "text-primary" }: { icon: any; title: string; onViewAll: () => void; iconColor?: string }) => (
     <div className="flex items-center justify-between mb-3">
