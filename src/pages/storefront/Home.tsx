@@ -8,7 +8,7 @@ import { CategoryCard } from "@/components/storefront/CategoryCard";
 import { HeroCarousel } from "@/components/storefront/HeroCarousel";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Zap, Star, ShoppingBag, Truck, Shield, CreditCard, ArrowRight } from "lucide-react";
+import { ShoppingBag, Truck, Shield, CreditCard, ArrowRight } from "lucide-react";
 
 export default function Home() {
   const isMobile = useIsMobile();
@@ -28,31 +28,14 @@ export default function Home() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: featuredProducts, isLoading: featuredLoading } = useQuery({
-    queryKey: ["featured-products"],
+  const { data: allProducts, isLoading: productsLoading } = useQuery({
+    queryKey: ["all-products"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
         .eq("is_active", true)
-        .eq("is_featured", true)
-        .order("created_at", { ascending: false })
-        .limit(12);
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const { data: newProducts, isLoading: newLoading } = useQuery({
-    queryKey: ["new-products"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(12);
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
@@ -74,24 +57,6 @@ export default function Home() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const { data: saleProducts } = useQuery({
-    queryKey: ["sale-products"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .not("compare_price", "is", null)
-        .gt("compare_price", 0)
-        .order("created_at", { ascending: false })
-        .limit(8);
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 1000 * 60 * 5,
-  });
-
-
   const SectionHeader = ({ icon: Icon, title, onViewAll, iconColor = "text-primary" }: { icon: any; title: string; onViewAll: () => void; iconColor?: string }) => (
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2">
@@ -106,7 +71,6 @@ export default function Home() {
 
   return (
     <div className="animate-fade-in">
-      {/* Mobile Search */}
       {isMobile && (
         <div className="sticky top-0 z-30 bg-card px-3 pt-3 pb-2 shadow-sm">
           <HeaderSearch />
@@ -114,10 +78,8 @@ export default function Home() {
       )}
 
       <div className="container py-3 space-y-4 md:space-y-6">
-        {/* Hero Banner */}
         {banners && banners.length > 0 && <HeroCarousel />}
 
-        {/* Categories */}
         {categories && categories.length > 0 && (
           <section className="bg-card rounded-xl p-3">
             <SectionHeader icon={LayoutGridIcon} title="Ангилал" onViewAll={() => navigate("/categories")} />
@@ -129,29 +91,29 @@ export default function Home() {
           </section>
         )}
 
-        {/* Sale Products */}
-        {saleProducts && saleProducts.length > 0 && (
-          <section className="bg-card rounded-xl p-3">
-            <SectionHeader icon={Zap} title="Хямдралтай" onViewAll={() => navigate("/shop")} iconColor="text-destructive" />
-            {renderProductGrid(saleProducts, false)}
-          </section>
-        )}
-
-        {/* Featured Products */}
-        {(featuredLoading || (featuredProducts && featuredProducts.length > 0)) && (
-          <section>
-            <SectionHeader icon={Star} title="Онцлох бараа" onViewAll={() => navigate("/shop?featured=true")} />
-            {renderProductGrid(featuredProducts, featuredLoading)}
-          </section>
-        )}
-
-        {/* New Arrivals */}
-        {(newLoading || (newProducts && newProducts.length > 0)) && (
-          <section>
-            <SectionHeader icon={ShoppingBag} title="Шинэ бараа" onViewAll={() => navigate("/shop?sort=newest")} />
-            {renderProductGrid(newProducts, newLoading)}
-          </section>
-        )}
+        {/* All Products */}
+        <section>
+          <SectionHeader icon={ShoppingBag} title="Бүх бараа" onViewAll={() => navigate("/shop")} />
+          {productsLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-card rounded-xl overflow-hidden">
+                  <Skeleton className="aspect-square" />
+                  <div className="p-2.5 space-y-1.5">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : allProducts && allProducts.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-3">
+              {allProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : null}
+        </section>
 
         {/* Trust Section */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
@@ -173,7 +135,6 @@ export default function Home() {
   );
 }
 
-// Small icon component to avoid extra import
 function LayoutGridIcon({ className }: { className?: string }) {
   return (
     <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
