@@ -617,28 +617,18 @@ export default function ProductDetail() {
           </div>
 
           {/* Features */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <Truck className="h-5 w-5 text-primary" />
-              <div className="text-sm">
-                <p className="font-medium">Хурдан хүргэлт</p>
-                <p className="text-muted-foreground">24 цагийн дотор</p>
+          <div className="grid grid-cols-3 gap-2 pt-4">
+            {[
+              { icon: Truck, title: "Хурдан хүргэлт", sub: "24 цагийн дотор" },
+              { icon: Shield, title: "Баталгаат", sub: "Чанарын баталгаа" },
+              { icon: Package, title: "Найдвартай", sub: "Төлбөрийн систем" },
+            ].map((f) => (
+              <div key={f.title} className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-primary/5 text-center">
+                <f.icon className="h-5 w-5 text-primary" />
+                <p className="text-xs font-medium leading-tight">{f.title}</p>
+                <p className="text-[10px] text-muted-foreground">{f.sub}</p>
               </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <Shield className="h-5 w-5 text-primary" />
-              <div className="text-sm">
-                <p className="font-medium">Баталгаат</p>
-                <p className="text-muted-foreground">Чанарын баталгаа</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <Package className="h-5 w-5 text-primary" />
-              <div className="text-sm">
-                <p className="font-medium">Найдвартай</p>
-                <p className="text-muted-foreground">Төлбөрийн систем</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
