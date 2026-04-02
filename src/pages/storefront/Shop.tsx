@@ -22,7 +22,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductCard } from "@/components/storefront/ProductCard";
-import { ShopCategoryStrip } from "@/components/storefront/ShopCategoryStrip";
 
 type SortOption = "newest" | "price-asc" | "price-desc" | "popular";
 
