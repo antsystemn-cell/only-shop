@@ -189,6 +189,10 @@ export default function Products() {
         is_featured: data.is_featured,
         is_active: data.is_active,
         images: data.images,
+        delivery_fee_type: data.delivery_fee_type,
+        custom_delivery_fee: data.delivery_fee_type === "custom" && data.custom_delivery_fee
+          ? parseFloat(data.custom_delivery_fee)
+          : null,
       };
 
       let productId = data.id;
