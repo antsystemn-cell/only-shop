@@ -24,19 +24,6 @@ export default function Pricing() {
     },
   });
 
-  // Fetch OT currency rates for reference
-  const { data: otRates, isLoading: otRatesLoading, refetch: refetchOtRates } = useQuery({
-    queryKey: ["admin", "ot-currency-rates"],
-    queryFn: async () => {
-      try {
-        const raw = await callWithOperatorSession("getCurrencyList");
-        const norm = normalizeOtResponse<any>(raw);
-        const currencies = norm.data?.Content || [];
-        return currencies;
-      } catch { return []; }
-    },
-    staleTime: 5 * 60 * 1000,
-  });
 
   const updateMutation = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: any }) => {
