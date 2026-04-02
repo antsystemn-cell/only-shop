@@ -3,7 +3,6 @@ import { ShoppingCart, Search, Menu, X, User, LogOut, Heart } from "lucide-react
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
-import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -14,50 +13,38 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { UnifiedCartDrawer } from "./UnifiedCartDrawer";
+import { CartDrawer } from "./CartDrawer";
 import HeaderSearch from "./HeaderSearch";
 import onlyLogo from "@/assets/only-logo.png";
 import { toast } from "sonner";
+
 export function Header() {
   const { getItemCount } = useCart();
-  const { itemCount: otItemCount } = useOtCartSafe();
   const { user, signOut, isLoading } = useAuth();
   const { wishlistIds } = useWishlist();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const itemCount = getItemCount() + otItemCount;
+  const itemCount = getItemCount();
   const wishlistCount = wishlistIds.length;
+
   const handleSignOut = async () => {
     await signOut();
     toast.success("Амжилттай гарлаа");
   };
+
   const navLinks = [
-    {
-      href: "/",
-      label: "Нүүр",
-    },
-    {
-      href: "/ot",
-      label: "Хятадаас захиалах",
-    },
-    {
-      href: "/categories",
-      label: "Бүх ангилал",
-    },
-    {
-      href: "/shop",
-      label: "Дэлгүүр",
-    },
+    { href: "/", label: "Нүүр" },
+    { href: "/shop", label: "Дэлгүүр" },
+    { href: "/categories", label: "Ангилал" },
   ];
+
   return (
     <header className="sticky top-0 z-50 w-full border-b backdrop-blur bg-secondary">
       <div className="container flex h-16 items-center justify-between gap-4 bg-secondary">
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <img src={onlyLogo} alt="Only" className="h-10 w-auto" />
         </Link>
 
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => (
             <Link
@@ -70,19 +57,15 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Search - Desktop */}
         <div className="hidden md:flex flex-1 max-w-lg">
           <HeaderSearch />
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2">
-          {/* Search Toggle - Mobile */}
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSearchOpen(!isSearchOpen)}>
             {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
           </Button>
 
-          {/* Wishlist */}
           <Link to="/wishlist">
             <Button variant="ghost" size="icon" className="relative">
               <Heart className={`h-5 w-5 ${wishlistCount > 0 ? "text-red-500 fill-red-500" : ""}`} />
@@ -94,7 +77,6 @@ export function Header() {
             </Button>
           </Link>
 
-          {/* User Menu */}
           {!isLoading && (
             <>
               {user ? (
@@ -107,21 +89,10 @@ export function Header() {
                   <DropdownMenuContent align="end" className="w-48">
                     <div className="px-2 py-1.5 text-sm font-medium truncate">{user.email}</div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/profile">Миний профайл</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/orders">Миний захиалгууд</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/wallet">Данс / Wallet</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/favourite-vendors">Дуртай борлуулагчид</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/support">Тусламж</Link>
-                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link to="/profile">Миний профайл</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link to="/orders">Миний захиалгууд</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link to="/wallet">Данс / Wallet</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link to="/support">Тусламж</Link></DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                       <LogOut className="h-4 w-4 mr-2" />
@@ -137,7 +108,6 @@ export function Header() {
             </>
           )}
 
-          {/* Cart */}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
@@ -150,30 +120,22 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent className="w-full sm:max-w-lg">
-              <UnifiedCartDrawer />
+              <CartDrawer />
             </SheetContent>
           </Sheet>
 
-          {/* Mobile Menu */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
             <Menu className="h-5 w-5" />
           </Button>
         </div>
       </div>
 
-      {/* Mobile Search */}
       {isSearchOpen && (
         <div className="border-t p-4 md:hidden animate-fade-in">
           <HeaderSearch autoFocus onSearchComplete={() => setIsSearchOpen(false)} />
         </div>
       )}
 
-      {/* Mobile Navigation */}
       {isMobileMenuOpen && (
         <nav className="border-t p-4 md:hidden animate-fade-in">
           <div className="flex flex-col gap-2">
@@ -187,70 +149,18 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              to="/wishlist"
-              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors flex items-center gap-2"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <Heart className={`h-4 w-4 ${wishlistCount > 0 ? "text-red-500 fill-red-500" : ""}`} />
-              Хүслийн жагсаалт
-              {wishlistCount > 0 && (
-                <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{wishlistCount}</span>
-              )}
-            </Link>
             {!user && (
-              <Link
-                to="/auth"
-                className="px-4 py-2 text-sm font-medium text-primary hover:bg-muted rounded-lg transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
+              <Link to="/auth" className="px-4 py-2 text-sm font-medium text-primary hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                 Нэвтрэх / Бүртгүүлэх
               </Link>
             )}
             {user && (
               <>
-                <Link
-                  to="/profile"
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Миний профайл
-                </Link>
-                <Link
-                  to="/orders"
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Миний захиалгууд
-                </Link>
-                <Link
-                  to="/wallet"
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Данс / Wallet
-                </Link>
-                <Link
-                  to="/favourite-vendors"
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Дуртай борлуулагчид
-                </Link>
-                <Link
-                  to="/support"
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Тусламж
-                </Link>
-                <button
-                  className="px-4 py-2 text-sm font-medium text-destructive hover:bg-muted rounded-lg transition-colors text-left"
-                  onClick={() => {
-                    handleSignOut();
-                    setIsMobileMenuOpen(false);
-                  }}
-                >
+                <Link to="/profile" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Миний профайл</Link>
+                <Link to="/orders" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Миний захиалгууд</Link>
+                <Link to="/wallet" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Данс / Wallet</Link>
+                <Link to="/support" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Тусламж</Link>
+                <button className="px-4 py-2 text-sm font-medium text-destructive hover:bg-muted rounded-lg transition-colors text-left" onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }}>
                   Гарах
                 </button>
               </>

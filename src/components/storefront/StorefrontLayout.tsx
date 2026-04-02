@@ -2,7 +2,6 @@ import { Outlet, useLocation } from "react-router-dom";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { MobileBottomNav } from "./MobileBottomNav";
-import { ProviderStrip } from "./ProviderStrip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSeoDefaults } from "@/hooks/useSeoDefaults";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
@@ -12,7 +11,6 @@ export function StorefrontLayout() {
   const location = useLocation();
   const { data: seo } = useSeoDefaults();
 
-  // Apply site-wide SEO defaults (individual pages can override via their own useDocumentMeta)
   useDocumentMeta({
     title: seo?.siteTitle || "Онли",
     description: seo?.siteDescription,
@@ -26,7 +24,6 @@ export function StorefrontLayout() {
   return (
     <div className="min-h-screen flex flex-col">
       {!hideHeader && <Header />}
-      <ProviderStrip />
       <main className="flex-1 pb-20 md:pb-0">
         <Outlet />
       </main>
