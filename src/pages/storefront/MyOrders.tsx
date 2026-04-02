@@ -132,7 +132,7 @@ export default function MyOrders() {
                 const st = OT_STATUS[order.status] || { label: order.status, variant: "outline" as const };
                 const items = (order.items as any[]) || [];
                 return (
-                  <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow rounded-2xl">
                     <CardContent className="p-4 sm:p-6">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                         <div className="flex items-center gap-3">
