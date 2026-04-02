@@ -22,6 +22,7 @@ import ProductDetail from "./pages/storefront/ProductDetail";
 import Auth from "./pages/storefront/Auth";
 import ResetPassword from "./pages/storefront/ResetPassword";
 import Checkout from "./pages/storefront/Checkout";
+import BuyNow from "./pages/storefront/BuyNow";
 import OrderConfirmation from "./pages/storefront/OrderConfirmation";
 import MyOrders from "./pages/storefront/MyOrders";
 import Wishlist from "./pages/storefront/Wishlist";
@@ -91,6 +92,7 @@ const App = () => (
               <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/buy-now/:id" element={<BuyNow />} />
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
               <Route path="/orders" element={<RequireAuth><MyOrders /></RequireAuth>} />
               <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />

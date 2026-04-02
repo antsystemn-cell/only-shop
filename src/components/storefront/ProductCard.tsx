@@ -79,8 +79,7 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
   const handleBuyNow = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product);
-    navigate("/checkout");
+    navigate(`/buy-now/${product.slug || product.id}`);
   };
 
   const handleToggleWishlist = (e: React.MouseEvent) => {
