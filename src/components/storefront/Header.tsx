@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Search, Menu, X, User, LogOut, Heart } from "lucide-react";
+import { ShoppingCart, Search, User, LogOut, Heart, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
@@ -23,7 +23,6 @@ export function Header() {
   const { user, signOut, isLoading } = useAuth();
   const { wishlistIds } = useWishlist();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const itemCount = getItemCount();
   const wishlistCount = wishlistIds.length;
 
@@ -32,58 +31,70 @@ export function Header() {
     toast.success("Амжилттай гарлаа");
   };
 
-  const navLinks = [
-    { href: "/", label: "Нүүр" },
-    { href: "/shop", label: "Дэлгүүр" },
-    { href: "/categories", label: "Ангилал" },
-  ];
-
   return (
-    <header className="sticky top-0 z-50 w-full border-b backdrop-blur bg-secondary">
-      <div className="container flex h-16 items-center justify-between gap-4 bg-secondary">
-        <Link to="/" className="flex items-center gap-2">
-          <img src={onlyLogo} alt="Only" className="h-10 w-auto" />
+    <header className="sticky top-0 z-50 w-full bg-card shadow-sm">
+      <div className="container flex h-14 items-center justify-between gap-3">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2 shrink-0">
+          <img src={onlyLogo} alt="Only" className="h-8 w-auto" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              to={link.href}
-              className="text-sm font-medium transition-colors text-secondary-foreground"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="hidden md:flex flex-1 max-w-lg">
+        {/* Desktop Search */}
+        <div className="hidden md:flex flex-1 max-w-xl">
           <HeaderSearch />
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSearchOpen(!isSearchOpen)}>
-            {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
-          </Button>
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex items-center gap-1">
+          <Link to="/shop" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted">
+            Дэлгүүр
+          </Link>
+          <Link to="/categories" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted">
+            Ангилал
+          </Link>
+        </nav>
 
+        {/* Action Icons */}
+        <div className="flex items-center gap-1">
+          {/* Wishlist */}
           <Link to="/wishlist">
-            <Button variant="ghost" size="icon" className="relative">
-              <Heart className={`h-5 w-5 ${wishlistCount > 0 ? "text-red-500 fill-red-500" : ""}`} />
+            <Button variant="ghost" size="icon" className="relative rounded-full h-9 w-9">
+              <Heart className={`h-5 w-5 ${wishlistCount > 0 ? "text-destructive fill-destructive" : "text-muted-foreground"}`} />
               {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs font-bold text-white flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
                   {wishlistCount > 99 ? "99+" : wishlistCount}
                 </span>
               )}
             </Button>
           </Link>
 
+          {/* Cart */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative rounded-full h-9 w-9">
+                <ShoppingCart className="h-5 w-5 text-muted-foreground" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-primary text-[10px] font-bold text-primary-foreground flex items-center justify-center">
+                    {itemCount > 99 ? "99+" : itemCount}
+                  </span>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-lg">
+              <CartDrawer />
+            </SheetContent>
+          </Sheet>
+
+          {/* Profile */}
           {!isLoading && (
             <>
               {user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <User className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
+                      <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-4 w-4 text-primary" />
+                      </div>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
@@ -101,73 +112,14 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                <Button variant="ghost" size="sm" asChild className="hidden md:flex rounded-full text-sm">
                   <Link to="/auth">Нэвтрэх</Link>
                 </Button>
               )}
             </>
           )}
-
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="h-5 w-5" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-xs font-bold text-primary-foreground flex items-center justify-center">
-                    {itemCount > 99 ? "99+" : itemCount}
-                  </span>
-                )}
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-lg">
-              <CartDrawer />
-            </SheetContent>
-          </Sheet>
-
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-            <Menu className="h-5 w-5" />
-          </Button>
         </div>
       </div>
-
-      {isSearchOpen && (
-        <div className="border-t p-4 md:hidden animate-fade-in">
-          <HeaderSearch autoFocus onSearchComplete={() => setIsSearchOpen(false)} />
-        </div>
-      )}
-
-      {isMobileMenuOpen && (
-        <nav className="border-t p-4 md:hidden animate-fade-in">
-          <div className="flex flex-col gap-2">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
-            {!user && (
-              <Link to="/auth" className="px-4 py-2 text-sm font-medium text-primary hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                Нэвтрэх / Бүртгүүлэх
-              </Link>
-            )}
-            {user && (
-              <>
-                <Link to="/profile" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Миний профайл</Link>
-                <Link to="/orders" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Миний захиалгууд</Link>
-                <Link to="/wallet" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Данс / Wallet</Link>
-                <Link to="/support" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Тусламж</Link>
-                <button className="px-4 py-2 text-sm font-medium text-destructive hover:bg-muted rounded-lg transition-colors text-left" onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }}>
-                  Гарах
-                </button>
-              </>
-            )}
-          </div>
-        </nav>
-      )}
     </header>
   );
 }
