@@ -118,11 +118,6 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
                 New
               </Badge>
             )}
-            {product.delivery_fee_type === "free" && (
-              <Badge className="bg-primary text-primary-foreground text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
-                Үнэгүй хүргэлт
-              </Badge>
-            )}
           </div>
 
           {/* Out of stock */}

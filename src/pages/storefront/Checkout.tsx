@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -364,49 +364,28 @@ export default function Checkout() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Truck className="h-5 w-5 text-primary" />
-                  Хүргэлтийн төрөл
+                  Хүргэлтийн төлбөр
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {selectedZone ? (
-                  <RadioGroup
-                    value={deliveryType}
-                    onValueChange={(value) => setDeliveryType(value as DeliveryType)}
-                    className="space-y-3"
-                  >
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <RadioGroupItem value="standard" id="standard" />
-                      <Label htmlFor="standard" className="flex-1 cursor-pointer">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-medium">Энгийн хүргэлт</p>
-                            <p className="text-sm text-muted-foreground">{selectedZone.standard_days} хоногт хүргэнэ</p>
-                          </div>
-                          <span className="font-semibold text-primary">
-                            {selectedZone.standard_price.toLocaleString()}₮
-                          </span>
-                        </div>
-                      </Label>
+                {allItemsFreeDelivery ? (
+                  <div className="flex items-center gap-3 p-4 border rounded-lg bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800">
+                    <span className="text-green-600 dark:text-green-400 text-lg">✅</span>
+                    <div>
+                      <p className="font-medium text-green-700 dark:text-green-300">Хүргэлт үнэгүй</p>
+                      <p className="text-sm text-green-600 dark:text-green-400">Энэ захиалгын хүргэлт үнэгүй</p>
                     </div>
-                    {selectedZone.express_price && (
-                      <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <RadioGroupItem value="express" id="express" />
-                        <Label htmlFor="express" className="flex-1 cursor-pointer">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-medium">Шуурхай хүргэлт</p>
-                              <p className="text-sm text-muted-foreground">
-                                {selectedZone.express_days} хоногт хүргэнэ
-                              </p>
-                            </div>
-                            <span className="font-semibold text-primary">
-                              {selectedZone.express_price.toLocaleString()}₮
-                            </span>
-                          </div>
-                        </Label>
-                      </div>
-                    )}
-                  </RadioGroup>
+                  </div>
+                ) : selectedZone ? (
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <p className="font-medium">Хүргэлт</p>
+                      <p className="text-sm text-muted-foreground">{selectedZone.standard_days} хоногт хүргэнэ</p>
+                    </div>
+                    <span className="font-semibold text-primary text-lg">
+                      {formatMntPrice(selectedZone.standard_price)}
+                    </span>
+                  </div>
                 ) : (
                   <p className="text-muted-foreground text-center py-4">Хүргэлтийн бүс сонгоно уу</p>
                 )}
