@@ -702,9 +702,9 @@ export default function ProductDetail() {
 
       {/* Related Products */}
       {relatedProducts && relatedProducts.length > 0 && (
-        <section className="mt-16">
-          <h2 className="text-2xl font-bold mb-6">Төстэй бараанууд</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <section className="mt-10">
+          <h2 className="text-lg font-bold mb-4">Төстэй бараанууд</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {relatedProducts.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
