@@ -217,7 +217,7 @@ export default function MyOrders() {
                 const st = LOCAL_STATUS[order.status] || LOCAL_STATUS.pending;
                 const itemCount = order.order_items.reduce((s, i) => s + i.quantity, 0);
                 return (
-                  <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow rounded-2xl">
                     <CardContent className="p-0">
                       <Link to={`/order-confirmation/${order.id}`}>
                         <div className="p-4 sm:p-6">
