@@ -261,11 +261,18 @@ export default function OrderConfirmation() {
         <div className="mb-8 space-y-4">
           {/* Payment method change option */}
           {changingMethod ? (
-            <PaymentMethodSelector
-              selected={selectedPaymentMethod}
-              onSelect={handleChangePaymentMethod}
-              title="Төлбөрийн хэлбэр сонгох"
-            />
+            <div className="relative">
+              {switchingPayment && (
+                <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              )}
+              <PaymentMethodSelector
+                selected={selectedPaymentMethod}
+                onSelect={handleChangePaymentMethod}
+                title="Төлбөрийн хэлбэр сонгох"
+              />
+            </div>
           ) : (
             <>
               {/* Show current payment widget */}
