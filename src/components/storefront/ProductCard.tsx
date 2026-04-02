@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import { Plus, Package, Heart, Star } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ShoppingCart, Zap, Package, Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
@@ -24,6 +24,7 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const inWishlist = isInWishlist(product.id);
 
@@ -73,6 +74,13 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
     e.stopPropagation();
     addToCart(product);
     toast({ title: "Сагсанд нэмэгдлээ", description: product.name_mn });
+  };
+
+  const handleBuyNow = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart(product);
+    navigate("/checkout");
   };
 
   const handleToggleWishlist = (e: React.MouseEvent) => {
@@ -158,16 +166,27 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
             </div>
           )}
 
-          {/* Add to cart */}
+          {/* Action buttons */}
           {effectiveStock > 0 && (
-            <Button
-              size="sm"
-              className="mt-2 w-full h-7 text-[11px] rounded-full font-semibold"
-              onClick={handleAddToCart}
-            >
-              <Plus className="h-3.5 w-3.5 mr-0.5" />
-              Нэмэх
-            </Button>
+            <div className="flex gap-1.5 mt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 h-7 text-[10px] rounded-full font-semibold px-1"
+                onClick={handleAddToCart}
+              >
+                <ShoppingCart className="h-3 w-3 mr-0.5 shrink-0" />
+                Сагслах
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1 h-7 text-[10px] rounded-full font-semibold px-1"
+                onClick={handleBuyNow}
+              >
+                <Zap className="h-3 w-3 mr-0.5 shrink-0" />
+                Шууд захиалах
+              </Button>
+            </div>
           )}
         </div>
       </div>
