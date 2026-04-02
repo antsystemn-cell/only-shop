@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +7,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -15,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, MapPin, Truck, ShoppingBag, Package, Clock } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, Truck, ShoppingBag, Package, Clock, CheckCircle } from "lucide-react";
 import { z } from "zod";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
 
@@ -25,8 +24,6 @@ interface DeliveryZone {
   zone_type: string;
   standard_price: number;
   standard_days: number | null;
-  express_price: number | null;
-  express_days: number | null;
 }
 
 const addressSchema = z.object({
@@ -36,8 +33,6 @@ const addressSchema = z.object({
   apartment: z.string().optional(),
   phone: z.string().min(8, "Утасны дугаар оруулна уу"),
 });
-
-type DeliveryType = "standard" | "express";
 
 function formatMntPrice(price: number) {
   return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
@@ -55,7 +50,6 @@ export default function Checkout() {
     : allLocalItems;
 
   const [selectedZone, setSelectedZone] = useState<DeliveryZone | null>(null);
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>("standard");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("qpay");
@@ -103,23 +97,60 @@ export default function Checkout() {
   const localSubtotal = buyNowProductId
     ? localItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0)
     : getAllLocalSubtotal();
-  const deliveryFee = selectedZone
-    ? (deliveryType === "express" && selectedZone.express_price
-        ? selectedZone.express_price
-        : selectedZone.standard_price)
-    : 0;
+
+  // Calculate delivery fee based on product settings
+  const deliveryFeeInfo = useMemo(() => {
+    // Check each product's delivery_fee_type
+    let maxFee = 0;
+    let allFree = true;
+    let hasCustom = false;
+
+    for (const item of localItems) {
+      const product = item.product as any;
+      const feeType = product.delivery_fee_type || "default";
+
+      if (feeType === "free") {
+        // This product is free delivery, doesn't add to fee
+        continue;
+      }
+
+      allFree = false;
+
+      if (feeType === "custom" && product.custom_delivery_fee != null) {
+        hasCustom = true;
+        maxFee = Math.max(maxFee, product.custom_delivery_fee);
+      } else {
+        // "default" — use zone pricing
+        if (selectedZone) {
+          maxFee = Math.max(maxFee, selectedZone.standard_price);
+        }
+      }
+    }
+
+    if (allFree) {
+      return { fee: 0, isFree: true, label: "Хүргэлт үнэгүй" };
+    }
+
+    return { fee: maxFee, isFree: false, label: formatMntPrice(maxFee) };
+  }, [localItems, selectedZone]);
+
+  const deliveryFee = deliveryFeeInfo.fee;
   const localTotal = localSubtotal + deliveryFee;
 
-  const deliveryDays = selectedZone
-    ? (deliveryType === "express" && selectedZone.express_days
-        ? selectedZone.express_days
-        : selectedZone.standard_days)
-    : null;
+  // Check if any product needs zone-based pricing
+  const needsZoneSelection = useMemo(() => {
+    return localItems.some(item => {
+      const feeType = (item.product as any).delivery_fee_type || "default";
+      return feeType === "default";
+    });
+  }, [localItems]);
+
+  const canSubmit = needsZoneSelection ? !!selectedZone : true;
 
   const createOrderMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Нэвтрэх шаардлагатай");
-      if (!selectedZone) throw new Error("Хүргэлтийн бүс сонгоно уу");
+      if (needsZoneSelection && !selectedZone) throw new Error("Хүргэлтийн бүс сонгоно уу");
 
       const validation = addressSchema.safeParse(addressForm);
       if (!validation.success) {
@@ -132,7 +163,7 @@ export default function Checkout() {
       }
 
       const estimatedDate = new Date();
-      estimatedDate.setDate(estimatedDate.getDate() + (deliveryDays || 3));
+      estimatedDate.setDate(estimatedDate.getDate() + 1);
 
       const { data: order, error: orderError } = await supabase
         .from("orders")
@@ -145,8 +176,8 @@ export default function Checkout() {
           status: "pending",
           payment_status: "pending",
           payment_method: paymentMethod,
-          delivery_type: deliveryType,
-          delivery_zone_id: selectedZone.id,
+          delivery_type: "standard",
+          delivery_zone_id: selectedZone?.id || null,
           estimated_delivery_date: estimatedDate.toISOString().split("T")[0],
           delivery_address: {
             city: addressForm.city,
@@ -229,9 +260,6 @@ export default function Checkout() {
     if (zone) {
       setAddressForm(prev => ({ ...prev, district: zone.name }));
     }
-    if (zone && !zone.express_price) {
-      setDeliveryType("standard");
-    }
   };
 
   if (authLoading) {
@@ -262,7 +290,7 @@ export default function Checkout() {
                 </p>
                 <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  Төлбөр төлөгдсөнөөс хойш <strong>24 цагийн дотор</strong> хүргэгдэнэ
+                  Захиалга баталгаажсанаас хойш <strong>24 цагийн дотор</strong> хүргэгдэнэ
                 </p>
               </div>
             </div>
@@ -332,46 +360,47 @@ export default function Checkout() {
               </CardContent>
             </Card>
 
+            {/* Delivery Fee Section */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Truck className="h-5 w-5 text-primary" />
-                  Хүргэлтийн төрөл
+                  Хүргэлтийн төлбөр
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {selectedZone ? (
-                  <RadioGroup value={deliveryType} onValueChange={(value) => setDeliveryType(value as DeliveryType)} className="space-y-3">
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <RadioGroupItem value="standard" id="standard" />
-                      <Label htmlFor="standard" className="flex-1 cursor-pointer">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-medium">Энгийн хүргэлт</p>
-                            <p className="text-sm text-muted-foreground">{selectedZone.standard_days} хоногт хүргэнэ</p>
-                          </div>
-                          <span className="font-semibold text-primary">{selectedZone.standard_price.toLocaleString()}₮</span>
-                        </div>
-                      </Label>
-                    </div>
-                    {selectedZone.express_price && (
-                      <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <RadioGroupItem value="express" id="express" />
-                        <Label htmlFor="express" className="flex-1 cursor-pointer">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-medium">Шуурхай хүргэлт</p>
-                              <p className="text-sm text-muted-foreground">{selectedZone.express_days} хоногт хүргэнэ</p>
-                            </div>
-                            <span className="font-semibold text-primary">{selectedZone.express_price.toLocaleString()}₮</span>
-                          </div>
-                        </Label>
+                <div className="p-4 border rounded-lg bg-muted/30">
+                  {deliveryFeeInfo.isFree ? (
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <div>
+                        <p className="font-medium text-green-700 dark:text-green-300">Хүргэлт үнэгүй</p>
+                        <p className="text-xs text-muted-foreground">Энэ захиалгын бараанууд хүргэлтийн төлбөргүй</p>
                       </div>
-                    )}
-                  </RadioGroup>
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">Хүргэлтийн бүс сонгоно уу</p>
-                )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Truck className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">Хүргэлтийн төлбөр</p>
+                          {needsZoneSelection && !selectedZone ? (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">Дүүрэг/Аймаг сонгоно уу</p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">24 цагийн дотор хүргэгдэнэ</p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="font-semibold text-lg text-primary">
+                        {needsZoneSelection && !selectedZone ? "—" : deliveryFeeInfo.label}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  Захиалга баталгаажсанаас хойш 24 цагийн дотор хүргэгдэнэ
+                </p>
               </CardContent>
             </Card>
 
@@ -424,7 +453,11 @@ export default function Checkout() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Хүргэлт</span>
-                    <span>{selectedZone ? formatMntPrice(deliveryFee) : "-"}</span>
+                    {deliveryFeeInfo.isFree ? (
+                      <span className="text-green-600 font-medium">Үнэгүй</span>
+                    ) : (
+                      <span>{needsZoneSelection && !selectedZone ? "—" : deliveryFeeInfo.label}</span>
+                    )}
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
@@ -435,10 +468,10 @@ export default function Checkout() {
 
                 <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 text-xs text-green-700 dark:text-green-300">
                   <Clock className="h-3.5 w-3.5 inline mr-1.5" />
-                  Төлбөрөөс хойш <strong>24 цагийн дотор</strong> хүргэгдэнэ
+                  Баталгаажсанаас хойш <strong>24 цагийн дотор</strong> хүргэгдэнэ
                 </div>
 
-                <Button type="submit" size="lg" className="w-full" disabled={!selectedZone || createOrderMutation.isPending}>
+                <Button type="submit" size="lg" className="w-full" disabled={!canSubmit || createOrderMutation.isPending}>
                   {createOrderMutation.isPending ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Захиалга үүсгэж байна...</>
                   ) : (
