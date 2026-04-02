@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Edge functions can insert logs" ON public.otapi_logs;
