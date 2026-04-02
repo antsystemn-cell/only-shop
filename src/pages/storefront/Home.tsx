@@ -1,180 +1,108 @@
-import { useMemo, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Shield, ShoppingBag, Globe } from "lucide-react";
-import { useProviderLogos, getProviderLogo } from "@/hooks/useProviderLogos";
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { ProductCard } from "@/components/storefront/ProductCard";
+import { CategoryCard } from "@/components/storefront/CategoryCard";
+import { HeroCarousel } from "@/components/storefront/HeroCarousel";
 import HeaderSearch from "@/components/storefront/HeaderSearch";
-import { useProviderSafe } from "@/contexts/ProviderContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useTranslatedTitles } from "@/hooks/useTranslatedTitles";
-import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
-import type { OtProductCard } from "@/types/otApi";
+import { ShoppingBag, Star, Sparkles, Truck, Shield, CreditCard } from "lucide-react";
 
-// ─── Lightweight card from snapshot ─────────────────────────
-interface SnapshotCard {
-  id: string;
-  title: string;
-  imageUrl: string;
-  price: number;
-  originalPrice?: number;
-  currency: string;
-  providerType?: string;
-}
-
-function snapshotToProductCard(card: SnapshotCard): OtProductCard {
-  return {
-    id: card.id,
-    title: card.title,
-    imageUrl: card.imageUrl,
-    price: card.price,
-    originalPrice: card.originalPrice,
-    currency: card.currency || "¥",
-    providerType: card.providerType,
-  };
-}
-
-// Shuffle helper
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-const DEFAULT_HOME_PAGE_SIZE = 24;
-const HOME_POIZON_COUNT_KEY = "home_poizon_count";
-const HOME_TAOBAO_COUNT_KEY = "home_taobao_count";
-const HOME_AMAZON_COUNT_KEY = "home_amazon_count";
-const HOME_PROVIDER_ORDER_KEY = "home_provider_order";
-
-// Specific Dewu category IDs for fallback live fetching
-const DEWU_HOME_CATEGORIES = ["otc-1368", "otc-1466", "otc-1470", "otc-1471", "otc-1467"];
-const POIZON_GUARANTEED_CATEGORY_IDS = ["otc-1368", "otc-1466"];
-
-function toPositiveInt(value: unknown, fallback: number) {
-  const num = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(num) || num <= 0) return fallback;
-  return Math.floor(num);
-}
-
-// ─── Icon map for segments ──────────────────────────────────
-const ICON_MAP: Record<string, React.ReactNode> = {
-  shield: <Shield className="h-4 w-4" />,
-  shopping: <ShoppingBag className="h-4 w-4" />,
-  globe: <Globe className="h-4 w-4" />,
-};
-
-// ─── Segment Section (snapshot-first, fallback to live) ─────
-const SegmentSection = memo(function SegmentSection({
-  segment,
-  logoUrl,
-  pageSize,
-}: {
-  segment: {
-    id: string;
-    name: string;
-    slug: string;
-    title: string;
-    subtitle: string;
-    provider_type: string;
-    source_type: string;
-    category_ids: string[];
-    manual_item_ids: string[];
-    item_count: number;
-    pool_size: number;
-    icon_name: string | null;
-    logo_url: string | null;
-  };
-  logoUrl?: string | null;
-  pageSize: number;
-}) {
+export default function Home() {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { setSelectedProvider } = useProviderSafe();
 
-  // 1. Try to load cached snapshot first
-  const { data: snapshot, isLoading: snapshotLoading } = useQuery({
-    queryKey: ["homepage-snapshot", segment.id],
+  // Fetch banners
+  const { data: banners } = useQuery({
+    queryKey: ["banners"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("homepage_segment_snapshots")
-        .select("items, item_count, generated_at, expires_at")
-        .eq("segment_id", segment.id)
-        .gte("expires_at", new Date().toISOString())
-        .order("generated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data;
+      const { data, error } = await supabase
+        .from("banners")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order");
+      if (error) throw error;
+      return data || [];
     },
-    staleTime: 1000 * 60 * 30, // 30min client-side
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 1000 * 60 * 5,
   });
 
-  // 2. Snapshot-only: NO live OTAPI fallback to prevent per-request cost
-  const hasSnapshot = !!snapshot && Array.isArray(snapshot.items) && snapshot.items.length > 0;
+  // Fetch featured products
+  const { data: featuredProducts, isLoading: featuredLoading } = useQuery({
+    queryKey: ["featured-products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .eq("is_featured", true)
+        .order("created_at", { ascending: false })
+        .limit(12);
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
 
-  const items: OtProductCard[] = useMemo(() => {
-    if (hasSnapshot) {
-      return (snapshot.items as unknown as SnapshotCard[]).slice(0, pageSize).map(snapshotToProductCard);
-    }
-    return [];
-  }, [hasSnapshot, snapshot, pageSize]);
+  // Fetch new arrivals
+  const { data: newProducts, isLoading: newLoading } = useQuery({
+    queryKey: ["new-products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(12);
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
 
-  const loading = snapshotLoading;
+  // Fetch categories
+  const { data: categories } = useQuery({
+    queryKey: ["home-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order")
+        .limit(8);
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 10,
+  });
 
-  const itemsKey = items.map(p => p.id).join(",");
-  const titlesList = useMemo(() => items.map(p => p.title), [itemsKey]);
-  const translations = useTranslatedTitles(titlesList);
+  // Fetch sale products (compare_price set)
+  const { data: saleProducts } = useQuery({
+    queryKey: ["sale-products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .not("compare_price", "is", null)
+        .gt("compare_price", 0)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
 
-  const effectiveLogo = segment.logo_url || logoUrl;
-  const icon = ICON_MAP[segment.icon_name || ""] || <ShoppingBag className="h-4 w-4" />;
-
-  const handleViewAll = () => {
-    const provType = segment.provider_type;
-    const filter = provType === "Poizon" ? ("Poizon" as const) : provType === "Amazon" ? ("Amazon" as const) : ("Taobao" as const);
-    setSelectedProvider(filter);
-    if (provType === "Amazon") {
-      navigate("/amazon");
-    } else {
-      navigate(`/ot/provider/${segment.slug}`);
-    }
-  };
-
-  // Don't hide sections - show skeletons while loading, keep section visible even if empty temporarily
-  if (!loading && items.length === 0) {
-    // Still render section with skeletons briefly to avoid flash-of-nothing
-    return null;
-  }
-
-  return (
-    <section className="mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-md bg-primary/10 text-primary">
-            {effectiveLogo ? (
-              <img src={effectiveLogo} alt="" className="h-5 w-5 object-contain rounded-full" />
-            ) : icon}
-          </div>
-          <div>
-            <h2 className="text-sm md:text-lg font-bold">{segment.title || segment.name}</h2>
-            <p className="text-[10px] md:text-xs text-muted-foreground">{segment.subtitle}</p>
-          </div>
-        </div>
-        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" onClick={handleViewAll}>
-          Бүгдийг үзэх →
-        </Button>
-      </div>
-
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
-          {Array.from({ length: pageSize }).map((_, i) => (
-            <div key={i} className="overflow-hidden">
-              <Skeleton className="aspect-square" />
+  const renderProductGrid = (products: any[] | undefined, loading: boolean) => {
+    if (loading) {
+      return (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i}>
+              <Skeleton className="aspect-square rounded-lg" />
               <div className="p-2 space-y-1.5">
                 <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-3 w-2/3" />
@@ -182,113 +110,17 @@ const SegmentSection = memo(function SegmentSection({
             </div>
           ))}
         </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
-            {items.map((product) => (
-              <OtProductCardComponent key={product.id} product={product} translatedTitle={translations[product.title]} />
-            ))}
-          </div>
-          {items.length > 0 && (
-            <div className="flex justify-center mt-4">
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleViewAll}>
-                Бүгдийг үзэх
-              </Button>
-            </div>
-          )}
-        </>
-      )}
-    </section>
-  );
-});
-
-// ─── Home Page ───────────────────────────────────────────────
-export default function Home() {
-  const isMobile = useIsMobile();
-  const { data: stripItems } = useProviderLogos();
-
-  // Fetch segments from DB
-  const { data: segments, isLoading: segmentsLoading } = useQuery({
-    queryKey: ["homepage-segments"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("homepage_segments")
-        .select("*")
-        .eq("is_active", true)
-        .order("display_order");
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 1000 * 60 * 30,
-    refetchOnWindowFocus: false,
-  });
-
-  // Fetch page sizes from admin settings (backward compat)
-  const { data: homeShowcaseSettings } = useQuery({
-    queryKey: ["home-showcase-settings"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("admin_settings")
-        .select("setting_key, setting_value")
-        .eq("category", "storefront")
-        .in("setting_key", [HOME_POIZON_COUNT_KEY, HOME_TAOBAO_COUNT_KEY, HOME_AMAZON_COUNT_KEY]);
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const pageSizes: Record<string, number> = {
-    Poizon: toPositiveInt(homeShowcaseSettings?.find(s => s.setting_key === HOME_POIZON_COUNT_KEY)?.setting_value, DEFAULT_HOME_PAGE_SIZE),
-    Taobao: toPositiveInt(homeShowcaseSettings?.find(s => s.setting_key === HOME_TAOBAO_COUNT_KEY)?.setting_value, DEFAULT_HOME_PAGE_SIZE),
-    Amazon: toPositiveInt(homeShowcaseSettings?.find(s => s.setting_key === HOME_AMAZON_COUNT_KEY)?.setting_value, DEFAULT_HOME_PAGE_SIZE),
+      );
+    }
+    if (!products || products.length === 0) return null;
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-4">
+        {products.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+    );
   };
-
-  // If no segments configured yet, use legacy provider order
-  const { data: providerOrder } = useQuery({
-    queryKey: ["home-provider-order"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("admin_settings")
-        .select("setting_value")
-        .eq("category", "storefront")
-        .eq("setting_key", HOME_PROVIDER_ORDER_KEY)
-        .maybeSingle();
-      return Array.isArray(data?.setting_value) ? (data.setting_value as string[]) : ["Poizon", "Taobao", "Amazon"];
-    },
-    staleTime: 1000 * 60 * 5,
-    enabled: !segmentsLoading && (!segments || segments.length === 0),
-  });
-
-  // Default segment configs for fallback when no DB segments exist
-  const defaultSegments = useMemo(() => {
-    if (segmentsLoading) return null; // Don't show defaults while loading DB segments
-    if (segments && segments.length > 0) return null;
-    const order = providerOrder || ["Poizon", "Taobao", "Amazon"];
-    const defaults: Record<string, any> = {
-      Poizon: {
-        id: "default-poizon", name: "Poizon", slug: "poizon", title: "Poizon, Dewu",
-        subtitle: "100% Оригинал", provider_type: "Poizon", source_type: "category_based",
-        category_ids: DEWU_HOME_CATEGORIES, manual_item_ids: [], item_count: 24, pool_size: 60,
-        icon_name: "shield", logo_url: null,
-      },
-      Taobao: {
-        id: "default-taobao", name: "Taobao", slug: "taobao", title: "Taobao",
-        subtitle: "Хүссэн бүхэн нэг дор", provider_type: "Taobao", source_type: "category_based",
-        category_ids: [], manual_item_ids: [], item_count: 24, pool_size: 60,
-        icon_name: "shopping", logo_url: null,
-      },
-      Amazon: {
-        id: "default-amazon", name: "Amazon", slug: "amazon", title: "Amazon USA",
-        subtitle: "Америкаас шууд", provider_type: "Amazon", source_type: "category_based",
-        category_ids: [], manual_item_ids: [], item_count: 24, pool_size: 60,
-        icon_name: "globe", logo_url: null,
-      },
-    };
-    return order.map(p => defaults[p]).filter(Boolean);
-  }, [segments, segmentsLoading, providerOrder]);
-
-  const displaySegments = (segments && segments.length > 0) ? segments : (defaultSegments || []);
 
   return (
     <div className="animate-fade-in">
@@ -298,41 +130,98 @@ export default function Home() {
         </div>
       )}
 
-      <div className="px-1 md:container py-2 md:py-6 space-y-2">
-      {segmentsLoading ? (
-          // Show skeleton sections while segments load
-          Array.from({ length: 3 }).map((_, i) => (
-            <section key={`skel-${i}`} className="mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Skeleton className="h-8 w-8 rounded-md" />
-                <div>
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-24 mt-1" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 md:gap-3">
-                {Array.from({ length: 6 }).map((_, j) => (
-                  <div key={j} className="overflow-hidden">
-                    <Skeleton className="aspect-square" />
-                    <div className="p-2 space-y-1.5">
-                      <Skeleton className="h-3 w-full" />
-                      <Skeleton className="h-3 w-2/3" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))
-        ) : (
-          displaySegments.map((segment: any) => (
-            <SegmentSection
-              key={segment.id}
-              segment={segment}
-              logoUrl={getProviderLogo(stripItems, segment.provider_type)}
-              pageSize={pageSizes[segment.provider_type] || segment.item_count || DEFAULT_HOME_PAGE_SIZE}
-            />
-          ))
+      <div className="px-1 md:container py-2 md:py-6 space-y-8">
+        {/* Hero Banner */}
+        {banners && banners.length > 0 && (
+          <HeroCarousel banners={banners} />
         )}
+
+        {/* Categories */}
+        {categories && categories.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg md:text-xl font-bold">Ангилал</h2>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/shop")} className="text-xs text-muted-foreground">
+                Бүгдийг үзэх →
+              </Button>
+            </div>
+            <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-2 md:gap-4">
+              {categories.map((category) => (
+                <CategoryCard key={category.id} category={category} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Featured Products */}
+        {(featuredLoading || (featuredProducts && featuredProducts.length > 0)) && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+                  <Star className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg md:text-xl font-bold">Онцлох бараа</h2>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/shop?featured=true")} className="text-xs text-muted-foreground">
+                Бүгдийг үзэх →
+              </Button>
+            </div>
+            {renderProductGrid(featuredProducts, featuredLoading)}
+          </section>
+        )}
+
+        {/* Sale Products */}
+        {saleProducts && saleProducts.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-destructive/10 text-destructive">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg md:text-xl font-bold">Хямдралтай</h2>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/shop")} className="text-xs text-muted-foreground">
+                Бүгдийг үзэх →
+              </Button>
+            </div>
+            {renderProductGrid(saleProducts, false)}
+          </section>
+        )}
+
+        {/* New Arrivals */}
+        {(newLoading || (newProducts && newProducts.length > 0)) && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+                  <ShoppingBag className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg md:text-xl font-bold">Шинэ бараа</h2>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/shop?sort=newest")} className="text-xs text-muted-foreground">
+                Бүгдийг үзэх →
+              </Button>
+            </div>
+            {renderProductGrid(newProducts, newLoading)}
+          </section>
+        )}
+
+        {/* Trust Section */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6">
+          {[
+            { icon: Truck, title: "Хурдан хүргэлт", desc: "24 цагийн дотор" },
+            { icon: Shield, title: "Баталгаат бараа", desc: "100% чанарын баталгаа" },
+            { icon: CreditCard, title: "Аюулгүй төлбөр", desc: "Олон төлбөрийн сонголт" },
+            { icon: ShoppingBag, title: "Бэлэн бараа", desc: "Монголд бэлэн байгаа" },
+          ].map((item, i) => (
+            <div key={i} className="text-center p-4 rounded-xl bg-muted/50">
+              <item.icon className="h-8 w-8 mx-auto mb-2 text-primary" />
+              <p className="font-semibold text-sm">{item.title}</p>
+              <p className="text-xs text-muted-foreground">{item.desc}</p>
+            </div>
+          ))}
+        </section>
       </div>
     </div>
   );

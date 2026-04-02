@@ -34,7 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ProductImageUpload } from "@/components/admin/ProductImageUpload";
 import { ProductVariantsManager } from "@/components/admin/ProductVariantsManager";
-import { MultiVariantCreator } from "@/components/admin/MultiVariantCreator";
+
 import { VariantFormData } from "@/components/admin/VariantFormFields";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import {

@@ -23,17 +23,11 @@ import {
 import { Label } from "@/components/ui/label";
 import {
   Search, Users as UsersIcon, Shield, User, Eye, Mail, Phone,
-  ShoppingCart, Plus, Minus, Tag, AlertTriangle, Wallet, CreditCard,
+  ShoppingCart, Tag, Wallet, CreditCard,
   Loader2, Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import {
-  addUserToDiscountGroup,
-  removeUserFromDiscountGroup,
-} from "@/services/otApi";
-import { callWithOperatorSession } from "@/services/otSession";
-import { normalizeOtResponse } from "@/utils/otNormalizer";
 
 interface UserProfile {
   id: string;
@@ -42,7 +36,6 @@ interface UserProfile {
   full_name: string | null;
   phone: string | null;
   avatar_url: string | null;
-  ot_user_id: string | null;
   created_at: string;
   user_roles: { role: string }[];
 }
@@ -108,12 +101,11 @@ export default function Users() {
     return email.slice(0, 2).toUpperCase();
   };
 
-  // ── CSV Export ──
   const handleExportCsv = () => {
     if (!users?.length) return;
-    const headers = ["Name", "Email", "Phone", "OT User ID", "Role", "Registered"];
+    const headers = ["Name", "Email", "Phone", "Role", "Registered"];
     const rows = users.map(u => [
-      u.full_name || "", u.email, u.phone || "", u.ot_user_id || "",
+      u.full_name || "", u.email, u.phone || "",
       u.user_roles.some(r => r.role === "admin") ? "admin" : "user",
       format(new Date(u.created_at), "yyyy-MM-dd"),
     ].join(","));
@@ -126,27 +118,23 @@ export default function Users() {
     toast.success(`${users.length} хэрэглэгч экспортлогдлоо`);
   };
 
-  // Stats
   const adminCount = users?.filter(u => u.user_roles.some(r => r.role === "admin")).length || 0;
-  const otLinkedCount = users?.filter(u => u.ot_user_id).length || 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Хэрэглэгч удирдах</h1>
-          <p className="text-muted-foreground mt-1">Бүртгэлтэй хэрэглэгчдийг харах, хөнгөлөлтийн бүлэг удирдах</p>
+          <p className="text-muted-foreground mt-1">Бүртгэлтэй хэрэглэгчдийг харах</p>
         </div>
         <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={!users?.length}>
           <Download className="h-4 w-4 mr-1" /> CSV
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Нийт</p><p className="text-2xl font-bold">{users?.length || 0}</p></CardContent></Card>
         <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Админ</p><p className="text-2xl font-bold text-primary">{adminCount}</p></CardContent></Card>
-        <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">OT холбоотой</p><p className="text-2xl font-bold text-primary">{otLinkedCount}</p></CardContent></Card>
         <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Хэрэглэгч</p><p className="text-2xl font-bold">{(users?.length || 0) - adminCount}</p></CardContent></Card>
       </div>
 
@@ -187,7 +175,6 @@ export default function Users() {
                   <TableRow>
                     <TableHead>Хэрэглэгч</TableHead>
                     <TableHead>Утас</TableHead>
-                    <TableHead>OT User</TableHead>
                     <TableHead className="text-center">Эрх</TableHead>
                     <TableHead className="text-center">Бүртгүүлсэн</TableHead>
                     <TableHead className="text-center">Үйлдэл</TableHead>
@@ -209,7 +196,6 @@ export default function Users() {
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{user.phone || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{user.ot_user_id || "—"}</TableCell>
                       <TableCell className="text-center">{getRoleBadge(user.user_roles)}</TableCell>
                       <TableCell className="text-center text-sm text-muted-foreground">{format(new Date(user.created_at), "yyyy-MM-dd")}</TableCell>
                       <TableCell className="text-center">
@@ -235,8 +221,6 @@ export default function Users() {
     </div>
   );
 }
-
-// ─── User Detail Sheet ───────────────────────────────────────
 
 function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
@@ -265,7 +249,6 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
     enabled: !!user,
   });
 
-  // Wallet
   const { data: walletData, refetch: refetchWallet } = useQuery({
     queryKey: ["admin", "user-wallet", user?.user_id],
     queryFn: async () => {
@@ -293,57 +276,6 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
     onError: (e: any) => toast.error(e.message),
   });
 
-  // OT Discount groups
-  const { data: allDiscountGroups } = useQuery({
-    queryKey: ["admin", "ot-discount-groups"],
-    queryFn: async () => {
-      try {
-        const raw = await callWithOperatorSession("getDiscountGroupList");
-        const norm = normalizeOtResponse<any>(raw);
-        const d = norm.data;
-        if (Array.isArray(d)) return d;
-        if (Array.isArray(d?.Content)) return d.Content;
-        if (Array.isArray(d?.DiscountGroupInfoList?.Item)) return d.DiscountGroupInfoList.Item;
-        return [];
-      } catch { return []; }
-    },
-  });
-
-  const { data: userDiscounts, refetch: refetchUserDiscounts } = useQuery({
-    queryKey: ["admin", "user-discount-groups", user?.ot_user_id],
-    queryFn: async () => {
-      if (!user?.ot_user_id) return [];
-      try {
-        const raw = await callWithOperatorSession("getUserDiscountGroups", { userId: user.ot_user_id });
-        const norm = normalizeOtResponse<any>(raw);
-        const d = norm.data;
-        if (Array.isArray(d)) return d;
-        if (Array.isArray(d?.Content)) return d.Content;
-        if (Array.isArray(d?.DiscountGroupInfoList?.Item)) return d.DiscountGroupInfoList.Item;
-        return [];
-      } catch { return []; }
-    },
-    enabled: !!user?.ot_user_id,
-  });
-
-  const addDiscountMut = useMutation({
-    mutationFn: async (discountGroupId: string) => {
-      if (!user?.ot_user_id) throw new Error("OT User ID байхгүй");
-      await addUserToDiscountGroup(user.ot_user_id, discountGroupId);
-    },
-    onSuccess: () => { refetchUserDiscounts(); toast.success("Хөнгөлөлтийн бүлэгт нэмэгдлээ"); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const removeDiscountMut = useMutation({
-    mutationFn: async (discountGroupId: string) => {
-      if (!user?.ot_user_id) throw new Error("OT User ID байхгүй");
-      await removeUserFromDiscountGroup(user.ot_user_id, discountGroupId);
-    },
-    onSuccess: () => { refetchUserDiscounts(); toast.success("Хөнгөлөлтийн бүлгээс хасагдлаа"); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const toggleAdminMutation = useMutation({
     mutationFn: async ({ userId, makeAdmin }: { userId: string; makeAdmin: boolean }) => {
       if (makeAdmin) {
@@ -360,7 +292,6 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
 
   if (!user) return null;
   const isAdmin = user.user_roles.some(r => r.role === "admin");
-  const userDiscountIds = (userDiscounts || []).map((d: any) => String(d.Id?.Value || d.Id || d.DiscountGroupId));
   const statusMap: Record<string, string> = { pending: "Хүлээгдэж", processing: "Бэлтгэгдэж", shipped: "Хүргэлтэд", delivered: "Хүргэгдсэн", cancelled: "Цуцлагдсан" };
 
   return (
@@ -372,7 +303,6 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
           </SheetHeader>
 
           <div className="mt-6 space-y-6">
-            {/* Profile Info */}
             <Card>
               <CardContent className="pt-4 space-y-3">
                 <div className="flex items-center gap-4">
@@ -391,7 +321,6 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
                   <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" />{user.email}</div>
                   {user.phone && <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{user.phone}</div>}
                   <div className="text-muted-foreground text-xs">ID: {user.user_id}</div>
-                  {user.ot_user_id && <div className="text-muted-foreground text-xs">OT User ID: {user.ot_user_id}</div>}
                   <div className="text-muted-foreground text-xs">Бүртгүүлсэн: {format(new Date(user.created_at), "yyyy-MM-dd HH:mm")}</div>
                 </div>
                 <div className="flex gap-2 pt-2">
@@ -402,7 +331,6 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
               </CardContent>
             </Card>
 
-            {/* Wallet */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2"><Wallet className="h-4 w-4" />Wallet</CardTitle>
@@ -413,66 +341,19 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
                     <p className="text-2xl font-bold">{formatCurrency(Number(walletData?.balance || 0))}</p>
                     <p className="text-xs text-muted-foreground">Одоогийн үлдэгдэл</p>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => { setWalletAmount(""); setWalletDialogOpen(true); }}>
-                      <CreditCard className="h-4 w-4 mr-1" /> Баланс удирдах
-                    </Button>
-                  </div>
+                  <Button size="sm" variant="outline" onClick={() => { setWalletAmount(""); setWalletDialogOpen(true); }}>
+                    <CreditCard className="h-4 w-4 mr-1" /> Баланс удирдах
+                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Tabs for organized content */}
-            <Tabs defaultValue="discounts">
+            <Tabs defaultValue="orders">
               <TabsList className="w-full">
-                <TabsTrigger value="discounts" className="flex-1">Хөнгөлөлт</TabsTrigger>
                 <TabsTrigger value="orders" className="flex-1">Захиалга</TabsTrigger>
                 <TabsTrigger value="addresses" className="flex-1">Хаяг</TabsTrigger>
               </TabsList>
 
-              {/* Discounts Tab */}
-              <TabsContent value="discounts" className="mt-4">
-                {user.ot_user_id ? (
-                  <Card>
-                    <CardContent className="pt-4 space-y-3">
-                      {userDiscounts && userDiscounts.length > 0 && (
-                        <div className="space-y-2">
-                          {userDiscounts.map((d: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between p-2 border rounded-lg">
-                              <div>
-                                <span className="text-sm font-medium">{d.Name || d.DiscountGroupName || "Бүлэг"}</span>
-                                {d.Discount != null && <Badge variant="outline" className="ml-2">{d.Discount}%</Badge>}
-                              </div>
-                              <Button size="sm" variant="ghost" onClick={() => removeDiscountMut.mutate(String(d.Id?.Value || d.Id || d.DiscountGroupId))} disabled={removeDiscountMut.isPending}>
-                                <Minus className="h-3 w-3 mr-1" />Хасах
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {allDiscountGroups && allDiscountGroups.length > 0 && (
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-2">Бүлэг нэмэх:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {allDiscountGroups.filter((g: any) => !userDiscountIds.includes(String(g.Id?.Value || g.Id))).map((g: any, i: number) => (
-                              <Button key={i} size="sm" variant="outline" onClick={() => addDiscountMut.mutate(String(g.Id?.Value || g.Id))} disabled={addDiscountMut.isPending}>
-                                <Plus className="h-3 w-3 mr-1" />{g.Name || "Бүлэг"}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {(!userDiscounts || userDiscounts.length === 0) && (!allDiscountGroups || allDiscountGroups.length === 0) && (
-                        <p className="text-sm text-muted-foreground text-center py-4">Хөнгөлөлтийн бүлэг байхгүй</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground text-center py-4">OT User ID холбогдоогүй байна</p></CardContent></Card>
-                )}
-              </TabsContent>
-
-              {/* Orders Tab */}
               <TabsContent value="orders" className="mt-4">
                 <Card>
                   <CardContent className="pt-4">
@@ -498,13 +379,12 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
                 </Card>
               </TabsContent>
 
-              {/* Addresses Tab */}
               <TabsContent value="addresses" className="mt-4">
                 <Card>
                   <CardContent className="pt-4">
                     {addresses && addresses.length > 0 ? (
                       <div className="space-y-2">
-                        {addresses.map(addr => (
+                        {addresses.map((addr: any) => (
                           <div key={addr.id} className="p-3 border rounded-lg text-sm">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-xs">{addr.label || "Хаяг"}</Badge>
@@ -527,7 +407,6 @@ function UserDetailSheet({ user, open, onClose }: { user: UserProfile | null; op
         </SheetContent>
       </Sheet>
 
-      {/* Wallet Dialog */}
       <Dialog open={walletDialogOpen} onOpenChange={setWalletDialogOpen}>
         <DialogContent>
           <DialogHeader>

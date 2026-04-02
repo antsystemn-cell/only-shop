@@ -6,8 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { ProductCard } from "@/components/storefront/ProductCard";
-import { OtProductCardComponent } from "@/components/storefront/OtProductCard";
-import { fetchItemsByIds } from "@/services/otApi";
 
 function RemoveButton({ productId }: { productId: string }) {
   const { toggleWishlist, isLoading } = useWishlist();
@@ -21,15 +19,8 @@ function RemoveButton({ productId }: { productId: string }) {
   };
 
   return (
-    <Button
-      variant="destructive"
-      size="sm"
-      className="w-full gap-1.5 text-xs mt-1"
-      onClick={handleRemove}
-      disabled={isLoading}
-    >
-      <X className="h-3.5 w-3.5" />
-      Хасах
+    <Button variant="destructive" size="sm" className="w-full gap-1.5 text-xs mt-1" onClick={handleRemove} disabled={isLoading}>
+      <X className="h-3.5 w-3.5" />Хасах
     </Button>
   );
 }
@@ -40,38 +31,31 @@ export default function Wishlist() {
   const { data, isLoading } = useQuery({
     queryKey: ["wishlist-products", user?.id],
     queryFn: async () => {
-      if (!user) return { localProducts: [], otProducts: [] };
+      if (!user) return { localProducts: [] };
 
-      const [localWishlistRes, otWishlistRes] = await Promise.all([
-        supabase.from("wishlists").select("product_id").eq("user_id", user.id),
-        supabase.from("ot_wishlists" as any).select("product_id").eq("user_id", user.id),
-      ]);
+      const { data: wishlistRes, error } = await supabase
+        .from("wishlists")
+        .select("product_id")
+        .eq("user_id", user.id);
 
-      if (localWishlistRes.error) throw localWishlistRes.error;
-      if (otWishlistRes.error) throw otWishlistRes.error;
+      if (error) throw error;
+      const localIds = (wishlistRes || []).map((item) => item.product_id);
 
-      const localIds = (localWishlistRes.data || []).map((item) => item.product_id);
-      const otData = (otWishlistRes.data as unknown as Array<{ product_id: string }>) || [];
-      const otIds = otData.map((item) => item.product_id);
+      if (localIds.length === 0) return { localProducts: [] };
 
-      const [localProductsRes, otProducts] = await Promise.all([
-        localIds.length > 0
-          ? supabase.from("products").select("*").in("id", localIds).eq("is_active", true)
-          : Promise.resolve({ data: [], error: null } as any),
-        otIds.length > 0 ? fetchItemsByIds(otIds, 6, { includeUnavailable: true }) : Promise.resolve([]),
-      ]);
+      const { data: products, error: prodError } = await supabase
+        .from("products")
+        .select("*")
+        .in("id", localIds)
+        .eq("is_active", true);
 
-      if (localProductsRes.error) throw localProductsRes.error;
-
-      return {
-        localProducts: localProductsRes.data || [],
-        otProducts,
-      };
+      if (prodError) throw prodError;
+      return { localProducts: products || [] };
     },
     enabled: !!user,
   });
 
-  const totalCount = (data?.localProducts.length || 0) + (data?.otProducts.length || 0);
+  const totalCount = data?.localProducts.length || 0;
 
   if (!user) {
     return (
@@ -81,12 +65,8 @@ export default function Wishlist() {
             <Heart className="h-10 w-10 text-muted-foreground" />
           </div>
           <h1 className="text-2xl font-bold mb-2">Хүслийн жагсаалт</h1>
-          <p className="text-muted-foreground mb-6">
-            Хүслийн жагсаалтаа харахын тулд нэвтэрнэ үү
-          </p>
-          <Link to="/auth">
-            <Button size="lg">Нэвтрэх</Button>
-          </Link>
+          <p className="text-muted-foreground mb-6">Хүслийн жагсаалтаа харахын тулд нэвтэрнэ үү</p>
+          <Link to="/auth"><Button size="lg">Нэвтрэх</Button></Link>
         </div>
       </div>
     );
@@ -111,14 +91,8 @@ export default function Wishlist() {
       ) : totalCount > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
           {(data?.localProducts || []).map((product) => (
-            <div key={`local-${product.id}`}>
+            <div key={product.id}>
               <ProductCard product={product} />
-              <RemoveButton productId={product.id} />
-            </div>
-          ))}
-          {(data?.otProducts || []).map((product) => (
-            <div key={`ot-${product.id}`}>
-              <OtProductCardComponent product={product} />
               <RemoveButton productId={product.id} />
             </div>
           ))}
@@ -134,8 +108,7 @@ export default function Wishlist() {
           </p>
           <Link to="/shop">
             <Button size="lg" className="gap-2">
-              <ShoppingBag className="h-5 w-5" />
-              Дэлгүүр үзэх
+              <ShoppingBag className="h-5 w-5" />Дэлгүүр үзэх
             </Button>
           </Link>
         </div>
