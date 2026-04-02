@@ -576,57 +576,44 @@ export default function ProductDetail() {
           </div>
 
           {/* Quantity & Add to Cart */}
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center border rounded-lg">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={quantity <= 1}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="w-12 text-center font-medium">{quantity}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setQuantity((q) => Math.min(selectedVariant?.stock || effectiveStock, q + 1))}
-                disabled={quantity >= (selectedVariant?.stock || effectiveStock) || !hasAnyStock}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground">Тоо:</span>
+              <div className="flex items-center border rounded-xl overflow-hidden">
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-none" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1}>
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="w-12 text-center font-semibold">{quantity}</span>
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-none" onClick={() => setQuantity((q) => Math.min(selectedVariant?.stock || effectiveStock, q + 1))} disabled={quantity >= (selectedVariant?.stock || effectiveStock) || !hasAnyStock}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
-            <Button
-              size="lg"
-              className="flex-1 gap-2"
-              variant="outline"
-              onClick={handleAddToCart}
-              disabled={
-                !hasAnyStock ||
-                (variants.length > 0 && !selectedVariant) ||
-                (selectedVariant && selectedVariant.stock === 0)
-              }
-            >
-              <ShoppingCart className="h-5 w-5" />
-              Сагсанд нэмэх
-            </Button>
-            <Button
-              size="lg"
-              className="flex-1 gap-2"
-              onClick={() => {
-                handleAddToCart();
-                navigate("/checkout", { state: { buyNowProductId: product.id } });
-              }}
-              disabled={
-                !hasAnyStock ||
-                (variants.length > 0 && !selectedVariant) ||
-                (selectedVariant && selectedVariant.stock === 0)
-              }
-            >
-              <Zap className="h-5 w-5" />
-              Шууд захиалах
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                size="lg"
+                className="flex-1 gap-2 rounded-xl h-12"
+                variant="outline"
+                onClick={handleAddToCart}
+                disabled={!hasAnyStock || (variants.length > 0 && !selectedVariant) || (selectedVariant && selectedVariant.stock === 0)}
+              >
+                <ShoppingCart className="h-5 w-5" />
+                Сагсанд нэмэх
+              </Button>
+              <Button
+                size="lg"
+                className="flex-1 gap-2 rounded-xl h-12"
+                onClick={() => {
+                  handleAddToCart();
+                  navigate("/checkout", { state: { buyNowProductId: product.id } });
+                }}
+                disabled={!hasAnyStock || (variants.length > 0 && !selectedVariant) || (selectedVariant && selectedVariant.stock === 0)}
+              >
+                <Zap className="h-5 w-5" />
+                Шууд захиалах
+              </Button>
+            </div>
           </div>
 
           {/* Features */}
