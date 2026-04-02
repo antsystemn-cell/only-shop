@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -131,12 +131,76 @@ export default function OrderConfirmation() {
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("qpay");
   const [changingMethod, setChangingMethod] = useState(false);
+  const [currentPaymentIntentId, setCurrentPaymentIntentId] = useState<string | null>(paymentIntentId);
+  const [switchingPayment, setSwitchingPayment] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (order?.payment_method) {
       setSelectedPaymentMethod(order.payment_method as PaymentMethod);
     }
   }, [order?.payment_method]);
+
+  // Sync paymentIntentId from URL
+  useEffect(() => {
+    setCurrentPaymentIntentId(paymentIntentId);
+  }, [paymentIntentId]);
+
+  const handleChangePaymentMethod = useCallback(async (method: PaymentMethod) => {
+    if (!order) return;
+    setSwitchingPayment(true);
+    try {
+      // Update order's payment method in DB
+      await supabase
+        .from("orders")
+        .update({ payment_method: method })
+        .eq("id", order.id);
+
+      // Create new payment intent for non-wallet methods
+      if (method !== "wallet") {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not authenticated");
+
+        const { data: pi, error: piErr } = await supabase
+          .from("payment_intents")
+          .insert({
+            user_id: user.id,
+            type: "order" as const,
+            reference_id: order.id,
+            amount: order.total,
+            provider:
+              method === "omniway"
+                ? ("omniway" as const)
+                : method === "storepay"
+                  ? ("storepay" as const)
+                  : ("qpay" as const),
+            status: "initiated" as const,
+          })
+          .select()
+          .single();
+
+        if (piErr) {
+          console.error("Payment intent creation error:", piErr);
+          throw piErr;
+        }
+
+        setCurrentPaymentIntentId(pi.id);
+        // Update URL with new payment intent
+        navigate(`/order-confirmation/${order.id}?pi=${pi.id}`, { replace: true });
+      } else {
+        setCurrentPaymentIntentId(null);
+        navigate(`/order-confirmation/${order.id}`, { replace: true });
+      }
+
+      setSelectedPaymentMethod(method);
+      setChangingMethod(false);
+      refetch();
+    } catch (err) {
+      console.error("Failed to switch payment method:", err);
+    } finally {
+      setSwitchingPayment(false);
+    }
+  }, [order, navigate, refetch]);
 
   if (isLoading) {
     return (
@@ -161,19 +225,7 @@ export default function OrderConfirmation() {
   const paymentStatus = paymentStatusLabels[order.payment_status || "pending"] || paymentStatusLabels.pending;
   const showPayment = order.payment_status === "pending" || order.payment_status === "failed";
   const isPaid = order.payment_status === "paid";
-
   const activePaymentMethod = changingMethod ? selectedPaymentMethod : (order.payment_method as PaymentMethod) || "qpay";
-
-  const handleChangePaymentMethod = async (method: PaymentMethod) => {
-    setSelectedPaymentMethod(method);
-    // Update order's payment method in DB
-    await supabase
-      .from("orders")
-      .update({ payment_method: method })
-      .eq("id", order.id);
-    setChangingMethod(false);
-    refetch();
-  };
 
   return (
     <div className="container py-8 max-w-4xl">
@@ -209,11 +261,18 @@ export default function OrderConfirmation() {
         <div className="mb-8 space-y-4">
           {/* Payment method change option */}
           {changingMethod ? (
-            <PaymentMethodSelector
-              selected={selectedPaymentMethod}
-              onSelect={handleChangePaymentMethod}
-              title="Төлбөрийн хэлбэр сонгох"
-            />
+            <div className="relative">
+              {switchingPayment && (
+                <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              )}
+              <PaymentMethodSelector
+                selected={selectedPaymentMethod}
+                onSelect={handleChangePaymentMethod}
+                title="Төлбөрийн хэлбэр сонгох"
+              />
+            </div>
           ) : (
             <>
               {/* Show current payment widget */}
@@ -230,17 +289,19 @@ export default function OrderConfirmation() {
                   }}
                 />
               )}
-              {activePaymentMethod === "omniway" && paymentIntentId && (
+              {activePaymentMethod === "omniway" && currentPaymentIntentId && (
                 <OmniWayPayment
-                  paymentIntentId={paymentIntentId}
+                  key={currentPaymentIntentId}
+                  paymentIntentId={currentPaymentIntentId}
                   orderNumber={order.order_number}
                   amount={order.total}
                   onPaymentSuccess={() => refetch()}
                 />
               )}
-              {activePaymentMethod === "storepay" && paymentIntentId && (
+              {activePaymentMethod === "storepay" && currentPaymentIntentId && (
                 <StorepayPayment
-                  paymentIntentId={paymentIntentId}
+                  key={currentPaymentIntentId}
+                  paymentIntentId={currentPaymentIntentId}
                   orderNumber={order.order_number}
                   amount={order.total}
                   onPaymentSuccess={() => refetch()}
@@ -248,8 +309,9 @@ export default function OrderConfirmation() {
               )}
               {activePaymentMethod !== "omniway" && activePaymentMethod !== "storepay" && activePaymentMethod !== "wallet" && (
                 <QPayPayment
-                  paymentIntentId={paymentIntentId || undefined}
-                  orderId={!paymentIntentId ? order.id : undefined}
+                  key={currentPaymentIntentId || order.id}
+                  paymentIntentId={currentPaymentIntentId || undefined}
+                  orderId={!currentPaymentIntentId ? order.id : undefined}
                   orderNumber={order.order_number}
                   amount={order.total}
                   onPaymentSuccess={() => refetch()}
