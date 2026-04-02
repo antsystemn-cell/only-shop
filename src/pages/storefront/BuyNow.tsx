@@ -150,6 +150,12 @@ export default function BuyNow() {
             <span className="text-muted-foreground">Тоо ширхэг</span>
             <span>×{quantity}</span>
           </div>
+          {product.delivery_fee_type === "free" && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Хүргэлт</span>
+              <span className="text-primary font-medium">Үнэгүй</span>
+            </div>
+          )}
           <Separator />
           <div className="flex justify-between items-center">
             <span className="font-semibold">Нийт дүн</span>
