@@ -340,6 +340,8 @@ export default function Products() {
       is_featured: product.is_featured,
       is_active: product.is_active,
       images: product.images || [],
+      delivery_fee_type: ((product as any).delivery_fee_type || "default") as "default" | "free" | "custom",
+      custom_delivery_fee: (product as any).custom_delivery_fee?.toString() || "",
     });
     setLocalVariants([]);
     setIsDialogOpen(true);
