@@ -171,18 +171,18 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full h-8 text-[11px] rounded-full font-semibold"
+                className="w-full sm:flex-1 h-8 sm:h-7 text-[11px] sm:text-[10px] md:text-[11px] rounded-full font-semibold sm:px-1"
                 onClick={handleAddToCart}
               >
-                <ShoppingCart className="h-3.5 w-3.5 mr-1 shrink-0" />
+                <ShoppingCart className="h-3.5 sm:h-3 md:h-3.5 w-3.5 sm:w-3 md:w-3.5 mr-1 sm:mr-0.5 shrink-0" />
                 Сагслах
               </Button>
               <Button
                 size="sm"
-                className="w-full h-8 text-[11px] rounded-full font-semibold"
+                className="w-full sm:flex-1 h-8 sm:h-7 text-[11px] sm:text-[10px] md:text-[11px] rounded-full font-semibold sm:px-1"
                 onClick={handleBuyNow}
               >
-                <Zap className="h-3.5 w-3.5 mr-1 shrink-0" />
+                <Zap className="h-3.5 sm:h-3 md:h-3.5 w-3.5 sm:w-3 md:w-3.5 mr-1 sm:mr-0.5 shrink-0" />
                 Шууд захиалах
               </Button>
             </div>
