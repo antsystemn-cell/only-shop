@@ -104,6 +104,8 @@ export default function Products() {
     is_featured: false,
     is_active: true,
     images: [] as string[],
+    delivery_fee_type: "default" as "default" | "free" | "custom",
+    custom_delivery_fee: "",
   });
 
   // Local variants for new product creation
