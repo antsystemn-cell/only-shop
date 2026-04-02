@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Package, Heart } from "lucide-react";
+import { Plus, Package, Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -26,10 +25,8 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { toast } = useToast();
 
-  const isFeatured = variant === "featured";
   const inWishlist = isInWishlist(product.id);
 
-  // Fetch variants to determine true availability and pricing
   const { data: variants } = useQuery({
     queryKey: ["product-variants-card", product.id],
     queryFn: async () => {
@@ -38,20 +35,17 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
         .select("stock, price, price_adjustment")
         .eq("product_id", product.id)
         .eq("is_active", true);
-
       if (error) throw error;
       return data;
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
-  // Calculate effective stock - if variants exist, sum variant stocks
   const effectiveStock =
     variants && variants.length > 0
       ? variants.reduce((sum, v) => sum + (v.stock || 0), 0)
       : product.stock;
 
-  // Calculate display price - use minimum variant price if variants exist
   const displayPrice =
     variants && variants.length > 0
       ? Math.min(
@@ -61,7 +55,6 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
         )
       : product.price;
 
-  // Check if there are multiple prices (for "from X₮" display)
   const hasMultiplePrices =
     variants &&
     variants.length > 1 &&
@@ -72,19 +65,14 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
     ).size > 1;
 
   const discount = product.compare_price
-    ? Math.round(
-        ((product.compare_price - displayPrice) / product.compare_price) * 100
-      )
+    ? Math.round(((product.compare_price - displayPrice) / product.compare_price) * 100)
     : 0;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     addToCart(product);
-    toast({
-      title: "Сагсанд нэмэгдлээ",
-      description: product.name_mn,
-    });
+    toast({ title: "Сагсанд нэмэгдлээ", description: product.name_mn });
   };
 
   const handleToggleWishlist = (e: React.MouseEvent) => {
@@ -95,119 +83,94 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
 
   return (
     <Link to={`/product/${product.slug || product.id}`}>
-      <Card className="group overflow-hidden hover-lift hover:shadow-lg transition-all duration-300">
+      <div className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 h-full flex flex-col">
         {/* Image */}
-        <div className="relative aspect-square bg-card overflow-hidden">
+        <div className="relative aspect-square bg-muted/30 overflow-hidden">
           {product.images && product.images[0] ? (
             <img
               src={product.images[0]}
               alt={product.name_mn}
-              className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-contain p-2"
+              loading="lazy"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Package className="h-16 w-16 text-muted-foreground/30" />
+              <Package className="h-12 w-12 text-muted-foreground/30" />
             </div>
           )}
 
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {discount > 0 && (
-              <Badge
-                className={`bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold shadow-lg animate-pulse ${
-                  discount > 20 ? "text-base px-3 py-1.5" : "text-sm px-2.5 py-1"
-                }`}
-              >
-                -{discount}%
+              <Badge className="bg-amber-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                Sale
               </Badge>
             )}
             {product.is_featured && (
-              <Badge className="bg-primary text-primary-foreground">Онцлох</Badge>
+              <Badge className="bg-emerald-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                New
+              </Badge>
             )}
           </div>
 
-          {/* Out of stock overlay */}
+          {/* Out of stock */}
           {effectiveStock === 0 && (
             <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-              <Badge variant="secondary" className="text-sm">
-                Дууссан
-              </Badge>
+              <Badge variant="secondary" className="text-xs rounded-full">Дууссан</Badge>
             </div>
           )}
 
-          {/* Wishlist Button */}
-          <Button
-            size="icon"
-            variant="ghost"
-            className={`absolute top-2 right-2 bg-background/80 hover:bg-background transition-all ${
-              inWishlist ? "text-red-500" : "text-muted-foreground"
-            }`}
+          {/* Wishlist */}
+          <button
+            className="absolute top-2 right-2 h-7 w-7 rounded-full bg-card/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-card transition-colors"
             onClick={handleToggleWishlist}
           >
-            <Heart className={`h-5 w-5 ${inWishlist ? "fill-current" : ""}`} />
-          </Button>
-
-          {/* Quick Add Button */}
-          {effectiveStock > 0 && (
-            <Button
-              size="icon"
-              className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 glow-green-sm"
-              onClick={handleAddToCart}
-            >
-              <ShoppingCart className="h-4 w-4" />
-            </Button>
-          )}
+            <Heart className={`h-3.5 w-3.5 ${inWishlist ? "text-destructive fill-destructive" : "text-muted-foreground"}`} />
+          </button>
         </div>
 
-        <CardContent className={isFeatured ? "p-3" : "p-4"}>
-          {/* Brand */}
-          {product.brand && !isFeatured && (
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {product.brand}
-            </span>
-          )}
-
-          {/* Product Name */}
-          <h3
-            className={`font-medium text-sm group-hover:text-primary transition-colors ${
-              isFeatured
-                ? "line-clamp-2 min-h-[2.5rem]"
-                : "line-clamp-2 min-h-[2.5rem]"
-            }`}
-          >
+        {/* Content */}
+        <div className="p-2.5 flex-1 flex flex-col">
+          {/* Title */}
+          <h3 className="text-xs font-medium text-foreground line-clamp-2 min-h-[2rem] mb-1.5">
             {product.name_mn}
           </h3>
 
-          {/* Price and other details */}
-          {!isFeatured && (
-            <>
-              {/* Price */}
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-lg font-bold text-primary">
-                  {hasMultiplePrices && (
-                    <span className="text-sm font-normal text-muted-foreground mr-1">
-                      эхлэх
-                    </span>
-                  )}
-                  {formatPrice(displayPrice)}
+          {/* Price */}
+          <div className="mt-auto">
+            <p className="text-sm font-bold text-primary">
+              {hasMultiplePrices && <span className="text-[10px] font-normal text-muted-foreground mr-0.5">эхлэх </span>}
+              {formatPrice(displayPrice)}
+              {product.compare_price && product.compare_price > displayPrice && (
+                <span className="text-[10px] font-normal text-muted-foreground line-through ml-1">
+                  {formatPrice(product.compare_price)}
                 </span>
-                {product.compare_price && product.compare_price > displayPrice && (
-                  <span className="text-sm text-muted-foreground line-through">
-                    {formatPrice(product.compare_price)}
-                  </span>
-                )}
-              </div>
-
-              {/* Stock Status */}
-              {effectiveStock <= 5 && effectiveStock > 0 && (
-                <p className="text-xs text-destructive mt-2">
-                  Зөвхөн {effectiveStock} ширхэг үлдсэн
-                </p>
               )}
-            </>
+            </p>
+          </div>
+
+          {/* Rating */}
+          {product.rating && product.rating > 0 && (
+            <div className="flex items-center gap-0.5 mt-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star key={i} className={`h-3 w-3 ${i < Math.round(product.rating!) ? "text-amber-400 fill-amber-400" : "text-muted"}`} />
+              ))}
+            </div>
           )}
-        </CardContent>
-      </Card>
+
+          {/* Add to cart */}
+          {effectiveStock > 0 && (
+            <Button
+              size="sm"
+              className="mt-2 w-full h-7 text-[11px] rounded-full font-semibold"
+              onClick={handleAddToCart}
+            >
+              <Plus className="h-3.5 w-3.5 mr-0.5" />
+              Нэмэх
+            </Button>
+          )}
+        </div>
+      </div>
     </Link>
   );
 }

@@ -19,12 +19,10 @@ export function StorefrontLayout() {
     type: "website",
   });
 
-  const hideHeader = isMobile;
-
   return (
-    <div className="min-h-screen flex flex-col">
-      {!hideHeader && <Header />}
-      <main className="flex-1 pb-20 md:pb-0">
+    <div className="min-h-screen flex flex-col bg-background">
+      {!isMobile && <Header />}
+      <main className="flex-1 pb-16 md:pb-0">
         <Outlet />
       </main>
       <Footer />

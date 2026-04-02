@@ -1,132 +1,115 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Montserrat&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* 
-  "Only" E-Commerce Platform Design System
-  Primary: Neon Green #7CFF00 → HSL(90, 100%, 50%)
-  Secondary: Deep Blue #0B3A8F → HSL(216, 85%, 30%)
-  Style: Modern, tech-forward, glassmorphism, smooth animations
+  "Only" E-Commerce Platform — Suha-inspired Design System
+  Primary: #625AFA → HSL(243, 95%, 67%)
+  Style: Clean, modern mobile PWA e-commerce
 */
 
 @layer base {
   :root {
-    /* Core brand colors - Neon Green + Deep Blue */
-    --background: 220 20% 97%;
-    --foreground: 216 85% 15%;
+    /* Core — Suha inspired */
+    --background: 240 14% 96%;
+    --foreground: 235 75% 4%;
 
     --card: 0 0% 100%;
-    --card-foreground: 216 85% 15%;
+    --card-foreground: 235 75% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 216 85% 15%;
+    --popover-foreground: 235 75% 4%;
 
-    /* Primary: Neon Green #7CFF00 */
-    --primary: 345 65% 51%;
-    --primary-foreground: 216 85% 15%;
+    /* Primary: #625AFA */
+    --primary: 243 95% 67%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Deep Blue #0B3A8F */
-    --secondary: 216 85% 30%;
-    --secondary-foreground: 0 0% 100%;
+    /* Secondary */
+    --secondary: 240 5% 92%;
+    --secondary-foreground: 235 75% 4%;
 
-    --muted: 220 15% 92%;
-    --muted-foreground: 216 30% 45%;
+    --muted: 240 5% 92%;
+    --muted-foreground: 234 11% 52%;
 
-    /* Accent: Lighter green glow */
-    --accent: 90 100% 50%;
-    --accent-foreground: 216 85% 15%;
+    --accent: 243 95% 95%;
+    --accent-foreground: 243 95% 50%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 90 100% 50%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 243 95% 67%;
 
     --radius: 0.75rem;
 
-    /* Sidebar - Deep Blue theme */
-    --sidebar-background: 216 85% 20%;
+    /* Sidebar */
+    --sidebar-background: 243 50% 18%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 90 100% 50%;
-    --sidebar-primary-foreground: 216 85% 15%;
-    --sidebar-accent: 216 70% 28%;
+    --sidebar-primary: 243 95% 67%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 243 40% 25%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 216 70% 25%;
-    --sidebar-ring: 90 100% 50%;
+    --sidebar-border: 243 40% 22%;
+    --sidebar-ring: 243 95% 67%;
 
-    /* Chart colors */
-    --chart-1: 90 100% 50%;
-    --chart-2: 216 85% 30%;
-    --chart-3: 345 65% 51%;
-    --chart-4: 216 70% 45%;
-    --chart-5: 180 60% 45%;
+    /* Chart */
+    --chart-1: 243 95% 67%;
+    --chart-2: 170 60% 45%;
+    --chart-3: 30 85% 55%;
+    --chart-4: 340 65% 55%;
+    --chart-5: 200 70% 50%;
 
-    /* Custom brand tokens */
-    --brand-green: 90 100% 50%;
-    --brand-green-glow: 90 100% 60%;
-    --brand-blue: 216 85% 30%;
-    --brand-blue-dark: 216 85% 20%;
-    --brand-blue-light: 216 70% 45%;
+    /* Brand tokens */
+    --brand-primary: 243 95% 67%;
+    --brand-primary-light: 243 95% 90%;
 
-    /* Glassmorphism */
-    --glass-bg: 0 0% 100% / 0.7;
-    --glass-border: 0 0% 100% / 0.3;
-    --glass-shadow: 216 85% 10% / 0.1;
-    --font-sans: Montserrat, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
-    --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    --font-sans: "Google Sans", "Inter", ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
   .dark {
-    --background: 216 85% 8%;
+    --background: 235 30% 8%;
     --foreground: 0 0% 95%;
 
-    --card: 216 70% 12%;
+    --card: 235 25% 12%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 216 70% 12%;
+    --popover: 235 25% 12%;
     --popover-foreground: 0 0% 95%;
 
-    /* Primary: Neon Green (same in dark) */
-    --primary: 90 100% 50%;
-    --primary-foreground: 216 85% 10%;
+    --primary: 243 95% 67%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Lighter blue for dark mode */
-    --secondary: 216 70% 45%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 235 20% 18%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 216 50% 18%;
-    --muted-foreground: 220 15% 65%;
+    --muted: 235 20% 18%;
+    --muted-foreground: 234 11% 60%;
 
-    --accent: 90 100% 50%;
-    --accent-foreground: 216 85% 10%;
+    --accent: 243 40% 20%;
+    --accent-foreground: 243 95% 80%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 216 50% 20%;
-    --input: 216 50% 20%;
-    --ring: 90 100% 50%;
+    --border: 235 20% 20%;
+    --input: 235 20% 20%;
+    --ring: 243 95% 67%;
 
-    /* Sidebar dark */
-    --sidebar-background: 216 85% 10%;
+    --sidebar-background: 235 30% 8%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 90 100% 50%;
-    --sidebar-primary-foreground: 216 85% 10%;
-    --sidebar-accent: 216 70% 18%;
+    --sidebar-primary: 243 95% 67%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 235 25% 15%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 216 50% 15%;
-    --sidebar-ring: 90 100% 50%;
+    --sidebar-border: 235 20% 15%;
+    --sidebar-ring: 243 95% 67%;
 
-    /* Glass dark */
-    --glass-bg: 216 70% 12% / 0.8;
-    --glass-border: 0 0% 100% / 0.1;
-    --glass-shadow: 0 0% 0% / 0.3;
-    --font-sans: Montserrat, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
-    --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    --font-sans: "Google Sans", "Inter", ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 }
 
@@ -142,157 +125,51 @@
 }
 
 @layer utilities {
-  /* Hide scrollbar utility */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
 
-  /* Gradient utilities */
-  .gradient-primary {
-    @apply bg-gradient-to-r from-primary to-secondary;
-  }
-
-  .gradient-brand {
-    @apply bg-gradient-to-br from-[hsl(var(--brand-blue))] via-[hsl(var(--brand-blue-dark))] to-[hsl(var(--brand-blue))];
-  }
-
-  .gradient-hero {
-    @apply bg-gradient-to-r from-[hsl(var(--brand-blue-dark))] via-[hsl(var(--brand-blue))] to-[hsl(var(--brand-blue-light))];
-  }
-
-  /* Glow effects */
-  .glow-green {
-    box-shadow: 0 0 20px hsl(var(--brand-green) / 0.4),
-                0 0 40px hsl(var(--brand-green) / 0.2);
-  }
-
-  .glow-green-sm {
-    box-shadow: 0 0 10px hsl(var(--brand-green) / 0.3);
-  }
-
-  .glow-blue {
-    box-shadow: 0 0 20px hsl(var(--brand-blue) / 0.3),
-                0 0 40px hsl(var(--brand-blue) / 0.15);
-  }
-
-  /* Text glow */
-  .text-glow {
-    text-shadow: 0 0 10px hsl(var(--brand-green) / 0.5);
-  }
-
-  /* Glassmorphism */
-  .glass {
-    @apply backdrop-blur-md border;
-    background: hsl(var(--glass-bg));
-    border-color: hsl(var(--glass-border));
-    box-shadow: 0 8px 32px hsl(var(--glass-shadow));
-  }
-
-  .glass-card {
-    @apply glass rounded-xl;
-  }
-
-  /* Hover animations */
-  .hover-lift {
-    @apply transition-all duration-300;
-  }
-
-  .hover-lift:hover {
-    @apply -translate-y-1;
-    box-shadow: 0 10px 30px hsl(var(--brand-blue) / 0.15);
-  }
-
-  .hover-scale {
-    @apply transition-transform duration-200 hover:scale-105;
-  }
-
-  .hover-glow {
-    @apply transition-shadow duration-300;
-  }
-
-  .hover-glow:hover {
-    @apply glow-green-sm;
-  }
-
-  /* Smooth animations */
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out;
   }
-
   .animate-slide-up {
     animation: slideUp 0.4s ease-out;
   }
-
   .animate-scale-in {
     animation: scaleIn 0.2s ease-out;
-  }
-
-  .animate-pulse-glow {
-    animation: pulseGlow 2s ease-in-out infinite;
   }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes pulseGlow {
-  0%, 100% {
-    box-shadow: 0 0 5px hsl(var(--brand-green) / 0.2);
-  }
-  50% {
-    box-shadow: 0 0 20px hsl(var(--brand-green) / 0.4);
-  }
-}
-
-/* Scrollbar styling */
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  @apply bg-muted rounded-full;
+  @apply bg-transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full;
+  @apply bg-muted-foreground/20 rounded-full;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
+  @apply bg-muted-foreground/40;
 }
