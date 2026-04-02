@@ -23,12 +23,14 @@ export default function BuyNow() {
   const { data: product, isLoading } = useQuery({
     queryKey: ["buy-now-product", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .or(`id.eq.${id},slug.eq.${id}`)
-        .eq("is_active", true)
-        .single();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id!);
+      let query = supabase.from("products").select("*").eq("is_active", true);
+      if (isUuid) {
+        query = query.eq("id", id);
+      } else {
+        query = query.eq("slug", id);
+      }
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as Product;
     },
