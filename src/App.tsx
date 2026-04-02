@@ -22,6 +22,7 @@ import ProductDetail from "./pages/storefront/ProductDetail";
 import Auth from "./pages/storefront/Auth";
 import ResetPassword from "./pages/storefront/ResetPassword";
 import Checkout from "./pages/storefront/Checkout";
+import BuyNow from "./pages/storefront/BuyNow";
 import OrderConfirmation from "./pages/storefront/OrderConfirmation";
 import MyOrders from "./pages/storefront/MyOrders";
 import Wishlist from "./pages/storefront/Wishlist";
