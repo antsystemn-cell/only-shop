@@ -20,7 +20,7 @@ function formatPrice(price: number) {
   return new Intl.NumberFormat("mn-MN").format(price) + "₮";
 }
 
-export function ProductCard({ product, variant = "default" }: ProductCardProps) {
+const navigate = useNavigate();
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { toast } = useToast();
