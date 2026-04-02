@@ -434,6 +434,14 @@ export default function ProductDetail() {
             )}
           </div>
 
+          {/* Free delivery badge */}
+          {product.delivery_fee_type === "free" && (
+            <div className="flex items-center gap-2 bg-primary/10 text-primary rounded-lg px-3 py-2">
+              <Truck className="h-4 w-4" />
+              <span className="text-sm font-medium">Хүргэлт үнэгүй</span>
+            </div>
+          )}
+
           <Separator />
 
           {/* Variant Selection - New Card Style */}
@@ -618,7 +626,7 @@ export default function ProductDetail() {
           {/* Features */}
           <div className="grid grid-cols-3 gap-2 pt-4">
             {[
-              { icon: Truck, title: "Хурдан хүргэлт", sub: "24 цагийн дотор" },
+              { icon: Truck, title: product.delivery_fee_type === "free" ? "Үнэгүй хүргэлт" : "Хурдан хүргэлт", sub: product.delivery_fee_type === "free" ? "Хүргэлт үнэгүй" : "24 цагийн дотор" },
               { icon: Shield, title: "Баталгаат", sub: "Чанарын баталгаа" },
               { icon: Package, title: "Найдвартай", sub: "Төлбөрийн систем" },
             ].map((f) => (

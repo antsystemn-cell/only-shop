@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Minus, Plus, Package, Zap } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Package, Zap, Truck } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Product = Tables<"products">;
@@ -150,6 +150,12 @@ export default function BuyNow() {
             <span className="text-muted-foreground">Тоо ширхэг</span>
             <span>×{quantity}</span>
           </div>
+          {product.delivery_fee_type === "free" && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Хүргэлт</span>
+              <span className="text-primary font-medium">Үнэгүй</span>
+            </div>
+          )}
           <Separator />
           <div className="flex justify-between items-center">
             <span className="font-semibold">Нийт дүн</span>

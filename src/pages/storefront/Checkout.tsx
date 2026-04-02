@@ -104,11 +104,17 @@ export default function Checkout() {
   const localSubtotal = buyNowProductId
     ? localItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0)
     : getAllLocalSubtotal();
-  const deliveryFee = selectedZone
-    ? deliveryType === "express" && selectedZone.express_price
-      ? selectedZone.express_price
-      : selectedZone.standard_price
-    : 0;
+
+  // Check if all items have free delivery
+  const allItemsFreeDelivery = localItems.length > 0 && localItems.every((i) => i.product.delivery_fee_type === "free");
+
+  const deliveryFee = allItemsFreeDelivery
+    ? 0
+    : selectedZone
+      ? deliveryType === "express" && selectedZone.express_price
+        ? selectedZone.express_price
+        : selectedZone.standard_price
+      : 0;
   const localTotal = localSubtotal + deliveryFee;
 
   const deliveryDays = selectedZone
@@ -467,7 +473,9 @@ export default function Checkout() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Хүргэлт</span>
-                    <span>{selectedZone ? formatMntPrice(deliveryFee) : "-"}</span>
+                    <span className={allItemsFreeDelivery ? "text-primary font-medium" : ""}>
+                      {allItemsFreeDelivery ? "Үнэгүй" : selectedZone ? formatMntPrice(deliveryFee) : "-"}
+                    </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
