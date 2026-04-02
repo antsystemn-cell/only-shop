@@ -104,6 +104,8 @@ export default function Products() {
     is_featured: false,
     is_active: true,
     images: [] as string[],
+    delivery_fee_type: "default" as "default" | "free" | "custom",
+    custom_delivery_fee: "",
   });
 
   // Local variants for new product creation
@@ -187,6 +189,10 @@ export default function Products() {
         is_featured: data.is_featured,
         is_active: data.is_active,
         images: data.images,
+        delivery_fee_type: data.delivery_fee_type,
+        custom_delivery_fee: data.delivery_fee_type === "custom" && data.custom_delivery_fee
+          ? parseFloat(data.custom_delivery_fee)
+          : null,
       };
 
       let productId = data.id;
@@ -310,6 +316,8 @@ export default function Products() {
       is_featured: false,
       is_active: true,
       images: [],
+      delivery_fee_type: "default",
+      custom_delivery_fee: "",
     });
     setEditingProduct(null);
     setLocalVariants([]);
@@ -332,6 +340,8 @@ export default function Products() {
       is_featured: product.is_featured,
       is_active: product.is_active,
       images: product.images || [],
+      delivery_fee_type: ((product as any).delivery_fee_type || "default") as "default" | "free" | "custom",
+      custom_delivery_fee: (product as any).custom_delivery_fee?.toString() || "",
     });
     setLocalVariants([]);
     setIsDialogOpen(true);
@@ -585,6 +595,48 @@ export default function Products() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Delivery Fee Config */}
+              <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+                <h4 className="font-semibold text-sm">🚚 Хүргэлтийн үнэ</h4>
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-2">
+                    {[
+                      { value: "default", label: "Сайтын үндсэн бодлогоор", desc: "Бүсчлэлийн үнээр тооцно" },
+                      { value: "free", label: "Хүргэлт үнэгүй", desc: "Энэ бараанд хүргэлтийн төлбөргүй" },
+                      { value: "custom", label: "Өөрийн үнэтэй", desc: "Тогтмол хүргэлтийн үнэ тохируулах" },
+                    ].map((opt) => (
+                      <label key={opt.value} className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${formData.delivery_fee_type === opt.value ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
+                        <input
+                          type="radio"
+                          name="delivery_fee_type"
+                          value={opt.value}
+                          checked={formData.delivery_fee_type === opt.value}
+                          onChange={(e) => setFormData({ ...formData, delivery_fee_type: e.target.value as any })}
+                          className="mt-1"
+                        />
+                        <div>
+                          <p className="font-medium text-sm">{opt.label}</p>
+                          <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  {formData.delivery_fee_type === "custom" && (
+                    <div className="space-y-2 pl-6">
+                      <Label htmlFor="custom_delivery_fee">Хүргэлтийн үнэ (₮)</Label>
+                      <Input
+                        id="custom_delivery_fee"
+                        type="number"
+                        value={formData.custom_delivery_fee}
+                        onChange={(e) => setFormData({ ...formData, custom_delivery_fee: e.target.value })}
+                        placeholder="5000"
+                        min="0"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="border rounded-lg p-4 bg-muted/30">

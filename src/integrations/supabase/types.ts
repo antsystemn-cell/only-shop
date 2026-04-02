@@ -1611,6 +1611,8 @@ export type Database = {
           category_id: string | null
           compare_price: number | null
           created_at: string
+          custom_delivery_fee: number | null
+          delivery_fee_type: string
           description: string | null
           description_mn: string | null
           id: string
@@ -1635,6 +1637,8 @@ export type Database = {
           category_id?: string | null
           compare_price?: number | null
           created_at?: string
+          custom_delivery_fee?: number | null
+          delivery_fee_type?: string
           description?: string | null
           description_mn?: string | null
           id?: string
@@ -1659,6 +1663,8 @@ export type Database = {
           category_id?: string | null
           compare_price?: number | null
           created_at?: string
+          custom_delivery_fee?: number | null
+          delivery_fee_type?: string
           description?: string | null
           description_mn?: string | null
           id?: string
