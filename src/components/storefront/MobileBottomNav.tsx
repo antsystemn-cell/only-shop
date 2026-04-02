@@ -1,21 +1,19 @@
 import { Link, useLocation } from "react-router-dom";
 import { Home, Heart, LayoutGrid, ShoppingCart, User } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { useOtCartSafe } from "@/contexts/OtCartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { UnifiedCartDrawer } from "@/components/storefront/UnifiedCartDrawer";
+import { CartDrawer } from "@/components/storefront/CartDrawer";
 
 export function MobileBottomNav() {
   const location = useLocation();
   const { getItemCount } = useCart();
-  const { itemCount: otItemCount } = useOtCartSafe();
   const { wishlistIds } = useWishlist();
   const { user } = useAuth();
   
-  const cartCount = getItemCount() + otItemCount;
+  const cartCount = getItemCount();
   const wishlistCount = wishlistIds.length;
 
   const navItems = [
@@ -39,13 +37,8 @@ export function MobileBottomNav() {
           const Icon = item.icon;
 
           if (item.isCenter) {
-            // Center prominent button
             return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className="flex flex-col items-center justify-center w-16 -mt-6"
-              >
+              <Link key={item.href} to={item.href} className="flex flex-col items-center justify-center w-16 -mt-6">
                 <div className={cn(
                   "w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform",
                   "bg-primary text-primary-foreground",
@@ -54,17 +47,11 @@ export function MobileBottomNav() {
                 )}>
                   <Icon className="h-6 w-6" />
                 </div>
-                <span className={cn(
-                  "text-[10px] mt-1 font-medium",
-                  active ? "text-primary" : "text-muted-foreground"
-                )}>
-                  {item.label}
-                </span>
+                <span className={cn("text-[10px] mt-1 font-medium", active ? "text-primary" : "text-muted-foreground")}>{item.label}</span>
               </Link>
             );
           }
 
-          // Cart drawer item
           if ((item as any).isCartDrawer) {
             return (
               <Sheet key="cart-drawer">
@@ -78,24 +65,18 @@ export function MobileBottomNav() {
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] font-medium text-muted-foreground">
-                      {item.label}
-                    </span>
+                    <span className="text-[10px] font-medium text-muted-foreground">{item.label}</span>
                   </button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col">
-                  <UnifiedCartDrawer />
+                  <CartDrawer />
                 </SheetContent>
               </Sheet>
             );
           }
 
           return (
-            <Link
-              key={item.href}
-              to={item.href}
-              className="flex flex-col items-center justify-center gap-1 py-1 w-16"
-            >
+            <Link key={item.href} to={item.href} className="flex flex-col items-center justify-center gap-1 py-1 w-16">
               <div className="relative">
                 <Icon className={cn(
                   "h-6 w-6 transition-colors",
@@ -108,12 +89,7 @@ export function MobileBottomNav() {
                   </span>
                 )}
               </div>
-              <span className={cn(
-                "text-[10px] font-medium",
-                active ? "text-primary" : "text-muted-foreground"
-              )}>
-                {item.label}
-              </span>
+              <span className={cn("text-[10px] font-medium", active ? "text-primary" : "text-muted-foreground")}>{item.label}</span>
             </Link>
           );
         })}

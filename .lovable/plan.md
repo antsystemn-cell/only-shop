@@ -1,50 +1,63 @@
 
+# Marketplace → Ready-Stock Store Transformation Plan
 
-## Барааны нэрийг AI ашиглан Монгол хэл рүү орчуулах
+## Phase 1: Remove External Provider Infrastructure
+- Delete all OTAPI/Amazon/Taobao edge functions (~15 functions)
+- Remove external provider services (`otApi.ts`, `otSession.ts`, `amazonProvider.ts`, `amazonOtapiAdapter.ts`, etc.)
+- Remove `ProviderContext` and all provider-related hooks
+- Remove OT cart context (`OtCartContext.tsx`) — keep only local `CartContext`
+- Remove wishlist context tied to OT products
 
-### Асуудал
-OTAPI-аас ирж буй барааны нэрүүд Хятад хэлээр (эсвэл шууд орчуулагдаагүй) ирж байгаа бөгөөд одоогийн `language: "en"` тохиргоо нь зарим барааны нэрийг Англи руу хөрвүүлдэг боловч ихэнхдээ Хятад хэлээр үлддэг. Монгол руу шууд орчуулах боломжгүй.
+## Phase 2: Remove External-Facing Pages & Components
+- Delete all `/ot/*` routes (OtShop, OtCategory, OtProductDetail, OtCheckout, OtOrders, etc.)
+- Delete all `/amazon/*` routes
+- Delete external marketplace components (OtProductCard, OtCartDrawer, OtCategoryStrip, ProviderStrip, etc.)
+- Delete admin pages for OTAPI/Amazon (OtProviders, OtCategories, OtSettings, AmazonSync, etc.)
+- Remove LegacyItemRedirect
 
-### Шийдэл
-Gemini Flash AI модель ашиглан барааны Хятад/Англи нэрийг Монгол хэл рүү орчуулж, DB-д кэшлэнэ.
+## Phase 3: Simplify Core Flows
+- Refactor `CartContext` to be the sole cart (remove OT cart merging)
+- Simplify checkout to internal orders only
+- Clean `StorefrontLayout` and `Header` of provider references
+- Simplify `MobileBottomNav` and navigation
+- Clean admin sidebar of removed sections
 
-### Бүтэц
+## Phase 4: Rebuild Homepage
+- Remove provider-based segments and snapshot system
+- Homepage shows: hero banners, featured products, new arrivals, categories
+- All data from internal `products` and `categories` tables only
 
-**1. DB: Орчуулгын кэш хүснэгт үүсгэх**
-- `title_translations` хүснэгт: `original_text` (unique), `translated_text`, `created_at`
-- RLS: публик уншилт, зөвхөн service role бичилт
-- Давтан орчуулахаас сэргийлж кэш болгон ажиллана
+## Phase 5: Clean Product & Category Pages
+- Product listing from `products` table only
+- Product detail from `products` + `product_variants` only
+- Remove all provider badges, external attributes, translation hooks
+- Add clean filters: category, brand, sort, stock status
 
-**2. Edge Function: `translate-titles`**
-- Оролт: `{ titles: string[] }` (20 хүртэл нэрийг нэг дор)
-- Эхлээд DB кэшээс шалгана, байвал шууд буцаана
-- Байхгүй бол Gemini 2.5 Flash Lite ашиглан batch орчуулга хийнэ (хамгийн хурдан, хямд модель — энгийн орчуулгад хангалттай)
-- Орчуулсан текстүүдийг DB-д хадгална
-- Буцаах: `{ translations: Record<string, string> }` (original → translated)
+## Phase 6: Admin Cleanup
+- Keep: Products, Categories, Brands, Orders, Banners, Content, Users, Settings
+- Remove: All OT/Amazon admin pages and menu items
+- Simplify dashboard to internal metrics only
 
-**3. Frontend: `useTranslatedTitles` hook**
-- Бараануудын жагсаалт ачаалагдсаны дараа нэрүүдийг batch-ээр орчуулгын edge function руу илгээнэ
-- Орчуулга ирэх хооронд анхны нэрийг харуулна (progressive — эхлээд original, дараа нь translated)
-- `OtProductCard` болон `ProductDetail` хуудсуудад ашиглана
+## Phase 7: Code & DB Cleanup
+- Remove unused types, utils, hooks
+- Remove dead environment variable references
+- Clean up unused edge functions
+- Keep payment edge functions (QPay, OmniWay, Storepay) for internal orders
+- Preserve all existing product/order/category data
 
-**4. Компонентүүдэд нэмэх**
-- `OtProductCardComponent`: орчуулсан нэрийг `title` оронд харуулна
-- `OtProductDetail`: дэлгэрэнгүй хуудасны гарчигт орчуулсан нэр + анхны нэрийг жижгээр доор нь харуулна
-- `OtCategoryBrowse`, `SimilarProducts`: бараа жагсаалтад орчуулга ашиглана
-- Хайлтын үр дүнд (`OtShop`) мөн адил
+## What's Preserved
+- `products`, `product_variants`, `categories`, `brands` tables and data
+- `orders`, `order_items` tables and data
+- Local cart and checkout flow
+- Payment integrations (QPay, OmniWay, Storepay)
+- User auth, profiles, roles
+- Admin product/order management
+- Banners, content pages
+- Delivery zones
 
-### Ажиллагааны урсгал
-
-```text
-Бараа ачаалагдсан → titles цуглуулах → translate-titles edge fn дуудах
-  ├─ DB кэшэд байвал → шууд буцаана (хурдан)  
-  └─ Байхгүй бол → Gemini Flash Lite → орчуулаад DB-д хадгалаад буцаана
-Frontend → орчуулсан нэрийг харуулна
-```
-
-### Давуу тал
-- Нэг удаа орчуулсан нэр дахин орчуулагдахгүй (DB кэш)
-- Хэрэглэгч эхлээд анхны нэрийг харж, дараа нь Монгол нэр гарч ирнэ (UX сайжирна)
-- Gemini Flash Lite — хамгийн хурдан, хямд модель, орчуулгад тохиромжтой
-- API key шаардлагагүй (Lovable AI built-in)
-
+## What's Removed
+- ~15 edge functions (ot-api, amazon-api, sync functions, etc.)
+- ~40+ components/pages related to external providers
+- OtCartContext, ProviderContext, WishlistContext (OT-specific)
+- All OTAPI/Amazon services and utilities
+- Provider-specific UI (badges, strips, filters)
