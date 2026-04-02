@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +10,7 @@ import QPayPayment from "@/components/storefront/QPayPayment";
 import OmniWayPayment from "@/components/storefront/OmniWayPayment";
 import StorepayPayment from "@/components/storefront/StorepayPayment";
 import WalletPayment from "@/components/storefront/WalletPayment";
+import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
 import { 
   CheckCircle2, 
   Package, 
@@ -17,7 +19,9 @@ import {
   Calendar,
   ShoppingBag,
   Home,
-  Loader2
+  Loader2,
+  AlertCircle,
+  CreditCard
 } from "lucide-react";
 
 interface OrderItem {
@@ -125,6 +129,15 @@ export default function OrderConfirmation() {
     enabled: !!orderId,
   });
 
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("qpay");
+  const [changingMethod, setChangingMethod] = useState(false);
+
+  useEffect(() => {
+    if (order?.payment_method) {
+      setSelectedPaymentMethod(order.payment_method as PaymentMethod);
+    }
+  }, [order?.payment_method]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -147,67 +160,115 @@ export default function OrderConfirmation() {
   const orderStatus = statusLabels[order.status] || statusLabels.pending;
   const paymentStatus = paymentStatusLabels[order.payment_status || "pending"] || paymentStatusLabels.pending;
   const showPayment = order.payment_status === "pending" || order.payment_status === "failed";
+  const isPaid = order.payment_status === "paid";
+
+  const activePaymentMethod = changingMethod ? selectedPaymentMethod : (order.payment_method as PaymentMethod) || "qpay";
+
+  const handleChangePaymentMethod = async (method: PaymentMethod) => {
+    setSelectedPaymentMethod(method);
+    // Update order's payment method in DB
+    await supabase
+      .from("orders")
+      .update({ payment_method: method })
+      .eq("id", order.id);
+    setChangingMethod(false);
+    refetch();
+  };
 
   return (
     <div className="container py-8 max-w-4xl">
-      {/* Success Header */}
+      {/* Header - different for paid vs unpaid */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-4">
-          <CheckCircle2 className="h-10 w-10 text-primary" />
-        </div>
-        <h1 className="text-3xl font-bold mb-2">
-          {order.payment_status === "paid" ? "Төлбөр амжилттай!" : "Захиалга амжилттай!"}
-        </h1>
-        <p className="text-muted-foreground">
-          Таны захиалгыг хүлээн авлаа. Захиалгын дугаар: <strong>{order.order_number}</strong>
-        </p>
+        {isPaid ? (
+          <>
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+              <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
+            </div>
+            <h1 className="text-3xl font-bold mb-2">Төлбөр амжилттай!</h1>
+            <p className="text-muted-foreground">
+              Таны захиалгыг хүлээн авлаа.
+            </p>
+            <p className="font-mono text-xl font-bold mt-2">{order.order_number}</p>
+          </>
+        ) : (
+          <>
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
+              <CreditCard className="h-10 w-10 text-amber-600 dark:text-amber-400" />
+            </div>
+            <h1 className="text-3xl font-bold mb-2">Төлбөр төлөх</h1>
+            <p className="font-mono text-2xl font-bold mt-1 mb-2">{order.order_number}</p>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Таны захиалга амжилттай үүссэн бөгөөд төлбөр төлөгдсөнөөр захиалга нь бүрэн баталгаажих болно.
+            </p>
+          </>
+        )}
       </div>
 
       {/* Payment Section - shown for unpaid orders */}
-      {showPayment && order.payment_method === "wallet" && (
-        <div className="mb-8">
-          <WalletPayment
-            amount={order.total}
-            orderId={order.id}
-            onPaymentSuccess={async () => {
-              await supabase
-                .from("orders")
-                .update({ payment_status: "paid", status: "processing" })
-                .eq("id", order.id);
-              refetch();
-            }}
-          />
-        </div>
-      )}
-      {showPayment && order.payment_method === "omniway" && paymentIntentId && (
-        <div className="mb-8">
-          <OmniWayPayment
-            paymentIntentId={paymentIntentId}
-            orderNumber={order.order_number}
-            amount={order.total}
-            onPaymentSuccess={() => refetch()}
-          />
-        </div>
-      )}
-      {showPayment && order.payment_method === "storepay" && paymentIntentId && (
-        <div className="mb-8">
-          <StorepayPayment
-            paymentIntentId={paymentIntentId}
-            orderNumber={order.order_number}
-            amount={order.total}
-            onPaymentSuccess={() => refetch()}
-          />
-        </div>
-      )}
-      {showPayment && order.payment_method !== "omniway" && order.payment_method !== "storepay" && order.payment_method !== "wallet" && (
-        <div className="mb-8">
-          <QPayPayment
-            paymentIntentId={paymentIntentId || undefined}
-            orderId={!paymentIntentId ? order.id : undefined}
-            orderNumber={order.order_number}
-            amount={order.total}
-            onPaymentSuccess={() => refetch()}
-          />
+      {showPayment && (
+        <div className="mb-8 space-y-4">
+          {/* Payment method change option */}
+          {changingMethod ? (
+            <PaymentMethodSelector
+              selected={selectedPaymentMethod}
+              onSelect={handleChangePaymentMethod}
+              title="Төлбөрийн хэлбэр сонгох"
+            />
+          ) : (
+            <>
+              {/* Show current payment widget */}
+              {activePaymentMethod === "wallet" && (
+                <WalletPayment
+                  amount={order.total}
+                  orderId={order.id}
+                  onPaymentSuccess={async () => {
+                    await supabase
+                      .from("orders")
+                      .update({ payment_status: "paid", status: "processing" })
+                      .eq("id", order.id);
+                    refetch();
+                  }}
+                />
+              )}
+              {activePaymentMethod === "omniway" && paymentIntentId && (
+                <OmniWayPayment
+                  paymentIntentId={paymentIntentId}
+                  orderNumber={order.order_number}
+                  amount={order.total}
+                  onPaymentSuccess={() => refetch()}
+                />
+              )}
+              {activePaymentMethod === "storepay" && paymentIntentId && (
+                <StorepayPayment
+                  paymentIntentId={paymentIntentId}
+                  orderNumber={order.order_number}
+                  amount={order.total}
+                  onPaymentSuccess={() => refetch()}
+                />
+              )}
+              {activePaymentMethod !== "omniway" && activePaymentMethod !== "storepay" && activePaymentMethod !== "wallet" && (
+                <QPayPayment
+                  paymentIntentId={paymentIntentId || undefined}
+                  orderId={!paymentIntentId ? order.id : undefined}
+                  orderNumber={order.order_number}
+                  amount={order.total}
+                  onPaymentSuccess={() => refetch()}
+                />
+              )}
+
+              {/* Button to switch payment method */}
+              <div className="text-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setChangingMethod(true)}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Төлбөрийн хэлбэр солих
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
