@@ -282,17 +282,19 @@ export default function OrderConfirmation() {
                   }}
                 />
               )}
-              {activePaymentMethod === "omniway" && paymentIntentId && (
+              {activePaymentMethod === "omniway" && currentPaymentIntentId && (
                 <OmniWayPayment
-                  paymentIntentId={paymentIntentId}
+                  key={currentPaymentIntentId}
+                  paymentIntentId={currentPaymentIntentId}
                   orderNumber={order.order_number}
                   amount={order.total}
                   onPaymentSuccess={() => refetch()}
                 />
               )}
-              {activePaymentMethod === "storepay" && paymentIntentId && (
+              {activePaymentMethod === "storepay" && currentPaymentIntentId && (
                 <StorepayPayment
-                  paymentIntentId={paymentIntentId}
+                  key={currentPaymentIntentId}
+                  paymentIntentId={currentPaymentIntentId}
                   orderNumber={order.order_number}
                   amount={order.total}
                   onPaymentSuccess={() => refetch()}
@@ -300,8 +302,9 @@ export default function OrderConfirmation() {
               )}
               {activePaymentMethod !== "omniway" && activePaymentMethod !== "storepay" && activePaymentMethod !== "wallet" && (
                 <QPayPayment
-                  paymentIntentId={paymentIntentId || undefined}
-                  orderId={!paymentIntentId ? order.id : undefined}
+                  key={currentPaymentIntentId || order.id}
+                  paymentIntentId={currentPaymentIntentId || undefined}
+                  orderId={!currentPaymentIntentId ? order.id : undefined}
                   orderNumber={order.order_number}
                   amount={order.total}
                   onPaymentSuccess={() => refetch()}
