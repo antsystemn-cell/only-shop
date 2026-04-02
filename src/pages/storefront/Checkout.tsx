@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -104,17 +104,11 @@ export default function Checkout() {
   const localSubtotal = buyNowProductId
     ? localItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0)
     : getAllLocalSubtotal();
-
-  // Check if all items have free delivery
-  const allItemsFreeDelivery = localItems.length > 0 && localItems.every((i) => i.product.delivery_fee_type === "free");
-
-  const deliveryFee = allItemsFreeDelivery
-    ? 0
-    : selectedZone
-      ? deliveryType === "express" && selectedZone.express_price
-        ? selectedZone.express_price
-        : selectedZone.standard_price
-      : 0;
+  const deliveryFee = selectedZone
+    ? deliveryType === "express" && selectedZone.express_price
+      ? selectedZone.express_price
+      : selectedZone.standard_price
+    : 0;
   const localTotal = localSubtotal + deliveryFee;
 
   const deliveryDays = selectedZone
@@ -364,28 +358,49 @@ export default function Checkout() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Truck className="h-5 w-5 text-primary" />
-                  Хүргэлтийн төлбөр
+                  Хүргэлтийн төрөл
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {allItemsFreeDelivery ? (
-                  <div className="flex items-center gap-3 p-4 border rounded-lg bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800">
-                    <span className="text-green-600 dark:text-green-400 text-lg">✅</span>
-                    <div>
-                      <p className="font-medium text-green-700 dark:text-green-300">Хүргэлт үнэгүй</p>
-                      <p className="text-sm text-green-600 dark:text-green-400">Энэ захиалгын хүргэлт үнэгүй</p>
+                {selectedZone ? (
+                  <RadioGroup
+                    value={deliveryType}
+                    onValueChange={(value) => setDeliveryType(value as DeliveryType)}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <RadioGroupItem value="standard" id="standard" />
+                      <Label htmlFor="standard" className="flex-1 cursor-pointer">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="font-medium">Энгийн хүргэлт</p>
+                            <p className="text-sm text-muted-foreground">{selectedZone.standard_days} хоногт хүргэнэ</p>
+                          </div>
+                          <span className="font-semibold text-primary">
+                            {selectedZone.standard_price.toLocaleString()}₮
+                          </span>
+                        </div>
+                      </Label>
                     </div>
-                  </div>
-                ) : selectedZone ? (
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Хүргэлт</p>
-                      <p className="text-sm text-muted-foreground">{selectedZone.standard_days} хоногт хүргэнэ</p>
-                    </div>
-                    <span className="font-semibold text-primary text-lg">
-                      {formatMntPrice(selectedZone.standard_price)}
-                    </span>
-                  </div>
+                    {selectedZone.express_price && (
+                      <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <RadioGroupItem value="express" id="express" />
+                        <Label htmlFor="express" className="flex-1 cursor-pointer">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="font-medium">Шуурхай хүргэлт</p>
+                              <p className="text-sm text-muted-foreground">
+                                {selectedZone.express_days} хоногт хүргэнэ
+                              </p>
+                            </div>
+                            <span className="font-semibold text-primary">
+                              {selectedZone.express_price.toLocaleString()}₮
+                            </span>
+                          </div>
+                        </Label>
+                      </div>
+                    )}
+                  </RadioGroup>
                 ) : (
                   <p className="text-muted-foreground text-center py-4">Хүргэлтийн бүс сонгоно уу</p>
                 )}
@@ -452,9 +467,7 @@ export default function Checkout() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Хүргэлт</span>
-                    <span className={allItemsFreeDelivery ? "text-primary font-medium" : ""}>
-                      {allItemsFreeDelivery ? "Үнэгүй" : selectedZone ? formatMntPrice(deliveryFee) : "-"}
-                    </span>
+                    <span>{selectedZone ? formatMntPrice(deliveryFee) : "-"}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
@@ -465,7 +478,7 @@ export default function Checkout() {
 
                 <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 text-xs text-green-700 dark:text-green-300">
                   <Clock className="h-3.5 w-3.5 inline mr-1.5" />
-                  Төлбөрөөс хойш <strong>24 цагийн дотор</strong> хүргэгдэнэ
+                  Төлбөр төлөгдсөнөөс хойш <strong>24 цагийн дотор</strong> хүргэгдэнэ
                 </div>
 
                 <Button
