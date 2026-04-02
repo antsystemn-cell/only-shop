@@ -7,10 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  ArrowLeft, User, MapPin, Lock, Loader2, Mail, Phone, Save,
+  User, Lock, Loader2, Mail, Phone, Save,
   ShoppingBag, Heart, Clock, Wallet, ChevronRight,
 } from "lucide-react";
 
@@ -18,52 +17,48 @@ export default function Profile() {
   const { user } = useAuth();
 
   return (
-    <div className="container py-8 max-w-4xl">
-      <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6">
-        <ArrowLeft className="h-4 w-4" />
-        Нүүр хуудас
-      </Link>
+    <div className="container py-6 max-w-2xl animate-fade-in">
+      {/* Profile header */}
+      <div className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-6 text-primary-foreground mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-primary-foreground/20 flex items-center justify-center">
+            <User className="h-8 w-8" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold">Миний профайл</h1>
+            <p className="text-primary-foreground/70 text-sm">{user?.email}</p>
+          </div>
+        </div>
+      </div>
 
-      <h1 className="text-3xl font-bold mb-6">Миний профайл</h1>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      {/* Quick links grid */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
         {[
-          { href: "/orders", icon: ShoppingBag, label: "Миний захиалгууд", color: "text-blue-500" },
-          { href: "/wallet", icon: Wallet, label: "Данс", color: "text-green-500" },
-          { href: "/wishlist", icon: Heart, label: "Дуртай бараа", color: "text-red-500" },
-          { href: "/view-history", icon: Clock, label: "Үзсэн түүх", color: "text-purple-500" },
+          { href: "/orders", icon: ShoppingBag, label: "Захиалгууд", color: "bg-blue-500/10 text-blue-500" },
+          { href: "/wallet", icon: Wallet, label: "Данс", color: "bg-green-500/10 text-green-500" },
+          { href: "/wishlist", icon: Heart, label: "Дуртай бараа", color: "bg-red-500/10 text-red-500" },
+          { href: "/view-history", icon: Clock, label: "Үзсэн түүх", color: "bg-purple-500/10 text-purple-500" },
         ].map((item) => (
           <Link
             key={item.href}
             to={item.href}
-            className="flex items-center gap-3 p-4 rounded-xl border bg-card hover:bg-accent transition-colors group"
+            className="flex items-center gap-3 p-4 rounded-2xl bg-card border hover:shadow-md transition-all group"
           >
-            <item.icon className={`h-5 w-5 ${item.color} shrink-0`} />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.color}`}>
+              <item.icon className="h-5 w-5" />
+            </div>
             <span className="text-sm font-medium flex-1">{item.label}</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
           </Link>
         ))}
       </div>
 
-      <Tabs defaultValue="info" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="info" className="gap-2">
-            <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Мэдээлэл</span>
-          </TabsTrigger>
-          <TabsTrigger value="security" className="gap-2">
-            <Lock className="h-4 w-4" />
-            <span className="hidden sm:inline">Нууцлал</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Profile info */}
+      <ProfileInfoTab user={user!} />
 
-        <TabsContent value="info">
-          <ProfileInfoTab user={user!} />
-        </TabsContent>
-        <TabsContent value="security">
-          <SecurityTab />
-        </TabsContent>
-      </Tabs>
+      <div className="mt-4">
+        <SecurityTab />
+      </div>
     </div>
   );
 }
@@ -92,10 +87,7 @@ function ProfileInfoTab({ user }: { user: { id: string; email?: string } }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ full_name: fullName, phone })
-        .eq("user_id", user.id);
+      const { error } = await supabase.from("profiles").update({ full_name: fullName, phone }).eq("user_id", user.id);
       if (error) throw error;
       toast.success("Мэдээлэл хадгалагдлаа");
     } catch (err: any) {
@@ -107,7 +99,7 @@ function ProfileInfoTab({ user }: { user: { id: string; email?: string } }) {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="rounded-2xl">
         <CardContent className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </CardContent>
@@ -116,34 +108,32 @@ function ProfileInfoTab({ user }: { user: { id: string; email?: string } }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <User className="h-5 w-5 text-primary" />
+    <Card className="rounded-2xl border shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <User className="h-4 w-4 text-primary" />
           Хувийн мэдээлэл
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            Имэйл
+          <Label className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
+            <Mail className="h-3 w-3" /> Имэйл
           </Label>
-          <Input value={user.email || ""} disabled className="bg-muted/50" />
+          <Input value={user.email || ""} disabled className="bg-muted/50 rounded-xl" />
         </div>
         <div className="space-y-2">
-          <Label>Нэр</Label>
-          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Таны нэр" />
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Нэр</Label>
+          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Таны нэр" className="rounded-xl" />
         </div>
         <div className="space-y-2">
-          <Label className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            Утасны дугаар
+          <Label className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
+            <Phone className="h-3 w-3" /> Утас
           </Label>
-          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+976 9999 9999" />
+          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9999 9999" className="rounded-xl" />
         </div>
         <Separator />
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving} className="rounded-xl w-full">
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
           Хадгалах
         </Button>
@@ -158,14 +148,8 @@ function SecurityTab() {
   const [saving, setSaving] = useState(false);
 
   const handleChangePassword = async () => {
-    if (newPassword.length < 6) {
-      toast.error("Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error("Нууц үгүүд таарахгүй байна");
-      return;
-    }
+    if (newPassword.length < 6) { toast.error("Нууц үг хамгийн багадаа 6 тэмдэгт"); return; }
+    if (newPassword !== confirmPassword) { toast.error("Нууц үгүүд таарахгүй байна"); return; }
     setSaving(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -181,24 +165,24 @@ function SecurityTab() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lock className="h-5 w-5 text-primary" />
+    <Card className="rounded-2xl border shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Lock className="h-4 w-4 text-primary" />
           Нууц үг солих
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label>Шинэ нууц үг</Label>
-          <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Шинэ нууц үг</Label>
+          <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="rounded-xl" />
         </div>
         <div className="space-y-2">
-          <Label>Нууц үг давтах</Label>
-          <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Нууц үг давтах</Label>
+          <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="rounded-xl" />
         </div>
         <Separator />
-        <Button onClick={handleChangePassword} disabled={saving}>
+        <Button onClick={handleChangePassword} disabled={saving} variant="outline" className="rounded-xl w-full">
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
           Нууц үг солих
         </Button>
