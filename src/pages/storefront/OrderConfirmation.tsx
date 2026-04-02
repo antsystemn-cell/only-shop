@@ -202,6 +202,31 @@ export default function OrderConfirmation() {
     }
   }, [order, navigate, refetch]);
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="container py-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Захиалга олдсонгүй</h1>
+        <Button asChild>
+          <Link to="/">Нүүр хуудас руу буцах</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const orderStatus = statusLabels[order.status] || statusLabels.pending;
+  const paymentStatus = paymentStatusLabels[order.payment_status || "pending"] || paymentStatusLabels.pending;
+  const showPayment = order.payment_status === "pending" || order.payment_status === "failed";
+  const isPaid = order.payment_status === "paid";
+  const activePaymentMethod = changingMethod ? selectedPaymentMethod : (order.payment_method as PaymentMethod) || "qpay";
+
   return (
     <div className="container py-8 max-w-4xl">
       {/* Header - different for paid vs unpaid */}
