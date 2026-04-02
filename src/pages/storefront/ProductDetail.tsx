@@ -634,9 +634,9 @@ export default function ProductDetail() {
       </div>
 
       {/* Tabs: Specs & Description */}
-      <div className="mt-12">
+      <div className="mt-8">
         <Tabs defaultValue="description">
-          <TabsList>
+          <TabsList className="rounded-xl bg-muted/50 p-1">
             <TabsTrigger value="description">Тайлбар</TabsTrigger>
             <TabsTrigger value="specs">Техникийн үзүүлэлт</TabsTrigger>
           </TabsList>
