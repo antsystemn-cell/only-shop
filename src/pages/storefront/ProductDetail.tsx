@@ -293,26 +293,22 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="container py-8 animate-fade-in">
+    <div className="container py-4 md:py-8 animate-fade-in">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link to="/" className="hover:text-foreground">
-          Нүүр
-        </Link>
-        <span>/</span>
-        <Link to="/shop" className="hover:text-foreground">
-          Дэлгүүр
-        </Link>
+      <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4 overflow-x-auto whitespace-nowrap">
+        <Link to="/" className="hover:text-primary transition-colors">Нүүр</Link>
+        <span className="text-muted-foreground/50">/</span>
+        <Link to="/shop" className="hover:text-primary transition-colors">Дэлгүүр</Link>
         {product.categories && (
           <>
-            <span>/</span>
-            <Link to={`/shop?category=${product.category_id}`} className="hover:text-foreground">
+            <span className="text-muted-foreground/50">/</span>
+            <Link to={`/shop?category=${product.category_id}`} className="hover:text-primary transition-colors">
               {(product.categories as { name_mn: string }).name_mn}
             </Link>
           </>
         )}
-        <span>/</span>
-        <span className="text-foreground">{product.name_mn}</span>
+        <span className="text-muted-foreground/50">/</span>
+        <span className="text-foreground truncate max-w-[150px]">{product.name_mn}</span>
       </nav>
 
       <div className="grid lg:grid-cols-2 gap-6 lg:gap-12">
