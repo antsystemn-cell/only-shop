@@ -133,7 +133,7 @@ export default function Home() {
       <div className="px-1 md:container py-2 md:py-6 space-y-8">
         {/* Hero Banner */}
         {banners && banners.length > 0 && (
-          <HeroCarousel banners={banners} />
+          <HeroCarousel />
         )}
 
         {/* Categories */}

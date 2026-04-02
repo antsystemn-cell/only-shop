@@ -629,11 +629,7 @@ export default function Products() {
                     basePrice={parseFloat(formData.price) || 0}
                   />
                 ) : (
-                  <MultiVariantCreator
-                    variants={localVariants}
-                    onChange={setLocalVariants}
-                    basePrice={parseFloat(formData.price) || 0}
-                  />
+                  <p className="text-sm text-muted-foreground">Барааг хадгалсны дараа хувилбарууд нэмэх боломжтой.</p>
                 )}
               </div>
 
