@@ -316,6 +316,8 @@ export default function Products() {
       is_featured: false,
       is_active: true,
       images: [],
+      delivery_fee_type: "default",
+      custom_delivery_fee: "",
     });
     setEditingProduct(null);
     setLocalVariants([]);
