@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import { Plus, Package, Heart, Star } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ShoppingCart, Zap, Package, Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
