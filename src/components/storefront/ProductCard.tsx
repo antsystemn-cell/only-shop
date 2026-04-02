@@ -150,7 +150,7 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
           </div>
 
           {/* Rating */}
-          {product.rating && product.rating > 0 && (
+          {product.rating != null && product.rating > 0 && (
             <div className="flex items-center gap-0.5 mt-1">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Star key={i} className={`h-3 w-3 ${i < Math.round(product.rating!) ? "text-amber-400 fill-amber-400" : "text-muted"}`} />
