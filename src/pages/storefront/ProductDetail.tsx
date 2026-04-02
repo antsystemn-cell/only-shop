@@ -311,7 +311,7 @@ export default function ProductDetail() {
         <span className="text-foreground truncate max-w-[150px]">{product.name_mn}</span>
       </nav>
 
-      <div className="grid lg:grid-cols-2 gap-6 lg:gap-12">
+      <div className="grid lg:grid-cols-2 gap-4 lg:gap-10">
         {/* Image Gallery with Swipe */}
         <div className="space-y-4">
           {/* Main Image Carousel */}
