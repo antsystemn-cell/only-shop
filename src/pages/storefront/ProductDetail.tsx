@@ -434,6 +434,14 @@ export default function ProductDetail() {
             )}
           </div>
 
+          {/* Free delivery badge */}
+          {product.delivery_fee_type === "free" && (
+            <div className="flex items-center gap-2 bg-primary/10 text-primary rounded-lg px-3 py-2">
+              <Truck className="h-4 w-4" />
+              <span className="text-sm font-medium">Хүргэлт үнэгүй</span>
+            </div>
+          )}
+
           <Separator />
 
           {/* Variant Selection - New Card Style */}
