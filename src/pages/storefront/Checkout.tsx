@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,15 +7,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, MapPin, Truck, ShoppingBag, Package, Clock } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, Truck, ShoppingBag, Package, Clock, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
+import { calculateDelivery, type DeliveryZoneInfo } from "@/lib/deliveryCalculator";
 
 interface DeliveryZone {
   id: string;
@@ -34,8 +34,6 @@ const addressSchema = z.object({
   apartment: z.string().optional(),
   phone: z.string().min(8, "Утасны дугаар оруулна уу"),
 });
-
-type DeliveryType = "standard" | "express";
 
 function formatMntPrice(price: number) {
   return new Intl.NumberFormat("mn-MN").format(Math.round(price)) + "₮";
@@ -56,7 +54,6 @@ export default function Checkout() {
   const localItems = buyNowProductId ? allLocalItems.filter((i) => i.product.id === buyNowProductId) : allLocalItems;
 
   const [selectedZone, setSelectedZone] = useState<DeliveryZone | null>(null);
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>("standard");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("qpay");
@@ -101,26 +98,42 @@ export default function Checkout() {
   const ubDistricts = deliveryZones?.filter((z) => z.zone_type === "ub_district") || [];
   const aimags = deliveryZones?.filter((z) => z.zone_type === "aimag") || [];
 
+  // ── Centralized delivery calculation ──
+  const deliveryResult = useMemo(() => {
+    const products = localItems.map((item) => ({
+      delivery_fee_type: item.product.delivery_fee_type || "default",
+      custom_delivery_fee: item.product.custom_delivery_fee ?? null,
+    }));
+
+    const zoneInfo: DeliveryZoneInfo | null = selectedZone
+      ? {
+          standard_price: selectedZone.standard_price,
+          standard_days: selectedZone.standard_days,
+          express_price: selectedZone.express_price,
+          express_days: selectedZone.express_days,
+        }
+      : null;
+
+    return calculateDelivery(products, zoneInfo, "standard");
+  }, [localItems, selectedZone]);
+
   const localSubtotal = buyNowProductId
     ? localItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0)
     : getAllLocalSubtotal();
-  const deliveryFee = selectedZone
-    ? deliveryType === "express" && selectedZone.express_price
-      ? selectedZone.express_price
-      : selectedZone.standard_price
-    : 0;
+
+  const deliveryFee = deliveryResult.fee;
   const localTotal = localSubtotal + deliveryFee;
 
-  const deliveryDays = selectedZone
-    ? deliveryType === "express" && selectedZone.express_days
-      ? selectedZone.express_days
-      : selectedZone.standard_days
-    : null;
+  const deliveryDays = selectedZone?.standard_days ?? null;
 
   const createOrderMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Нэвтрэх шаардлагатай");
-      if (!selectedZone) throw new Error("Хүргэлтийн бүс сонгоно уу");
+
+      // For FREE/FIXED delivery, zone is not required
+      if (deliveryResult.zoneAffectsPrice && !selectedZone) {
+        throw new Error("Хүргэлтийн бүс сонгоно уу");
+      }
 
       const validation = addressSchema.safeParse(addressForm);
       if (!validation.success) {
@@ -146,8 +159,8 @@ export default function Checkout() {
           status: "pending",
           payment_status: "pending",
           payment_method: paymentMethod,
-          delivery_type: deliveryType,
-          delivery_zone_id: selectedZone.id,
+          delivery_type: "standard",
+          delivery_zone_id: selectedZone?.id || null,
           estimated_delivery_date: estimatedDate.toISOString().split("T")[0],
           delivery_address: {
             city: addressForm.city,
@@ -229,14 +242,12 @@ export default function Checkout() {
     createOrderMutation.mutate();
   };
 
+  // District selection: ONLY updates address form, does NOT affect delivery pricing for FREE/FIXED
   const handleZoneChange = (zoneId: string) => {
     const zone = deliveryZones?.find((z) => z.id === zoneId);
     setSelectedZone(zone || null);
     if (zone) {
       setAddressForm((prev) => ({ ...prev, district: zone.name }));
-    }
-    if (zone && !zone.express_price) {
-      setDeliveryType("standard");
     }
   };
 
@@ -247,6 +258,9 @@ export default function Checkout() {
       </div>
     );
   }
+
+  // Determine if we can submit without zone (FREE/FIXED don't need zone)
+  const canSubmitWithoutZone = !deliveryResult.zoneAffectsPrice;
 
   return (
     <div className="container py-8">
@@ -354,55 +368,53 @@ export default function Checkout() {
               </CardContent>
             </Card>
 
+            {/* Delivery Fee Display */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Truck className="h-5 w-5 text-primary" />
-                  Хүргэлтийн төрөл
+                  Хүргэлтийн төлбөр
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {selectedZone ? (
-                  <RadioGroup
-                    value={deliveryType}
-                    onValueChange={(value) => setDeliveryType(value as DeliveryType)}
-                    className="space-y-3"
-                  >
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <RadioGroupItem value="standard" id="standard" />
-                      <Label htmlFor="standard" className="flex-1 cursor-pointer">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-medium">Энгийн хүргэлт</p>
-                            <p className="text-sm text-muted-foreground">{selectedZone.standard_days} хоногт хүргэнэ</p>
-                          </div>
-                          <span className="font-semibold text-primary">
-                            {selectedZone.standard_price.toLocaleString()}₮
-                          </span>
-                        </div>
-                      </Label>
+                {deliveryResult.resolvedType === "free" ? (
+                  <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                    <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-green-700 dark:text-green-300">
+                        ✅ Хүргэлт үнэгүй
+                      </p>
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                        Энэ барааны хүргэлт үнэгүй
+                      </p>
                     </div>
-                    {selectedZone.express_price && (
-                      <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <RadioGroupItem value="express" id="express" />
-                        <Label htmlFor="express" className="flex-1 cursor-pointer">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-medium">Шуурхай хүргэлт</p>
-                              <p className="text-sm text-muted-foreground">
-                                {selectedZone.express_days} хоногт хүргэнэ
-                              </p>
-                            </div>
-                            <span className="font-semibold text-primary">
-                              {selectedZone.express_price.toLocaleString()}₮
-                            </span>
-                          </div>
-                        </Label>
-                      </div>
-                    )}
-                  </RadioGroup>
+                  </div>
+                ) : deliveryResult.resolvedType === "fixed" ? (
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                    <div>
+                      <p className="font-medium">Тогтмол хүргэлтийн төлбөр</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Байршлаас үл хамаарч тогтмол үнэтэй
+                      </p>
+                    </div>
+                    <span className="font-bold text-primary text-lg">{deliveryResult.label}</span>
+                  </div>
+                ) : selectedZone ? (
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                    <div>
+                      <p className="font-medium">Энгийн хүргэлт</p>
+                      {deliveryDays && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {deliveryDays} хоногт хүргэнэ
+                        </p>
+                      )}
+                    </div>
+                    <span className="font-bold text-primary text-lg">{deliveryResult.label}</span>
+                  </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-4">Хүргэлтийн бүс сонгоно уу</p>
+                  <p className="text-muted-foreground text-center py-4">
+                    Дүүрэг/Аймаг сонговол хүргэлтийн төлбөр тодорхойлогдоно
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -467,7 +479,13 @@ export default function Checkout() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Хүргэлт</span>
-                    <span>{selectedZone ? formatMntPrice(deliveryFee) : "-"}</span>
+                    {deliveryResult.resolvedType === "free" ? (
+                      <span className="text-green-600 font-medium">Үнэгүй</span>
+                    ) : deliveryResult.resolvedType === "fixed" || selectedZone ? (
+                      <span>{formatMntPrice(deliveryFee)}</span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
@@ -485,7 +503,10 @@ export default function Checkout() {
                   type="submit"
                   size="lg"
                   className="w-full"
-                  disabled={!selectedZone || createOrderMutation.isPending}
+                  disabled={
+                    (!canSubmitWithoutZone && !selectedZone) ||
+                    createOrderMutation.isPending
+                  }
                 >
                   {createOrderMutation.isPending ? (
                     <>
