@@ -605,8 +605,7 @@ export default function ProductDetail() {
                 size="lg"
                 className="flex-1 gap-2 rounded-xl h-12"
                 onClick={() => {
-                  handleAddToCart();
-                  navigate("/checkout", { state: { buyNowProductId: product.id } });
+                  navigate(`/buy-now/${product.slug || product.id}`);
                 }}
                 disabled={!hasAnyStock || (variants.length > 0 && !selectedVariant) || (selectedVariant && selectedVariant.stock === 0)}
               >
