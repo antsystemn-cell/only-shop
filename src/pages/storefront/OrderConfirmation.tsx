@@ -131,6 +131,9 @@ export default function OrderConfirmation() {
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("qpay");
   const [changingMethod, setChangingMethod] = useState(false);
+  const [currentPaymentIntentId, setCurrentPaymentIntentId] = useState<string | null>(paymentIntentId);
+  const [switchingPayment, setSwitchingPayment] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (order?.payment_method) {
@@ -138,42 +141,66 @@ export default function OrderConfirmation() {
     }
   }, [order?.payment_method]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // Sync paymentIntentId from URL
+  useEffect(() => {
+    setCurrentPaymentIntentId(paymentIntentId);
+  }, [paymentIntentId]);
 
-  if (error || !order) {
-    return (
-      <div className="container py-8 text-center">
-        <h1 className="text-2xl font-bold mb-4">Захиалга олдсонгүй</h1>
-        <Button asChild>
-          <Link to="/">Нүүр хуудас руу буцах</Link>
-        </Button>
-      </div>
-    );
-  }
+  const handleChangePaymentMethod = useCallback(async (method: PaymentMethod) => {
+    if (!order) return;
+    setSwitchingPayment(true);
+    try {
+      // Update order's payment method in DB
+      await supabase
+        .from("orders")
+        .update({ payment_method: method })
+        .eq("id", order.id);
 
-  const orderStatus = statusLabels[order.status] || statusLabels.pending;
-  const paymentStatus = paymentStatusLabels[order.payment_status || "pending"] || paymentStatusLabels.pending;
-  const showPayment = order.payment_status === "pending" || order.payment_status === "failed";
-  const isPaid = order.payment_status === "paid";
+      // Create new payment intent for non-wallet methods
+      if (method !== "wallet") {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not authenticated");
 
-  const activePaymentMethod = changingMethod ? selectedPaymentMethod : (order.payment_method as PaymentMethod) || "qpay";
+        const { data: pi, error: piErr } = await supabase
+          .from("payment_intents")
+          .insert({
+            user_id: user.id,
+            type: "order" as const,
+            reference_id: order.id,
+            amount: order.total,
+            provider:
+              method === "omniway"
+                ? ("omniway" as const)
+                : method === "storepay"
+                  ? ("storepay" as const)
+                  : ("qpay" as const),
+            status: "initiated" as const,
+          })
+          .select()
+          .single();
 
-  const handleChangePaymentMethod = async (method: PaymentMethod) => {
-    setSelectedPaymentMethod(method);
-    // Update order's payment method in DB
-    await supabase
-      .from("orders")
-      .update({ payment_method: method })
-      .eq("id", order.id);
-    setChangingMethod(false);
-    refetch();
-  };
+        if (piErr) {
+          console.error("Payment intent creation error:", piErr);
+          throw piErr;
+        }
+
+        setCurrentPaymentIntentId(pi.id);
+        // Update URL with new payment intent
+        navigate(`/order-confirmation/${order.id}?pi=${pi.id}`, { replace: true });
+      } else {
+        setCurrentPaymentIntentId(null);
+        navigate(`/order-confirmation/${order.id}`, { replace: true });
+      }
+
+      setSelectedPaymentMethod(method);
+      setChangingMethod(false);
+      refetch();
+    } catch (err) {
+      console.error("Failed to switch payment method:", err);
+    } finally {
+      setSwitchingPayment(false);
+    }
+  }, [order, navigate, refetch]);
 
   return (
     <div className="container py-8 max-w-4xl">
