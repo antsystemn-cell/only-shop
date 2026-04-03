@@ -1,0 +1,415 @@
+import { supabase } from "@/integrations/supabase/client";
+
+// ─── Constants ──────────────────────────────────────────────
+
+export const ORDER_SOURCES = [
+  { value: "website", label: "Вэбсайт" },
+  { value: "admin_manual", label: "Админ (гараар)" },
+  { value: "phone", label: "Утасны захиалга" },
+  { value: "facebook", label: "Facebook" },
+  { value: "instagram", label: "Instagram" },
+  { value: "walk_in", label: "Биечлэн" },
+  { value: "legacy_import", label: "Түүхэн бүртгэл" },
+] as const;
+
+export const FULFILLMENT_STATUSES = [
+  { value: "draft", label: "Ноорог", color: "bg-gray-100 text-gray-800" },
+  { value: "confirmed", label: "Баталгаажсан", color: "bg-blue-100 text-blue-800" },
+  { value: "preparing", label: "Бэлтгэгдэж байна", color: "bg-yellow-100 text-yellow-800" },
+  { value: "ready_for_delivery", label: "Хүргэлтэд бэлэн", color: "bg-indigo-100 text-indigo-800" },
+  { value: "out_for_delivery", label: "Хүргэлтэд гарсан", color: "bg-purple-100 text-purple-800" },
+  { value: "delivered", label: "Хүргэгдсэн", color: "bg-green-100 text-green-800" },
+  { value: "cancelled", label: "Цуцлагдсан", color: "bg-red-100 text-red-800" },
+  { value: "returned", label: "Буцаагдсан", color: "bg-orange-100 text-orange-800" },
+] as const;
+
+export const PAYMENT_STATUSES = [
+  { value: "unpaid", label: "Төлөгдөөгүй", color: "bg-red-100 text-red-800" },
+  { value: "pending", label: "Хүлээгдэж байна", color: "bg-yellow-100 text-yellow-800" },
+  { value: "partially_paid", label: "Хэсэгчлэн", color: "bg-orange-100 text-orange-800" },
+  { value: "paid", label: "Төлсөн", color: "bg-green-100 text-green-800" },
+  { value: "cash_on_delivery", label: "Бэлнээр (COD)", color: "bg-blue-100 text-blue-800" },
+  { value: "transfer_pending", label: "Шилжүүлэг хүлээгдэж", color: "bg-cyan-100 text-cyan-800" },
+  { value: "refunded", label: "Буцаагдсан", color: "bg-gray-100 text-gray-800" },
+] as const;
+
+// Fulfillment statuses that require inventory deduction
+const INVENTORY_ACTIVE_STATUSES = ["confirmed", "preparing", "ready_for_delivery", "out_for_delivery", "delivered"];
+const INVENTORY_RESTORE_STATUSES = ["cancelled", "returned"];
+
+export type OrderSource = (typeof ORDER_SOURCES)[number]["value"];
+
+export interface ManualOrderItem {
+  product_id: string;
+  variant_id?: string;
+  product_name: string;
+  sku?: string;
+  variant_name?: string;
+  color?: string;
+  size?: string;
+  image_url?: string;
+  unit_price: number;
+  quantity: number;
+}
+
+export interface CreateOrderParams {
+  source: OrderSource;
+  customer_name?: string;
+  customer_phone?: string;
+  alternate_phone?: string;
+  customer_email?: string;
+  fulfillment_status: string;
+  payment_status: string;
+  payment_method?: string;
+  address_text?: string;
+  delivery_note?: string;
+  district?: string;
+  delivery_fee: number;
+  discount_amount?: number;
+  internal_note?: string;
+  customer_note?: string;
+  affects_inventory?: boolean;
+  items: ManualOrderItem[];
+  user_id?: string | null;
+}
+
+// ─── Create Order ───────────────────────────────────────────
+
+export async function createManualOrder(params: CreateOrderParams) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Нэвтрэх шаардлагатай");
+
+  const subtotal = params.items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
+  const discount = params.discount_amount || 0;
+  const total = subtotal - discount + params.delivery_fee;
+
+  const isDraft = params.fulfillment_status === "draft";
+
+  // Insert order
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .insert({
+      source: params.source,
+      user_id: params.user_id || null,
+      customer_name: params.customer_name,
+      customer_phone: params.customer_phone,
+      alternate_phone: params.alternate_phone,
+      customer_email: params.customer_email,
+      fulfillment_status: params.fulfillment_status,
+      payment_status: params.payment_status as any,
+      payment_method: params.payment_method,
+      address_text: params.address_text,
+      delivery_note: params.delivery_note,
+      delivery_fee: params.delivery_fee,
+      discount_amount: discount,
+      subtotal,
+      total,
+      internal_note: params.internal_note,
+      notes: params.customer_note,
+      affects_inventory: params.affects_inventory !== false,
+      created_by_user_id: user.id,
+      confirmed_at: isDraft ? null : new Date().toISOString(),
+      status: isDraft ? "pending" as any : "pending" as any,
+      order_number: "PENDING", // Will be overwritten by trigger
+      delivery_address: params.district ? { district: params.district, street_address: params.address_text } : null,
+    } as any)
+    .select()
+    .single();
+
+  if (orderError) throw orderError;
+
+  // Insert order items
+  const orderItems = params.items.map((item) => ({
+    order_id: order.id,
+    product_id: item.product_id,
+    variant_id: item.variant_id || null,
+    product_name_snapshot: item.product_name,
+    sku_snapshot: item.sku || null,
+    variant_name_snapshot: item.variant_name || null,
+    color_snapshot: item.color || null,
+    size_snapshot: item.size || null,
+    unit_price: item.unit_price,
+    quantity: item.quantity,
+    total_price: item.unit_price * item.quantity,
+    line_total: item.unit_price * item.quantity,
+    product_snapshot: {
+      name: item.product_name,
+      images: item.image_url ? [item.image_url] : [],
+      name_mn: item.product_name,
+    },
+  }));
+
+  const { error: itemsError } = await supabase.from("order_items").insert(orderItems as any);
+  if (itemsError) throw itemsError;
+
+  // Apply inventory if not draft
+  if (!isDraft && params.affects_inventory !== false) {
+    await applyInventoryDeduction(order.id, params.items, user.id);
+  }
+
+  // Log initial status
+  await logStatusChange(order.id, user.id, {
+    new_fulfillment_status: params.fulfillment_status,
+    new_payment_status: params.payment_status,
+    note: `Захиалга үүсгэсэн (${ORDER_SOURCES.find(s => s.value === params.source)?.label || params.source})`,
+  });
+
+  return order;
+}
+
+// ─── Update Fulfillment Status ──────────────────────────────
+
+export async function updateFulfillmentStatus(
+  orderId: string,
+  oldStatus: string,
+  newStatus: string,
+  note?: string
+) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Нэвтрэх шаардлагатай");
+
+  const updateData: any = {
+    fulfillment_status: newStatus,
+    updated_by_user_id: user.id,
+  };
+
+  // Set timestamps
+  if (newStatus === "confirmed" && oldStatus === "draft") {
+    updateData.confirmed_at = new Date().toISOString();
+  }
+  if (newStatus === "delivered") {
+    updateData.delivered_at = new Date().toISOString();
+  }
+  if (newStatus === "cancelled") {
+    updateData.cancelled_at = new Date().toISOString();
+  }
+
+  // Map fulfillment to legacy status
+  const legacyStatusMap: Record<string, string> = {
+    draft: "pending",
+    confirmed: "pending",
+    preparing: "processing",
+    ready_for_delivery: "processing",
+    out_for_delivery: "shipped",
+    delivered: "delivered",
+    cancelled: "cancelled",
+    returned: "cancelled",
+  };
+  updateData.status = legacyStatusMap[newStatus] || "pending";
+
+  const { error } = await supabase
+    .from("orders")
+    .update(updateData)
+    .eq("id", orderId);
+  if (error) throw error;
+
+  // Handle inventory
+  const wasInventoryActive = INVENTORY_ACTIVE_STATUSES.includes(oldStatus);
+  const isNowInventoryActive = INVENTORY_ACTIVE_STATUSES.includes(newStatus);
+  const isNowRestored = INVENTORY_RESTORE_STATUSES.includes(newStatus);
+
+  if (!wasInventoryActive && isNowInventoryActive) {
+    // draft -> confirmed: apply inventory
+    const { data: items } = await supabase
+      .from("order_items")
+      .select("*")
+      .eq("order_id", orderId);
+    if (items) {
+      const manualItems: ManualOrderItem[] = items.map((i: any) => ({
+        product_id: i.product_id,
+        variant_id: i.variant_id,
+        product_name: i.product_name_snapshot || "",
+        unit_price: i.unit_price,
+        quantity: i.quantity,
+      }));
+      await applyInventoryDeduction(orderId, manualItems, user.id);
+    }
+  } else if (wasInventoryActive && isNowRestored) {
+    // confirmed/preparing -> cancelled: restore inventory
+    await restoreInventory(orderId, user.id);
+  }
+
+  await logStatusChange(orderId, user.id, {
+    old_fulfillment_status: oldStatus,
+    new_fulfillment_status: newStatus,
+    note,
+  });
+}
+
+// ─── Update Payment Status ──────────────────────────────────
+
+export async function updatePaymentStatus(
+  orderId: string,
+  oldStatus: string,
+  newStatus: string,
+  note?: string
+) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Нэвтрэх шаардлагатай");
+
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      payment_status: newStatus,
+      updated_by_user_id: user.id,
+    } as any)
+    .eq("id", orderId);
+  if (error) throw error;
+
+  await logStatusChange(orderId, user.id, {
+    old_payment_status: oldStatus,
+    new_payment_status: newStatus,
+    note,
+  });
+}
+
+// ─── Inventory Logic ────────────────────────────────────────
+
+async function applyInventoryDeduction(
+  orderId: string,
+  items: ManualOrderItem[],
+  userId: string
+) {
+  for (const item of items) {
+    if (item.variant_id) {
+      await supabase
+        .from("product_variants")
+        .update({ stock: supabase.rpc ? undefined : 0 })
+        .eq("id", item.variant_id);
+      // Use raw SQL approach via decrement
+      const { data: variant } = await supabase
+        .from("product_variants")
+        .select("stock")
+        .eq("id", item.variant_id)
+        .single();
+      if (variant) {
+        await supabase
+          .from("product_variants")
+          .update({ stock: Math.max(0, variant.stock - item.quantity) } as any)
+          .eq("id", item.variant_id);
+      }
+    } else if (item.product_id) {
+      const { data: product } = await supabase
+        .from("products")
+        .select("stock")
+        .eq("id", item.product_id)
+        .single();
+      if (product) {
+        await supabase
+          .from("products")
+          .update({ stock: Math.max(0, product.stock - item.quantity) })
+          .eq("id", item.product_id);
+      }
+    }
+
+    // Log adjustment
+    await supabase.from("inventory_adjustments").insert({
+      product_id: item.product_id,
+      variant_id: item.variant_id || null,
+      order_id: orderId,
+      adjustment_type: "order_deduction",
+      quantity_change: -item.quantity,
+      note: `Захиалгаас хасагдсан`,
+      created_by_user_id: userId,
+    } as any);
+  }
+
+  await supabase
+    .from("orders")
+    .update({ inventory_applied_at: new Date().toISOString() } as any)
+    .eq("id", orderId);
+}
+
+async function restoreInventory(orderId: string, userId: string) {
+  // Check if inventory was applied
+  const { data: order } = await supabase
+    .from("orders")
+    .select("inventory_applied_at, affects_inventory")
+    .eq("id", orderId)
+    .single();
+
+  if (!order?.inventory_applied_at || !(order as any).affects_inventory) return;
+
+  const { data: items } = await supabase
+    .from("order_items")
+    .select("*")
+    .eq("order_id", orderId);
+
+  if (!items) return;
+
+  for (const item of items) {
+    if ((item as any).variant_id) {
+      const { data: variant } = await supabase
+        .from("product_variants")
+        .select("stock")
+        .eq("id", (item as any).variant_id)
+        .single();
+      if (variant) {
+        await supabase
+          .from("product_variants")
+          .update({ stock: variant.stock + item.quantity } as any)
+          .eq("id", (item as any).variant_id);
+      }
+    } else if (item.product_id) {
+      const { data: product } = await supabase
+        .from("products")
+        .select("stock")
+        .eq("id", item.product_id)
+        .single();
+      if (product) {
+        await supabase
+          .from("products")
+          .update({ stock: product.stock + item.quantity })
+          .eq("id", item.product_id);
+      }
+    }
+
+    await supabase.from("inventory_adjustments").insert({
+      product_id: item.product_id,
+      variant_id: (item as any).variant_id || null,
+      order_id: orderId,
+      adjustment_type: "order_cancellation_restore",
+      quantity_change: item.quantity,
+      note: `Захиалга цуцлагдсанаар буцаагдсан`,
+      created_by_user_id: userId,
+    } as any);
+  }
+}
+
+// ─── Status Log ─────────────────────────────────────────────
+
+async function logStatusChange(
+  orderId: string,
+  userId: string,
+  data: {
+    old_payment_status?: string;
+    new_payment_status?: string;
+    old_fulfillment_status?: string;
+    new_fulfillment_status?: string;
+    note?: string;
+  }
+) {
+  await supabase.from("order_status_logs").insert({
+    order_id: orderId,
+    changed_by_user_id: userId,
+    ...data,
+  } as any);
+}
+
+// ─── Helpers ────────────────────────────────────────────────
+
+export function getFulfillmentBadge(status: string) {
+  return FULFILLMENT_STATUSES.find((s) => s.value === status) || { value: status, label: status, color: "bg-gray-100 text-gray-800" };
+}
+
+export function getPaymentBadge(status: string) {
+  return PAYMENT_STATUSES.find((s) => s.value === status) || { value: status, label: status, color: "bg-gray-100 text-gray-800" };
+}
+
+export function getSourceLabel(source: string) {
+  return ORDER_SOURCES.find((s) => s.value === source)?.label || source;
+}
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("mn-MN").format(Math.round(amount)) + "₮";
+}
