@@ -15,8 +15,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   ShoppingCart, User, MapPin, Phone, Mail,
-  Package, MessageSquare, Clock,
+  Package, MessageSquare, Clock, Printer,
 } from "lucide-react";
+import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
 import { format } from "date-fns";
 import {
   FULFILLMENT_STATUSES,

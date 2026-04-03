@@ -14,8 +14,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Package, Truck, Clock, CheckCircle2, AlertTriangle, CreditCard,
   ShoppingCart, Plus, Search, X, Phone, MapPin,
-  ArrowRight, Eye,
+  ArrowRight, Eye, Printer,
 } from "lucide-react";
+import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
 import { format } from "date-fns";
 import {
   ORDER_SOURCES,
