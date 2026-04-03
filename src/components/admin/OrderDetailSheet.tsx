@@ -15,8 +15,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   ShoppingCart, User, MapPin, Phone, Mail,
-  Package, MessageSquare, Clock,
+  Package, MessageSquare, Clock, Printer,
 } from "lucide-react";
+import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
 import { format } from "date-fns";
 import {
   FULFILLMENT_STATUSES,
@@ -87,7 +88,10 @@ export default function OrderDetailSheet({
           <SheetTitle className="flex items-center gap-2 text-base">
             <ShoppingCart className="h-4 w-4" />
             {order.order_number}
-            <Badge variant="outline" className="text-[10px] ml-auto">{getSourceLabel((order as any).source || "website")}</Badge>
+            <Button variant="outline" size="sm" className="h-7 ml-auto" onClick={() => printDeliveryLabel(order)}>
+              <Printer className="h-3.5 w-3.5 mr-1" />Хэвлэх
+            </Button>
+            <Badge variant="outline" className="text-[10px]">{getSourceLabel((order as any).source || "website")}</Badge>
           </SheetTitle>
         </SheetHeader>
 

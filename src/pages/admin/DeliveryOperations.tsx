@@ -14,8 +14,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Package, Truck, Clock, CheckCircle2, AlertTriangle, CreditCard,
   ShoppingCart, Plus, Search, X, Phone, MapPin,
-  ArrowRight, Eye,
+  ArrowRight, Eye, Printer,
 } from "lucide-react";
+import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
 import { format } from "date-fns";
 import {
   ORDER_SOURCES,
@@ -262,7 +263,16 @@ export default function DeliveryOperations() {
                               </div>
 
                               {/* Quick actions */}
-                              <div className="flex items-center gap-2 shrink-0">
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => printDeliveryLabel(order)}
+                                  title="Хаягийн шошго хэвлэх"
+                                >
+                                  <Printer className="h-3.5 w-3.5" />
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
