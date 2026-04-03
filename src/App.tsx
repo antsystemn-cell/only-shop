@@ -45,6 +45,7 @@ import Brands from "./pages/admin/Brands";
 import Orders from "./pages/admin/Orders";
 import Users from "./pages/admin/Users";
 import Delivery from "./pages/admin/Delivery";
+import DeliveryOperations from "./pages/admin/DeliveryOperations";
 import Banners from "./pages/admin/Banners";
 import Pricing from "./pages/admin/Pricing";
 import Content from "./pages/admin/Content";
