@@ -402,16 +402,8 @@ export default function LocalOrdersTab() {
   );
 }
 
-// ─── Order Detail Sheet ─────────────────────────────────────
+// OrderDetailSheet is now imported from @/components/admin/OrderDetailSheet
 
-function OrderDetailSheet({
-  order, open, onClose, onFulfillmentChange, onPaymentChange, isMobile,
-}: {
-  order: any; open: boolean; onClose: () => void;
-  onFulfillmentChange: (oldS: string, newS: string) => void;
-  onPaymentChange: (oldS: string, newS: string) => void;
-  isMobile: boolean;
-}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [notes, setNotes] = useState("");
