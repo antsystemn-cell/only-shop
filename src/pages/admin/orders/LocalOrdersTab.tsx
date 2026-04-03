@@ -36,6 +36,7 @@ import {
   formatCurrency,
 } from "@/lib/orderService";
 import CreateOrderDialog from "./CreateOrderDialog";
+import OrderDetailSheet from "@/components/admin/OrderDetailSheet";
 
 export default function LocalOrdersTab() {
   const [searchQuery, setSearchQuery] = useState("");
