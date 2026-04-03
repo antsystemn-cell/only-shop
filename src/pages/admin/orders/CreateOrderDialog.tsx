@@ -157,6 +157,7 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
     },
     onSuccess: (_, isDraft) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "delivery-orders"] });
       toast({ title: isDraft ? "Ноорог хадгалагдлаа" : "Захиалга үүсгэгдлээ" });
       resetForm();
       onOpenChange(false);
