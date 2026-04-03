@@ -404,7 +404,6 @@ export default function LocalOrdersTab() {
 
 // OrderDetailSheet is now imported from @/components/admin/OrderDetailSheet
 
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [notes, setNotes] = useState("");
 
