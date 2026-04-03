@@ -1028,6 +1028,64 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_adjustments: {
+        Row: {
+          adjustment_type: string
+          created_at: string
+          created_by_user_id: string | null
+          id: string
+          note: string | null
+          order_id: string | null
+          product_id: string | null
+          quantity_change: number
+          variant_id: string | null
+        }
+        Insert: {
+          adjustment_type?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          note?: string | null
+          order_id?: string | null
+          product_id?: string | null
+          quantity_change: number
+          variant_id?: string | null
+        }
+        Update: {
+          adjustment_type?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          note?: string | null
+          order_id?: string | null
+          product_id?: string | null
+          quantity_change?: number
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_adjustments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_adjustments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_adjustments_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       migration_jobs: {
         Row: {
           completed_at: string | null
@@ -1108,34 +1166,55 @@ export type Database = {
       }
       order_items: {
         Row: {
+          color_snapshot: string | null
           created_at: string
           id: string
+          line_total: number | null
           order_id: string
           product_id: string | null
+          product_name_snapshot: string | null
           product_snapshot: Json
           quantity: number
+          size_snapshot: string | null
+          sku_snapshot: string | null
           total_price: number
           unit_price: number
+          variant_id: string | null
+          variant_name_snapshot: string | null
         }
         Insert: {
+          color_snapshot?: string | null
           created_at?: string
           id?: string
+          line_total?: number | null
           order_id: string
           product_id?: string | null
+          product_name_snapshot?: string | null
           product_snapshot: Json
           quantity: number
+          size_snapshot?: string | null
+          sku_snapshot?: string | null
           total_price: number
           unit_price: number
+          variant_id?: string | null
+          variant_name_snapshot?: string | null
         }
         Update: {
+          color_snapshot?: string | null
           created_at?: string
           id?: string
+          line_total?: number | null
           order_id?: string
           product_id?: string | null
+          product_name_snapshot?: string | null
           product_snapshot?: Json
           quantity?: number
+          size_snapshot?: string | null
+          sku_snapshot?: string | null
           total_price?: number
           unit_price?: number
+          variant_id?: string | null
+          variant_name_snapshot?: string | null
         }
         Relationships: [
           {
@@ -1154,15 +1233,77 @@ export type Database = {
           },
         ]
       }
+      order_status_logs: {
+        Row: {
+          changed_by_user_id: string | null
+          created_at: string
+          id: string
+          new_fulfillment_status: string | null
+          new_payment_status: string | null
+          note: string | null
+          old_fulfillment_status: string | null
+          old_payment_status: string | null
+          order_id: string
+        }
+        Insert: {
+          changed_by_user_id?: string | null
+          created_at?: string
+          id?: string
+          new_fulfillment_status?: string | null
+          new_payment_status?: string | null
+          note?: string | null
+          old_fulfillment_status?: string | null
+          old_payment_status?: string | null
+          order_id: string
+        }
+        Update: {
+          changed_by_user_id?: string | null
+          created_at?: string
+          id?: string
+          new_fulfillment_status?: string | null
+          new_payment_status?: string | null
+          note?: string | null
+          old_fulfillment_status?: string | null
+          old_payment_status?: string | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
+          address_text: string | null
+          affects_inventory: boolean
+          alternate_phone: string | null
+          assigned_to_user_id: string | null
+          cancelled_at: string | null
+          confirmed_at: string | null
           created_at: string
+          created_by_user_id: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          delivered_at: string | null
           delivery_address: Json | null
           delivery_fee: number
+          delivery_note: string | null
           delivery_type: Database["public"]["Enums"]["delivery_type"] | null
           delivery_zone_id: string | null
+          discount_amount: number
           estimated_delivery_date: string | null
+          fulfillment_status: string
           id: string
+          internal_note: string | null
+          inventory_applied_at: string | null
+          map_lat: number | null
+          map_lng: number | null
           notes: string | null
           order_number: string
           payment_method: string | null
@@ -1172,20 +1313,40 @@ export type Database = {
           qpay_payment_id: string | null
           qpay_qr_image: string | null
           qpay_urls: Json | null
+          source: string
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
           total: number
           updated_at: string
+          updated_by_user_id: string | null
           user_id: string | null
         }
         Insert: {
+          address_text?: string | null
+          affects_inventory?: boolean
+          alternate_phone?: string | null
+          assigned_to_user_id?: string | null
+          cancelled_at?: string | null
+          confirmed_at?: string | null
           created_at?: string
+          created_by_user_id?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivered_at?: string | null
           delivery_address?: Json | null
           delivery_fee?: number
+          delivery_note?: string | null
           delivery_type?: Database["public"]["Enums"]["delivery_type"] | null
           delivery_zone_id?: string | null
+          discount_amount?: number
           estimated_delivery_date?: string | null
+          fulfillment_status?: string
           id?: string
+          internal_note?: string | null
+          inventory_applied_at?: string | null
+          map_lat?: number | null
+          map_lng?: number | null
           notes?: string | null
           order_number: string
           payment_method?: string | null
@@ -1195,20 +1356,40 @@ export type Database = {
           qpay_payment_id?: string | null
           qpay_qr_image?: string | null
           qpay_urls?: Json | null
+          source?: string
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           total?: number
           updated_at?: string
+          updated_by_user_id?: string | null
           user_id?: string | null
         }
         Update: {
+          address_text?: string | null
+          affects_inventory?: boolean
+          alternate_phone?: string | null
+          assigned_to_user_id?: string | null
+          cancelled_at?: string | null
+          confirmed_at?: string | null
           created_at?: string
+          created_by_user_id?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivered_at?: string | null
           delivery_address?: Json | null
           delivery_fee?: number
+          delivery_note?: string | null
           delivery_type?: Database["public"]["Enums"]["delivery_type"] | null
           delivery_zone_id?: string | null
+          discount_amount?: number
           estimated_delivery_date?: string | null
+          fulfillment_status?: string
           id?: string
+          internal_note?: string | null
+          inventory_applied_at?: string | null
+          map_lat?: number | null
+          map_lng?: number | null
           notes?: string | null
           order_number?: string
           payment_method?: string | null
@@ -1218,10 +1399,12 @@ export type Database = {
           qpay_payment_id?: string | null
           qpay_qr_image?: string | null
           qpay_urls?: Json | null
+          source?: string
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           total?: number
           updated_at?: string
+          updated_by_user_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -1871,6 +2054,33 @@ export type Database = {
         }
         Relationships: []
       }
+      role_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          is_allowed: boolean
+          permission_key: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_allowed?: boolean
+          permission_key: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_allowed?: boolean
+          permission_key?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sms_logs: {
         Row: {
           created_at: string
@@ -2223,7 +2433,7 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "order_staff" | "super_admin"
       delivery_type: "standard" | "express" | "rural"
       order_status:
         | "pending"
@@ -2366,7 +2576,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "order_staff", "super_admin"],
       delivery_type: ["standard", "express", "rural"],
       order_status: [
         "pending",
