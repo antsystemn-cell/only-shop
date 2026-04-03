@@ -13,8 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Package, Truck, Clock, CheckCircle2, AlertTriangle, CreditCard,
-  ShoppingCart, Plus, Search, X, ChevronRight, Phone, MapPin,
-  ArrowRight,
+  ShoppingCart, Plus, Search, X, Phone, MapPin,
+  ArrowRight, Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -29,12 +29,15 @@ import {
   formatCurrency,
 } from "@/lib/orderService";
 import CreateOrderDialog from "./orders/CreateOrderDialog";
+import OrderDetailSheet from "@/components/admin/OrderDetailSheet";
 
 export default function DeliveryOperations() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("today");
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const queryClient = useQueryClient();
@@ -139,6 +142,11 @@ export default function DeliveryOperations() {
     return { name: "—", phone: "" };
   };
 
+  const getItemName = (item: any) => {
+    const snapshot = item.product_snapshot || {};
+    return item.product_name_snapshot || snapshot.title || snapshot.name || snapshot.name_mn || "Бараа";
+  };
+
   const summaryCards = [
     { label: "Ноорог", value: stats.draft, icon: Clock, color: "text-gray-600" },
     { label: "Шинэ захиалга", value: stats.confirmed, icon: ShoppingCart, color: "text-blue-600" },
@@ -228,68 +236,106 @@ export default function DeliveryOperations() {
                         const cust = getCustomerDisplay(order);
                         const pb = getPaymentBadge(order.payment_status || "pending");
                         const nextAction = getNextAction(status.value);
+                        const items = order.order_items || [];
 
                         return (
-                          <div key={order.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/30 transition-colors">
-                            {/* Order info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs font-bold">{order.order_number}</span>
-                                <Badge variant="outline" className="text-[10px]">{getSourceLabel(order.source || "website")}</Badge>
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${pb.color}`}>{pb.label}</span>
-                              </div>
-                              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                <span className="font-medium text-foreground">{cust.name}</span>
-                                {cust.phone && <span className="flex items-center gap-0.5"><Phone className="h-3 w-3" />{cust.phone}</span>}
-                                <span>{order.order_items?.length || 0} бараа</span>
-                                <span className="font-medium text-foreground">{formatCurrency(Number(order.total))}</span>
-                              </div>
-                              {order.address_text && (
-                                <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-                                  <MapPin className="h-3 w-3" />
-                                  <span className="truncate max-w-[300px]">{order.address_text}</span>
+                          <div key={order.id} className="p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                            {/* Top row: order info + actions */}
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs font-bold">{order.order_number}</span>
+                                  <Badge variant="outline" className="text-[10px]">{getSourceLabel(order.source || "website")}</Badge>
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${pb.color}`}>{pb.label}</span>
                                 </div>
-                              )}
-                            </div>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                  <span className="font-medium text-foreground">{cust.name}</span>
+                                  {cust.phone && <span className="flex items-center gap-0.5"><Phone className="h-3 w-3" />{cust.phone}</span>}
+                                  <span className="font-medium text-foreground">{formatCurrency(Number(order.total))}</span>
+                                </div>
+                                {order.address_text && (
+                                  <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                                    <MapPin className="h-3 w-3" />
+                                    <span className="truncate max-w-[300px]">{order.address_text}</span>
+                                  </div>
+                                )}
+                              </div>
 
-                            {/* Quick actions */}
-                            <div className="flex items-center gap-2 shrink-0">
-                              {order.payment_status !== "paid" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 text-xs"
-                                  onClick={() => paymentMutation.mutate({ id: order.id, oldStatus: order.payment_status || "pending", newStatus: "paid" })}
-                                >
-                                  <CreditCard className="h-3 w-3 mr-1" />
-                                  Төлсөн
-                                </Button>
-                              )}
-                              {nextAction && (
-                                <Button
-                                  size="sm"
-                                  className="h-7 text-xs"
-                                  onClick={() => fulfillmentMutation.mutate({ id: order.id, oldStatus: status.value, newStatus: nextAction.next })}
-                                >
-                                  {nextAction.label}
-                                  <ArrowRight className="h-3 w-3 ml-1" />
-                                </Button>
-                              )}
-                              {status.value !== "cancelled" && status.value !== "delivered" && (
+                              {/* Quick actions */}
+                              <div className="flex items-center gap-2 shrink-0">
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 text-xs text-destructive hover:text-destructive"
-                                  onClick={() => {
-                                    if (confirm("Захиалга цуцлах уу?")) {
-                                      fulfillmentMutation.mutate({ id: order.id, oldStatus: status.value, newStatus: "cancelled" });
-                                    }
-                                  }}
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}
                                 >
-                                  <X className="h-3 w-3" />
+                                  <Eye className="h-3.5 w-3.5" />
                                 </Button>
-                              )}
+                                {order.payment_status !== "paid" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => paymentMutation.mutate({ id: order.id, oldStatus: order.payment_status || "pending", newStatus: "paid" })}
+                                  >
+                                    <CreditCard className="h-3 w-3 mr-1" />
+                                    Төлсөн
+                                  </Button>
+                                )}
+                                {nextAction && (
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => fulfillmentMutation.mutate({ id: order.id, oldStatus: status.value, newStatus: nextAction.next })}
+                                  >
+                                    {nextAction.label}
+                                    <ArrowRight className="h-3 w-3 ml-1" />
+                                  </Button>
+                                )}
+                                {status.value !== "cancelled" && status.value !== "delivered" && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-xs text-destructive hover:text-destructive"
+                                    onClick={() => {
+                                      if (confirm("Захиалга цуцлах уу?")) {
+                                        fulfillmentMutation.mutate({ id: order.id, oldStatus: status.value, newStatus: "cancelled" });
+                                      }
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
+
+                            {/* Items list */}
+                            {items.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-dashed space-y-1">
+                                {items.map((item: any) => {
+                                  const snapshot = item.product_snapshot || {};
+                                  const imgSrc = snapshot.imageUrl || snapshot.image_url || snapshot.images?.[0];
+                                  return (
+                                    <div key={item.id} className="flex items-center gap-2 text-xs">
+                                      {imgSrc && (
+                                        <img src={imgSrc} alt="" className="w-7 h-7 rounded object-contain border bg-muted shrink-0" />
+                                      )}
+                                      <span className="flex-1 min-w-0 truncate text-muted-foreground">
+                                        {getItemName(item)}
+                                        {(item.color_snapshot || item.size_snapshot) && (
+                                          <span className="text-muted-foreground/70">
+                                            {item.color_snapshot && ` · ${item.color_snapshot}`}
+                                            {item.size_snapshot && ` · ${item.size_snapshot}`}
+                                          </span>
+                                        )}
+                                      </span>
+                                      <span className="shrink-0 text-muted-foreground">×{item.quantity}</span>
+                                      <span className="shrink-0 font-medium text-foreground">{formatCurrency(Number(item.total_price))}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -303,6 +349,19 @@ export default function DeliveryOperations() {
       )}
 
       <CreateOrderDialog open={createOpen} onOpenChange={setCreateOpen} />
+
+      <OrderDetailSheet
+        order={selectedOrder}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        onFulfillmentChange={(oldS, newS) => {
+          if (selectedOrder) fulfillmentMutation.mutate({ id: selectedOrder.id, oldStatus: oldS, newStatus: newS });
+        }}
+        onPaymentChange={(oldS, newS) => {
+          if (selectedOrder) paymentMutation.mutate({ id: selectedOrder.id, oldStatus: oldS, newStatus: newS });
+        }}
+        isMobile={isMobile}
+      />
     </div>
   );
 }
