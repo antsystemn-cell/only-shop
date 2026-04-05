@@ -35,7 +35,7 @@ import OrderDetailSheet from "@/components/admin/OrderDetailSheet";
 export default function DeliveryOperations() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("today");
+  const [dateFilter, setDateFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
