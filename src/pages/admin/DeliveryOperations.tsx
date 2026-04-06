@@ -119,15 +119,13 @@ export default function DeliveryOperations() {
   // Summary stats
   const allOrders = orders || [];
   const failedSyncCount = allOrders.filter((o: any) => o.delivery_sync_status === "failed").length;
-  const pendingSyncCount = allOrders.filter((o: any) => o.delivery_sync_status === "pending" && o.fulfillment_status !== "draft").length;
+  const pendingSyncCount = allOrders.filter((o: any) => o.delivery_sync_status === "pending").length;
   const stats = {
-    draft: grouped.draft?.length || 0,
     confirmed: grouped.confirmed?.length || 0,
-    preparing: grouped.preparing?.length || 0,
-    ready: grouped.ready_for_delivery?.length || 0,
+    phoneConfirmed: grouped.phone_confirmed?.length || 0,
     outForDelivery: grouped.out_for_delivery?.length || 0,
     delivered: grouped.delivered?.length || 0,
-    codUnpaid: allOrders.filter((o: any) => o.payment_status !== "paid" && o.fulfillment_status !== "cancelled" && o.fulfillment_status !== "draft").length,
+    unpaid: allOrders.filter((o: any) => o.payment_status !== "paid" && o.fulfillment_status !== "cancelled").length,
     syncFailed: failedSyncCount,
   };
 
