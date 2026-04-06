@@ -337,6 +337,18 @@ export default function DeliveryOperations() {
 
                               {/* Quick actions */}
                               <div className="flex items-center gap-1 shrink-0">
+                                {(order.delivery_sync_status === "failed" || (order.delivery_sync_status === "pending" && order.fulfillment_status !== "draft")) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-orange-600 hover:text-orange-700"
+                                    onClick={() => retrySyncMutation.mutate(order.id)}
+                                    disabled={retrySyncMutation.isPending}
+                                    title="Синк дахин оролдох"
+                                  >
+                                    <RefreshCw className={`h-3.5 w-3.5 ${retrySyncMutation.isPending ? "animate-spin" : ""}`} />
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
