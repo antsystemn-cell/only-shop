@@ -15,9 +15,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   ShoppingCart, User, MapPin, Phone, Mail,
-  Package, MessageSquare, Clock, Printer,
+  Package, MessageSquare, Clock, Printer, RefreshCw, Cloud, CloudOff,
 } from "lucide-react";
 import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
+import { retryDeliverySync } from "@/lib/deliverySync";
 import { format } from "date-fns";
 import {
   FULFILLMENT_STATUSES,
