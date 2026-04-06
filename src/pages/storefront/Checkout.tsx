@@ -16,6 +16,7 @@ import { ArrowLeft, Loader2, MapPin, Truck, ShoppingBag, Package, Clock, CheckCi
 import { z } from "zod";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
 import { calculateDelivery, type DeliveryZoneInfo } from "@/lib/deliveryCalculator";
+import { triggerDeliverySync } from "@/lib/deliverySync";
 
 interface DeliveryZone {
   id: string;
