@@ -131,7 +131,7 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
   const total = subtotal + fee;
 
   const createMutation = useMutation({
-    mutationFn: async (isDraft: boolean) => {
+    mutationFn: async () => {
       if (items.length === 0) throw new Error("Бараа нэмнэ үү");
       if (!customerPhone && !customerName) throw new Error("Захиалагчийн мэдээлэл оруулна уу");
 
@@ -141,7 +141,7 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
         customer_phone: customerPhone,
         alternate_phone: alternatePhone,
         customer_email: customerEmail,
-        fulfillment_status: isDraft ? "draft" : "confirmed",
+        fulfillment_status: "confirmed",
         payment_status: paymentStatus,
         payment_method: paymentMethod,
         address_text: addressText,
@@ -156,14 +156,13 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
         user_id: matchedUserId,
       });
     },
-    onSuccess: (order, isDraft) => {
-      // Trigger delivery sync for non-draft orders
-      if (!isDraft && order?.id) {
+    onSuccess: (order) => {
+      if (order?.id) {
         triggerDeliverySync(order.id);
       }
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "delivery-orders"] });
-      toast({ title: isDraft ? "Ноорог хадгалагдлаа" : "Захиалга үүсгэгдлээ" });
+      toast({ title: "Захиалга үүсгэгдлээ" });
       resetForm();
       onOpenChange(false);
     },
