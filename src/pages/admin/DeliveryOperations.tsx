@@ -154,10 +154,8 @@ export default function DeliveryOperations() {
 
   const getNextAction = (status: string) => {
     const map: Record<string, { label: string; next: string }> = {
-      draft: { label: "Баталгаажуулах", next: "confirmed" },
-      confirmed: { label: "Бэлтгэж эхлэх", next: "preparing" },
-      preparing: { label: "Хүргэлтэд бэлэн", next: "ready_for_delivery" },
-      ready_for_delivery: { label: "Хүргэлтэд гарсан", next: "out_for_delivery" },
+      confirmed: { label: "Утсаар баталгаажуулсан", next: "phone_confirmed" },
+      phone_confirmed: { label: "Хүргэлтэнд гарсан", next: "out_for_delivery" },
       out_for_delivery: { label: "Хүргэгдсэн", next: "delivered" },
     };
     return map[status];
