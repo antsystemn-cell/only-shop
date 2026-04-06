@@ -380,11 +380,7 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => createMutation.mutate(true)} disabled={createMutation.isPending}>
-              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Ноорог хадгалах
-            </Button>
-            <Button className="flex-1" onClick={() => createMutation.mutate(false)} disabled={createMutation.isPending}>
+            <Button className="flex-1" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
               {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Захиалга үүсгэх
             </Button>
