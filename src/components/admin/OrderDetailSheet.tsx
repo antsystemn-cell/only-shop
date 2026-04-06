@@ -38,6 +38,21 @@ interface OrderDetailSheetProps {
   isMobile: boolean;
 }
 
+function SyncRetryButton({ orderId }: { orderId: string }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const mutation = useMutation({
+    mutationFn: () => retryDeliverySync(orderId).then(r => { if (!r.success) throw new Error(r.error); return r; }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin"] }); toast({ title: "Синк амжилттай" }); },
+    onError: (e: any) => toast({ title: "Синк алдаа", description: e.message, variant: "destructive" }),
+  });
+  return (
+    <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+      <RefreshCw className={`h-3 w-3 mr-1 ${mutation.isPending ? "animate-spin" : ""}`} />Дахин
+    </Button>
+  );
+}
+
 export default function OrderDetailSheet({
   order, open, onClose, onFulfillmentChange, onPaymentChange, isMobile,
 }: OrderDetailSheetProps) {
