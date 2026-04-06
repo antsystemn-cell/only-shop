@@ -291,7 +291,7 @@ export default function DeliveryOperations() {
                                   <span className="font-mono text-xs font-bold">{order.order_number}</span>
                                   <Badge variant="outline" className="text-[10px]">{getSourceLabel(order.source || "website")}</Badge>
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${pb.color}`}>{pb.label}</span>
-                                  {order.fulfillment_status !== "draft" && (() => {
+                                  {order.fulfillment_status !== "cancelled" && (() => {
                                     const sync = getSyncBadge(order);
                                     return (
                                       <Tooltip>
