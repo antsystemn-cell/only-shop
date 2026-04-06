@@ -149,6 +149,37 @@ export default function OrderDetailSheet({
             </CardContent>
           </Card>
 
+          {/* Delivery Sync Status */}
+          {(order as any).fulfillment_status !== "draft" && (
+            <Card>
+              <CardContent className="p-3 text-sm space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium flex items-center gap-1.5">
+                    {(order as any).delivery_sync_status === "synced" ? (
+                      <><Cloud className="h-3 w-3 text-green-600" />Хүргэлт синк</>
+                    ) : (order as any).delivery_sync_status === "failed" ? (
+                      <><CloudOff className="h-3 w-3 text-red-600" />Синк алдаа</>
+                    ) : (
+                      <><Clock className="h-3 w-3 text-yellow-600" />Синк хүлээгдэж</>
+                    )}
+                  </span>
+                  {((order as any).delivery_sync_status === "failed" || (order as any).delivery_sync_status === "pending") && (
+                    <SyncRetryButton orderId={order.id} />
+                  )}
+                </div>
+                {(order as any).delivery_sync_error && (
+                  <p className="text-xs text-destructive bg-destructive/10 p-1.5 rounded">{(order as any).delivery_sync_error}</p>
+                )}
+                {(order as any).delivery_external_id && (
+                  <p className="text-xs text-muted-foreground">ID: {(order as any).delivery_external_id}</p>
+                )}
+                {(order as any).delivery_attempt_count > 0 && (
+                  <p className="text-xs text-muted-foreground">Оролдлого: {(order as any).delivery_attempt_count}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Customer */}
           <Card>
             <CardContent className="p-3 space-y-1.5 text-sm">
