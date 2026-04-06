@@ -180,13 +180,11 @@ export default function DeliveryOperations() {
   };
 
   const summaryCards = [
-    { label: "Ноорог", value: stats.draft, icon: Clock, color: "text-gray-600" },
     { label: "Шинэ захиалга", value: stats.confirmed, icon: ShoppingCart, color: "text-blue-600" },
-    { label: "Бэлтгэгдэж байна", value: stats.preparing, icon: Package, color: "text-yellow-600" },
-    { label: "Хүргэлтэд бэлэн", value: stats.ready, icon: CheckCircle2, color: "text-indigo-600" },
-    { label: "Хүргэлтэд гарсан", value: stats.outForDelivery, icon: Truck, color: "text-purple-600" },
+    { label: "Утсаар баталгаажсан", value: stats.phoneConfirmed, icon: Phone, color: "text-cyan-600" },
+    { label: "Хүргэлтэнд гарсан", value: stats.outForDelivery, icon: Truck, color: "text-purple-600" },
     { label: "Хүргэгдсэн", value: stats.delivered, icon: CheckCircle2, color: "text-green-600" },
-    { label: "COD төлөгдөөгүй", value: stats.codUnpaid, icon: AlertTriangle, color: "text-red-600" },
+    { label: "Төлөгдөөгүй", value: stats.unpaid, icon: AlertTriangle, color: "text-red-600" },
     ...(stats.syncFailed > 0 ? [{ label: "Синк алдаа", value: stats.syncFailed, icon: CloudOff, color: "text-red-600" }] : []),
   ];
 
