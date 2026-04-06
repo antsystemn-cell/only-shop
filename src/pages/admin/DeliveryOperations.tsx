@@ -331,7 +331,7 @@ export default function DeliveryOperations() {
 
                               {/* Quick actions */}
                               <div className="flex items-center gap-1 shrink-0">
-                                {(order.delivery_sync_status === "failed" || (order.delivery_sync_status === "pending" && order.fulfillment_status !== "draft")) && (
+                                {(order.delivery_sync_status === "failed" || order.delivery_sync_status === "pending") && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
