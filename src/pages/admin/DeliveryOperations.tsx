@@ -365,10 +365,10 @@ export default function DeliveryOperations() {
                                     variant="outline"
                                     size="sm"
                                     className="h-7 text-xs"
-                                    onClick={() => paymentMutation.mutate({ id: order.id, oldStatus: order.payment_status || "pending", newStatus: "paid" })}
+                                    onClick={() => paymentMutation.mutate({ id: order.id, oldStatus: order.payment_status || "unpaid", newStatus: "paid" })}
                                   >
                                     <CreditCard className="h-3 w-3 mr-1" />
-                                    Төлсөн
+                                    Төлөгдсөн
                                   </Button>
                                 )}
                                 {nextAction && (
