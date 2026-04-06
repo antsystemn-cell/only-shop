@@ -9,13 +9,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Package, Truck, Clock, CheckCircle2, AlertTriangle, CreditCard,
   ShoppingCart, Plus, Search, X, Phone, MapPin,
-  ArrowRight, Eye, Printer,
+  ArrowRight, Eye, Printer, RefreshCw, CloudOff, Cloud,
 } from "lucide-react";
+import { retryDeliverySync, retryAllFailedSyncs } from "@/lib/deliverySync";
 import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
 import { format } from "date-fns";
 import {
