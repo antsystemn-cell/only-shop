@@ -230,6 +230,11 @@ export async function updateFulfillmentStatus(
     await restoreInventory(orderId, user.id);
   }
 
+  // Trigger delivery sync when moving from draft to active
+  if (oldStatus === "draft" && isNowInventoryActive) {
+    triggerDeliverySync(orderId);
+  }
+
   await logStatusChange(orderId, user.id, {
     old_fulfillment_status: oldStatus,
     new_fulfillment_status: newStatus,
