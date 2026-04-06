@@ -119,15 +119,13 @@ export default function DeliveryOperations() {
   // Summary stats
   const allOrders = orders || [];
   const failedSyncCount = allOrders.filter((o: any) => o.delivery_sync_status === "failed").length;
-  const pendingSyncCount = allOrders.filter((o: any) => o.delivery_sync_status === "pending" && o.fulfillment_status !== "draft").length;
+  const pendingSyncCount = allOrders.filter((o: any) => o.delivery_sync_status === "pending").length;
   const stats = {
-    draft: grouped.draft?.length || 0,
     confirmed: grouped.confirmed?.length || 0,
-    preparing: grouped.preparing?.length || 0,
-    ready: grouped.ready_for_delivery?.length || 0,
+    phoneConfirmed: grouped.phone_confirmed?.length || 0,
     outForDelivery: grouped.out_for_delivery?.length || 0,
     delivered: grouped.delivered?.length || 0,
-    codUnpaid: allOrders.filter((o: any) => o.payment_status !== "paid" && o.fulfillment_status !== "cancelled" && o.fulfillment_status !== "draft").length,
+    unpaid: allOrders.filter((o: any) => o.payment_status !== "paid" && o.fulfillment_status !== "cancelled").length,
     syncFailed: failedSyncCount,
   };
 
@@ -156,10 +154,8 @@ export default function DeliveryOperations() {
 
   const getNextAction = (status: string) => {
     const map: Record<string, { label: string; next: string }> = {
-      draft: { label: "Баталгаажуулах", next: "confirmed" },
-      confirmed: { label: "Бэлтгэж эхлэх", next: "preparing" },
-      preparing: { label: "Хүргэлтэд бэлэн", next: "ready_for_delivery" },
-      ready_for_delivery: { label: "Хүргэлтэд гарсан", next: "out_for_delivery" },
+      confirmed: { label: "Утсаар баталгаажуулсан", next: "phone_confirmed" },
+      phone_confirmed: { label: "Хүргэлтэнд гарсан", next: "out_for_delivery" },
       out_for_delivery: { label: "Хүргэгдсэн", next: "delivered" },
     };
     return map[status];
@@ -184,13 +180,11 @@ export default function DeliveryOperations() {
   };
 
   const summaryCards = [
-    { label: "Ноорог", value: stats.draft, icon: Clock, color: "text-gray-600" },
     { label: "Шинэ захиалга", value: stats.confirmed, icon: ShoppingCart, color: "text-blue-600" },
-    { label: "Бэлтгэгдэж байна", value: stats.preparing, icon: Package, color: "text-yellow-600" },
-    { label: "Хүргэлтэд бэлэн", value: stats.ready, icon: CheckCircle2, color: "text-indigo-600" },
-    { label: "Хүргэлтэд гарсан", value: stats.outForDelivery, icon: Truck, color: "text-purple-600" },
+    { label: "Утсаар баталгаажсан", value: stats.phoneConfirmed, icon: Phone, color: "text-cyan-600" },
+    { label: "Хүргэлтэнд гарсан", value: stats.outForDelivery, icon: Truck, color: "text-purple-600" },
     { label: "Хүргэгдсэн", value: stats.delivered, icon: CheckCircle2, color: "text-green-600" },
-    { label: "COD төлөгдөөгүй", value: stats.codUnpaid, icon: AlertTriangle, color: "text-red-600" },
+    { label: "Төлөгдөөгүй", value: stats.unpaid, icon: AlertTriangle, color: "text-red-600" },
     ...(stats.syncFailed > 0 ? [{ label: "Синк алдаа", value: stats.syncFailed, icon: CloudOff, color: "text-red-600" }] : []),
   ];
 
@@ -264,9 +258,9 @@ export default function DeliveryOperations() {
         </div>
       ) : (
         <div className="space-y-4">
-          {FULFILLMENT_STATUSES.filter(s => !["returned"].includes(s.value)).map((status) => {
+          {FULFILLMENT_STATUSES.map((status) => {
             const statusOrders = grouped[status.value] || [];
-            if (statusOrders.length === 0 && ["draft", "cancelled", "returned"].includes(status.value)) return null;
+            if (statusOrders.length === 0 && status.value === "cancelled") return null;
 
             return (
               <Card key={status.value}>
@@ -284,7 +278,7 @@ export default function DeliveryOperations() {
                     <div className="space-y-2">
                       {statusOrders.map((order: any) => {
                         const cust = getCustomerDisplay(order);
-                        const pb = getPaymentBadge(order.payment_status || "pending");
+                        const pb = getPaymentBadge(order.payment_status || "unpaid");
                         const nextAction = getNextAction(status.value);
                         const items = order.order_items || [];
 
@@ -297,7 +291,7 @@ export default function DeliveryOperations() {
                                   <span className="font-mono text-xs font-bold">{order.order_number}</span>
                                   <Badge variant="outline" className="text-[10px]">{getSourceLabel(order.source || "website")}</Badge>
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${pb.color}`}>{pb.label}</span>
-                                  {order.fulfillment_status !== "draft" && (() => {
+                                  {order.fulfillment_status !== "cancelled" && (() => {
                                     const sync = getSyncBadge(order);
                                     return (
                                       <Tooltip>
@@ -337,7 +331,7 @@ export default function DeliveryOperations() {
 
                               {/* Quick actions */}
                               <div className="flex items-center gap-1 shrink-0">
-                                {(order.delivery_sync_status === "failed" || (order.delivery_sync_status === "pending" && order.fulfillment_status !== "draft")) && (
+                                {(order.delivery_sync_status === "failed" || order.delivery_sync_status === "pending") && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -371,10 +365,10 @@ export default function DeliveryOperations() {
                                     variant="outline"
                                     size="sm"
                                     className="h-7 text-xs"
-                                    onClick={() => paymentMutation.mutate({ id: order.id, oldStatus: order.payment_status || "pending", newStatus: "paid" })}
+                                    onClick={() => paymentMutation.mutate({ id: order.id, oldStatus: order.payment_status || "unpaid", newStatus: "paid" })}
                                   >
                                     <CreditCard className="h-3 w-3 mr-1" />
-                                    Төлсөн
+                                    Төлөгдсөн
                                   </Button>
                                 )}
                                 {nextAction && (

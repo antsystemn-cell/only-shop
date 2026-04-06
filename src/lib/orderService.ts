@@ -14,29 +14,23 @@ export const ORDER_SOURCES = [
 ] as const;
 
 export const FULFILLMENT_STATUSES = [
-  { value: "draft", label: "Ноорог", color: "bg-gray-100 text-gray-800" },
-  { value: "confirmed", label: "Баталгаажсан", color: "bg-blue-100 text-blue-800" },
-  { value: "preparing", label: "Бэлтгэгдэж байна", color: "bg-yellow-100 text-yellow-800" },
-  { value: "ready_for_delivery", label: "Хүргэлтэд бэлэн", color: "bg-indigo-100 text-indigo-800" },
-  { value: "out_for_delivery", label: "Хүргэлтэд гарсан", color: "bg-purple-100 text-purple-800" },
+  { value: "confirmed", label: "Захиалга баталгаажсан", color: "bg-blue-100 text-blue-800" },
+  { value: "phone_confirmed", label: "Утсаар баталгаажуулсан", color: "bg-cyan-100 text-cyan-800" },
+  { value: "out_for_delivery", label: "Хүргэлтэнд гарсан", color: "bg-purple-100 text-purple-800" },
   { value: "delivered", label: "Хүргэгдсэн", color: "bg-green-100 text-green-800" },
   { value: "cancelled", label: "Цуцлагдсан", color: "bg-red-100 text-red-800" },
-  { value: "returned", label: "Буцаагдсан", color: "bg-orange-100 text-orange-800" },
 ] as const;
 
 export const PAYMENT_STATUSES = [
   { value: "unpaid", label: "Төлөгдөөгүй", color: "bg-red-100 text-red-800" },
-  { value: "pending", label: "Хүлээгдэж байна", color: "bg-yellow-100 text-yellow-800" },
-  { value: "partially_paid", label: "Хэсэгчлэн", color: "bg-orange-100 text-orange-800" },
-  { value: "paid", label: "Төлсөн", color: "bg-green-100 text-green-800" },
-  { value: "cash_on_delivery", label: "Бэлнээр (COD)", color: "bg-blue-100 text-blue-800" },
-  { value: "transfer_pending", label: "Шилжүүлэг хүлээгдэж", color: "bg-cyan-100 text-cyan-800" },
-  { value: "refunded", label: "Буцаагдсан", color: "bg-gray-100 text-gray-800" },
+  { value: "cash", label: "Бэлнээр", color: "bg-blue-100 text-blue-800" },
+  { value: "paid", label: "Төлөгдсөн", color: "bg-green-100 text-green-800" },
+  { value: "refunded", label: "Буцаалт", color: "bg-gray-100 text-gray-800" },
 ] as const;
 
 // Fulfillment statuses that require inventory deduction
-const INVENTORY_ACTIVE_STATUSES = ["confirmed", "preparing", "ready_for_delivery", "out_for_delivery", "delivered"];
-const INVENTORY_RESTORE_STATUSES = ["cancelled", "returned"];
+const INVENTORY_ACTIVE_STATUSES = ["confirmed", "phone_confirmed", "out_for_delivery", "delivered"];
+const INVENTORY_RESTORE_STATUSES = ["cancelled"];
 
 export type OrderSource = (typeof ORDER_SOURCES)[number]["value"];
 
@@ -84,7 +78,7 @@ export async function createManualOrder(params: CreateOrderParams) {
   const discount = params.discount_amount || 0;
   const total = subtotal - discount + params.delivery_fee;
 
-  const isDraft = params.fulfillment_status === "draft";
+  const isDraft = false; // No more draft status
 
   // Insert order
   const { data: order, error: orderError } = await supabase
@@ -175,7 +169,7 @@ export async function updateFulfillmentStatus(
   };
 
   // Set timestamps
-  if (newStatus === "confirmed" && oldStatus === "draft") {
+  if (newStatus === "confirmed") {
     updateData.confirmed_at = new Date().toISOString();
   }
   if (newStatus === "delivered") {
@@ -187,14 +181,11 @@ export async function updateFulfillmentStatus(
 
   // Map fulfillment to legacy status
   const legacyStatusMap: Record<string, string> = {
-    draft: "pending",
     confirmed: "pending",
-    preparing: "processing",
-    ready_for_delivery: "processing",
+    phone_confirmed: "processing",
     out_for_delivery: "shipped",
     delivered: "delivered",
     cancelled: "cancelled",
-    returned: "cancelled",
   };
   updateData.status = legacyStatusMap[newStatus] || "pending";
 
@@ -230,8 +221,8 @@ export async function updateFulfillmentStatus(
     await restoreInventory(orderId, user.id);
   }
 
-  // Trigger delivery sync when moving from draft to active
-  if (oldStatus === "draft" && isNowInventoryActive) {
+  // Trigger delivery sync when status changes to active
+  if (oldStatus !== newStatus && isNowInventoryActive) {
     triggerDeliverySync(orderId);
   }
 

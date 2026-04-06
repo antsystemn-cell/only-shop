@@ -92,7 +92,7 @@ export default function OrderDetailSheet({
   if (!order) return null;
 
   const fb = getFulfillmentBadge((order as any).fulfillment_status || "confirmed");
-  const pb = getPaymentBadge(order.payment_status || "pending");
+  const pb = getPaymentBadge(order.payment_status || "unpaid");
   const deliveryAddress = order.delivery_address || {};
   const cust = order.customer_name || order.profile?.full_name || "—";
   const custPhone = order.customer_phone || order.profile?.phone || "";

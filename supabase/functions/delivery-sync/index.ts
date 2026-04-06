@@ -218,8 +218,10 @@ function mapPaymentStatus(status: string | null): string {
   switch (status) {
     case "paid":
       return "paid";
-    case "cash_on_delivery":
-      return "COD";
+    case "cash":
+      return "cash";
+    case "refunded":
+      return "refunded";
     default:
       return "unpaid";
   }
