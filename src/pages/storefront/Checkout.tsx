@@ -221,6 +221,9 @@ export default function Checkout() {
       return { order, paymentIntentId: pi?.id };
     },
     onSuccess: ({ order, paymentIntentId }) => {
+      // Trigger delivery sync (fire-and-forget)
+      triggerDeliverySync(order.id);
+      
       if (buyNowProductId) {
         removeFromCart(buyNowProductId);
       } else {
