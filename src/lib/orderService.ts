@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { triggerDeliverySync } from "@/lib/deliverySync";
 
 // ─── Constants ──────────────────────────────────────────────
 
@@ -227,6 +228,11 @@ export async function updateFulfillmentStatus(
   } else if (wasInventoryActive && isNowRestored) {
     // confirmed/preparing -> cancelled: restore inventory
     await restoreInventory(orderId, user.id);
+  }
+
+  // Trigger delivery sync when moving from draft to active
+  if (oldStatus === "draft" && isNowInventoryActive) {
+    triggerDeliverySync(orderId);
   }
 
   await logStatusChange(orderId, user.id, {

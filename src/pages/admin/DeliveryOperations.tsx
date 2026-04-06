@@ -9,13 +9,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Package, Truck, Clock, CheckCircle2, AlertTriangle, CreditCard,
   ShoppingCart, Plus, Search, X, Phone, MapPin,
-  ArrowRight, Eye, Printer,
+  ArrowRight, Eye, Printer, RefreshCw, CloudOff, Cloud,
 } from "lucide-react";
+import { retryDeliverySync, retryAllFailedSyncs } from "@/lib/deliverySync";
 import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
 import { format } from "date-fns";
 import {
@@ -116,6 +118,8 @@ export default function DeliveryOperations() {
 
   // Summary stats
   const allOrders = orders || [];
+  const failedSyncCount = allOrders.filter((o: any) => o.delivery_sync_status === "failed").length;
+  const pendingSyncCount = allOrders.filter((o: any) => o.delivery_sync_status === "pending" && o.fulfillment_status !== "draft").length;
   const stats = {
     draft: grouped.draft?.length || 0,
     confirmed: grouped.confirmed?.length || 0,
@@ -124,7 +128,31 @@ export default function DeliveryOperations() {
     outForDelivery: grouped.out_for_delivery?.length || 0,
     delivered: grouped.delivered?.length || 0,
     codUnpaid: allOrders.filter((o: any) => o.payment_status !== "paid" && o.fulfillment_status !== "cancelled" && o.fulfillment_status !== "draft").length,
+    syncFailed: failedSyncCount,
   };
+
+  // Retry sync mutations
+  const retrySyncMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const result = await retryDeliverySync(orderId);
+      if (!result.success) throw new Error(result.error || "Sync failed");
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "delivery-orders"] });
+      toast({ title: "Синк амжилттай" });
+    },
+    onError: (e: any) => toast({ title: "Синк алдаа", description: e.message, variant: "destructive" }),
+  });
+
+  const retryAllMutation = useMutation({
+    mutationFn: retryAllFailedSyncs,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "delivery-orders"] });
+      toast({ title: `${data.synced || 0} захиалга синк хийгдлээ` });
+    },
+    onError: (e: any) => toast({ title: "Алдаа", description: e.message, variant: "destructive" }),
+  });
 
   const getNextAction = (status: string) => {
     const map: Record<string, { label: string; next: string }> = {
@@ -148,6 +176,13 @@ export default function DeliveryOperations() {
     return item.product_name_snapshot || snapshot.title || snapshot.name || snapshot.name_mn || "Бараа";
   };
 
+  const getSyncBadge = (order: any) => {
+    const status = order.delivery_sync_status;
+    if (status === "synced") return { label: "Синк ✓", color: "bg-green-100 text-green-700", icon: Cloud };
+    if (status === "failed") return { label: "Синк ✗", color: "bg-red-100 text-red-700", icon: CloudOff };
+    return { label: "Хүлээгдэж", color: "bg-yellow-100 text-yellow-700", icon: Clock };
+  };
+
   const summaryCards = [
     { label: "Ноорог", value: stats.draft, icon: Clock, color: "text-gray-600" },
     { label: "Шинэ захиалга", value: stats.confirmed, icon: ShoppingCart, color: "text-blue-600" },
@@ -156,9 +191,11 @@ export default function DeliveryOperations() {
     { label: "Хүргэлтэд гарсан", value: stats.outForDelivery, icon: Truck, color: "text-purple-600" },
     { label: "Хүргэгдсэн", value: stats.delivered, icon: CheckCircle2, color: "text-green-600" },
     { label: "COD төлөгдөөгүй", value: stats.codUnpaid, icon: AlertTriangle, color: "text-red-600" },
+    ...(stats.syncFailed > 0 ? [{ label: "Синк алдаа", value: stats.syncFailed, icon: CloudOff, color: "text-red-600" }] : []),
   ];
 
   return (
+    <TooltipProvider>
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between gap-4">
@@ -166,10 +203,22 @@ export default function DeliveryOperations() {
           <h1 className="text-3xl font-bold">Хүргэлт & Үйл ажиллагаа</h1>
           <p className="text-muted-foreground mt-1">Захиалгын биелэлт, хүргэлтийн удирдлага</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="bg-primary hover:bg-primary/90">
-          <Plus className="h-4 w-4 mr-2" />
-          Захиалга үүсгэх
-        </Button>
+        <div className="flex gap-2">
+          {(failedSyncCount > 0 || pendingSyncCount > 0) && (
+            <Button
+              variant="outline"
+              onClick={() => retryAllMutation.mutate()}
+              disabled={retryAllMutation.isPending}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${retryAllMutation.isPending ? "animate-spin" : ""}`} />
+              Бүгдийг синк ({failedSyncCount + pendingSyncCount})
+            </Button>
+          )}
+          <Button onClick={() => setCreateOpen(true)} className="bg-primary hover:bg-primary/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Захиалга үүсгэх
+          </Button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -244,10 +293,34 @@ export default function DeliveryOperations() {
                             {/* Top row: order info + actions */}
                             <div className="flex items-center gap-3">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-mono text-xs font-bold">{order.order_number}</span>
                                   <Badge variant="outline" className="text-[10px]">{getSourceLabel(order.source || "website")}</Badge>
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${pb.color}`}>{pb.label}</span>
+                                  {order.fulfillment_status !== "draft" && (() => {
+                                    const sync = getSyncBadge(order);
+                                    return (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium inline-flex items-center gap-0.5 cursor-help ${sync.color}`}>
+                                            <sync.icon className="h-2.5 w-2.5" />
+                                            {sync.label}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom" className="max-w-xs">
+                                          {order.delivery_sync_status === "failed" && (
+                                            <p className="text-xs text-destructive">{order.delivery_sync_error || "Алдаа"}</p>
+                                          )}
+                                          {order.delivery_sync_status === "synced" && (
+                                            <p className="text-xs">ID: {order.delivery_external_id}</p>
+                                          )}
+                                          {order.delivery_attempt_count > 0 && (
+                                            <p className="text-xs text-muted-foreground">Оролдлого: {order.delivery_attempt_count}</p>
+                                          )}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    );
+                                  })()}
                                 </div>
                                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                   <span className="font-medium text-foreground">{cust.name}</span>
@@ -264,6 +337,18 @@ export default function DeliveryOperations() {
 
                               {/* Quick actions */}
                               <div className="flex items-center gap-1 shrink-0">
+                                {(order.delivery_sync_status === "failed" || (order.delivery_sync_status === "pending" && order.fulfillment_status !== "draft")) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-orange-600 hover:text-orange-700"
+                                    onClick={() => retrySyncMutation.mutate(order.id)}
+                                    disabled={retrySyncMutation.isPending}
+                                    title="Синк дахин оролдох"
+                                  >
+                                    <RefreshCw className={`h-3.5 w-3.5 ${retrySyncMutation.isPending ? "animate-spin" : ""}`} />
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -373,5 +458,6 @@ export default function DeliveryOperations() {
         isMobile={isMobile}
       />
     </div>
+    </TooltipProvider>
   );
 }

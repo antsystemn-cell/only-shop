@@ -23,6 +23,7 @@ import {
   type ManualOrderItem,
   type OrderSource,
 } from "@/lib/orderService";
+import { triggerDeliverySync } from "@/lib/deliverySync";
 
 interface Props {
   open: boolean;
@@ -155,7 +156,11 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
         user_id: matchedUserId,
       });
     },
-    onSuccess: (_, isDraft) => {
+    onSuccess: (order, isDraft) => {
+      // Trigger delivery sync for non-draft orders
+      if (!isDraft && order?.id) {
+        triggerDeliverySync(order.id);
+      }
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "delivery-orders"] });
       toast({ title: isDraft ? "Ноорог хадгалагдлаа" : "Захиалга үүсгэгдлээ" });

@@ -15,9 +15,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   ShoppingCart, User, MapPin, Phone, Mail,
-  Package, MessageSquare, Clock, Printer,
+  Package, MessageSquare, Clock, Printer, RefreshCw, Cloud, CloudOff,
 } from "lucide-react";
 import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
+import { retryDeliverySync } from "@/lib/deliverySync";
 import { format } from "date-fns";
 import {
   FULFILLMENT_STATUSES,
@@ -35,6 +36,21 @@ interface OrderDetailSheetProps {
   onFulfillmentChange: (oldS: string, newS: string) => void;
   onPaymentChange: (oldS: string, newS: string) => void;
   isMobile: boolean;
+}
+
+function SyncRetryButton({ orderId }: { orderId: string }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const mutation = useMutation({
+    mutationFn: () => retryDeliverySync(orderId).then(r => { if (!r.success) throw new Error(r.error); return r; }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin"] }); toast({ title: "Синк амжилттай" }); },
+    onError: (e: any) => toast({ title: "Синк алдаа", description: e.message, variant: "destructive" }),
+  });
+  return (
+    <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+      <RefreshCw className={`h-3 w-3 mr-1 ${mutation.isPending ? "animate-spin" : ""}`} />Дахин
+    </Button>
+  );
 }
 
 export default function OrderDetailSheet({
@@ -147,6 +163,37 @@ export default function OrderDetailSheet({
               <div className="flex justify-between font-bold border-t pt-1.5"><span>Нийт:</span><span>{formatCurrency(Number(order.total))}</span></div>
             </CardContent>
           </Card>
+
+          {/* Delivery Sync Status */}
+          {(order as any).fulfillment_status !== "draft" && (
+            <Card>
+              <CardContent className="p-3 text-sm space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium flex items-center gap-1.5">
+                    {(order as any).delivery_sync_status === "synced" ? (
+                      <><Cloud className="h-3 w-3 text-green-600" />Хүргэлт синк</>
+                    ) : (order as any).delivery_sync_status === "failed" ? (
+                      <><CloudOff className="h-3 w-3 text-red-600" />Синк алдаа</>
+                    ) : (
+                      <><Clock className="h-3 w-3 text-yellow-600" />Синк хүлээгдэж</>
+                    )}
+                  </span>
+                  {((order as any).delivery_sync_status === "failed" || (order as any).delivery_sync_status === "pending") && (
+                    <SyncRetryButton orderId={order.id} />
+                  )}
+                </div>
+                {(order as any).delivery_sync_error && (
+                  <p className="text-xs text-destructive bg-destructive/10 p-1.5 rounded">{(order as any).delivery_sync_error}</p>
+                )}
+                {(order as any).delivery_external_id && (
+                  <p className="text-xs text-muted-foreground">ID: {(order as any).delivery_external_id}</p>
+                )}
+                {(order as any).delivery_attempt_count > 0 && (
+                  <p className="text-xs text-muted-foreground">Оролдлого: {(order as any).delivery_attempt_count}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Customer */}
           <Card>
