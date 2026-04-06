@@ -78,7 +78,7 @@ export async function createManualOrder(params: CreateOrderParams) {
   const discount = params.discount_amount || 0;
   const total = subtotal - discount + params.delivery_fee;
 
-  const isDraft = params.fulfillment_status === "draft";
+  const isDraft = false; // No more draft status
 
   // Insert order
   const { data: order, error: orderError } = await supabase
