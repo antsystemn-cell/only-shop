@@ -293,10 +293,34 @@ export default function DeliveryOperations() {
                             {/* Top row: order info + actions */}
                             <div className="flex items-center gap-3">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-mono text-xs font-bold">{order.order_number}</span>
                                   <Badge variant="outline" className="text-[10px]">{getSourceLabel(order.source || "website")}</Badge>
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${pb.color}`}>{pb.label}</span>
+                                  {order.fulfillment_status !== "draft" && (() => {
+                                    const sync = getSyncBadge(order);
+                                    return (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium inline-flex items-center gap-0.5 cursor-help ${sync.color}`}>
+                                            <sync.icon className="h-2.5 w-2.5" />
+                                            {sync.label}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom" className="max-w-xs">
+                                          {order.delivery_sync_status === "failed" && (
+                                            <p className="text-xs text-destructive">{order.delivery_sync_error || "Алдаа"}</p>
+                                          )}
+                                          {order.delivery_sync_status === "synced" && (
+                                            <p className="text-xs">ID: {order.delivery_external_id}</p>
+                                          )}
+                                          {order.delivery_attempt_count > 0 && (
+                                            <p className="text-xs text-muted-foreground">Оролдлого: {order.delivery_attempt_count}</p>
+                                          )}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    );
+                                  })()}
                                 </div>
                                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                   <span className="font-medium text-foreground">{cust.name}</span>
