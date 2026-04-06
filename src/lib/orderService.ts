@@ -169,7 +169,7 @@ export async function updateFulfillmentStatus(
   };
 
   // Set timestamps
-  if (newStatus === "confirmed" && oldStatus === "draft") {
+  if (newStatus === "confirmed") {
     updateData.confirmed_at = new Date().toISOString();
   }
   if (newStatus === "delivered") {
@@ -181,14 +181,11 @@ export async function updateFulfillmentStatus(
 
   // Map fulfillment to legacy status
   const legacyStatusMap: Record<string, string> = {
-    draft: "pending",
     confirmed: "pending",
-    preparing: "processing",
-    ready_for_delivery: "processing",
+    phone_confirmed: "processing",
     out_for_delivery: "shipped",
     delivered: "delivered",
     cancelled: "cancelled",
-    returned: "cancelled",
   };
   updateData.status = legacyStatusMap[newStatus] || "pending";
 
