@@ -1292,8 +1292,13 @@ export type Database = {
           customer_phone: string | null
           delivered_at: string | null
           delivery_address: Json | null
+          delivery_attempt_count: number
+          delivery_external_id: string | null
           delivery_fee: number
+          delivery_last_attempt_at: string | null
           delivery_note: string | null
+          delivery_sync_error: string | null
+          delivery_sync_status: string
           delivery_type: Database["public"]["Enums"]["delivery_type"] | null
           delivery_zone_id: string | null
           discount_amount: number
@@ -1335,8 +1340,13 @@ export type Database = {
           customer_phone?: string | null
           delivered_at?: string | null
           delivery_address?: Json | null
+          delivery_attempt_count?: number
+          delivery_external_id?: string | null
           delivery_fee?: number
+          delivery_last_attempt_at?: string | null
           delivery_note?: string | null
+          delivery_sync_error?: string | null
+          delivery_sync_status?: string
           delivery_type?: Database["public"]["Enums"]["delivery_type"] | null
           delivery_zone_id?: string | null
           discount_amount?: number
@@ -1378,8 +1388,13 @@ export type Database = {
           customer_phone?: string | null
           delivered_at?: string | null
           delivery_address?: Json | null
+          delivery_attempt_count?: number
+          delivery_external_id?: string | null
           delivery_fee?: number
+          delivery_last_attempt_at?: string | null
           delivery_note?: string | null
+          delivery_sync_error?: string | null
+          delivery_sync_status?: string
           delivery_type?: Database["public"]["Enums"]["delivery_type"] | null
           delivery_zone_id?: string | null
           discount_amount?: number
