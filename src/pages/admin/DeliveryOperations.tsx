@@ -258,9 +258,9 @@ export default function DeliveryOperations() {
         </div>
       ) : (
         <div className="space-y-4">
-          {FULFILLMENT_STATUSES.filter(s => !["returned"].includes(s.value)).map((status) => {
+          {FULFILLMENT_STATUSES.map((status) => {
             const statusOrders = grouped[status.value] || [];
-            if (statusOrders.length === 0 && ["draft", "cancelled", "returned"].includes(status.value)) return null;
+            if (statusOrders.length === 0 && status.value === "cancelled") return null;
 
             return (
               <Card key={status.value}>
