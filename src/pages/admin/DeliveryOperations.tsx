@@ -422,5 +422,6 @@ export default function DeliveryOperations() {
         isMobile={isMobile}
       />
     </div>
+    </TooltipProvider>
   );
 }
