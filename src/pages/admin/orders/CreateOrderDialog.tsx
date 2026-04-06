@@ -23,6 +23,7 @@ import {
   type ManualOrderItem,
   type OrderSource,
 } from "@/lib/orderService";
+import { triggerDeliverySync } from "@/lib/deliverySync";
 
 interface Props {
   open: boolean;
