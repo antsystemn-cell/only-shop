@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { triggerDeliverySync } from "@/lib/deliverySync";
 
 // ─── Constants ──────────────────────────────────────────────
 
