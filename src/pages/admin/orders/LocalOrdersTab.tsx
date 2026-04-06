@@ -215,7 +215,7 @@ export default function LocalOrdersTab() {
                 {orders.map((order) => {
                   const cust = getCustomerDisplay(order);
                   const fb = getFulfillmentBadge((order as any).fulfillment_status || "confirmed");
-                  const pb = getPaymentBadge(order.payment_status || "pending");
+                  const pb = getPaymentBadge(order.payment_status || "unpaid");
                   return (
                     <div key={order.id} className="p-4 space-y-2">
                       <div className="flex items-center justify-between">

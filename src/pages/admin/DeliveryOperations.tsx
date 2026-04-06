@@ -278,7 +278,7 @@ export default function DeliveryOperations() {
                     <div className="space-y-2">
                       {statusOrders.map((order: any) => {
                         const cust = getCustomerDisplay(order);
-                        const pb = getPaymentBadge(order.payment_status || "pending");
+                        const pb = getPaymentBadge(order.payment_status || "unpaid");
                         const nextAction = getNextAction(status.value);
                         const items = order.order_items || [];
 
