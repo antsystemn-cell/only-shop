@@ -29,8 +29,8 @@ export const PAYMENT_STATUSES = [
 ] as const;
 
 // Fulfillment statuses that require inventory deduction
-const INVENTORY_ACTIVE_STATUSES = ["confirmed", "preparing", "ready_for_delivery", "out_for_delivery", "delivered"];
-const INVENTORY_RESTORE_STATUSES = ["cancelled", "returned"];
+const INVENTORY_ACTIVE_STATUSES = ["confirmed", "phone_confirmed", "out_for_delivery", "delivered"];
+const INVENTORY_RESTORE_STATUSES = ["cancelled"];
 
 export type OrderSource = (typeof ORDER_SOURCES)[number]["value"];
 
