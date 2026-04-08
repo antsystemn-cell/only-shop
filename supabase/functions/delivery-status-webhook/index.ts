@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
     // Validate statuses
     const validFulfillment = ["confirmed", "phone_confirmed", "out_for_delivery", "delivered", "cancelled"];
-    const validPayment = ["unpaid", "cash", "paid", "refunded"];
+    const validPayment = ["unpaid", "cash_on_delivery", "paid", "refunded"];
 
     if (fulfillment_status && !validFulfillment.includes(fulfillment_status)) {
       return jsonResponse({ error: `Invalid fulfillment_status. Must be one of: ${validFulfillment.join(", ")}` }, 400);
