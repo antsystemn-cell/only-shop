@@ -56,3 +56,51 @@ export async function retryAllFailedSyncs(): Promise<{ success: boolean; synced?
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Notify delivery system when order status changes (fire-and-forget).
+ * Sends to the delivery platform's status-update-inbound endpoint.
+ */
+export async function notifyDeliveryStatusChange(
+  orderId: string,
+  fulfillmentStatus?: string,
+  paymentStatus?: string
+): Promise<void> {
+  try {
+    // Only notify if order has been synced to delivery system
+    const { data: order } = await supabase
+      .from("orders")
+      .select("delivery_sync_status, delivery_external_id")
+      .eq("id", orderId)
+      .single();
+
+    if (!order || order.delivery_sync_status !== "synced" || !order.delivery_external_id) {
+      return; // Not synced yet, skip notification
+    }
+
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const url = `https://${projectId}.supabase.co/functions/v1/delivery-notify-outbound`;
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const body: Record<string, string> = {
+      external_order_id: order.delivery_external_id,
+    };
+    if (fulfillmentStatus) body.fulfillment_status = fulfillmentStatus;
+    if (paymentStatus) body.payment_status = paymentStatus;
+
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify(body),
+    }).catch((err) => {
+      console.error("Delivery status notify failed:", err);
+    });
+  } catch (err) {
+    console.error("Delivery status notify error:", err);
+  }
+}
