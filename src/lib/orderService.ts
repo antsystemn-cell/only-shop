@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { triggerDeliverySync } from "@/lib/deliverySync";
+import { triggerDeliverySync, notifyDeliveryStatusChange } from "@/lib/deliverySync";
 
 // ─── Constants ──────────────────────────────────────────────
 
@@ -23,7 +23,7 @@ export const FULFILLMENT_STATUSES = [
 
 export const PAYMENT_STATUSES = [
   { value: "unpaid", label: "Төлөгдөөгүй", color: "bg-red-100 text-red-800" },
-  { value: "cash", label: "Бэлнээр", color: "bg-blue-100 text-blue-800" },
+  { value: "cash_on_delivery", label: "Бэлнээр", color: "bg-blue-100 text-blue-800" },
   { value: "paid", label: "Төлөгдсөн", color: "bg-green-100 text-green-800" },
   { value: "refunded", label: "Буцаалт", color: "bg-gray-100 text-gray-800" },
 ] as const;
@@ -231,6 +231,9 @@ export async function updateFulfillmentStatus(
     new_fulfillment_status: newStatus,
     note,
   });
+
+  // Notify delivery system of fulfillment status change
+  notifyDeliveryStatusChange(orderId, newStatus, undefined);
 }
 
 // ─── Update Payment Status ──────────────────────────────────
@@ -258,6 +261,9 @@ export async function updatePaymentStatus(
     new_payment_status: newStatus,
     note,
   });
+
+  // Notify delivery system of payment status change
+  notifyDeliveryStatusChange(orderId, undefined, newStatus);
 }
 
 // ─── Inventory Logic ────────────────────────────────────────
