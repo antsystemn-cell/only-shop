@@ -355,9 +355,14 @@ export default function LocalOrdersTab() {
                             {format(new Date(order.created_at), "MM/dd HH:mm")}
                           </TableCell>
                           <TableCell className="text-center py-2" onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}>
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Excel хуулах" onClick={(e) => copyOrderForExcel(order, e)}>
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}>
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                         {expandedOrders.has(order.id) && order.order_items?.map((item: any) => {
