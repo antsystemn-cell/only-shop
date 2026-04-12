@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Search, ShoppingCart, Eye, ChevronDown, ChevronRight,
-  Package, X, Plus,
+  Package, X, Plus, Copy,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
