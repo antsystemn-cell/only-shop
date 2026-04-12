@@ -123,6 +123,33 @@ export default function LocalOrdersTab() {
     return { name: "—", phone: "" };
   };
 
+  const copyOrderForExcel = (order: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const phone = order.customer_phone || order.profile?.phone || "";
+    const items = (order.order_items || []).map((item: any) => {
+      const snapshot = item.product_snapshot || {};
+      return item.product_name_snapshot || snapshot.name || snapshot.name_mn || snapshot.title || "Бараа";
+    });
+    const subtotal = Math.round(Number(order.subtotal || 0));
+    const address = order.address_text || (order.delivery_address as any)?.street_address || "";
+
+    const lines = [
+      phone,
+      "",
+      ...items,
+      subtotal.toString(),
+      "",
+      "EasyShop",
+      "Online",
+      "",
+      address,
+    ];
+
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      toast({ title: "Хуулагдлаа", description: "Excel дээр буулгах боломжтой" });
+    });
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
