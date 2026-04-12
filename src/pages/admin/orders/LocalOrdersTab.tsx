@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Search, ShoppingCart, Eye, ChevronDown, ChevronRight,
-  Package, X, Plus,
+  Package, X, Plus, Copy,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -121,6 +121,33 @@ export default function LocalOrdersTab() {
     if (order.customer_name) return { name: order.customer_name, phone: order.customer_phone };
     if (order.profile) return { name: order.profile.full_name || "—", phone: order.profile.phone || order.profile.email };
     return { name: "—", phone: "" };
+  };
+
+  const copyOrderForExcel = (order: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const phone = order.customer_phone || order.profile?.phone || "";
+    const items = (order.order_items || []).map((item: any) => {
+      const snapshot = item.product_snapshot || {};
+      return item.product_name_snapshot || snapshot.name || snapshot.name_mn || snapshot.title || "Бараа";
+    });
+    const subtotal = Math.round(Number(order.subtotal || 0));
+    const address = order.address_text || (order.delivery_address as any)?.street_address || "";
+
+    const lines = [
+      phone,
+      "",
+      ...items,
+      subtotal.toString(),
+      "",
+      "EasyShop",
+      "Online",
+      "",
+      address,
+    ];
+
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      toast({ title: "Хуулагдлаа", description: "Excel дээр буулгах боломжтой" });
+    });
   };
 
   return (
@@ -231,9 +258,14 @@ export default function LocalOrdersTab() {
                           <Badge variant="outline" className="text-[10px]">{getSourceLabel((order as any).source || "website")}</Badge>
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${pb.color}`}>{pb.label}</span>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={(e) => copyOrderForExcel(order, e)}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -328,9 +360,14 @@ export default function LocalOrdersTab() {
                             {format(new Date(order.created_at), "MM/dd HH:mm")}
                           </TableCell>
                           <TableCell className="text-center py-2" onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}>
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Excel хуулах" onClick={(e) => copyOrderForExcel(order, e)}>
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}>
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                         {expandedOrders.has(order.id) && order.order_items?.map((item: any) => {
