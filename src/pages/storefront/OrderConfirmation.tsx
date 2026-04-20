@@ -147,6 +147,31 @@ export default function OrderConfirmation() {
     setCurrentPaymentIntentId(paymentIntentId);
   }, [paymentIntentId]);
 
+  // Purchase: fire once when order is confirmed paid (or COD confirmed)
+  const purchaseFiredRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!order) return;
+    const isCompleted =
+      order.payment_status === "paid" ||
+      order.payment_status === "cash_on_delivery";
+    if (!isCompleted) return;
+    // Dedupe per order id (also persisted via sessionStorage to survive refresh)
+    const storageKey = `fb_purchase_fired_${order.id}`;
+    if (purchaseFiredRef.current === order.id) return;
+    if (sessionStorage.getItem(storageKey)) {
+      purchaseFiredRef.current = order.id;
+      return;
+    }
+    trackPurchase({
+      value: order.total,
+      currency: "MNT",
+      content_ids: order.order_items.map((i) => i.product_snapshot?.id).filter(Boolean) as string[],
+      order_id: order.order_number,
+    });
+    sessionStorage.setItem(storageKey, "1");
+    purchaseFiredRef.current = order.id;
+  }, [order?.id, order?.payment_status]);
+
   const handleChangePaymentMethod = useCallback(async (method: PaymentMethod) => {
     if (!order) return;
     setSwitchingPayment(true);
