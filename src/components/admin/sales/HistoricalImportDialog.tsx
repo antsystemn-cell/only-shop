@@ -178,8 +178,8 @@ export function HistoricalImportDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 p-3 rounded-lg text-sm flex gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="bg-muted border border-border p-3 rounded-lg text-sm flex gap-2">
+            <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
             <div>
               <strong>Анхааруулга:</strong> Эдгээр борлуулалтууд хүргэлтийн API
               дуудахгүй (should_create_delivery=false). Зөвхөн statistics, нөөц,
@@ -226,7 +226,7 @@ export function HistoricalImportDialog({ open, onOpenChange }: Props) {
           {progress.total > 0 && (
             <div className="text-sm">
               Явц: {progress.done}/{progress.total} ·{" "}
-              <span className="text-green-600">✓ {progress.ok}</span> ·{" "}
+              <span className="text-primary">✓ {progress.ok}</span> ·{" "}
               <span className="text-destructive">✗ {progress.fail}</span>
             </div>
           )}
@@ -303,7 +303,7 @@ export function HistoricalImportDialog({ open, onOpenChange }: Props) {
                       </td>
                       <td className="p-1 text-center">
                         {r._status === "ok" && (
-                          <Badge className="bg-green-100 text-green-800">
+                          <Badge variant="secondary">
                             <CheckCircle2 className="w-3 h-3 mr-1" />OK
                           </Badge>
                         )}
