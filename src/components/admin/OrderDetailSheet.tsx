@@ -60,6 +60,7 @@ export default function OrderDetailSheet({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [notes, setNotes] = useState("");
+  const [swapTarget, setSwapTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { data: statusLogs } = useQuery({
     queryKey: ["order-status-logs", order?.id],
