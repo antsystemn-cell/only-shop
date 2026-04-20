@@ -2586,6 +2586,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      bank_import_deduct_stock: {
+        Args: { p_product_id: string; p_qty: number; p_reason: string }
+        Returns: undefined
+      }
       create_manual_sale: {
         Args: {
           p_address_text: string
