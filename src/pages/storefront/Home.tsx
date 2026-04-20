@@ -80,16 +80,7 @@ export default function Home() {
       <div className="container py-3 space-y-4 md:space-y-6">
         {banners && banners.length > 0 && <HeroCarousel />}
 
-        {categories && categories.length > 0 && (
-          <section className="bg-card rounded-xl p-3">
-            <SectionHeader icon={LayoutGridIcon} title="Ангилал" onViewAll={() => navigate("/categories")} />
-            <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-2">
-              {categories.map((category) => (
-                <CategoryCard key={category.id} category={category} />
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Ангилал хэсгийг нуусан */}
 
         {/* All Products */}
         <section>
