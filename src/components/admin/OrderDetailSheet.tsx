@@ -15,9 +15,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   ShoppingCart, User, MapPin, Phone, Mail,
-  Package, MessageSquare, Clock, Printer, RefreshCw, Cloud, CloudOff,
+  Package, MessageSquare, Clock, Printer, RefreshCw, Cloud, CloudOff, ArrowLeftRight,
 } from "lucide-react";
 import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
+import SwapOrderItemDialog from "@/components/admin/SwapOrderItemDialog";
 import { retryDeliverySync } from "@/lib/deliverySync";
 import { format } from "date-fns";
 import {
@@ -59,6 +60,7 @@ export default function OrderDetailSheet({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [notes, setNotes] = useState("");
+  const [swapTarget, setSwapTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { data: statusLogs } = useQuery({
     queryKey: ["order-status-logs", order?.id],
@@ -246,8 +248,16 @@ export default function OrderDetailSheet({
                       {snapshot.configurators && <p className="text-xs text-muted-foreground mt-0.5">🏷️ {snapshot.configurators}</p>}
                       <div className="text-xs text-muted-foreground mt-0.5">{formatCurrency(Number(item.unit_price))} × {item.quantity}</div>
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="text-right shrink-0 flex flex-col items-end gap-1">
                       <div className="font-medium text-sm">{formatCurrency(Number(item.total_price))}</div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => setSwapTarget({ id: item.id, name: item.product_name_snapshot || snapshot.title || snapshot.name_mn || "Бараа" })}
+                      >
+                        <ArrowLeftRight className="h-3 w-3 mr-1" />Солих
+                      </Button>
                     </div>
                   </div>
                 );
@@ -298,6 +308,12 @@ export default function OrderDetailSheet({
           </Card>
         </div>
       </SheetContent>
+      <SwapOrderItemDialog
+        open={!!swapTarget}
+        onClose={() => setSwapTarget(null)}
+        orderItemId={swapTarget?.id || null}
+        currentProductName={swapTarget?.name || ""}
+      />
     </Sheet>
   );
 }
