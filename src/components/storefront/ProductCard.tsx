@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import { trackAddToCart } from "@/lib/metaPixel";
 
 type Product = Tables<"products">;
 
@@ -73,6 +74,12 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
     e.preventDefault();
     e.stopPropagation();
     addToCart(product);
+    trackAddToCart({
+      content_name: product.name_mn || product.name,
+      content_ids: [product.id],
+      value: displayPrice,
+      currency: "MNT",
+    });
     toast({ title: "Сагсанд нэмэгдлээ", description: product.name_mn });
   };
 
