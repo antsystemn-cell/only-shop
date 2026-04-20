@@ -64,6 +64,8 @@ import Reviews from "./pages/admin/Reviews";
 import UserActivityLog from "./pages/admin/UserActivityLog";
 import Inventory from "./pages/admin/Inventory";
 import StockMovements from "./pages/admin/StockMovements";
+import Expenses from "./pages/admin/Expenses";
+import Reports from "./pages/admin/Reports";
 
 const queryClient = new QueryClient();
 
@@ -141,6 +143,8 @@ const App = () => (
                 <Route path="reviews" element={<Reviews />} />
                 <Route path="inventory" element={<Inventory />} />
                 <Route path="inventory/movements" element={<StockMovements />} />
+                <Route path="expenses" element={<Expenses />} />
+                <Route path="reports" element={<Reports />} />
                 <Route path="user-activity-log" element={<UserActivityLog />} />
               </Route>
 
