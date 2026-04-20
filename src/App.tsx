@@ -62,6 +62,8 @@ import OrderSettings from "./pages/admin/OrderSettings";
 import SystemTools from "./pages/admin/SystemTools";
 import Reviews from "./pages/admin/Reviews";
 import UserActivityLog from "./pages/admin/UserActivityLog";
+import Inventory from "./pages/admin/Inventory";
+import StockMovements from "./pages/admin/StockMovements";
 
 const queryClient = new QueryClient();
 
@@ -137,6 +139,8 @@ const App = () => (
                 <Route path="settings-orders" element={<OrderSettings />} />
                 <Route path="system-tools" element={<SystemTools />} />
                 <Route path="reviews" element={<Reviews />} />
+                <Route path="inventory" element={<Inventory />} />
+                <Route path="inventory/movements" element={<StockMovements />} />
                 <Route path="user-activity-log" element={<UserActivityLog />} />
               </Route>
 
