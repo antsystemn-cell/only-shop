@@ -78,6 +78,15 @@ async function syncSingleOrder(
     return { success: true, message: "Already synced" };
   }
 
+  // GUARD: skip manual / historical / non-website sales unless explicitly requested
+  if (
+    order.delivery_sync_status === "disabled" ||
+    order.should_create_delivery === false ||
+    order.delivery_creation_mode === "none"
+  ) {
+    return { success: true, message: "Delivery disabled for this sale (manual/historical)" };
+  }
+
   // Validate required fields
   const validationError = validateOrder(order);
   if (validationError) {
