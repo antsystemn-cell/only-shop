@@ -20,6 +20,8 @@ import {
   MessageSquare,
   Boxes,
   History,
+  Receipt,
+  FileBarChart,
 } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
@@ -60,6 +62,8 @@ const menuGroups: MenuGroup[] = [
     defaultOpen: true,
     items: [
       { title: "Хянах самбар", url: "/admin", icon: LayoutDashboard },
+      { title: "Тайлан", url: "/admin/reports", icon: FileBarChart },
+      { title: "Зардал", url: "/admin/expenses", icon: Receipt },
     ],
   },
   {
