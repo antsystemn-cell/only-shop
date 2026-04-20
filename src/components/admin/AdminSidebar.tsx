@@ -18,6 +18,8 @@ import {
   Activity,
   Shield,
   MessageSquare,
+  Boxes,
+  History,
 } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
@@ -74,6 +76,8 @@ const menuGroups: MenuGroup[] = [
     defaultOpen: true,
     items: [
       { title: "Бараа удирдах", url: "/admin/products", icon: Package },
+      { title: "Үлдэгдэл", url: "/admin/inventory", icon: Boxes },
+      { title: "Үлдэгдлийн хөдөлгөөн", url: "/admin/inventory/movements", icon: History },
       { title: "Ангилал", url: "/admin/categories", icon: FolderTree },
       { title: "Брэнд удирдах", url: "/admin/brands", icon: Tags },
       { title: "Хүргэлтийн тохиргоо", url: "/admin/delivery", icon: Truck },
