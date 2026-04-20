@@ -248,8 +248,16 @@ export default function OrderDetailSheet({
                       {snapshot.configurators && <p className="text-xs text-muted-foreground mt-0.5">🏷️ {snapshot.configurators}</p>}
                       <div className="text-xs text-muted-foreground mt-0.5">{formatCurrency(Number(item.unit_price))} × {item.quantity}</div>
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="text-right shrink-0 flex flex-col items-end gap-1">
                       <div className="font-medium text-sm">{formatCurrency(Number(item.total_price))}</div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => setSwapTarget({ id: item.id, name: item.product_name_snapshot || snapshot.title || snapshot.name_mn || "Бараа" })}
+                      >
+                        <ArrowLeftRight className="h-3 w-3 mr-1" />Солих
+                      </Button>
                     </div>
                   </div>
                 );
