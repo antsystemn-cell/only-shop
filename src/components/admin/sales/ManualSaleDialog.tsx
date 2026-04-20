@@ -87,7 +87,18 @@ export function ManualSaleDialog({ open, onOpenChange, defaultHistorical = false
 
   const mutation = useMutation({
     mutationFn: async (params: CreateManualSaleParams) => createManualSale(params),
-    onSuccess: () => {
+    onSuccess: async (orderId, params) => {
+      const { logAudit } = await import("@/lib/audit/auditService");
+      await logAudit({
+        action: params.is_historical ? "historical_import" : "manual_sale",
+        entity_type: "order",
+        entity_id: orderId,
+        details: {
+          source_type: params.source_type,
+          total_items: params.items.length,
+          customer_phone: params.customer_phone,
+        },
+      });
       toast({ title: "Борлуулалт амжилттай үүслээ" });
       qc.invalidateQueries({ queryKey: ["admin", "orders"] });
       qc.invalidateQueries({ queryKey: ["admin", "sales"] });

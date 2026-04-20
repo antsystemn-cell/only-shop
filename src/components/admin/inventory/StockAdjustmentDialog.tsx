@@ -64,6 +64,13 @@ export function StockAdjustmentDialog({
         reason: reason || undefined,
         note: note || undefined,
       });
+      const { logAudit } = await import("@/lib/audit/auditService");
+      await logAudit({
+        action: "stock_adjust",
+        entity_type: "stock",
+        entity_id: variantId || productId || null,
+        details: { movement_type: movementType, quantity_change: finalChange, reason },
+      });
       toast.success("Үлдэгдэл шинэчлэгдлээ");
       onDone?.();
       onOpenChange(false);

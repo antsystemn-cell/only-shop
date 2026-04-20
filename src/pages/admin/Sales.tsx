@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,11 +10,21 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Upload, Search, Eye } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Upload, Search, Eye, Printer, Ban, MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { ManualSaleDialog } from "@/components/admin/sales/ManualSaleDialog";
 import { HistoricalImportDialog } from "@/components/admin/sales/HistoricalImportDialog";
 import { getSourceTypeBadge, getDeliveryStatusBadge } from "@/lib/sales/salesService";
+import { cancelSale } from "@/lib/sales/cancelSale";
+import { printInvoice } from "@/components/admin/InvoicePrint";
+import { useToast } from "@/hooks/use-toast";
 import OrderDetailSheet from "@/components/admin/OrderDetailSheet";
 
 type TabKey = "all" | "website" | "manual" | "historical" | "cancelled";
@@ -27,6 +37,21 @@ export default function Sales() {
   const [defaultHistorical, setDefaultHistorical] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<any>(null);
+  const [restoreStock, setRestoreStock] = useState(true);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const cancelMutation = useMutation({
+    mutationFn: ({ id, restore }: { id: string; restore: boolean }) =>
+      cancelSale(id, { restoreStock: restore }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "sales"] });
+      toast({ title: "Захиалга цуцлагдлаа" });
+      setCancelTarget(null);
+    },
+    onError: (e: any) => toast({ title: "Алдаа", description: e.message, variant: "destructive" }),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "sales", tab, search],
@@ -197,16 +222,33 @@ export default function Sales() {
                           {Number(o.total).toLocaleString()}₮
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedOrder(o);
-                              setDetailOpen(true);
-                            }}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => { setSelectedOrder(o); setDetailOpen(true); }}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="icon" variant="ghost"><MoreHorizontal className="w-4 h-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => printInvoice(o)}>
+                                  <Printer className="w-4 h-4 mr-2" /> Нэхэмжлэх хэвлэх
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  disabled={o.status === "cancelled"}
+                                  onClick={() => { setRestoreStock(true); setCancelTarget(o); }}
+                                >
+                                  <Ban className="w-4 h-4 mr-2" /> Цуцлах
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -234,6 +276,38 @@ export default function Sales() {
           isMobile={false}
         />
       )}
+
+      <AlertDialog open={!!cancelTarget} onOpenChange={(o) => !o && setCancelTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Захиалгыг цуцлах уу?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cancelTarget?.order_number} · {Number(cancelTarget?.total || 0).toLocaleString()}₮
+              <br />
+              Цуцалсны дараа орлогод тооцогдохгүй болно.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="flex items-center gap-2 text-sm py-2">
+            <input
+              type="checkbox"
+              checked={restoreStock}
+              onChange={(e) => setRestoreStock(e.target.checked)}
+            />
+            Үлдэгдлийг буцаан нэмэх (stock restore)
+          </label>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Болих</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() =>
+                cancelTarget && cancelMutation.mutate({ id: cancelTarget.id, restore: restoreStock })
+              }
+            >
+              Цуцлах
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
