@@ -236,6 +236,18 @@ export default function ProductDetail() {
     enabled: !!product?.category_id,
   });
 
+  // ViewContent: fire once when product loads (must be before any early return)
+  useEffect(() => {
+    if (!product) return;
+    trackViewContent({
+      content_name: product.name_mn || product.name,
+      content_ids: [product.id],
+      value: effectivePrice,
+      currency: "MNT",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
+
   if (isLoading) {
     return (
       <div className="container py-20 flex items-center justify-center">
@@ -258,18 +270,6 @@ export default function ProductDetail() {
   const discount = product.compare_price
     ? Math.round(((product.compare_price - effectivePrice) / product.compare_price) * 100)
     : 0;
-
-  // ViewContent: fire once when product loads
-  useEffect(() => {
-    if (!product) return;
-    trackViewContent({
-      content_name: product.name_mn || product.name,
-      content_ids: [product.id],
-      value: effectivePrice,
-      currency: "MNT",
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product?.id]);
 
   const handleAddToCart = () => {
     addToCart(product, quantity);
