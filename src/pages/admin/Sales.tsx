@@ -228,7 +228,7 @@ export default function Sales() {
         <OrderDetailSheet
           order={selectedOrder}
           open={detailOpen}
-          onOpenChange={setDetailOpen}
+          onClose={() => setDetailOpen(false)}
         />
       )}
     </div>
