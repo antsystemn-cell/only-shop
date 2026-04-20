@@ -44,6 +44,7 @@ import Products from "./pages/admin/Products";
 import Categories from "./pages/admin/Categories";
 import Brands from "./pages/admin/Brands";
 import Orders from "./pages/admin/Orders";
+import Sales from "./pages/admin/Sales";
 import Users from "./pages/admin/Users";
 import Delivery from "./pages/admin/Delivery";
 import DeliveryOperations from "./pages/admin/DeliveryOperations";
@@ -118,6 +119,7 @@ const App = () => (
                 <Route path="categories" element={<Categories />} />
                 <Route path="brands" element={<Brands />} />
                 <Route path="orders" element={<Orders />} />
+                <Route path="sales" element={<Sales />} />
                 <Route path="users" element={<Users />} />
                 <Route path="delivery" element={<Delivery />} />
                 <Route path="delivery-ops" element={<DeliveryOperations />} />
