@@ -308,6 +308,12 @@ export default function OrderDetailSheet({
           </Card>
         </div>
       </SheetContent>
+      <SwapOrderItemDialog
+        open={!!swapTarget}
+        onClose={() => setSwapTarget(null)}
+        orderItemId={swapTarget?.id || null}
+        currentProductName={swapTarget?.name || ""}
+      />
     </Sheet>
   );
 }
