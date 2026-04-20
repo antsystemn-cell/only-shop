@@ -17,6 +17,7 @@ import { z } from "zod";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/storefront/PaymentMethodSelector";
 import { calculateDelivery, type DeliveryZoneInfo } from "@/lib/deliveryCalculator";
 import { triggerDeliverySync } from "@/lib/deliverySync";
+import { trackInitiateCheckout } from "@/lib/metaPixel";
 
 interface DeliveryZone {
   id: string;
@@ -81,6 +82,21 @@ export default function Checkout() {
       navigate("/shop");
     }
   }, [totalItemCount, navigate, authLoading]);
+
+  // InitiateCheckout: fire once when checkout page is reached with items
+  useEffect(() => {
+    if (totalItemCount === 0) return;
+    const subtotal = buyNowProductId
+      ? localItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0)
+      : getAllLocalSubtotal();
+    trackInitiateCheckout({
+      content_ids: localItems.map((i) => i.product.id),
+      value: subtotal,
+      currency: "MNT",
+      num_items: localItems.reduce((sum, i) => sum + i.quantity, 0),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: deliveryZones } = useQuery({
     queryKey: ["delivery-zones"],

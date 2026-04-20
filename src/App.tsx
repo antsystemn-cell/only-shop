@@ -13,6 +13,7 @@ import { PWAUpdatePrompt } from "./components/pwa/PWAUpdatePrompt";
 import { PWAInstallBanner } from "./components/pwa/PWAInstallBanner";
 import { PWAAppSplash } from "./components/pwa/PWAAppSplash";
 import { PhonePromptDialog } from "./components/storefront/PhonePromptDialog";
+import { MetaPixelTracker } from "./components/MetaPixelTracker";
 
 // Storefront imports
 import { StorefrontLayout } from "./components/storefront/StorefrontLayout";
@@ -76,6 +77,7 @@ const App = () => (
             <PWAInstallBanner />
             <BrowserRouter>
             <ScrollToTop />
+            <MetaPixelTracker />
             <PhonePromptDialog />
             <Routes>
               {/* Storefront routes */}

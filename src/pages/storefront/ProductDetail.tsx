@@ -26,6 +26,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import { trackViewContent, trackAddToCart } from "@/lib/metaPixel";
 
 interface ProductVariant {
   id: string;
@@ -235,6 +236,18 @@ export default function ProductDetail() {
     enabled: !!product?.category_id,
   });
 
+  // ViewContent: fire once when product loads (must be before any early return)
+  useEffect(() => {
+    if (!product) return;
+    trackViewContent({
+      content_name: product.name_mn || product.name,
+      content_ids: [product.id],
+      value: effectivePrice,
+      currency: "MNT",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
+
   if (isLoading) {
     return (
       <div className="container py-20 flex items-center justify-center">
@@ -263,6 +276,12 @@ export default function ProductDetail() {
     const variantName =
       selectedVariant?.name ||
       [selectedVariant?.size, selectedVariant?.color, selectedVariant?.dimensions].filter(Boolean).join(", ");
+    trackAddToCart({
+      content_name: product.name_mn || product.name,
+      content_ids: [product.id],
+      value: effectivePrice * quantity,
+      currency: "MNT",
+    });
     toast({
       title: "Сагсанд нэмэгдлээ",
       description: `${product.name_mn}${variantName ? ` (${variantName})` : ""} - ${quantity} ширхэг`,
