@@ -229,6 +229,9 @@ export default function Sales() {
           order={selectedOrder}
           open={detailOpen}
           onClose={() => setDetailOpen(false)}
+          onFulfillmentChange={() => {}}
+          onPaymentChange={() => {}}
+          isMobile={false}
         />
       )}
     </div>
