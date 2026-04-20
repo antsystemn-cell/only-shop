@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,7 @@ import {
   AlertCircle,
   CreditCard
 } from "lucide-react";
+import { trackPurchase } from "@/lib/metaPixel";
 
 interface OrderItem {
   id: string;
