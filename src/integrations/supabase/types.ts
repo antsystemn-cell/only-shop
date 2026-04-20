@@ -882,6 +882,45 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount: number
+          attachment_url: string | null
+          category: string
+          created_at: string
+          created_by_user_id: string | null
+          expense_date: string
+          id: string
+          note: string | null
+          payment_method: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          attachment_url?: string | null
+          category: string
+          created_at?: string
+          created_by_user_id?: string | null
+          expense_date?: string
+          id?: string
+          note?: string | null
+          payment_method?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          attachment_url?: string | null
+          category?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          expense_date?: string
+          id?: string
+          note?: string | null
+          payment_method?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       favourite_vendors: {
         Row: {
           created_at: string
@@ -1169,6 +1208,7 @@ export type Database = {
           color_snapshot: string | null
           created_at: string
           id: string
+          line_cost: number
           line_total: number | null
           order_id: string
           product_id: string | null
@@ -1178,6 +1218,7 @@ export type Database = {
           size_snapshot: string | null
           sku_snapshot: string | null
           total_price: number
+          unit_cost: number
           unit_price: number
           variant_id: string | null
           variant_name_snapshot: string | null
@@ -1186,6 +1227,7 @@ export type Database = {
           color_snapshot?: string | null
           created_at?: string
           id?: string
+          line_cost?: number
           line_total?: number | null
           order_id: string
           product_id?: string | null
@@ -1195,6 +1237,7 @@ export type Database = {
           size_snapshot?: string | null
           sku_snapshot?: string | null
           total_price: number
+          unit_cost?: number
           unit_price: number
           variant_id?: string | null
           variant_name_snapshot?: string | null
@@ -1203,6 +1246,7 @@ export type Database = {
           color_snapshot?: string | null
           created_at?: string
           id?: string
+          line_cost?: number
           line_total?: number | null
           order_id?: string
           product_id?: string | null
@@ -1212,6 +1256,7 @@ export type Database = {
           size_snapshot?: string | null
           sku_snapshot?: string | null
           total_price?: number
+          unit_cost?: number
           unit_price?: number
           variant_id?: string | null
           variant_name_snapshot?: string | null
@@ -1280,11 +1325,14 @@ export type Database = {
       orders: {
         Row: {
           address_text: string | null
+          affects_analytics: boolean
           affects_inventory: boolean
+          affects_revenue: boolean
           alternate_phone: string | null
           assigned_to_user_id: string | null
           cancelled_at: string | null
           confirmed_at: string | null
+          cost_amount: number
           created_at: string
           created_by_user_id: string | null
           customer_email: string | null
@@ -1293,6 +1341,7 @@ export type Database = {
           delivered_at: string | null
           delivery_address: Json | null
           delivery_attempt_count: number
+          delivery_creation_mode: string
           delivery_external_id: string | null
           delivery_fee: number
           delivery_last_attempt_at: string | null
@@ -1303,10 +1352,14 @@ export type Database = {
           delivery_zone_id: string | null
           discount_amount: number
           estimated_delivery_date: string | null
+          estimated_profit: number
           fulfillment_status: string
           id: string
           internal_note: string | null
+          internal_tags: string[]
           inventory_applied_at: string | null
+          is_historical: boolean
+          is_manual: boolean
           map_lat: number | null
           map_lng: number | null
           notes: string | null
@@ -1318,7 +1371,10 @@ export type Database = {
           qpay_payment_id: string | null
           qpay_qr_image: string | null
           qpay_urls: Json | null
+          sale_date: string
+          should_create_delivery: boolean
           source: string
+          source_type: string
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
           total: number
@@ -1328,11 +1384,14 @@ export type Database = {
         }
         Insert: {
           address_text?: string | null
+          affects_analytics?: boolean
           affects_inventory?: boolean
+          affects_revenue?: boolean
           alternate_phone?: string | null
           assigned_to_user_id?: string | null
           cancelled_at?: string | null
           confirmed_at?: string | null
+          cost_amount?: number
           created_at?: string
           created_by_user_id?: string | null
           customer_email?: string | null
@@ -1341,6 +1400,7 @@ export type Database = {
           delivered_at?: string | null
           delivery_address?: Json | null
           delivery_attempt_count?: number
+          delivery_creation_mode?: string
           delivery_external_id?: string | null
           delivery_fee?: number
           delivery_last_attempt_at?: string | null
@@ -1351,10 +1411,14 @@ export type Database = {
           delivery_zone_id?: string | null
           discount_amount?: number
           estimated_delivery_date?: string | null
+          estimated_profit?: number
           fulfillment_status?: string
           id?: string
           internal_note?: string | null
+          internal_tags?: string[]
           inventory_applied_at?: string | null
+          is_historical?: boolean
+          is_manual?: boolean
           map_lat?: number | null
           map_lng?: number | null
           notes?: string | null
@@ -1366,7 +1430,10 @@ export type Database = {
           qpay_payment_id?: string | null
           qpay_qr_image?: string | null
           qpay_urls?: Json | null
+          sale_date?: string
+          should_create_delivery?: boolean
           source?: string
+          source_type?: string
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           total?: number
@@ -1376,11 +1443,14 @@ export type Database = {
         }
         Update: {
           address_text?: string | null
+          affects_analytics?: boolean
           affects_inventory?: boolean
+          affects_revenue?: boolean
           alternate_phone?: string | null
           assigned_to_user_id?: string | null
           cancelled_at?: string | null
           confirmed_at?: string | null
+          cost_amount?: number
           created_at?: string
           created_by_user_id?: string | null
           customer_email?: string | null
@@ -1389,6 +1459,7 @@ export type Database = {
           delivered_at?: string | null
           delivery_address?: Json | null
           delivery_attempt_count?: number
+          delivery_creation_mode?: string
           delivery_external_id?: string | null
           delivery_fee?: number
           delivery_last_attempt_at?: string | null
@@ -1399,10 +1470,14 @@ export type Database = {
           delivery_zone_id?: string | null
           discount_amount?: number
           estimated_delivery_date?: string | null
+          estimated_profit?: number
           fulfillment_status?: string
           id?: string
           internal_note?: string | null
+          internal_tags?: string[]
           inventory_applied_at?: string | null
+          is_historical?: boolean
+          is_manual?: boolean
           map_lat?: number | null
           map_lng?: number | null
           notes?: string | null
@@ -1414,7 +1489,10 @@ export type Database = {
           qpay_payment_id?: string | null
           qpay_qr_image?: string | null
           qpay_urls?: Json | null
+          sale_date?: string
+          should_create_delivery?: boolean
           source?: string
+          source_type?: string
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           total?: number
@@ -2129,6 +2207,69 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_movements: {
+        Row: {
+          created_at: string
+          created_by_user_id: string | null
+          id: string
+          movement_type: string
+          note: string | null
+          product_id: string | null
+          quantity_after: number
+          quantity_before: number
+          quantity_change: number
+          reason: string | null
+          reference_id: string | null
+          reference_type: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          movement_type: string
+          note?: string | null
+          product_id?: string | null
+          quantity_after: number
+          quantity_before: number
+          quantity_change: number
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          movement_type?: string
+          note?: string | null
+          product_id?: string | null
+          quantity_after?: number
+          quantity_before?: number
+          quantity_change?: number
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_messages: {
         Row: {
           created_at: string
@@ -2434,9 +2575,57 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      adjust_stock: {
+        Args: {
+          p_movement_type: string
+          p_note: string
+          p_product_id: string
+          p_quantity_change: number
+          p_reason: string
+          p_variant_id: string
+        }
+        Returns: undefined
+      }
+      create_manual_sale: {
+        Args: {
+          p_address_text: string
+          p_affects_analytics: boolean
+          p_affects_inventory: boolean
+          p_affects_revenue: boolean
+          p_cost_amount: number
+          p_customer_email: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_delivery_fee: number
+          p_discount_amount: number
+          p_fulfillment_status: string
+          p_internal_note: string
+          p_is_historical: boolean
+          p_items: Json
+          p_notes: string
+          p_payment_method: string
+          p_payment_status: string
+          p_sale_date: string
+          p_should_create_delivery: boolean
+          p_source_type: string
+          p_subtotal: number
+          p_total: number
+        }
+        Returns: string
+      }
       credit_wallet: {
         Args: { p_amount: number; p_user_id: string }
         Returns: number
+      }
+      find_potential_duplicate_sale: {
+        Args: { p_phone: string; p_sale_date: string; p_total: number }
+        Returns: {
+          customer_phone: string
+          order_id: string
+          order_number: string
+          sale_date: string
+          total: number
+        }[]
       }
       has_role: {
         Args: {
@@ -2446,6 +2635,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      restore_sale_inventory: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "order_staff" | "super_admin"
