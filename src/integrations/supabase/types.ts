@@ -2643,6 +2643,14 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: undefined
       }
+      swap_order_item_product: {
+        Args: {
+          p_new_product_id: string
+          p_new_variant_id?: string
+          p_order_item_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "order_staff" | "super_admin"
