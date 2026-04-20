@@ -2586,6 +2586,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      bank_import_deduct_stock: {
+        Args: { p_product_id: string; p_qty: number; p_reason: string }
+        Returns: undefined
+      }
       create_manual_sale: {
         Args: {
           p_address_text: string
@@ -2637,6 +2641,14 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       restore_sale_inventory: {
         Args: { p_order_id: string }
+        Returns: undefined
+      }
+      swap_order_item_product: {
+        Args: {
+          p_new_product_id: string
+          p_new_variant_id?: string
+          p_order_item_id: string
+        }
         Returns: undefined
       }
     }
