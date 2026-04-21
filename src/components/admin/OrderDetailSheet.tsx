@@ -12,10 +12,12 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
   ShoppingCart, User, MapPin, Phone, Mail,
   Package, MessageSquare, Clock, Printer, RefreshCw, Cloud, CloudOff, ArrowLeftRight,
+  TrendingUp, AlertTriangle,
 } from "lucide-react";
 import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
 import SwapOrderItemDialog from "@/components/admin/SwapOrderItemDialog";
@@ -29,6 +31,12 @@ import {
   getSourceLabel,
   formatCurrency,
 } from "@/lib/orderService";
+import {
+  calcOrderProfit,
+  getProfitColorClass,
+  getMarginColorClass,
+  formatPct,
+} from "@/lib/profit/profitCalculator";
 
 interface OrderDetailSheetProps {
   order: any;
@@ -53,6 +61,109 @@ function SyncRetryButton({ orderId }: { orderId: string }) {
     </Button>
   );
 }
+
+function ProfitCard({ order }: { order: any }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [delivCost, setDelivCost] = useState(String(order.delivery_cost_paid ?? 0));
+  const [packCost, setPackCost] = useState(String(order.packaging_cost_total ?? 0));
+
+  const p = calcOrderProfit({
+    subtotal: order.subtotal,
+    cost_amount: order.cost_amount,
+    delivery_fee: order.delivery_fee,
+    delivery_cost_paid: order.delivery_cost_paid,
+    packaging_cost_total: order.packaging_cost_total,
+    discount_amount: order.discount_amount,
+  });
+
+  const noCost = !Number(order.cost_amount);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          delivery_cost_paid: parseFloat(delivCost) || 0,
+          packaging_cost_total: parseFloat(packCost) || 0,
+        } as any)
+        .eq("id", order.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+      toast({ title: "Зардал шинэчлэгдлээ" });
+      setEditing(false);
+    },
+    onError: (e: any) => toast({ title: "Алдаа", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Card>
+      <CardContent className="p-3 space-y-1.5 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium flex items-center gap-1.5">
+            <TrendingUp className="h-3 w-3 text-primary" />Ашгийн задаргаа
+          </span>
+          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setEditing(!editing)}>
+            {editing ? "Болих" : "Зардал засах"}
+          </Button>
+        </div>
+
+        {noCost && (
+          <div className="flex items-start gap-1.5 text-[11px] text-amber-700 bg-amber-50 p-1.5 rounded">
+            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+            <span>Барааны өртөг тохируулаагүй — ашиг тооцоологдохгүй.</span>
+          </div>
+        )}
+
+        <div className="flex justify-between text-xs"><span className="text-muted-foreground">Орлого</span><span>{formatCurrency(p.revenue)}</span></div>
+        <div className="flex justify-between text-xs"><span className="text-muted-foreground">Барааны өртөг</span><span>−{formatCurrency(p.cost)}</span></div>
+        <div className="flex justify-between text-xs border-t pt-1">
+          <span className="font-medium">Бохир ашиг</span>
+          <span className={`font-medium ${getProfitColorClass(p.grossProfit)}`}>
+            {formatCurrency(p.grossProfit)} <span className={`text-[10px] ${getMarginColorClass(p.grossMarginPct)}`}>({formatPct(p.grossMarginPct)})</span>
+          </span>
+        </div>
+
+        {editing ? (
+          <div className="space-y-2 border-t pt-2">
+            <div>
+              <label className="text-[10px] text-muted-foreground">Хүргэлтэд төлсөн (₮)</label>
+              <Input type="number" min="0" value={delivCost} onChange={(e) => setDelivCost(e.target.value)} className="h-7 text-xs" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Сав баглаа (₮)</label>
+              <Input type="number" min="0" value={packCost} onChange={(e) => setPackCost(e.target.value)} className="h-7 text-xs" />
+            </div>
+            <Button size="sm" className="h-7 text-xs w-full" onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending ? "Хадгалж..." : "Хадгалах"}
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between text-xs"><span className="text-muted-foreground">Хүргэлтэд төлсөн</span><span>−{formatCurrency(Number(order.delivery_cost_paid) || 0)}</span></div>
+            <div className="flex justify-between text-xs"><span className="text-muted-foreground">Сав баглаа</span><span>−{formatCurrency(Number(order.packaging_cost_total) || 0)}</span></div>
+          </>
+        )}
+
+        <div className="flex justify-between text-sm border-t pt-1.5">
+          <span className="font-bold">Цэвэр ашиг</span>
+          <span className={`font-bold ${getProfitColorClass(p.netProfit)}`}>
+            {formatCurrency(p.netProfit)} <span className={`text-[10px] ${getMarginColorClass(p.netMarginPct)}`}>({formatPct(p.netMarginPct)})</span>
+          </span>
+        </div>
+        {p.deliverySubsidy > 0 && (
+          <div className="text-[10px] text-orange-700 bg-orange-50 p-1.5 rounded">
+            ⚠️ Хүргэлтийн алдагдал: {formatCurrency(p.deliverySubsidy)}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 export default function OrderDetailSheet({
   order, open, onClose, onFulfillmentChange, onPaymentChange, isMobile,
@@ -161,10 +272,13 @@ export default function OrderDetailSheet({
               {Number((order as any).discount_amount) > 0 && (
                 <div className="flex justify-between text-red-600"><span>Хөнгөлөлт:</span><span>-{formatCurrency(Number((order as any).discount_amount))}</span></div>
               )}
-              <div className="flex justify-between"><span className="text-muted-foreground">Хүргэлт:</span><span>{formatCurrency(Number(order.delivery_fee))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Хүргэлт (авсан):</span><span>{formatCurrency(Number(order.delivery_fee))}</span></div>
               <div className="flex justify-between font-bold border-t pt-1.5"><span>Нийт:</span><span>{formatCurrency(Number(order.total))}</span></div>
             </CardContent>
           </Card>
+
+          {/* Profit Analysis */}
+          <ProfitCard order={order} />
 
           {/* Delivery Sync Status */}
           {(order as any).fulfillment_status !== "draft" && (

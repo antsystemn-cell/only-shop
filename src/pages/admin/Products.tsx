@@ -34,6 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ProductImageUpload } from "@/components/admin/ProductImageUpload";
 import { ProductVariantsManager } from "@/components/admin/ProductVariantsManager";
+import { ProductCostFields } from "@/components/admin/ProductCostFields";
 
 import { VariantFormData } from "@/components/admin/VariantFormFields";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
@@ -106,6 +107,12 @@ export default function Products() {
     images: [] as string[],
     delivery_fee_type: "default" as "default" | "free" | "custom",
     custom_delivery_fee: "",
+    cost_price: "",
+    landed_cost: "",
+    additional_cost: "",
+    packaging_cost: "",
+    default_delivery_cost: "",
+    low_margin_threshold: "15",
   });
 
   // Local variants for new product creation
@@ -193,6 +200,12 @@ export default function Products() {
         custom_delivery_fee: data.delivery_fee_type === "custom" && data.custom_delivery_fee
           ? parseFloat(data.custom_delivery_fee)
           : null,
+        cost_price: parseFloat(data.cost_price) || 0,
+        landed_cost: parseFloat(data.landed_cost) || 0,
+        additional_cost: parseFloat(data.additional_cost) || 0,
+        packaging_cost: parseFloat(data.packaging_cost) || 0,
+        default_delivery_cost: parseFloat(data.default_delivery_cost) || 0,
+        low_margin_threshold: parseFloat(data.low_margin_threshold) || 15,
       };
 
       let productId = data.id;
@@ -318,6 +331,12 @@ export default function Products() {
       images: [],
       delivery_fee_type: "default",
       custom_delivery_fee: "",
+      cost_price: "",
+      landed_cost: "",
+      additional_cost: "",
+      packaging_cost: "",
+      default_delivery_cost: "",
+      low_margin_threshold: "15",
     });
     setEditingProduct(null);
     setLocalVariants([]);
@@ -342,6 +361,12 @@ export default function Products() {
       images: product.images || [],
       delivery_fee_type: ((product as any).delivery_fee_type || "default") as "default" | "free" | "custom",
       custom_delivery_fee: (product as any).custom_delivery_fee?.toString() || "",
+      cost_price: (product as any).cost_price?.toString() || "",
+      landed_cost: (product as any).landed_cost?.toString() || "",
+      additional_cost: (product as any).additional_cost?.toString() || "",
+      packaging_cost: (product as any).packaging_cost?.toString() || "",
+      default_delivery_cost: (product as any).default_delivery_cost?.toString() || "",
+      low_margin_threshold: (product as any).low_margin_threshold?.toString() || "15",
     });
     setLocalVariants([]);
     setIsDialogOpen(true);
@@ -498,6 +523,20 @@ export default function Products() {
                   </div>
                 </div>
               </div>
+
+              {/* Cost & Profit */}
+              <ProductCostFields
+                value={{
+                  cost_price: formData.cost_price,
+                  landed_cost: formData.landed_cost,
+                  additional_cost: formData.additional_cost,
+                  packaging_cost: formData.packaging_cost,
+                  default_delivery_cost: formData.default_delivery_cost,
+                  low_margin_threshold: formData.low_margin_threshold,
+                }}
+                onChange={(v) => setFormData({ ...formData, ...v })}
+                sellingPrice={parseFloat(formData.price) || 0}
+              />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
