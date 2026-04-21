@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, History, Package2, Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertTriangle, History, Package2, Search, TrendingDown, Skull, PercentCircle } from "lucide-react";
 import { StockAdjustmentDialog } from "@/components/admin/inventory/StockAdjustmentDialog";
 import { toast } from "sonner";
+import { format, differenceInDays } from "date-fns";
 
 interface Row {
   product_id: string;
@@ -18,14 +20,25 @@ interface Row {
   variant_label: string | null;
   sku: string | null;
   stock: number;
+  price: number;
+  cost: number;
+  margin_pct: number; // (price-cost)/price * 100
+  last_sold_at: string | null;
+  days_since_sold: number | null;
+  total_sold_30d: number;
 }
+
+type TabKey = "all" | "low" | "out" | "dead" | "low_margin";
 
 export default function Inventory() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("all");
+  const [tab, setTab] = useState<TabKey>("all");
   const [threshold, setThreshold] = useState(5);
+  const [marginThreshold, setMarginThreshold] = useState(15); // %
+  const [deadDays, setDeadDays] = useState(60);
+  const [sortKey, setSortKey] = useState<"name" | "stock" | "margin" | "sold30">("name");
 
   const [dlgOpen, setDlgOpen] = useState(false);
   const [target, setTarget] = useState<Row | null>(null);
@@ -33,25 +46,59 @@ export default function Inventory() {
   const load = async () => {
     setLoading(true);
     try {
-      const [{ data: prods }, { data: vars }, { data: setting }] = await Promise.all([
-        supabase.from("products").select("id,name,name_mn,sku,stock").eq("is_active", true).limit(2000),
-        supabase
-          .from("product_variants")
-          .select("id,product_id,name,color,size,sku_suffix,stock")
-          .eq("is_active", true)
-          .limit(5000),
-        (supabase.from as any)("admin_settings")
-          .select("setting_value")
-          .eq("setting_key", "default_low_stock_threshold")
-          .maybeSingle(),
-      ]);
+      const [{ data: prods }, { data: vars }, { data: setting }, { data: items30 }, { data: lastSold }] =
+        await Promise.all([
+          supabase
+            .from("products")
+            .select("id,name,name_mn,sku,stock,price,cost_price,landed_cost,additional_cost")
+            .eq("is_active", true)
+            .limit(2000),
+          supabase
+            .from("product_variants")
+            .select("id,product_id,name,color,size,sku_suffix,stock,price,cost_price,landed_cost")
+            .eq("is_active", true)
+            .limit(5000),
+          (supabase.from as any)("admin_settings")
+            .select("setting_value")
+            .eq("setting_key", "default_low_stock_threshold")
+            .maybeSingle(),
+          // sold last 30d (only revenue-affecting orders)
+          supabase
+            .from("order_items")
+            .select("product_id,variant_id,quantity,created_at,orders!inner(affects_revenue,status,sale_date)")
+            .gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString())
+            .limit(10000),
+          // last sold per (variant or product)
+          supabase
+            .from("order_items")
+            .select("product_id,variant_id,created_at,orders!inner(affects_revenue,status)")
+            .order("created_at", { ascending: false })
+            .limit(20000),
+        ]);
 
-      if (setting?.data?.setting_value) {
-        const v = parseInt(String(setting.data.setting_value), 10);
+      if (setting?.setting_value !== undefined) {
+        const v = parseInt(String(setting.setting_value), 10);
         if (!isNaN(v)) setThreshold(v);
       }
 
-      const productMap = new Map((prods || []).map((p: any) => [p.id, p]));
+      // Aggregate sold 30d
+      const sold30Map = new Map<string, number>();
+      (items30 || []).forEach((it: any) => {
+        if (!it.orders?.affects_revenue) return;
+        if (it.orders?.status === "cancelled") return;
+        const key = `${it.product_id || ""}|${it.variant_id || ""}`;
+        sold30Map.set(key, (sold30Map.get(key) || 0) + (it.quantity || 0));
+      });
+
+      // Last sold map
+      const lastSoldMap = new Map<string, string>();
+      (lastSold || []).forEach((it: any) => {
+        if (!it.orders?.affects_revenue) return;
+        if (it.orders?.status === "cancelled") return;
+        const key = `${it.product_id || ""}|${it.variant_id || ""}`;
+        if (!lastSoldMap.has(key)) lastSoldMap.set(key, it.created_at);
+      });
+
       const variantsByProduct = new Map<string, any[]>();
       (vars || []).forEach((v: any) => {
         if (!variantsByProduct.has(v.product_id)) variantsByProduct.set(v.product_id, []);
@@ -59,30 +106,38 @@ export default function Inventory() {
       });
 
       const out: Row[] = [];
+      const buildRow = (p: any, v: any | null): Row => {
+        const price = Number(v?.price ?? p.price ?? 0);
+        const baseCost =
+          Number(v?.landed_cost ?? 0) ||
+          Number(v?.cost_price ?? 0) ||
+          Number(p.landed_cost ?? 0) ||
+          Number(p.cost_price ?? 0);
+        const additional = Number(p.additional_cost ?? 0);
+        const cost = baseCost + (v ? 0 : additional);
+        const margin_pct = price > 0 ? ((price - cost) / price) * 100 : 0;
+        const key = `${p.id}|${v?.id || ""}`;
+        const last = lastSoldMap.get(key) || lastSoldMap.get(`${p.id}|`) || null;
+        return {
+          product_id: p.id,
+          variant_id: v?.id || null,
+          product_name: p.name_mn || p.name,
+          variant_label: v ? [v.color, v.size, v.name].filter(Boolean).join(" / ") || "—" : null,
+          sku: v?.sku_suffix || p.sku,
+          stock: v?.stock ?? p.stock ?? 0,
+          price,
+          cost,
+          margin_pct,
+          last_sold_at: last,
+          days_since_sold: last ? differenceInDays(new Date(), new Date(last)) : null,
+          total_sold_30d: sold30Map.get(key) || 0,
+        };
+      };
+
       (prods || []).forEach((p: any) => {
         const vList = variantsByProduct.get(p.id) || [];
-        if (vList.length === 0) {
-          out.push({
-            product_id: p.id,
-            variant_id: null,
-            product_name: p.name_mn || p.name,
-            variant_label: null,
-            sku: p.sku,
-            stock: p.stock || 0,
-          });
-        } else {
-          vList.forEach((v: any) => {
-            const label = [v.color, v.size, v.name].filter(Boolean).join(" / ") || "—";
-            out.push({
-              product_id: p.id,
-              variant_id: v.id,
-              product_name: p.name_mn || p.name,
-              variant_label: label,
-              sku: v.sku_suffix || p.sku,
-              stock: v.stock || 0,
-            });
-          });
-        }
+        if (vList.length === 0) out.push(buildRow(p, null));
+        else vList.forEach((v) => out.push(buildRow(p, v)));
       });
 
       setRows(out);
@@ -101,6 +156,10 @@ export default function Inventory() {
     let r = rows;
     if (tab === "low") r = r.filter((x) => x.stock <= threshold && x.stock > 0);
     else if (tab === "out") r = r.filter((x) => x.stock <= 0);
+    else if (tab === "dead")
+      r = r.filter((x) => x.stock > 0 && (x.days_since_sold === null || x.days_since_sold >= deadDays));
+    else if (tab === "low_margin") r = r.filter((x) => x.price > 0 && x.margin_pct < marginThreshold);
+
     if (search.trim()) {
       const q = search.toLowerCase();
       r = r.filter(
@@ -110,20 +169,38 @@ export default function Inventory() {
           (x.variant_label || "").toLowerCase().includes(q),
       );
     }
-    return r;
-  }, [rows, tab, search, threshold]);
+
+    const sorted = [...r];
+    sorted.sort((a, b) => {
+      if (sortKey === "stock") return a.stock - b.stock;
+      if (sortKey === "margin") return a.margin_pct - b.margin_pct;
+      if (sortKey === "sold30") return b.total_sold_30d - a.total_sold_30d;
+      return a.product_name.localeCompare(b.product_name);
+    });
+    return sorted;
+  }, [rows, tab, search, threshold, deadDays, marginThreshold, sortKey]);
 
   const lowCount = rows.filter((x) => x.stock <= threshold && x.stock > 0).length;
   const outCount = rows.filter((x) => x.stock <= 0).length;
+  const deadCount = rows.filter(
+    (x) => x.stock > 0 && (x.days_since_sold === null || x.days_since_sold >= deadDays),
+  ).length;
+  const lowMarginCount = rows.filter((x) => x.price > 0 && x.margin_pct < marginThreshold).length;
+
+  const totalStockValue = rows.reduce((s, r) => s + r.stock * r.cost, 0);
+
+  const fmt = (n: number) => new Intl.NumberFormat("mn-MN").format(Math.round(n));
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Package2 className="h-6 w-6" /> Бараа материал
           </h1>
-          <p className="text-sm text-muted-foreground">Барааны үлдэгдэл, нөхөн дүүргэлт, гар тохируулга</p>
+          <p className="text-sm text-muted-foreground">
+            Үлдэгдэл, ашгийн маржин, үхсэн бараа, нөхөн дүүргэлтийн төлөвлөгөө
+          </p>
         </div>
         <Link to="/admin/inventory/movements">
           <Button variant="outline">
@@ -133,32 +210,50 @@ export default function Inventory() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* KPI */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Нийт SKU</CardTitle>
+            <CardTitle className="text-xs text-muted-foreground">Нийт SKU</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{rows.length}</div>
+            <div className="text-xl font-bold">{rows.length}</div>
           </CardContent>
         </Card>
         <Card className={lowCount > 0 ? "border-amber-300" : ""}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground flex items-center gap-1">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              Бага үлдэгдэл (≤ {threshold})
+            <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3 text-amber-500" /> Бага (≤{threshold})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{lowCount}</div>
+            <div className="text-xl font-bold text-amber-600">{lowCount}</div>
           </CardContent>
         </Card>
         <Card className={outCount > 0 ? "border-destructive" : ""}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Дууссан</CardTitle>
+            <CardTitle className="text-xs text-muted-foreground">Дууссан</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{outCount}</div>
+            <div className="text-xl font-bold text-destructive">{outCount}</div>
+          </CardContent>
+        </Card>
+        <Card className={deadCount > 0 ? "border-purple-300" : ""}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+              <Skull className="h-3 w-3 text-purple-500" /> Үхсэн ({deadDays}+ хон.)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-purple-600">{deadCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground">Үлдэгдлийн өртөг</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold">{fmt(totalStockValue)}₮</div>
           </CardContent>
         </Card>
       </div>
@@ -166,21 +261,59 @@ export default function Inventory() {
       <Card>
         <CardContent className="p-4 space-y-4">
           <div className="flex flex-wrap items-center gap-3 justify-between">
-            <Tabs value={tab} onValueChange={setTab}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
               <TabsList>
                 <TabsTrigger value="all">Бүгд</TabsTrigger>
                 <TabsTrigger value="low">Бага ({lowCount})</TabsTrigger>
                 <TabsTrigger value="out">Дууссан ({outCount})</TabsTrigger>
+                <TabsTrigger value="dead">
+                  <Skull className="h-3 w-3 mr-1" /> Үхсэн ({deadCount})
+                </TabsTrigger>
+                <TabsTrigger value="low_margin">
+                  <PercentCircle className="h-3 w-3 mr-1" /> Бага маржин ({lowMarginCount})
+                </TabsTrigger>
               </TabsList>
             </Tabs>
-            <div className="relative w-72">
-              <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Нэр, SKU, хувилбар..."
-                className="pl-8"
-              />
+
+            <div className="flex flex-wrap items-center gap-2">
+              {tab === "dead" && (
+                <Input
+                  type="number"
+                  className="w-24"
+                  value={deadDays}
+                  onChange={(e) => setDeadDays(parseInt(e.target.value || "60", 10))}
+                  title="Үхсэн барааны өдрийн босго"
+                />
+              )}
+              {tab === "low_margin" && (
+                <Input
+                  type="number"
+                  className="w-24"
+                  value={marginThreshold}
+                  onChange={(e) => setMarginThreshold(parseInt(e.target.value || "15", 10))}
+                  title="Маржин %"
+                />
+              )}
+              <Select value={sortKey} onValueChange={(v) => setSortKey(v as any)}>
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Нэрээр</SelectItem>
+                  <SelectItem value="stock">Үлдэгдлээр (өсөх)</SelectItem>
+                  <SelectItem value="margin">Маржинаар (өсөх)</SelectItem>
+                  <SelectItem value="sold30">30 хоногт зарагдсанаар</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="relative w-64">
+                <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Нэр, SKU, хувилбар..."
+                  className="pl-8"
+                />
+              </div>
             </div>
           </div>
 
@@ -191,19 +324,24 @@ export default function Inventory() {
                 <TableHead>Хувилбар</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead className="text-right">Үлдэгдэл</TableHead>
+                <TableHead className="text-right">Өртөг</TableHead>
+                <TableHead className="text-right">Үнэ</TableHead>
+                <TableHead className="text-right">Маржин %</TableHead>
+                <TableHead className="text-right">30 хон.</TableHead>
+                <TableHead className="text-right">Сүүлд зарсан</TableHead>
                 <TableHead className="text-right">Үйлдэл</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                     Ачааллаж байна...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                     Бараа алга
                   </TableCell>
                 </TableRow>
@@ -211,10 +349,11 @@ export default function Inventory() {
                 filtered.slice(0, 500).map((r) => {
                   const isOut = r.stock <= 0;
                   const isLow = !isOut && r.stock <= threshold;
+                  const lowMargin = r.price > 0 && r.margin_pct < marginThreshold;
                   return (
                     <TableRow key={`${r.product_id}-${r.variant_id || "base"}`}>
                       <TableCell className="font-medium">{r.product_name}</TableCell>
-                      <TableCell className="text-muted-foreground">{r.variant_label || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{r.variant_label || "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{r.sku || "—"}</TableCell>
                       <TableCell className="text-right">
                         <Badge
@@ -223,6 +362,44 @@ export default function Inventory() {
                         >
                           {r.stock}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">
+                        {r.cost > 0 ? fmt(r.cost) + "₮" : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {r.price > 0 ? fmt(r.price) + "₮" : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {r.price > 0 ? (
+                          <span
+                            className={
+                              lowMargin
+                                ? "text-destructive font-semibold"
+                                : r.margin_pct >= 30
+                                ? "text-green-600 font-semibold"
+                                : ""
+                            }
+                          >
+                            {r.margin_pct.toFixed(1)}%
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {r.total_sold_30d > 0 ? r.total_sold_30d : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">
+                        {r.last_sold_at ? (
+                          <span className="flex items-center justify-end gap-1">
+                            {format(new Date(r.last_sold_at), "yyyy-MM-dd")}
+                            {r.days_since_sold !== null && r.days_since_sold >= deadDays && (
+                              <TrendingDown className="h-3 w-3 text-purple-500" />
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-purple-500">Хэзээ ч</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
