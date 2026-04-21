@@ -520,6 +520,7 @@ export default function Products() {
                       min="0"
                       className={localVariants.length > 0 ? "opacity-60" : ""}
                     />
+                  </div>
                 </div>
               </div>
 
@@ -536,7 +537,6 @@ export default function Products() {
                 onChange={(v) => setFormData({ ...formData, ...v })}
                 sellingPrice={parseFloat(formData.price) || 0}
               />
-              </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
