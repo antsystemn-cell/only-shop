@@ -1207,6 +1207,7 @@ export type Database = {
         Row: {
           color_snapshot: string | null
           created_at: string
+          delivery_cost: number
           id: string
           line_cost: number
           line_total: number | null
@@ -1226,6 +1227,7 @@ export type Database = {
         Insert: {
           color_snapshot?: string | null
           created_at?: string
+          delivery_cost?: number
           id?: string
           line_cost?: number
           line_total?: number | null
@@ -1245,6 +1247,7 @@ export type Database = {
         Update: {
           color_snapshot?: string | null
           created_at?: string
+          delivery_cost?: number
           id?: string
           line_cost?: number
           line_total?: number | null
@@ -1341,6 +1344,7 @@ export type Database = {
           delivered_at: string | null
           delivery_address: Json | null
           delivery_attempt_count: number
+          delivery_cost_paid: number
           delivery_creation_mode: string
           delivery_external_id: string | null
           delivery_fee: number
@@ -1354,6 +1358,7 @@ export type Database = {
           estimated_delivery_date: string | null
           estimated_profit: number
           fulfillment_status: string
+          gross_profit: number
           id: string
           internal_note: string | null
           internal_tags: string[]
@@ -1362,8 +1367,10 @@ export type Database = {
           is_manual: boolean
           map_lat: number | null
           map_lng: number | null
+          net_profit: number
           notes: string | null
           order_number: string
+          packaging_cost_total: number
           payment_method: string | null
           payment_reference: string | null
           payment_status: string | null
@@ -1400,6 +1407,7 @@ export type Database = {
           delivered_at?: string | null
           delivery_address?: Json | null
           delivery_attempt_count?: number
+          delivery_cost_paid?: number
           delivery_creation_mode?: string
           delivery_external_id?: string | null
           delivery_fee?: number
@@ -1413,6 +1421,7 @@ export type Database = {
           estimated_delivery_date?: string | null
           estimated_profit?: number
           fulfillment_status?: string
+          gross_profit?: number
           id?: string
           internal_note?: string | null
           internal_tags?: string[]
@@ -1421,8 +1430,10 @@ export type Database = {
           is_manual?: boolean
           map_lat?: number | null
           map_lng?: number | null
+          net_profit?: number
           notes?: string | null
           order_number: string
+          packaging_cost_total?: number
           payment_method?: string | null
           payment_reference?: string | null
           payment_status?: string | null
@@ -1459,6 +1470,7 @@ export type Database = {
           delivered_at?: string | null
           delivery_address?: Json | null
           delivery_attempt_count?: number
+          delivery_cost_paid?: number
           delivery_creation_mode?: string
           delivery_external_id?: string | null
           delivery_fee?: number
@@ -1472,6 +1484,7 @@ export type Database = {
           estimated_delivery_date?: string | null
           estimated_profit?: number
           fulfillment_status?: string
+          gross_profit?: number
           id?: string
           internal_note?: string | null
           internal_tags?: string[]
@@ -1480,8 +1493,10 @@ export type Database = {
           is_manual?: boolean
           map_lat?: number | null
           map_lng?: number | null
+          net_profit?: number
           notes?: string | null
           order_number?: string
+          packaging_cost_total?: number
           payment_method?: string | null
           payment_reference?: string | null
           payment_status?: string | null
@@ -1817,12 +1832,14 @@ export type Database = {
         Row: {
           color: string | null
           color_hex: string | null
+          cost_price: number | null
           created_at: string
           dimensions: string | null
           display_order: number | null
           id: string
           images: string[] | null
           is_active: boolean | null
+          landed_cost: number | null
           name: string | null
           price: number | null
           price_adjustment: number | null
@@ -1836,12 +1853,14 @@ export type Database = {
         Insert: {
           color?: string | null
           color_hex?: string | null
+          cost_price?: number | null
           created_at?: string
           dimensions?: string | null
           display_order?: number | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          landed_cost?: number | null
           name?: string | null
           price?: number | null
           price_adjustment?: number | null
@@ -1855,12 +1874,14 @@ export type Database = {
         Update: {
           color?: string | null
           color_hex?: string | null
+          cost_price?: number | null
           created_at?: string
           dimensions?: string | null
           display_order?: number | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          landed_cost?: number | null
           name?: string | null
           price?: number | null
           price_adjustment?: number | null
@@ -1883,11 +1904,14 @@ export type Database = {
       }
       products: {
         Row: {
+          additional_cost: number | null
           brand: string | null
           category_id: string | null
           compare_price: number | null
+          cost_price: number | null
           created_at: string
           custom_delivery_fee: number | null
+          default_delivery_cost: number | null
           delivery_fee_type: string
           description: string | null
           description_mn: string | null
@@ -1895,8 +1919,11 @@ export type Database = {
           images: string[] | null
           is_active: boolean | null
           is_featured: boolean | null
+          landed_cost: number | null
+          low_margin_threshold: number | null
           name: string
           name_mn: string
+          packaging_cost: number | null
           price: number
           rating: number | null
           review_count: number | null
@@ -1909,11 +1936,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          additional_cost?: number | null
           brand?: string | null
           category_id?: string | null
           compare_price?: number | null
+          cost_price?: number | null
           created_at?: string
           custom_delivery_fee?: number | null
+          default_delivery_cost?: number | null
           delivery_fee_type?: string
           description?: string | null
           description_mn?: string | null
@@ -1921,8 +1951,11 @@ export type Database = {
           images?: string[] | null
           is_active?: boolean | null
           is_featured?: boolean | null
+          landed_cost?: number | null
+          low_margin_threshold?: number | null
           name: string
           name_mn: string
+          packaging_cost?: number | null
           price: number
           rating?: number | null
           review_count?: number | null
@@ -1935,11 +1968,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          additional_cost?: number | null
           brand?: string | null
           category_id?: string | null
           compare_price?: number | null
+          cost_price?: number | null
           created_at?: string
           custom_delivery_fee?: number | null
+          default_delivery_cost?: number | null
           delivery_fee_type?: string
           description?: string | null
           description_mn?: string | null
@@ -1947,8 +1983,11 @@ export type Database = {
           images?: string[] | null
           is_active?: boolean | null
           is_featured?: boolean | null
+          landed_cost?: number | null
+          low_margin_threshold?: number | null
           name?: string
           name_mn?: string
+          packaging_cost?: number | null
           price?: number
           rating?: number | null
           review_count?: number | null
@@ -2631,6 +2670,10 @@ export type Database = {
           total: number
         }[]
       }
+      get_product_effective_cost: {
+        Args: { p_product_id: string; p_variant_id?: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2639,6 +2682,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      recalc_order_profit: { Args: { p_order_id: string }; Returns: undefined }
       restore_sale_inventory: {
         Args: { p_order_id: string }
         Returns: undefined
