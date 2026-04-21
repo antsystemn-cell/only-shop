@@ -520,8 +520,22 @@ export default function Products() {
                       min="0"
                       className={localVariants.length > 0 ? "opacity-60" : ""}
                     />
-                  </div>
                 </div>
+              </div>
+
+              {/* Cost & Profit */}
+              <ProductCostFields
+                value={{
+                  cost_price: formData.cost_price,
+                  landed_cost: formData.landed_cost,
+                  additional_cost: formData.additional_cost,
+                  packaging_cost: formData.packaging_cost,
+                  default_delivery_cost: formData.default_delivery_cost,
+                  low_margin_threshold: formData.low_margin_threshold,
+                }}
+                onChange={(v) => setFormData({ ...formData, ...v })}
+                sellingPrice={parseFloat(formData.price) || 0}
+              />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
