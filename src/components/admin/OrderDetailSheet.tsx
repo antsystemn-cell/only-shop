@@ -12,10 +12,12 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
   ShoppingCart, User, MapPin, Phone, Mail,
   Package, MessageSquare, Clock, Printer, RefreshCw, Cloud, CloudOff, ArrowLeftRight,
+  TrendingUp, AlertTriangle,
 } from "lucide-react";
 import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
 import SwapOrderItemDialog from "@/components/admin/SwapOrderItemDialog";
@@ -29,6 +31,12 @@ import {
   getSourceLabel,
   formatCurrency,
 } from "@/lib/orderService";
+import {
+  calcOrderProfit,
+  getProfitColorClass,
+  getMarginColorClass,
+  formatPct,
+} from "@/lib/profit/profitCalculator";
 
 interface OrderDetailSheetProps {
   order: any;
