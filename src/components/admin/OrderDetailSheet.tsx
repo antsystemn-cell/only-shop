@@ -169,10 +169,13 @@ export default function OrderDetailSheet({
               {Number((order as any).discount_amount) > 0 && (
                 <div className="flex justify-between text-red-600"><span>Хөнгөлөлт:</span><span>-{formatCurrency(Number((order as any).discount_amount))}</span></div>
               )}
-              <div className="flex justify-between"><span className="text-muted-foreground">Хүргэлт:</span><span>{formatCurrency(Number(order.delivery_fee))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Хүргэлт (авсан):</span><span>{formatCurrency(Number(order.delivery_fee))}</span></div>
               <div className="flex justify-between font-bold border-t pt-1.5"><span>Нийт:</span><span>{formatCurrency(Number(order.total))}</span></div>
             </CardContent>
           </Card>
+
+          {/* Profit Analysis */}
+          <ProfitCard order={order} />
 
           {/* Delivery Sync Status */}
           {(order as any).fulfillment_status !== "draft" && (
