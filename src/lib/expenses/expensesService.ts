@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { logAudit } from "@/lib/audit/auditService";
 
 export const EXPENSE_CATEGORIES = [
   { value: "advertising", label: "Сурталчилгаа" },
@@ -56,17 +57,25 @@ export async function createExpense(input: ExpenseInput): Promise<Expense> {
     .select()
     .single();
   if (error) throw error;
+  await logAudit({
+    action: "expense_create",
+    entity_type: "expense",
+    entity_id: (data as Expense).id,
+    details: { category: input.category, amount: input.amount, expense_date: input.expense_date },
+  });
   return data as Expense;
 }
 
 export async function updateExpense(id: string, input: Partial<ExpenseInput>): Promise<void> {
   const { error } = await (supabase.from as any)("expenses").update(input).eq("id", id);
   if (error) throw error;
+  await logAudit({ action: "update", entity_type: "expense", entity_id: id, details: input });
 }
 
 export async function deleteExpense(id: string): Promise<void> {
   const { error } = await (supabase.from as any)("expenses").delete().eq("id", id);
   if (error) throw error;
+  await logAudit({ action: "expense_delete", entity_type: "expense", entity_id: id });
 }
 
 export function getExpenseCategoryLabel(value: string) {
