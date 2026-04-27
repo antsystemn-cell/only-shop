@@ -120,6 +120,8 @@ export default function Checkout() {
     const products = localItems.map((item) => ({
       delivery_fee_type: item.product.delivery_fee_type || "default",
       custom_delivery_fee: item.product.custom_delivery_fee ?? null,
+      quantity: item.quantity,
+      free_delivery_min_qty: (item.product as any).free_delivery_min_qty ?? null,
     }));
 
     const zoneInfo: DeliveryZoneInfo | null = selectedZone
