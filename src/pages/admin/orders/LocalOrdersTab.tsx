@@ -40,7 +40,7 @@ export default function LocalOrdersTab() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [createOpen, setCreateOpen] = useState(false);
@@ -262,7 +262,7 @@ export default function LocalOrdersTab() {
                           <Button variant="ghost" size="sm" className="h-8 px-2" onClick={(e) => copyOrderForExcel(order, e)}>
                             <Copy className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}>
+                          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => { setSelectedOrderId(order.id); setDetailOpen(true); }}>
                             <Eye className="h-4 w-4" />
                           </Button>
                         </div>
@@ -364,7 +364,7 @@ export default function LocalOrdersTab() {
                               <Button variant="ghost" size="icon" className="h-7 w-7" title="Excel хуулах" onClick={(e) => copyOrderForExcel(order, e)}>
                                 <Copy className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedOrderId(order.id); setDetailOpen(true); }}>
                                 <Eye className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -414,20 +414,24 @@ export default function LocalOrdersTab() {
         </CardContent>
       </Card>
 
-      {/* Detail sheet */}
-      <OrderDetailSheet
-        order={selectedOrder}
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        onFulfillmentChange={(oldS, newS) => {
-          if (selectedOrder) fulfillmentMutation.mutate({ id: selectedOrder.id, oldStatus: oldS, newStatus: newS });
-        }}
-        onPaymentChange={(oldS, newS) => {
-          if (selectedOrder) paymentMutation.mutate({ id: selectedOrder.id, oldStatus: oldS, newStatus: newS });
-        }}
-        isMobile={isMobile}
-      />
-
+      {/* Detail sheet — always derive from latest query data so status changes reflect immediately */}
+      {(() => {
+        const selectedOrder = orders?.find((o: any) => o.id === selectedOrderId) || null;
+        return (
+          <OrderDetailSheet
+            order={selectedOrder}
+            open={detailOpen}
+            onClose={() => setDetailOpen(false)}
+            onFulfillmentChange={(oldS, newS) => {
+              if (selectedOrder) fulfillmentMutation.mutate({ id: selectedOrder.id, oldStatus: oldS, newStatus: newS });
+            }}
+            onPaymentChange={(oldS, newS) => {
+              if (selectedOrder) paymentMutation.mutate({ id: selectedOrder.id, oldStatus: oldS, newStatus: newS });
+            }}
+            isMobile={isMobile}
+          />
+        );
+      })()}
       {/* Create order dialog */}
       <CreateOrderDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
