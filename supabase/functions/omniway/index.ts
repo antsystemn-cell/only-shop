@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
         .update({
           invoice_id: result.invoiceNumber,
           qr_image: result.imageBase64 || null,
-          urls: { qrContent: result.qrContent } || null,
+          urls: result.qrContent ? { qrContent: result.qrContent } : null,
           status: "processing",
         })
         .eq("id", pi.id);

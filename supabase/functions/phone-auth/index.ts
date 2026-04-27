@@ -58,7 +58,7 @@ async function hashCode(code: string): Promise<string> {
 
 // ── SMS sending ───────────────────────────────────────────────
 async function sendSms(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   to: string,
   text: string,
   type: string = "otp"
@@ -142,7 +142,7 @@ async function sendSms(
 }
 
 // ── Auth settings helper ──────────────────────────────────────
-async function getAuthSettings(supabase: ReturnType<typeof createClient>) {
+async function getAuthSettings(supabase: any) {
   const { data } = await supabase
     .from("admin_settings")
     .select("setting_key, setting_value")
@@ -161,7 +161,7 @@ async function getAuthSettings(supabase: ReturnType<typeof createClient>) {
 
 // ── Require admin auth from request ───────────────────────────
 async function requireAdmin(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   req: Request
 ): Promise<string | null> {
   const authHeader = req.headers.get("Authorization");
