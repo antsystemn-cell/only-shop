@@ -13,7 +13,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function getAdmin() {
+function getAdmin(): any {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
