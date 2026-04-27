@@ -1915,6 +1915,7 @@ export type Database = {
           delivery_fee_type: string
           description: string | null
           description_mn: string | null
+          free_delivery_min_qty: number | null
           id: string
           images: string[] | null
           is_active: boolean | null
@@ -1947,6 +1948,7 @@ export type Database = {
           delivery_fee_type?: string
           description?: string | null
           description_mn?: string | null
+          free_delivery_min_qty?: number | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
@@ -1979,6 +1981,7 @@ export type Database = {
           delivery_fee_type?: string
           description?: string | null
           description_mn?: string | null
+          free_delivery_min_qty?: number | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
