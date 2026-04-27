@@ -13,7 +13,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function getAdmin() {
+function getAdmin(): any {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -64,7 +64,7 @@ async function sendSms(
   type: string = "otp"
 ): Promise<{ success: boolean; error?: string; response?: unknown }> {
   // Get gateway settings
-  const { data: settings } = await supabase
+  const { data: settingsRaw } = await supabase
     .from("admin_settings")
     .select("setting_key, setting_value")
     .in("setting_key", [
@@ -72,9 +72,10 @@ async function sendSms(
       "sms_sender_number",
       "sms_enabled",
     ]);
+  const settings: any[] = (settingsRaw as any) || [];
 
   const getVal = (key: string) => {
-    const s = settings?.find((s: any) => s.setting_key === key);
+    const s = settings.find((s: any) => s.setting_key === key);
     try {
       return s ? JSON.parse(String(s.setting_value)) : "";
     } catch {
@@ -149,7 +150,7 @@ async function getAuthSettings(supabase: any) {
     .eq("category", "auth");
 
   const settings: Record<string, any> = {};
-  for (const row of data || []) {
+  for (const row of ((data as any[]) || [])) {
     try {
       settings[row.setting_key] = JSON.parse(String(row.setting_value));
     } catch {
