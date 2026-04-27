@@ -56,7 +56,7 @@ export default function LocalOrdersTab() {
         .from("orders")
         .select("*, order_items(*)")
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(5000);
 
       if (searchQuery) {
         query = query.or(`order_number.ilike.%${searchQuery}%,customer_name.ilike.%${searchQuery}%,customer_phone.ilike.%${searchQuery}%`);
