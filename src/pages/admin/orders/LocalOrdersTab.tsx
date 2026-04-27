@@ -414,20 +414,24 @@ export default function LocalOrdersTab() {
         </CardContent>
       </Card>
 
-      {/* Detail sheet */}
-      <OrderDetailSheet
-        order={selectedOrder}
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        onFulfillmentChange={(oldS, newS) => {
-          if (selectedOrder) fulfillmentMutation.mutate({ id: selectedOrder.id, oldStatus: oldS, newStatus: newS });
-        }}
-        onPaymentChange={(oldS, newS) => {
-          if (selectedOrder) paymentMutation.mutate({ id: selectedOrder.id, oldStatus: oldS, newStatus: newS });
-        }}
-        isMobile={isMobile}
-      />
-
+      {/* Detail sheet — always derive from latest query data so status changes reflect immediately */}
+      {(() => {
+        const selectedOrder = orders?.find((o: any) => o.id === selectedOrderId) || null;
+        return (
+          <OrderDetailSheet
+            order={selectedOrder}
+            open={detailOpen}
+            onClose={() => setDetailOpen(false)}
+            onFulfillmentChange={(oldS, newS) => {
+              if (selectedOrder) fulfillmentMutation.mutate({ id: selectedOrder.id, oldStatus: oldS, newStatus: newS });
+            }}
+            onPaymentChange={(oldS, newS) => {
+              if (selectedOrder) paymentMutation.mutate({ id: selectedOrder.id, oldStatus: oldS, newStatus: newS });
+            }}
+            isMobile={isMobile}
+          />
+        );
+      })()}
       {/* Create order dialog */}
       <CreateOrderDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
