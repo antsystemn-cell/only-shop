@@ -150,7 +150,7 @@ async function getAuthSettings(supabase: any) {
     .eq("category", "auth");
 
   const settings: Record<string, any> = {};
-  for (const row of data || []) {
+  for (const row of ((data as any[]) || [])) {
     try {
       settings[row.setting_key] = JSON.parse(String(row.setting_value));
     } catch {
