@@ -262,7 +262,7 @@ export default function LocalOrdersTab() {
                           <Button variant="ghost" size="sm" className="h-8 px-2" onClick={(e) => copyOrderForExcel(order, e)}>
                             <Copy className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}>
+                          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => { setSelectedOrderId(order.id); setDetailOpen(true); }}>
                             <Eye className="h-4 w-4" />
                           </Button>
                         </div>
@@ -364,7 +364,7 @@ export default function LocalOrdersTab() {
                               <Button variant="ghost" size="icon" className="h-7 w-7" title="Excel хуулах" onClick={(e) => copyOrderForExcel(order, e)}>
                                 <Copy className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedOrder(order); setDetailOpen(true); }}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedOrderId(order.id); setDetailOpen(true); }}>
                                 <Eye className="h-3.5 w-3.5" />
                               </Button>
                             </div>
