@@ -60,7 +60,7 @@ export default function Sales() {
         .from("orders")
         .select("*, order_items(*)")
         .order("sale_date", { ascending: false })
-        .limit(200);
+        .limit(5000);
 
       if (tab === "website") q = q.eq("source_type", "website_order");
       if (tab === "manual") q = q.eq("is_manual", true).eq("is_historical", false);
