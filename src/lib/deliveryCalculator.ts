@@ -14,6 +14,10 @@ export type DeliveryFeeType = "free" | "fixed" | "default";
 export interface DeliveryProduct {
   delivery_fee_type: string; // "free" | "fixed" | "default"
   custom_delivery_fee: number | null;
+  /** Quantity of this product in the cart (default 1) */
+  quantity?: number;
+  /** If quantity >= this number, delivery becomes free for the whole order */
+  free_delivery_min_qty?: number | null;
 }
 
 export interface DeliveryZoneInfo {
