@@ -75,7 +75,7 @@ async function sendSms(
   const settings: any[] = (settingsRaw as any) || [];
 
   const getVal = (key: string) => {
-    const s = settings?.find((s: any) => s.setting_key === key);
+    const s = settings.find((s: any) => s.setting_key === key);
     try {
       return s ? JSON.parse(String(s.setting_value)) : "";
     } catch {
