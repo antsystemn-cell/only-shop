@@ -312,7 +312,7 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="container py-4 md:py-8 animate-fade-in">
+    <div className="container py-4 md:py-8 animate-fade-in pb-32 md:pb-8">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4 overflow-x-auto whitespace-nowrap">
         <Link to="/" className="hover:text-primary transition-colors">Нүүр</Link>
@@ -737,6 +737,35 @@ export default function ProductDetail() {
           </div>
         </section>
       )}
+
+      {/* Sticky mobile CTA bar — sits above MobileBottomNav (~64px tall) */}
+      <div className="md:hidden fixed left-0 right-0 bottom-[64px] z-40 bg-card border-t border-border shadow-[0_-4px_12px_rgba(0,0,0,0.06)] px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col leading-tight min-w-0 pr-1">
+            <span className="text-[10px] text-muted-foreground">Үнэ</span>
+            <span className="text-sm font-bold text-primary truncate">{formatPrice(effectivePrice)}</span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 h-11 rounded-full gap-1.5 text-xs font-semibold"
+            onClick={handleAddToCart}
+            disabled={!hasAnyStock || (variants.length > 0 && !selectedVariant) || (selectedVariant && selectedVariant.stock === 0)}
+          >
+            <ShoppingCart className="h-4 w-4" />
+            Сагслах
+          </Button>
+          <Button
+            size="sm"
+            className="flex-1 h-11 rounded-full gap-1.5 text-xs font-semibold"
+            onClick={() => navigate(`/buy-now/${product.slug || product.id}`)}
+            disabled={!hasAnyStock || (variants.length > 0 && !selectedVariant) || (selectedVariant && selectedVariant.stock === 0)}
+          >
+            <Zap className="h-4 w-4" />
+            Шууд авах
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
