@@ -54,10 +54,18 @@ export function calculateDelivery(
   _deliveryType: "standard" | "express" = "standard",
   defaultFee: number = 5000
 ): DeliveryResult {
-  // 1. Check for FREE
-  const hasFree = products.some(
-    (p) => p.delivery_fee_type === "free"
-  );
+  // 1. Check for FREE (explicit OR quantity-threshold based)
+  const hasFree = products.some((p) => {
+    if (p.delivery_fee_type === "free") return true;
+    if (
+      p.free_delivery_min_qty != null &&
+      p.free_delivery_min_qty > 0 &&
+      (p.quantity ?? 1) >= p.free_delivery_min_qty
+    ) {
+      return true;
+    }
+    return false;
+  });
 
   if (hasFree) {
     return {
