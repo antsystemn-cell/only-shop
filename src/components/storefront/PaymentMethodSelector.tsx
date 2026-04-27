@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { CreditCard, Smartphone, Building2, Wallet } from "lucide-react";
+import { CreditCard, Smartphone, Wallet } from "lucide-react";
+import qpayLogo from "@/assets/payments/qpay.webp";
+import storepayLogo from "@/assets/payments/storepay.webp";
 
 export type PaymentMethod = "qpay" | "omniway" | "storepay" | "wallet" | "card" | "bank_transfer";
 
@@ -11,9 +11,9 @@ interface PaymentMethodOption {
   id: PaymentMethod;
   name: string;
   description: string;
-  icon: React.ReactNode;
+  logo?: string;
+  icon?: React.ReactNode;
   enabled: boolean;
-  badge?: string;
 }
 
 const paymentMethods: PaymentMethodOption[] = [
@@ -27,8 +27,8 @@ const paymentMethods: PaymentMethodOption[] = [
   {
     id: "qpay",
     name: "QPay",
-    description: "Банкны аппликейшнээр QR код уншуулж төлөх",
-    icon: <Smartphone className="h-5 w-5" />,
+    description: "QR кодоор төлөх (бүх банк)",
+    logo: qpayLogo,
     enabled: true,
   },
   {
@@ -41,26 +41,9 @@ const paymentMethods: PaymentMethodOption[] = [
   {
     id: "storepay",
     name: "Storepay",
-    description: "Storepay зээлээр хялбар төлөх",
-    icon: <Smartphone className="h-5 w-5" />,
+    description: "Хүүгүй хуваан төлөх үйлчилгээ",
+    logo: storepayLogo,
     enabled: true,
-    badge: "Зээл",
-  },
-  {
-    id: "card",
-    name: "Картаар төлөх",
-    description: "Visa, Mastercard картаар онлайн төлбөр",
-    icon: <CreditCard className="h-5 w-5" />,
-    enabled: false,
-    badge: "Тун удахгүй",
-  },
-  {
-    id: "bank_transfer",
-    name: "Банк шилжүүлэг",
-    description: "Банкны дансруу шууд шилжүүлэх",
-    icon: <Building2 className="h-5 w-5" />,
-    enabled: false,
-    badge: "Тун удахгүй",
   },
 ];
 
@@ -93,35 +76,32 @@ export default function PaymentMethodSelector({
             <div
               key={method.id}
               className={`flex items-center space-x-3 p-4 border rounded-lg transition-colors ${
-                method.enabled
-                  ? selected === method.id
-                    ? "border-primary bg-primary/5"
-                    : "hover:bg-muted/50 cursor-pointer"
-                  : "opacity-50 cursor-not-allowed"
+                selected === method.id
+                  ? "border-primary bg-primary/5"
+                  : "hover:bg-muted/50 cursor-pointer"
               }`}
             >
-              <RadioGroupItem
-                value={method.id}
-                id={`payment-${method.id}`}
-                disabled={!method.enabled}
-              />
+              <RadioGroupItem value={method.id} id={`payment-${method.id}`} />
               <Label
                 htmlFor={`payment-${method.id}`}
-                className={`flex-1 ${method.enabled ? "cursor-pointer" : "cursor-not-allowed"}`}
+                className="flex-1 cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                    {method.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{method.name}</p>
-                      {method.badge && (
-                        <Badge variant="secondary" className="text-xs">
-                          {method.badge}
-                        </Badge>
-                      )}
+                  {method.logo ? (
+                    <div className="w-11 h-11 rounded-lg bg-background border border-border flex items-center justify-center overflow-hidden shrink-0">
+                      <img
+                        src={method.logo}
+                        alt={method.name}
+                        className="w-full h-full object-contain p-1"
+                      />
                     </div>
+                  ) : (
+                    <div className="w-11 h-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      {method.icon}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">{method.name}</p>
                     <p className="text-sm text-muted-foreground">
                       {method.description}
                     </p>
