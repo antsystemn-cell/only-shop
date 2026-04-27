@@ -64,7 +64,7 @@ async function sendSms(
   type: string = "otp"
 ): Promise<{ success: boolean; error?: string; response?: unknown }> {
   // Get gateway settings
-  const { data: settings } = await supabase
+  const { data: settingsRaw } = await supabase
     .from("admin_settings")
     .select("setting_key, setting_value")
     .in("setting_key", [
@@ -72,6 +72,7 @@ async function sendSms(
       "sms_sender_number",
       "sms_enabled",
     ]);
+  const settings: any[] = (settingsRaw as any) || [];
 
   const getVal = (key: string) => {
     const s = settings?.find((s: any) => s.setting_key === key);
