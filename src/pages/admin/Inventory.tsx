@@ -203,12 +203,18 @@ export default function Inventory() {
             Үлдэгдэл, ашгийн маржин, үхсэн бараа, нөхөн дүүргэлтийн төлөвлөгөө
           </p>
         </div>
-        <Link to="/admin/inventory/movements">
-          <Button variant="outline">
-            <History className="h-4 w-4 mr-2" />
-            Хөдөлгөөний түүх
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => exportToExcel(filtered)} disabled={loading || filtered.length === 0}>
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Excel экспорт
           </Button>
-        </Link>
+          <Link to="/admin/inventory/movements">
+            <Button variant="outline">
+              <History className="h-4 w-4 mr-2" />
+              Хөдөлгөөний түүх
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* KPI */}
