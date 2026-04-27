@@ -192,6 +192,53 @@ export default function Inventory() {
 
   const fmt = (n: number) => new Intl.NumberFormat("mn-MN").format(Math.round(n));
 
+  const exportToExcel = (data: Row[]) => {
+    try {
+      const sheetData = data.map((r, i) => ({
+        "№": i + 1,
+        "Бараа": r.product_name,
+        "Хувилбар": r.variant_label || "",
+        "SKU": r.sku || "",
+        "Үлдэгдэл": r.stock,
+        "Өртөг (₮)": r.cost > 0 ? Math.round(r.cost) : "",
+        "Үнэ (₮)": r.price > 0 ? Math.round(r.price) : "",
+        "Үлдэгдлийн өртөг (₮)": Math.round(r.stock * r.cost),
+        "Маржин %": r.price > 0 ? Number(r.margin_pct.toFixed(1)) : "",
+        "30 хоногт зарагдсан": r.total_sold_30d,
+        "Сүүлд зарсан": r.last_sold_at ? format(new Date(r.last_sold_at), "yyyy-MM-dd") : "",
+        "Зарагдаагүй хоног": r.days_since_sold ?? "",
+      }));
+      const totalQty = data.reduce((s, r) => s + r.stock, 0);
+      const totalValue = data.reduce((s, r) => s + r.stock * r.cost, 0);
+      sheetData.push({
+        "№": "" as any,
+        "Бараа": "НИЙТ" as any,
+        "Хувилбар": "",
+        "SKU": "",
+        "Үлдэгдэл": totalQty,
+        "Өртөг (₮)": "",
+        "Үнэ (₮)": "",
+        "Үлдэгдлийн өртөг (₮)": Math.round(totalValue),
+        "Маржин %": "",
+        "30 хоногт зарагдсан": "" as any,
+        "Сүүлд зарсан": "",
+        "Зарагдаагүй хоног": "",
+      });
+      const ws = XLSX.utils.json_to_sheet(sheetData);
+      ws["!cols"] = [
+        { wch: 5 }, { wch: 36 }, { wch: 22 }, { wch: 16 }, { wch: 10 },
+        { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Үлдэгдэл");
+      const fname = `inventory_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`;
+      XLSX.writeFile(wb, fname);
+      toast.success(`${data.length} мөр экспортлогдлоо`);
+    } catch (e: any) {
+      toast.error(e.message || "Экспорт амжилтгүй");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
