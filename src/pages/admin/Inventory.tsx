@@ -44,6 +44,8 @@ export default function Inventory() {
 
   const [dlgOpen, setDlgOpen] = useState(false);
   const [target, setTarget] = useState<Row | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<Row | null>(null);
 
   const load = async () => {
     setLoading(true);
