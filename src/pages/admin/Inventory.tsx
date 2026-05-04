@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, History, Package2, Search, TrendingDown, Skull, PercentCircle, FileSpreadsheet } from "lucide-react";
+import { AlertTriangle, History, Package2, Search, TrendingDown, Skull, PercentCircle, FileSpreadsheet, Clock } from "lucide-react";
 import * as XLSX from "xlsx";
 import { StockAdjustmentDialog } from "@/components/admin/inventory/StockAdjustmentDialog";
+import { StockHistorySheet } from "@/components/admin/inventory/StockHistorySheet";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 
@@ -43,6 +44,8 @@ export default function Inventory() {
 
   const [dlgOpen, setDlgOpen] = useState(false);
   const [target, setTarget] = useState<Row | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<Row | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -456,16 +459,29 @@ export default function Inventory() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setTarget(r);
-                            setDlgOpen(true);
-                          }}
-                        >
-                          Тохируулах
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setHistoryTarget(r);
+                              setHistoryOpen(true);
+                            }}
+                            title="Үлдэгдлийн түүх"
+                          >
+                            <Clock className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setTarget(r);
+                              setDlgOpen(true);
+                            }}
+                          >
+                            Тохируулах
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -490,6 +506,17 @@ export default function Inventory() {
           currentStock={target.stock}
           label={`${target.product_name}${target.variant_label ? " — " + target.variant_label : ""}`}
           onDone={load}
+        />
+      )}
+
+      {historyTarget && (
+        <StockHistorySheet
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          productId={historyTarget.product_id}
+          variantId={historyTarget.variant_id}
+          currentStock={historyTarget.stock}
+          label={`${historyTarget.product_name}${historyTarget.variant_label ? " — " + historyTarget.variant_label : ""}`}
         />
       )}
     </div>
