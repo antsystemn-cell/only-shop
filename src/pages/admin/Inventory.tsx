@@ -459,16 +459,29 @@ export default function Inventory() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setTarget(r);
-                            setDlgOpen(true);
-                          }}
-                        >
-                          Тохируулах
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setHistoryTarget(r);
+                              setHistoryOpen(true);
+                            }}
+                            title="Үлдэгдлийн түүх"
+                          >
+                            <Clock className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setTarget(r);
+                              setDlgOpen(true);
+                            }}
+                          >
+                            Тохируулах
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
