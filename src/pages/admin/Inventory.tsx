@@ -508,6 +508,17 @@ export default function Inventory() {
           onDone={load}
         />
       )}
+
+      {historyTarget && (
+        <StockHistorySheet
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          productId={historyTarget.product_id}
+          variantId={historyTarget.variant_id}
+          currentStock={historyTarget.stock}
+          label={`${historyTarget.product_name}${historyTarget.variant_label ? " — " + historyTarget.variant_label : ""}`}
+        />
+      )}
     </div>
   );
 }
