@@ -429,7 +429,9 @@ export default function Inventory() {
                 <TableHead className="text-right">Өртөг</TableHead>
                 <TableHead className="text-right">Үнэ</TableHead>
                 <TableHead className="text-right">Маржин %</TableHead>
+                <TableHead className="text-right">Үлд. өртөг</TableHead>
                 <TableHead className="text-right">30 хон.</TableHead>
+                <TableHead className="text-right">Үлдэх хоног</TableHead>
                 <TableHead className="text-right">Сүүлд зарсан</TableHead>
                 <TableHead className="text-right">Үйлдэл</TableHead>
               </TableRow>
