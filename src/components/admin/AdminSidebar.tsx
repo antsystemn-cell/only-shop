@@ -84,7 +84,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Үлдэгдлийн хөдөлгөөн", url: "/admin/inventory/movements", icon: History },
       { title: "Ангилал", url: "/admin/categories", icon: FolderTree },
       { title: "Брэнд удирдах", url: "/admin/brands", icon: Tags },
-      { title: "Хүргэлтийн тохиргоо", url: "/admin/delivery", icon: Truck },
+      
       
       
     ],

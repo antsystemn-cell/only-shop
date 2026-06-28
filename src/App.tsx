@@ -46,7 +46,7 @@ import Brands from "./pages/admin/Brands";
 import Orders from "./pages/admin/Orders";
 import Sales from "./pages/admin/Sales";
 import Users from "./pages/admin/Users";
-import Delivery from "./pages/admin/Delivery";
+
 import DeliveryOperations from "./pages/admin/DeliveryOperations";
 import Banners from "./pages/admin/Banners";
 
@@ -125,7 +125,7 @@ const App = () => (
                 <Route path="orders" element={<Orders />} />
                 <Route path="sales" element={<Sales />} />
                 <Route path="users" element={<Users />} />
-                <Route path="delivery" element={<Delivery />} />
+                
                 <Route path="delivery-ops" element={<DeliveryOperations />} />
                 <Route path="banners" element={<Banners />} />
                 
