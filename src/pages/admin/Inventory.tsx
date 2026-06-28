@@ -424,29 +424,26 @@ export default function Inventory() {
             <TableHeader>
               <TableRow>
                 <TableHead>Бараа</TableHead>
-                <TableHead>Хувилбар</TableHead>
-                <TableHead>SKU</TableHead>
                 <TableHead className="text-right">Үлдэгдэл</TableHead>
                 <TableHead className="text-right">Өртөг</TableHead>
                 <TableHead className="text-right">Үнэ</TableHead>
                 <TableHead className="text-right">Маржин %</TableHead>
-                <TableHead className="text-right">Үлд. өртөг</TableHead>
-                <TableHead className="text-right">30 хон.</TableHead>
-                <TableHead className="text-right">Үлдэх хоног</TableHead>
-                <TableHead className="text-right">Сүүлд зарсан</TableHead>
+                <TableHead className="text-right">Нийт өртөг</TableHead>
+                <TableHead className="text-right">Нийт борлуулах дүн</TableHead>
+                <TableHead>SKU</TableHead>
                 <TableHead className="text-right">Үйлдэл</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Ачааллаж байна...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Бараа алга
                   </TableCell>
                 </TableRow>
@@ -456,9 +453,6 @@ export default function Inventory() {
                   const isOut = r.stock <= 0;
                   const isLow = !isOut && r.stock <= effThreshold;
                   const isStale = !isOut && (r.days_since_sold === null || r.days_since_sold >= deadDays);
-                  const lowMargin = r.price > 0 && r.margin_pct < marginThreshold;
-                  const avgDaily = avgDailySales(r.total_sold_30d, 30);
-                  const daysLeft = daysOfStock(r.stock, avgDaily);
                   const stockBadgeClass = isOut
                     ? ""
                     : isLow
@@ -468,14 +462,14 @@ export default function Inventory() {
                     : "bg-green-100 text-green-800 hover:bg-green-100";
                   return (
                     <TableRow key={`${r.product_id}-${r.variant_id || "base"}`}>
-                      <TableCell className="font-medium">{r.product_name}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{r.variant_label || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{r.sku || "—"}</TableCell>
+                      <TableCell className="font-medium">
+                        {r.product_name}
+                        {r.variant_label && (
+                          <span className="ml-2 text-xs text-muted-foreground">({r.variant_label})</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
-                        <Badge
-                          variant={isOut ? "destructive" : "outline"}
-                          className={stockBadgeClass}
-                        >
+                        <Badge variant={isOut ? "destructive" : "outline"} className={stockBadgeClass}>
                           {r.stock}
                         </Badge>
                       </TableCell>
@@ -494,35 +488,23 @@ export default function Inventory() {
                           "—"
                         )}
                       </TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground">
+                      <TableCell className="text-right text-xs">
                         {r.cost > 0 && r.stock > 0 ? fmt(r.cost * r.stock) + "₮" : "—"}
                       </TableCell>
-                      <TableCell className="text-right text-xs">
-                        {r.total_sold_30d > 0 ? r.total_sold_30d : "—"}
+                      <TableCell className="text-right text-xs font-medium">
+                        {r.price > 0 && r.stock > 0 ? fmt(r.price * r.stock) + "₮" : "—"}
                       </TableCell>
-                      <TableCell className="text-right text-xs">
-                        {daysLeft === null ? (
-                          <span className="text-muted-foreground">∞</span>
-                        ) : (
-                          <span className={daysLeft <= 7 ? "text-destructive font-semibold" : daysLeft <= 30 ? "text-amber-600" : ""}>
-                            {daysLeft} хон.
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground">
-                        {r.last_sold_at ? (
-                          <span className="flex items-center justify-end gap-1">
-                            {format(new Date(r.last_sold_at), "yyyy-MM-dd")}
-                            {r.days_since_sold !== null && r.days_since_sold >= deadDays && (
-                              <TrendingDown className="h-3 w-3 text-purple-500" />
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-purple-500">Хэзээ ч</span>
-                        )}
-                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{r.sku || "—"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/admin/products?edit=${r.product_id}`)}
+                            title="Бараа засах"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
