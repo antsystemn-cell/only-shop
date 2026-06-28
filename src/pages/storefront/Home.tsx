@@ -166,7 +166,7 @@ export default function Home() {
             </div>
           ) : (
             <div
-              className="grid grid-cols-4 gap-2 md:gap-4 [--bento-row:calc((100vw-40px-24px)/4)] md:[--bento-row:calc((min(100vw,1480px)-80px-48px)/4)]"
+              className="grid grid-cols-4 gap-2 md:gap-4 [--bento-row:calc((100vw-40px)/4)] md:[--bento-row:calc((min(100vw,1480px)-80px-48px)/4)]"
               style={{ gridAutoRows: "var(--bento-row)" }}
             >
               {products.map((product, i) => (
