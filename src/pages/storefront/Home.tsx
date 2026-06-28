@@ -62,27 +62,27 @@ function BentoCard({
       style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}
       className={`group relative ${slot.col} ${slot.row} ${tint} rounded-sm overflow-hidden flex animate-fade-in transition-all duration-500 will-change-transform hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)] active:scale-[0.97] active:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)]`}
     >
-      {/* Top-left label — clean corner stack */}
-      <div className={`absolute top-0 left-0 z-10 ${slot.pad} pr-4`}>
-        <h3 className={`font-editorial text-[11px] md:text-[12px] font-medium tracking-[0.01em] ${INK} leading-tight line-clamp-2`}>
-          {product.name_mn}
-        </h3>
-        <p className={`font-editorial text-[11px] md:text-[12px] mt-1.5 ${SOFT_INK} tabular-nums`}>
-          {formatPrice(product.price)}
-        </p>
-      </div>
-
-      {/* Floating PNG-style product image with gentle float loop */}
-      <div className="flex-1 flex items-end justify-center min-h-0 p-6 md:p-8 pt-16 md:pt-20">
+      {/* Full-bleed product image — fills card edge-to-edge */}
+      <div className="absolute inset-0 flex items-center justify-center">
         {product.images && product.images[0] ? (
           <img
             src={product.images[0]}
             alt={product.name_mn}
             loading="lazy"
             style={{ mixBlendMode: "multiply", animationDelay: `${index * 120}ms` }}
-            className="max-w-[78%] max-h-[78%] w-auto h-auto object-contain drop-shadow-[0_18px_24px_rgba(0,0,0,0.10)] transition-transform duration-[900ms] ease-out animate-float-soft group-hover:scale-[1.04] group-active:scale-[0.96]"
+            className="w-full h-full object-contain p-2 md:p-3 drop-shadow-[0_18px_24px_rgba(0,0,0,0.10)] transition-transform duration-[900ms] ease-out animate-float-soft group-hover:scale-[1.04] group-active:scale-[0.96]"
           />
         ) : null}
+      </div>
+
+      {/* Bottom gradient + label — minimal, doesn't shrink image */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 px-3 md:px-4 pt-8 pb-3 md:pb-4 bg-gradient-to-t from-black/15 via-black/5 to-transparent pointer-events-none">
+        <h3 className={`font-editorial text-[11px] md:text-[12px] font-medium tracking-[0.01em] ${INK} leading-tight line-clamp-1`}>
+          {product.name_mn}
+        </h3>
+        <p className={`font-editorial text-[11px] md:text-[12px] mt-0.5 ${SOFT_INK} tabular-nums`}>
+          {formatPrice(product.price)}
+        </p>
       </div>
 
       {/* Quick add — visible & tappable on mobile */}
@@ -93,7 +93,7 @@ function BentoCard({
           addToCart(product);
           toast({ title: "Сагсанд нэмэгдлээ", description: product.name_mn });
         }}
-        className="absolute bottom-3 right-3 md:bottom-4 md:right-4 h-8 w-8 md:h-9 md:w-9 rounded-full bg-[#1a1a1a] text-[#faf8f5] flex items-center justify-center shadow-[0_6px_18px_-6px_rgba(0,0,0,0.35)] md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-500 active:scale-90"
+        className="absolute top-3 right-3 md:top-4 md:right-4 z-20 h-8 w-8 md:h-9 md:w-9 rounded-full bg-[#1a1a1a] text-[#faf8f5] flex items-center justify-center shadow-[0_6px_18px_-6px_rgba(0,0,0,0.35)] md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-500 active:scale-90"
         aria-label="Сагсанд хийх"
       >
         <ShoppingCart className="h-3.5 w-3.5 md:h-4 md:w-4" />
