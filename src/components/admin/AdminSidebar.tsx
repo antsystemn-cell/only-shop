@@ -70,9 +70,7 @@ const menuGroups: MenuGroup[] = [
     label: "Захиалга",
     defaultOpen: true,
     items: [
-      { title: "Борлуулалт", url: "/admin/sales", icon: ShoppingCart },
-      { title: "Захиалга удирдах", url: "/admin/orders", icon: ShoppingCart },
-      { title: "Хүргэлт & Үйл ажиллагаа", url: "/admin/delivery-ops", icon: Truck },
+      { title: "Захиалга", url: "/admin/orders", icon: ShoppingCart },
     ],
   },
   {
