@@ -60,7 +60,7 @@ import AuthSettings from "./pages/admin/AuthSettings";
 import SmsGateway from "./pages/admin/SmsGateway";
 import OrderSettings from "./pages/admin/OrderSettings";
 import SystemTools from "./pages/admin/SystemTools";
-import Reviews from "./pages/admin/Reviews";
+
 import UserActivityLog from "./pages/admin/UserActivityLog";
 import Inventory from "./pages/admin/Inventory";
 import StockMovements from "./pages/admin/StockMovements";
