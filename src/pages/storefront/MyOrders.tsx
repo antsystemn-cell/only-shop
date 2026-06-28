@@ -23,13 +23,7 @@ interface LocalOrder {
   order_items: OrderItem[];
 }
 
-const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Хүлээгдэж буй", variant: "secondary" },
-  processing: { label: "Боловсруулж буй", variant: "default" },
-  shipped: { label: "Хүргэгдэж буй", variant: "default" },
-  delivered: { label: "Хүргэгдсэн", variant: "default" },
-  cancelled: { label: "Цуцлагдсан", variant: "destructive" },
-};
+import { getFulfillmentMeta } from "@/lib/statusLabels";
 
 export default function MyOrders() {
   const navigate = useNavigate();
