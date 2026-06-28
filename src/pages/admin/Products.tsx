@@ -808,6 +808,7 @@ export default function Products() {
                     }
                   />
                   <Label htmlFor="is_active">Идэвхтэй</Label>
+                </div>
               </div>
 
               <div className="grid sm:grid-cols-[200px_1fr] gap-3 items-end">
