@@ -49,7 +49,7 @@ import Users from "./pages/admin/Users";
 import Delivery from "./pages/admin/Delivery";
 import DeliveryOperations from "./pages/admin/DeliveryOperations";
 import Banners from "./pages/admin/Banners";
-import Pricing from "./pages/admin/Pricing";
+
 import Content from "./pages/admin/Content";
 import Seo from "./pages/admin/Seo";
 import Newsletter from "./pages/admin/Newsletter";
@@ -128,7 +128,7 @@ const App = () => (
                 <Route path="delivery" element={<Delivery />} />
                 <Route path="delivery-ops" element={<DeliveryOperations />} />
                 <Route path="banners" element={<Banners />} />
-                <Route path="pricing" element={<Pricing />} />
+                
                 <Route path="content" element={<Content />} />
                 <Route path="seo" element={<Seo />} />
                 <Route path="newsletter" element={<Newsletter />} />
