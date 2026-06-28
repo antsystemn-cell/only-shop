@@ -394,9 +394,13 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Төлбөрийн төлөв</Label>
+              <Label className="flex items-center gap-1">
+                Төлбөр төлөгдсөн эсэх <span className="text-destructive">*</span>
+              </Label>
               <Select value={paymentStatus} onValueChange={setPaymentStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className={!paymentStatus ? "border-destructive/60" : ""}>
+                  <SelectValue placeholder="Төлбөр орсон / ороогүйг сонгоно уу" />
+                </SelectTrigger>
                 <SelectContent>
                   {PAYMENT_STATUSES.map((s) => (
                     <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
@@ -404,6 +408,7 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
                 </SelectContent>
               </Select>
             </div>
+
           </div>
 
           {/* Notes & options */}
