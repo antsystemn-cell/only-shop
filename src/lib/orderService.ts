@@ -1,31 +1,37 @@
 import { supabase } from "@/integrations/supabase/client";
 import { triggerDeliverySync, notifyDeliveryStatusChange } from "@/lib/deliverySync";
+import {
+  getFulfillmentMeta,
+  getPaymentMeta,
+  getSourceLabel as getSourceLabelShared,
+} from "@/lib/statusLabels";
 
 // ─── Constants ──────────────────────────────────────────────
 
 export const ORDER_SOURCES = [
   { value: "website", label: "Вэбсайт" },
-  { value: "admin_manual", label: "Админ (гараар)" },
-  { value: "phone", label: "Утасны захиалга" },
+  { value: "admin_manual", label: "Гар" },
+  { value: "phone", label: "Утас" },
   { value: "facebook", label: "Facebook" },
   { value: "instagram", label: "Instagram" },
   { value: "walk_in", label: "Биечлэн" },
-  { value: "legacy_import", label: "Түүхэн бүртгэл" },
+  { value: "legacy_import", label: "Түүхэн" },
 ] as const;
 
+// Backend value list (labels resolved via shared statusLabels util).
 export const FULFILLMENT_STATUSES = [
-  { value: "confirmed", label: "Захиалга баталгаажсан", color: "bg-blue-100 text-blue-800" },
-  { value: "phone_confirmed", label: "Утсаар баталгаажуулсан", color: "bg-cyan-100 text-cyan-800" },
-  { value: "out_for_delivery", label: "Хүргэлтэнд гарсан", color: "bg-purple-100 text-purple-800" },
+  { value: "confirmed", label: "Захиалга авсан", color: "bg-amber-100 text-amber-800" },
+  { value: "phone_confirmed", label: "Бэлтгэгдэж буй", color: "bg-amber-100 text-amber-800" },
+  { value: "out_for_delivery", label: "Хүргэлтэнд гарсан", color: "bg-blue-100 text-blue-800" },
   { value: "delivered", label: "Хүргэгдсэн", color: "bg-green-100 text-green-800" },
   { value: "cancelled", label: "Цуцлагдсан", color: "bg-red-100 text-red-800" },
 ] as const;
 
 export const PAYMENT_STATUSES = [
-  { value: "unpaid", label: "Төлөгдөөгүй", color: "bg-red-100 text-red-800" },
-  { value: "cash_on_delivery", label: "Бэлнээр", color: "bg-blue-100 text-blue-800" },
+  { value: "unpaid", label: "Хүлээгдэж буй", color: "bg-amber-100 text-amber-800" },
+  { value: "cash_on_delivery", label: "Хүлээгдэж буй", color: "bg-amber-100 text-amber-800" },
   { value: "paid", label: "Төлөгдсөн", color: "bg-green-100 text-green-800" },
-  { value: "refunded", label: "Буцаалт", color: "bg-gray-100 text-gray-800" },
+  { value: "refunded", label: "Буцаагдсан", color: "bg-red-100 text-red-800" },
 ] as const;
 
 // Fulfillment statuses that require inventory deduction
