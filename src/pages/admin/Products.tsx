@@ -373,6 +373,8 @@ export default function Products() {
       packaging_cost: (product as any).packaging_cost?.toString() || "",
       default_delivery_cost: (product as any).default_delivery_cost?.toString() || "",
       low_margin_threshold: (product as any).low_margin_threshold?.toString() || "15",
+      low_stock_threshold: (product as any).low_stock_threshold?.toString() || "5",
+      restock_qty: (product as any).restock_qty?.toString() || "10",
     });
     setLocalVariants([]);
     setIsDialogOpen(true);
