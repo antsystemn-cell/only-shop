@@ -161,12 +161,12 @@ export default function Home() {
 
 
       {/* ============ BENTO PRODUCT GRID ============ */}
-      <section className="px-5 md:px-10 pb-20 md:pb-32">
-        <div className="max-w-[1400px] mx-auto">
+      <section className="pb-20 md:pb-32">
+        <div className="w-full">
 
           {productsLoading ? (
             <div
-              className="grid grid-cols-4 gap-2 md:gap-4"
+              className="grid grid-cols-4 gap-0"
               style={{ gridAutoRows: "var(--bento-row)" }}
             >
               {Array.from({ length: 7 }).map((_, i) => {
@@ -174,14 +174,14 @@ export default function Home() {
                 return (
                   <Skeleton
                     key={i}
-                    className={`${slot.col} ${slot.row} ${CARD_TINTS[i % CARD_TINTS.length]} rounded-sm`}
+                    className={`${slot.col} ${slot.row} ${CARD_TINTS[i % CARD_TINTS.length]} rounded-none`}
                   />
                 );
               })}
             </div>
           ) : (
             <div
-              className="grid grid-cols-4 gap-2 md:gap-4 [--bento-row:calc((100vw-40px)/4)] md:[--bento-row:calc((min(100vw,1480px)-80px-48px)/4)]"
+              className="grid grid-cols-4 gap-0 [--bento-row:calc(100vw/4)]"
               style={{ gridAutoRows: "var(--bento-row)" }}
             >
               {products.map((product, i) => (
