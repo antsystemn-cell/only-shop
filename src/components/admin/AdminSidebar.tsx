@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, ShoppingCart, Package, BarChart3, LogOut } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, BarChart3, Users, LogOut } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
   Sidebar,
