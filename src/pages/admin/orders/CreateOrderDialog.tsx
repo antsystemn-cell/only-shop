@@ -149,8 +149,10 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (items.length === 0) throw new Error("Бараа нэмнэ үү");
+      if (items.length === 0) throw new Error("Заавал бараа сонгоно уу");
       if (!customerPhone && !customerName) throw new Error("Захиалагчийн мэдээлэл оруулна уу");
+      if (!paymentStatus) throw new Error("Төлбөр төлөгдсөн эсэхийг заавал сонгоно уу");
+      if (!fulfillmentLocationId) throw new Error("Аль салбар / жолоочоос гарсныг заавал сонгоно уу");
 
       return createManualOrder({
         source,
@@ -171,6 +173,7 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
         affects_inventory: affectsInventory,
         items,
         user_id: matchedUserId,
+        fulfillment_location_id: fulfillmentLocationId,
       });
     },
     onSuccess: (order) => {
@@ -190,9 +193,11 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
     setSource("phone");
     setCustomerName(""); setCustomerPhone(""); setAlternatePhone(""); setCustomerEmail("");
     setCustomerNote(""); setDistrict(""); setAddressText(""); setDeliveryNote("");
-    setDeliveryFee("0"); setPaymentMethod("cash"); setPaymentStatus("unpaid");
+    setDeliveryFee("0"); setPaymentMethod("cash"); setPaymentStatus("");
+    setFulfillmentLocationId("");
     setInternalNote(""); setAffectsInventory(true); setItems([]); setMatchedUserId(null);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
