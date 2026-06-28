@@ -88,7 +88,9 @@ function formatCurrency(amount: number): string {
 
 export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("new") === "1"
+  );
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name_mn: "",
