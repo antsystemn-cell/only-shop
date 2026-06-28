@@ -46,10 +46,12 @@ function BentoCard({
   product,
   slot,
   tint,
+  index,
 }: {
   product: Product;
   slot: Slot;
   tint: string;
+  index: number;
 }) {
   const { addToCart } = useCart();
   const { toast } = useToast();
@@ -57,7 +59,8 @@ function BentoCard({
   return (
     <Link
       to={`/product/${product.slug || product.id}`}
-      className={`group relative ${slot.col} ${slot.row} ${tint} rounded-sm overflow-hidden flex transition-shadow duration-500 hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)]`}
+      style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}
+      className={`group relative ${slot.col} ${slot.row} ${tint} rounded-sm overflow-hidden flex animate-fade-in transition-all duration-500 will-change-transform hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)] active:scale-[0.97] active:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)]`}
     >
       {/* Top-left label — clean corner stack */}
       <div className={`absolute top-0 left-0 z-10 ${slot.pad} pr-4`}>
@@ -69,20 +72,20 @@ function BentoCard({
         </p>
       </div>
 
-      {/* Floating PNG-style product image, no background, soft shadow */}
+      {/* Floating PNG-style product image with gentle float loop */}
       <div className="flex-1 flex items-end justify-center min-h-0 p-6 md:p-8 pt-16 md:pt-20">
         {product.images && product.images[0] ? (
           <img
             src={product.images[0]}
             alt={product.name_mn}
             loading="lazy"
-            style={{ mixBlendMode: "multiply" }}
-            className="max-w-[78%] max-h-[78%] w-auto h-auto object-contain drop-shadow-[0_18px_24px_rgba(0,0,0,0.10)] transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
+            style={{ mixBlendMode: "multiply", animationDelay: `${index * 120}ms` }}
+            className="max-w-[78%] max-h-[78%] w-auto h-auto object-contain drop-shadow-[0_18px_24px_rgba(0,0,0,0.10)] transition-transform duration-[900ms] ease-out animate-float-soft group-hover:scale-[1.04] group-active:scale-[0.96]"
           />
         ) : null}
       </div>
 
-      {/* Quick add */}
+      {/* Quick add — visible & tappable on mobile */}
       <button
         onClick={(e) => {
           e.preventDefault();
@@ -90,10 +93,10 @@ function BentoCard({
           addToCart(product);
           toast({ title: "Сагсанд нэмэгдлээ", description: product.name_mn });
         }}
-        className="absolute bottom-4 right-4 h-9 w-9 rounded-full bg-[#1a1a1a] text-[#faf8f5] flex items-center justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500"
+        className="absolute bottom-3 right-3 md:bottom-4 md:right-4 h-8 w-8 md:h-9 md:w-9 rounded-full bg-[#1a1a1a] text-[#faf8f5] flex items-center justify-center shadow-[0_6px_18px_-6px_rgba(0,0,0,0.35)] md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-500 active:scale-90"
         aria-label="Сагсанд хийх"
       >
-        <ShoppingCart className="h-4 w-4" />
+        <ShoppingCart className="h-3.5 w-3.5 md:h-4 md:w-4" />
       </button>
     </Link>
   );
@@ -172,6 +175,7 @@ export default function Home() {
                   product={product}
                   slot={BENTO_SLOTS[i % BENTO_SLOTS.length]}
                   tint={CARD_TINTS[i % CARD_TINTS.length]}
+                  index={i}
                 />
               ))}
             </div>
