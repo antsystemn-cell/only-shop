@@ -37,6 +37,10 @@ import {
   getSourceLabel,
   formatCurrency,
 } from "@/lib/orderService";
+import {
+  getFulfillmentMeta,
+  getPaymentMeta,
+} from "@/lib/statusLabels";
 import CreateOrderDialog from "./orders/CreateOrderDialog";
 import OrderDetailSheet from "@/components/admin/OrderDetailSheet";
 
@@ -54,30 +58,12 @@ const STATUS_TABS: { value: StatusTab; label: string }[] = [
 // Progress stages (cancelled handled separately)
 const PROGRESS_STEPS = ["confirmed", "phone_confirmed", "out_for_delivery", "delivered"];
 
-// Spec display labels/colors for badges
-const FULFILLMENT_DISPLAY: Record<string, { label: string; color: string }> = {
-  confirmed: { label: "Захиалга авсан", color: "bg-amber-100 text-amber-800" },
-  phone_confirmed: { label: "Бэлтгэгдэж буй", color: "bg-amber-100 text-amber-800" },
-  out_for_delivery: { label: "Хүргэлтэнд гарсан", color: "bg-blue-100 text-blue-800" },
-  delivered: { label: "Хүргэгдсэн", color: "bg-green-100 text-green-800" },
-  cancelled: { label: "Цуцлагдсан", color: "bg-red-100 text-red-800" },
+const SOURCE_COLOR: Record<string, string> = {
+  website: "bg-purple-100 text-purple-700 border-purple-200",
 };
-const PAYMENT_DISPLAY: Record<string, { label: string; color: string }> = {
-  paid: { label: "Төлөгдсөн", color: "bg-green-100 text-green-800" },
-  unpaid: { label: "Хүлээгдэж буй", color: "bg-amber-100 text-amber-800" },
-  pending: { label: "Хүлээгдэж буй", color: "bg-amber-100 text-amber-800" },
-  cash_on_delivery: { label: "Хүлээгдэж буй", color: "bg-amber-100 text-amber-800" },
-  refunded: { label: "Буцаагдсан", color: "bg-red-100 text-red-800" },
-};
-const SOURCE_DISPLAY: Record<string, { label: string; color: string }> = {
-  website: { label: "Вэбсайт", color: "bg-purple-100 text-purple-700 border-purple-200" },
-  admin_manual: { label: "Гар", color: "bg-gray-100 text-gray-700 border-gray-200" },
-  phone: { label: "Утас", color: "bg-gray-100 text-gray-700 border-gray-200" },
-  facebook: { label: "Facebook", color: "bg-gray-100 text-gray-700 border-gray-200" },
-  instagram: { label: "Instagram", color: "bg-gray-100 text-gray-700 border-gray-200" },
-  walk_in: { label: "Биечлэн", color: "bg-gray-100 text-gray-700 border-gray-200" },
-  legacy_import: { label: "Түүхэн", color: "bg-gray-100 text-gray-700 border-gray-200" },
-};
+function sourceBadgeColor(src: string) {
+  return SOURCE_COLOR[src] || "bg-gray-100 text-gray-700 border-gray-200";
+}
 
 function progressStep(status: string): number {
   return PROGRESS_STEPS.indexOf(status);
@@ -344,11 +330,11 @@ export default function Orders() {
                   {orders.map((o: any) => {
                     const c = getCustomer(o);
                     const status = o.fulfillment_status || "confirmed";
-                    const fb = FULFILLMENT_DISPLAY[status] || { label: status, color: "bg-gray-100 text-gray-800" };
+                    const fb = getFulfillmentMeta(status);
                     const payStatus = o.payment_status || "unpaid";
-                    const pb = PAYMENT_DISPLAY[payStatus] || { label: payStatus, color: "bg-gray-100 text-gray-800" };
+                    const pb = getPaymentMeta(payStatus);
                     const src = o.source || "website";
-                    const sb = SOURCE_DISPLAY[src] || { label: src, color: "bg-gray-100 text-gray-700 border-gray-200" };
+                    const sb = { label: getSourceLabel(src), color: sourceBadgeColor(src) };
                     const isCancelled = status === "cancelled";
                     const curStep = progressStep(status);
                     const itemCount = o.order_items?.length || 0;
@@ -380,11 +366,14 @@ export default function Orders() {
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${fb.color}`}>{fb.label}</span>
                               </SelectTrigger>
                               <SelectContent>
-                                {Object.entries(FULFILLMENT_DISPLAY).map(([val, s]) => (
-                                  <SelectItem key={val} value={val}>
-                                    <span className={`px-2 py-0.5 rounded-full text-xs ${s.color}`}>{s.label}</span>
-                                  </SelectItem>
-                                ))}
+                                {FULFILLMENT_STATUSES.map((s) => {
+                                  const m = getFulfillmentMeta(s.value);
+                                  return (
+                                    <SelectItem key={s.value} value={s.value}>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs ${m.color}`}>{m.label}</span>
+                                    </SelectItem>
+                                  );
+                                })}
                               </SelectContent>
                             </Select>
                           </TableCell>
@@ -398,10 +387,10 @@ export default function Orders() {
                               </SelectTrigger>
                               <SelectContent>
                                 {PAYMENT_STATUSES.map((s) => {
-                                  const disp = PAYMENT_DISPLAY[s.value] || { label: s.label, color: s.color };
+                                  const m = getPaymentMeta(s.value);
                                   return (
                                     <SelectItem key={s.value} value={s.value}>
-                                      <span className={`px-2 py-0.5 rounded-full text-xs ${disp.color}`}>{disp.label}</span>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs ${m.color}`}>{m.label}</span>
                                     </SelectItem>
                                   );
                                 })}

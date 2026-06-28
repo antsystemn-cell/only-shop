@@ -23,13 +23,7 @@ interface LocalOrder {
   order_items: OrderItem[];
 }
 
-const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Хүлээгдэж буй", variant: "secondary" },
-  processing: { label: "Боловсруулж буй", variant: "default" },
-  shipped: { label: "Хүргэгдэж буй", variant: "default" },
-  delivered: { label: "Хүргэгдсэн", variant: "default" },
-  cancelled: { label: "Цуцлагдсан", variant: "destructive" },
-};
+import { getFulfillmentMeta } from "@/lib/statusLabels";
 
 export default function MyOrders() {
   const navigate = useNavigate();
@@ -77,7 +71,7 @@ export default function MyOrders() {
       {orders && orders.length > 0 ? (
         <div className="space-y-4">
           {orders.map((order) => {
-            const st = STATUS_MAP[order.status] || STATUS_MAP.pending;
+            const st = getFulfillmentMeta(order.status);
             const itemCount = order.order_items.reduce((s, i) => s + i.quantity, 0);
             return (
               <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow rounded-2xl">

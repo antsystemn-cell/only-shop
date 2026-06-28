@@ -67,19 +67,7 @@ interface Order {
   } | null;
 }
 
-const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Хүлээгдэж буй", variant: "secondary" },
-  processing: { label: "Боловсруулж буй", variant: "default" },
-  shipped: { label: "Хүргэгдэж буй", variant: "default" },
-  delivered: { label: "Хүргэгдсэн", variant: "default" },
-  cancelled: { label: "Цуцлагдсан", variant: "destructive" },
-};
-
-const paymentStatusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Төлбөр хүлээгдэж буй", variant: "outline" },
-  paid: { label: "Төлбөр төлөгдсөн", variant: "default" },
-  failed: { label: "Төлбөр амжилтгүй", variant: "destructive" },
-};
+import { getFulfillmentMeta, getPaymentMeta } from "@/lib/statusLabels";
 
 export default function OrderConfirmation() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -247,8 +235,8 @@ export default function OrderConfirmation() {
     );
   }
 
-  const orderStatus = statusLabels[order.status] || statusLabels.pending;
-  const paymentStatus = paymentStatusLabels[order.payment_status || "pending"] || paymentStatusLabels.pending;
+  const orderStatus = getFulfillmentMeta(order.status);
+  const paymentStatus = getPaymentMeta(order.payment_status);
   const showPayment = order.payment_status === "pending" || order.payment_status === "failed";
   const isPaid = order.payment_status === "paid";
   const activePaymentMethod = changingMethod ? selectedPaymentMethod : (order.payment_method as PaymentMethod) || "qpay";
