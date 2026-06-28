@@ -425,6 +425,7 @@ export default function Products() {
       fb_boost_cost: (product as any).fb_boost_cost?.toString() || "",
       other_cost: (product as any).other_cost?.toString() || "",
       other_cost_note: (product as any).other_cost_note || "",
+      homepage_position: (product as any).homepage_position?.toString() || "",
     });
     setLocalVariants([]);
     setIsDialogOpen(true);
