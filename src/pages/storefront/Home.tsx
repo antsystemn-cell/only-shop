@@ -119,7 +119,9 @@ export default function Home() {
       if (error) throw error;
       return (data || []) as Product[];
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const { data: categories } = useQuery({
