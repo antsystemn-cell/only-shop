@@ -235,8 +235,8 @@ export default function OrderConfirmation() {
     );
   }
 
-  const orderStatus = statusLabels[order.status] || statusLabels.pending;
-  const paymentStatus = paymentStatusLabels[order.payment_status || "pending"] || paymentStatusLabels.pending;
+  const orderStatus = getFulfillmentMeta(order.status);
+  const paymentStatus = getPaymentMeta(order.payment_status);
   const showPayment = order.payment_status === "pending" || order.payment_status === "failed";
   const isPaid = order.payment_status === "paid";
   const activePaymentMethod = changingMethod ? selectedPaymentMethod : (order.payment_method as PaymentMethod) || "qpay";
