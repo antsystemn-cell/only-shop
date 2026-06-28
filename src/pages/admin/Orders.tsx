@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,6 +71,7 @@ function progressStep(status: string): number {
 }
 
 export default function Orders() {
+  const navigate = useNavigate();
   const [statusTab, setStatusTab] = useState<StatusTab>("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
@@ -350,7 +352,12 @@ export default function Orders() {
                             )}
                           </TableCell>
                           <TableCell className="py-2">
-                            <div className="font-mono text-sm font-bold text-primary">{o.order_number}</div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigate(`/admin/orders/${o.id}`); }}
+                              className="font-mono text-sm font-bold text-primary hover:underline"
+                            >
+                              {o.order_number}
+                            </button>
                             <div className="text-xs text-muted-foreground truncate max-w-[200px]">{c.phone || "—"}</div>
                             <div className="text-[11px] text-muted-foreground">{itemCount} бараа</div>
                           </TableCell>
@@ -418,7 +425,7 @@ export default function Orders() {
                             <div className="flex items-center justify-end gap-1">
                               {status === "delivered" && (
                                 <>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Дэлгэрэнгүй" onClick={() => { setSelectedOrderId(o.id); setDetailOpen(true); }}>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Дэлгэрэнгүй" onClick={() => navigate(`/admin/orders/${o.id}`)}>
                                     <Eye className="h-3.5 w-3.5" />
                                   </Button>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" title="Хэвлэх" onClick={() => printInvoice(o)}>
@@ -457,7 +464,7 @@ export default function Orders() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => { setSelectedOrderId(o.id); setDetailOpen(true); }}>
+                                  <DropdownMenuItem onClick={() => navigate(`/admin/orders/${o.id}`)}>
                                     <Eye className="h-4 w-4 mr-2" /> Дэлгэрэнгүй
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={(e) => copyOrderForExcel(o, e as any)}>
