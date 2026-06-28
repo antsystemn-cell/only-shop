@@ -245,6 +245,7 @@ export default function Products() {
         fb_boost_cost: parseFloat(data.fb_boost_cost) || 0,
         other_cost: parseFloat(data.other_cost) || 0,
         other_cost_note: data.other_cost_note || null,
+        homepage_position: data.homepage_position !== "" ? parseInt(data.homepage_position) : null,
       };
 
       let productId = data.id;
