@@ -614,6 +614,13 @@ export default function Products() {
                   packaging_cost: formData.packaging_cost,
                   default_delivery_cost: formData.default_delivery_cost,
                   low_margin_threshold: formData.low_margin_threshold,
+                  purchase_cost_cny: formData.purchase_cost_cny,
+                  exchange_rate_cny: formData.exchange_rate_cny,
+                  cargo_fee: formData.cargo_fee,
+                  pickup_fee: formData.pickup_fee,
+                  fb_boost_cost: formData.fb_boost_cost,
+                  other_cost: formData.other_cost,
+                  other_cost_note: formData.other_cost_note,
                 }}
                 onChange={(v) => setFormData({ ...formData, ...v })}
                 sellingPrice={parseFloat(formData.price) || 0}
