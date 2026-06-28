@@ -35,6 +35,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductImageUpload } from "@/components/admin/ProductImageUpload";
 import { ProductVariantsManager } from "@/components/admin/ProductVariantsManager";
 import { ProductCostFields } from "@/components/admin/ProductCostFields";
+import ProductLocationStockEditor from "@/components/admin/inventory/ProductLocationStockEditor";
+
 
 import { VariantFormData } from "@/components/admin/VariantFormFields";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
@@ -562,7 +564,7 @@ export default function Products() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="stock">Суурь нөөц</Label>
+                    <Label htmlFor="stock">Нийт үлдэгдэл</Label>
                     <Input
                       id="stock"
                       type="number"
@@ -575,6 +577,7 @@ export default function Products() {
                       className={localVariants.length > 0 ? "opacity-60" : ""}
                     />
                   </div>
+
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -603,7 +606,12 @@ export default function Products() {
                     <p className="text-xs text-muted-foreground">Дахин захиалахад санал болгох тоо ширхэг</p>
                   </div>
                 </div>
+
+                {editingProduct && (
+                  <ProductLocationStockEditor productId={editingProduct.id} />
+                )}
               </div>
+
 
               {/* Cost & Profit */}
               <ProductCostFields
