@@ -37,6 +37,10 @@ import {
   getSourceLabel,
   formatCurrency,
 } from "@/lib/orderService";
+import {
+  getFulfillmentMeta,
+  getPaymentMeta,
+} from "@/lib/statusLabels";
 import CreateOrderDialog from "./orders/CreateOrderDialog";
 import OrderDetailSheet from "@/components/admin/OrderDetailSheet";
 
@@ -54,30 +58,12 @@ const STATUS_TABS: { value: StatusTab; label: string }[] = [
 // Progress stages (cancelled handled separately)
 const PROGRESS_STEPS = ["confirmed", "phone_confirmed", "out_for_delivery", "delivered"];
 
-// Spec display labels/colors for badges
-const FULFILLMENT_DISPLAY: Record<string, { label: string; color: string }> = {
-  confirmed: { label: "Захиалга авсан", color: "bg-amber-100 text-amber-800" },
-  phone_confirmed: { label: "Бэлтгэгдэж буй", color: "bg-amber-100 text-amber-800" },
-  out_for_delivery: { label: "Хүргэлтэнд гарсан", color: "bg-blue-100 text-blue-800" },
-  delivered: { label: "Хүргэгдсэн", color: "bg-green-100 text-green-800" },
-  cancelled: { label: "Цуцлагдсан", color: "bg-red-100 text-red-800" },
+const SOURCE_COLOR: Record<string, string> = {
+  website: "bg-purple-100 text-purple-700 border-purple-200",
 };
-const PAYMENT_DISPLAY: Record<string, { label: string; color: string }> = {
-  paid: { label: "Төлөгдсөн", color: "bg-green-100 text-green-800" },
-  unpaid: { label: "Хүлээгдэж буй", color: "bg-amber-100 text-amber-800" },
-  pending: { label: "Хүлээгдэж буй", color: "bg-amber-100 text-amber-800" },
-  cash_on_delivery: { label: "Хүлээгдэж буй", color: "bg-amber-100 text-amber-800" },
-  refunded: { label: "Буцаагдсан", color: "bg-red-100 text-red-800" },
-};
-const SOURCE_DISPLAY: Record<string, { label: string; color: string }> = {
-  website: { label: "Вэбсайт", color: "bg-purple-100 text-purple-700 border-purple-200" },
-  admin_manual: { label: "Гар", color: "bg-gray-100 text-gray-700 border-gray-200" },
-  phone: { label: "Утас", color: "bg-gray-100 text-gray-700 border-gray-200" },
-  facebook: { label: "Facebook", color: "bg-gray-100 text-gray-700 border-gray-200" },
-  instagram: { label: "Instagram", color: "bg-gray-100 text-gray-700 border-gray-200" },
-  walk_in: { label: "Биечлэн", color: "bg-gray-100 text-gray-700 border-gray-200" },
-  legacy_import: { label: "Түүхэн", color: "bg-gray-100 text-gray-700 border-gray-200" },
-};
+function sourceBadgeColor(src: string) {
+  return SOURCE_COLOR[src] || "bg-gray-100 text-gray-700 border-gray-200";
+}
 
 function progressStep(status: string): number {
   return PROGRESS_STEPS.indexOf(status);
