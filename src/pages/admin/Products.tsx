@@ -1081,9 +1081,11 @@ export default function Products() {
                           </Button>
                         </div>
                       </TableCell>
-                    </TableRow>
+                    </SortableProductRow>
                   ))}
                 </TableBody>
+                  </SortableContext>
+                </DndContext>
               </Table>
             </div>
           ) : (
