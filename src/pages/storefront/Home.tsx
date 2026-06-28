@@ -32,13 +32,13 @@ function formatPrice(price: number) {
 /* Bento layout slots — cycles every 7 products to match the reference grid */
 type Slot = { col: string; row: string; pad: string };
 const BENTO_SLOTS: Slot[] = [
-  { col: "md:col-span-2", row: "md:row-span-2", pad: "p-6 md:p-8" },  // 1. big square (left)
-  { col: "md:col-span-2", row: "md:row-span-1", pad: "p-6 md:p-8" },  // 2. wide (top-right)
-  { col: "md:col-span-2", row: "md:row-span-1", pad: "p-6 md:p-8" },  // 3. wide (mid-right)
-  { col: "md:col-span-1", row: "md:row-span-1", pad: "p-5 md:p-6" },  // 4. small
-  { col: "md:col-span-1", row: "md:row-span-2", pad: "p-5 md:p-6" },  // 5. tall
-  { col: "md:col-span-2", row: "md:row-span-2", pad: "p-8 md:p-10" }, // 6. big square (right)
-  { col: "md:col-span-1", row: "md:row-span-1", pad: "p-5 md:p-6" },  // 7. small
+  { col: "col-span-2", row: "row-span-2", pad: "p-3 md:p-8" },  // 1. big square (left)
+  { col: "col-span-2", row: "row-span-1", pad: "p-3 md:p-8" },  // 2. wide (top-right)
+  { col: "col-span-2", row: "row-span-1", pad: "p-3 md:p-8" },  // 3. wide (mid-right)
+  { col: "col-span-1", row: "row-span-1", pad: "p-2.5 md:p-6" },  // 4. small
+  { col: "col-span-1", row: "row-span-2", pad: "p-2.5 md:p-6" },  // 5. tall
+  { col: "col-span-2", row: "row-span-2", pad: "p-3 md:p-10" }, // 6. big square (right)
+  { col: "col-span-1", row: "row-span-1", pad: "p-2.5 md:p-6" },  // 7. small
 ];
 
 /* ---------- Bento product card ---------- */
@@ -148,7 +148,7 @@ export default function Home() {
 
           {productsLoading ? (
             <div
-              className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4"
+              className="grid grid-cols-4 gap-2 md:gap-4"
               style={{ gridAutoRows: "var(--bento-row)" }}
             >
               {Array.from({ length: 7 }).map((_, i) => {
@@ -163,7 +163,7 @@ export default function Home() {
             </div>
           ) : (
             <div
-              className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 [--bento-row:calc((100vw-40px-12px)/2)] md:[--bento-row:calc((min(100vw,1480px)-80px-48px)/4)]"
+              className="grid grid-cols-4 gap-2 md:gap-4 [--bento-row:calc((100vw-40px-24px)/4)] md:[--bento-row:calc((min(100vw,1480px)-80px-48px)/4)]"
               style={{ gridAutoRows: "var(--bento-row)" }}
             >
               {products.map((product, i) => (
