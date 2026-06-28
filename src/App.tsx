@@ -43,12 +43,12 @@ import Dashboard from "./pages/admin/Dashboard";
 import ProductsHub from "./pages/admin/ProductsHub";
 import Orders from "./pages/admin/Orders";
 import Sales from "./pages/admin/Sales";
-import Users from "./pages/admin/Users";
+
+
 
 import DeliveryOperations from "./pages/admin/DeliveryOperations";
 import Banners from "./pages/admin/Banners";
 
-import Content from "./pages/admin/Content";
 import Seo from "./pages/admin/Seo";
 import Newsletter from "./pages/admin/Newsletter";
 import Permissions from "./pages/admin/Permissions";
@@ -60,10 +60,10 @@ import OrderSettings from "./pages/admin/OrderSettings";
 import SystemTools from "./pages/admin/SystemTools";
 
 import UserActivityLog from "./pages/admin/UserActivityLog";
-import Inventory from "./pages/admin/Inventory";
-import StockMovements from "./pages/admin/StockMovements";
+import InventoryHub from "./pages/admin/InventoryHub";
 import Expenses from "./pages/admin/Expenses";
 import Reports from "./pages/admin/Reports";
+
 
 const queryClient = new QueryClient();
 
@@ -122,12 +122,10 @@ const App = () => (
                 <Route path="brands" element={<ProductsHub />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="sales" element={<Sales />} />
-                <Route path="users" element={<Users />} />
                 
                 <Route path="delivery-ops" element={<DeliveryOperations />} />
                 <Route path="banners" element={<Banners />} />
                 
-                <Route path="content" element={<Content />} />
                 <Route path="seo" element={<Seo />} />
                 <Route path="newsletter" element={<Newsletter />} />
                 <Route path="permissions" element={<Permissions />} />
@@ -139,8 +137,9 @@ const App = () => (
                 <Route path="settings-orders" element={<OrderSettings />} />
                 <Route path="system-tools" element={<SystemTools />} />
                 
-                <Route path="inventory" element={<Inventory />} />
-                <Route path="inventory/movements" element={<StockMovements />} />
+                <Route path="inventory" element={<InventoryHub />} />
+                <Route path="inventory/movements" element={<InventoryHub />} />
+
                 <Route path="expenses" element={<Expenses />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="user-activity-log" element={<UserActivityLog />} />

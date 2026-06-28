@@ -80,17 +80,12 @@ const menuGroups: MenuGroup[] = [
     defaultOpen: true,
     items: [
       { title: "Бараа удирдах", url: "/admin/products", icon: Package },
-      { title: "Үлдэгдэл", url: "/admin/inventory", icon: Boxes },
-      { title: "Үлдэгдлийн хөдөлгөөн", url: "/admin/inventory/movements", icon: History },
-      
-      
-      
+      { title: "Үлдэгдэл & Хөдөлгөөн", url: "/admin/inventory", icon: Boxes },
     ],
   },
   {
     label: "Контент",
     items: [
-      { title: "Хуудсууд", url: "/admin/content", icon: FileText },
       { title: "Баннер удирдах", url: "/admin/banners", icon: Image },
       { title: "SEO тохиргоо", url: "/admin/seo", icon: Megaphone },
       { title: "Мэдээллийн товхимол", url: "/admin/newsletter", icon: Megaphone },
@@ -99,10 +94,10 @@ const menuGroups: MenuGroup[] = [
   {
     label: "Хэрэглэгч",
     items: [
-      { title: "Хэрэглэгчид", url: "/admin/users", icon: Users },
       { title: "Админууд & Эрх", url: "/admin/permissions", icon: Users },
     ],
   },
+
   {
     label: "Мониторинг & Лог",
     items: [
