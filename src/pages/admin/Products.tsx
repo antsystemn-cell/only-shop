@@ -604,7 +604,12 @@ export default function Products() {
                     <p className="text-xs text-muted-foreground">Дахин захиалахад санал болгох тоо ширхэг</p>
                   </div>
                 </div>
+
+                {editingProduct && (
+                  <ProductLocationStockEditor productId={editingProduct.id} />
+                )}
               </div>
+
 
               {/* Cost & Profit */}
               <ProductCostFields
