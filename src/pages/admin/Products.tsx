@@ -489,26 +489,34 @@ export default function Products() {
     }
   };
 
-  // Move product up/down in homepage order. Assigns sequential positions when missing.
-  const handleMove = (productId: string, direction: "up" | "down") => {
-    if (!products) return;
-    const idx = products.findIndex((p) => p.id === productId);
-    if (idx < 0) return;
-    const neighborIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (neighborIdx < 0 || neighborIdx >= products.length) return;
-
-    // Assign sequential positions (1..N) based on current display order, then swap target two.
-    const updates = products.map((p, i) => {
-      let pos = i + 1;
-      if (i === idx) pos = neighborIdx + 1;
-      else if (i === neighborIdx) pos = idx + 1;
-      return { id: p.id, homepage_position: pos };
-    });
-    // Only send rows whose position actually changes vs current value
-    const changed = updates.filter((u, i) => products[i].homepage_position !== u.homepage_position);
-    if (changed.length === 0) return;
-    reorderMutation.mutate(changed);
+  // Reorder via drag & drop: assigns sequential positions to the new order.
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !products) return;
+    const oldIndex = products.findIndex((p) => p.id === active.id);
+    const newIndex = products.findIndex((p) => p.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const newOrder = arrayMove(products, oldIndex, newIndex);
+    const updates = newOrder
+      .map((p, i) => ({ id: p.id, homepage_position: i + 1 }))
+      .filter((u) => {
+        const current = products.find((p) => p.id === u.id);
+        return current?.homepage_position !== u.homepage_position;
+      });
+    if (updates.length === 0) return;
+    // Optimistic update
+    queryClient.setQueryData(
+      ["admin", "products", searchQuery],
+      newOrder.map((p, i) => ({ ...p, homepage_position: i + 1 }))
+    );
+    reorderMutation.mutate(updates);
   };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
