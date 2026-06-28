@@ -330,11 +330,11 @@ export default function Orders() {
                   {orders.map((o: any) => {
                     const c = getCustomer(o);
                     const status = o.fulfillment_status || "confirmed";
-                    const fb = FULFILLMENT_DISPLAY[status] || { label: status, color: "bg-gray-100 text-gray-800" };
+                    const fb = getFulfillmentMeta(status);
                     const payStatus = o.payment_status || "unpaid";
-                    const pb = PAYMENT_DISPLAY[payStatus] || { label: payStatus, color: "bg-gray-100 text-gray-800" };
+                    const pb = getPaymentMeta(payStatus);
                     const src = o.source || "website";
-                    const sb = SOURCE_DISPLAY[src] || { label: src, color: "bg-gray-100 text-gray-700 border-gray-200" };
+                    const sb = { label: getSourceLabel(src), color: sourceBadgeColor(src) };
                     const isCancelled = status === "cancelled";
                     const curStep = progressStep(status);
                     const itemCount = o.order_items?.length || 0;
@@ -366,11 +366,14 @@ export default function Orders() {
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${fb.color}`}>{fb.label}</span>
                               </SelectTrigger>
                               <SelectContent>
-                                {Object.entries(FULFILLMENT_DISPLAY).map(([val, s]) => (
-                                  <SelectItem key={val} value={val}>
-                                    <span className={`px-2 py-0.5 rounded-full text-xs ${s.color}`}>{s.label}</span>
-                                  </SelectItem>
-                                ))}
+                                {FULFILLMENT_STATUSES.map((s) => {
+                                  const m = getFulfillmentMeta(s.value);
+                                  return (
+                                    <SelectItem key={s.value} value={s.value}>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs ${m.color}`}>{m.label}</span>
+                                    </SelectItem>
+                                  );
+                                })}
                               </SelectContent>
                             </Select>
                           </TableCell>
@@ -384,10 +387,10 @@ export default function Orders() {
                               </SelectTrigger>
                               <SelectContent>
                                 {PAYMENT_STATUSES.map((s) => {
-                                  const disp = PAYMENT_DISPLAY[s.value] || { label: s.label, color: s.color };
+                                  const m = getPaymentMeta(s.value);
                                   return (
                                     <SelectItem key={s.value} value={s.value}>
-                                      <span className={`px-2 py-0.5 rounded-full text-xs ${disp.color}`}>{disp.label}</span>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs ${m.color}`}>{m.label}</span>
                                     </SelectItem>
                                   );
                                 })}
