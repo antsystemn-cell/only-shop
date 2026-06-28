@@ -323,6 +323,43 @@ export default function Inventory() {
         </Card>
       </div>
 
+      {/* Profit / Value cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+              <Wallet className="h-3 w-3" /> Нийт борлуулалтын үнэ
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold">{fmt(totalStockSelling)}₮</div>
+            <p className="text-[11px] text-muted-foreground">Бүх нөөц зарагдвал</p>
+          </CardContent>
+        </Card>
+        <Card className={totalPotentialProfit > 0 ? "border-green-300" : ""}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-green-500" /> Боломжит ашиг
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-xl font-bold ${totalPotentialProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
+              {fmt(totalPotentialProfit)}₮
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={totalStaleValue > 0 ? "border-purple-300" : ""}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+              <Coins className="h-3 w-3 text-purple-500" /> Үхсэн нөөц (₮)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-purple-600">{fmt(totalStaleValue)}₮</div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardContent className="p-4 space-y-4">
           <div className="flex flex-wrap items-center gap-3 justify-between">
