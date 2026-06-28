@@ -148,7 +148,7 @@ export default function Home() {
           {productsLoading ? (
             <div
               className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4"
-              style={{ gridAutoRows: "var(--bento-row)" } as React.CSSProperties}
+              style={{ gridAutoRows: "var(--bento-row)" }}
             >
               {Array.from({ length: 7 }).map((_, i) => {
                 const slot = BENTO_SLOTS[i % BENTO_SLOTS.length];
@@ -163,7 +163,7 @@ export default function Home() {
           ) : (
             <div
               className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 [--bento-row:calc((100vw-40px-12px)/2)] md:[--bento-row:calc((min(100vw,1480px)-80px-48px)/4)]"
-              style={{ gridAutoRows: "var(--bento-row)" } as React.CSSProperties}
+              style={{ gridAutoRows: "var(--bento-row)" }}
             >
               {products.map((product, i) => (
                 <BentoCard
