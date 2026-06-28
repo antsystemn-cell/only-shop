@@ -42,6 +42,7 @@ import AdminLogin from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import ProductsHub from "./pages/admin/ProductsHub";
 import Orders from "./pages/admin/Orders";
+import OrderDetail from "./pages/admin/OrderDetail";
 
 import Banners from "./pages/admin/Banners";
 
@@ -117,6 +118,7 @@ const App = () => (
                 <Route path="categories" element={<ProductsHub />} />
                 <Route path="brands" element={<ProductsHub />} />
                 <Route path="orders" element={<Orders />} />
+                <Route path="orders/:id" element={<OrderDetail />} />
                 <Route path="sales" element={<Navigate to="/admin/orders" replace />} />
                 <Route path="delivery-ops" element={<Navigate to="/admin/orders" replace />} />
 
