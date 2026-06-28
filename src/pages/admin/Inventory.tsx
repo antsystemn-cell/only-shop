@@ -195,6 +195,11 @@ export default function Inventory() {
   const lowMarginCount = rows.filter((x) => x.price > 0 && x.margin_pct < marginThreshold).length;
 
   const totalStockValue = rows.reduce((s, r) => s + r.stock * r.cost, 0);
+  const totalStockSelling = rows.reduce((s, r) => s + r.stock * r.price, 0);
+  const totalPotentialProfit = totalStockSelling - totalStockValue;
+  const totalStaleValue = rows
+    .filter((r) => r.stock > 0 && (r.days_since_sold === null || r.days_since_sold >= deadDays))
+    .reduce((s, r) => s + r.stock * r.cost, 0);
 
   const fmt = (n: number) => new Intl.NumberFormat("mn-MN").format(Math.round(n));
 
