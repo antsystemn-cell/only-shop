@@ -210,6 +210,8 @@ export default function Products() {
         packaging_cost: parseFloat(data.packaging_cost) || 0,
         default_delivery_cost: parseFloat(data.default_delivery_cost) || 0,
         low_margin_threshold: parseFloat(data.low_margin_threshold) || 15,
+        low_stock_threshold: parseInt(data.low_stock_threshold) || 5,
+        restock_qty: parseInt(data.restock_qty) || 10,
       };
 
       let productId = data.id;
