@@ -335,6 +335,26 @@ export default function Products() {
     },
   });
 
+  // Reorder mutation (homepage position swap)
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: { id: string; homepage_position: number }[]) => {
+      for (const u of updates) {
+        const { error } = await supabase
+          .from("products")
+          .update({ homepage_position: u.homepage_position })
+          .eq("id", u.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+      queryClient.invalidateQueries({ queryKey: ["all-products"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Алдаа гарлаа", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
