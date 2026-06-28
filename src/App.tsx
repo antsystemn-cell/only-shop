@@ -49,7 +49,6 @@ import Sales from "./pages/admin/Sales";
 import DeliveryOperations from "./pages/admin/DeliveryOperations";
 import Banners from "./pages/admin/Banners";
 
-import Content from "./pages/admin/Content";
 import Seo from "./pages/admin/Seo";
 import Newsletter from "./pages/admin/Newsletter";
 import Permissions from "./pages/admin/Permissions";
@@ -61,10 +60,10 @@ import OrderSettings from "./pages/admin/OrderSettings";
 import SystemTools from "./pages/admin/SystemTools";
 
 import UserActivityLog from "./pages/admin/UserActivityLog";
-import Inventory from "./pages/admin/Inventory";
-import StockMovements from "./pages/admin/StockMovements";
+import InventoryHub from "./pages/admin/InventoryHub";
 import Expenses from "./pages/admin/Expenses";
 import Reports from "./pages/admin/Reports";
+
 
 const queryClient = new QueryClient();
 
