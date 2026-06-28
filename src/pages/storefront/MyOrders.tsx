@@ -71,7 +71,7 @@ export default function MyOrders() {
       {orders && orders.length > 0 ? (
         <div className="space-y-4">
           {orders.map((order) => {
-            const st = STATUS_MAP[order.status] || STATUS_MAP.pending;
+            const st = getFulfillmentMeta(order.status);
             const itemCount = order.order_items.reduce((s, i) => s + i.quantity, 0);
             return (
               <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow rounded-2xl">
