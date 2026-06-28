@@ -142,11 +142,14 @@ export default function Home() {
 
 
       {/* ============ BENTO PRODUCT GRID ============ */}
-      <section className="px-5 md:px-12 lg:px-20 pb-20 md:pb-32">
+      <section className="px-5 md:px-10 pb-20 md:pb-32">
         <div className="max-w-[1400px] mx-auto">
 
           {productsLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[180px] md:auto-rows-[200px] gap-4 md:gap-6">
+            <div
+              className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4"
+              style={{ gridAutoRows: "var(--bento-row)" } as React.CSSProperties}
+            >
               {Array.from({ length: 7 }).map((_, i) => {
                 const slot = BENTO_SLOTS[i % BENTO_SLOTS.length];
                 return (
@@ -158,7 +161,10 @@ export default function Home() {
               })}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[180px] md:auto-rows-[220px] gap-4 md:gap-6">
+            <div
+              className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 [--bento-row:calc((100vw-40px-12px)/2)] md:[--bento-row:calc((min(100vw,1480px)-80px-48px)/4)]"
+              style={{ gridAutoRows: "var(--bento-row)" } as React.CSSProperties}
+            >
               {products.map((product, i) => (
                 <BentoCard
                   key={product.id}
@@ -169,6 +175,8 @@ export default function Home() {
               ))}
             </div>
           )}
+
+
 
           <div className="mt-10 md:mt-14 flex justify-center">
             <button
