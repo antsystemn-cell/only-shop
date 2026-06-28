@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WishlistProvider } from "@/contexts/WishlistContext";
@@ -42,11 +42,7 @@ import AdminLogin from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import ProductsHub from "./pages/admin/ProductsHub";
 import Orders from "./pages/admin/Orders";
-import Sales from "./pages/admin/Sales";
 
-
-
-import DeliveryOperations from "./pages/admin/DeliveryOperations";
 import Banners from "./pages/admin/Banners";
 
 import Seo from "./pages/admin/Seo";
@@ -121,9 +117,9 @@ const App = () => (
                 <Route path="categories" element={<ProductsHub />} />
                 <Route path="brands" element={<ProductsHub />} />
                 <Route path="orders" element={<Orders />} />
-                <Route path="sales" element={<Sales />} />
-                
-                <Route path="delivery-ops" element={<DeliveryOperations />} />
+                <Route path="sales" element={<Navigate to="/admin/orders" replace />} />
+                <Route path="delivery-ops" element={<Navigate to="/admin/orders" replace />} />
+
                 <Route path="banners" element={<Banners />} />
                 
                 <Route path="seo" element={<Seo />} />
