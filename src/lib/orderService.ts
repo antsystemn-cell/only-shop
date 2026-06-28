@@ -72,7 +72,9 @@ export interface CreateOrderParams {
   affects_inventory?: boolean;
   items: ManualOrderItem[];
   user_id?: string | null;
+  fulfillment_location_id?: string | null;
 }
+
 
 // ─── Create Order ───────────────────────────────────────────
 
