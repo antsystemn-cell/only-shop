@@ -39,20 +39,9 @@ export function Header() {
           <img src={onlyLogo} alt="Only" className="h-8 w-auto" />
         </Link>
 
-        {/* Desktop Search */}
-        <div className="hidden md:flex flex-1 max-w-xl">
-          <HeaderSearch />
-        </div>
+        {/* Spacer */}
+        <div className="flex-1" />
 
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-1">
-          <Link to="/shop" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted">
-            Дэлгүүр
-          </Link>
-          <Link to="/categories" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted">
-            Ангилал
-          </Link>
-        </nav>
 
         {/* Action Icons */}
         <div className="flex items-center gap-1">

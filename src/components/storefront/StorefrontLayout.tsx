@@ -25,7 +25,6 @@ export function StorefrontLayout() {
       <main className="flex-1 pb-16 md:pb-0">
         <Outlet />
       </main>
-      <Footer />
       <MobileBottomNav />
     </div>
   );

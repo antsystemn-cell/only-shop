@@ -136,11 +136,6 @@ export default function Home() {
 
   return (
     <div className={`${PAPER} ${SOFT_INK} font-editorial min-h-screen animate-fade-in`}>
-      {isMobile && (
-        <div className={`sticky top-0 z-30 ${PAPER} px-4 pt-3 pb-3 border-b border-[#ece8e0]`}>
-          <HeaderSearch />
-        </div>
-      )}
 
       {/* ============ HERO ============ */}
       <section className="px-5 md:px-12 lg:px-20 pt-12 md:pt-20 pb-14 md:pb-20">
@@ -162,35 +157,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ============ CATEGORY STRIP ============ */}
-      {categories && categories.length > 0 && (
-        <section className="px-5 md:px-12 lg:px-20 pb-14 md:pb-20">
-          <div className="max-w-[1400px] mx-auto">
-            <div className="flex items-baseline justify-between mb-6 md:mb-10 border-b border-[#ece8e0] pb-5">
-              <span className="text-[10px] md:text-[11px] tracking-eyebrow uppercase opacity-60">
-                Ангилал
-              </span>
-              <Link
-                to="/categories"
-                className="text-[10px] md:text-[11px] tracking-eyebrow uppercase hover:opacity-50 transition-opacity inline-flex items-center gap-1"
-              >
-                Бүгдийг үзэх <ArrowUpRight className="h-3 w-3" />
-              </Link>
-            </div>
-            <div className="flex flex-wrap gap-x-7 md:gap-x-12 gap-y-3">
-              {categories.map((c) => (
-                <Link
-                  key={c.id}
-                  to={`/shop?category=${c.id}`}
-                  className={`font-display italic text-xl md:text-3xl ${INK} hover:opacity-50 transition-opacity`}
-                >
-                  {c.name_mn}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+
+
 
       {/* ============ BENTO PRODUCT GRID ============ */}
       <section className="px-5 md:px-12 lg:px-20 pb-20 md:pb-32">
