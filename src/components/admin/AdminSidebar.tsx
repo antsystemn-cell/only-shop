@@ -85,7 +85,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Ангилал", url: "/admin/categories", icon: FolderTree },
       { title: "Брэнд удирдах", url: "/admin/brands", icon: Tags },
       { title: "Хүргэлтийн тохиргоо", url: "/admin/delivery", icon: Truck },
-      { title: "Үнийн удирдлага", url: "/admin/pricing", icon: DollarSign },
+      
       
     ],
   },
