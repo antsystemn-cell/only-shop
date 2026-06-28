@@ -33,13 +33,13 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-card shadow-sm">
-      <div className="container relative flex h-14 items-center justify-end gap-3">
+      <div className="container relative flex h-20 items-center justify-end gap-3">
         {/* Centered Logo */}
         <Link
           to="/"
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2"
         >
-          <img src={onlyLogo} alt="Only" className="h-8 w-auto" />
+          <img src={onlyLogo} alt="Only" className="h-14 md:h-16 w-auto" />
         </Link>
 
 
