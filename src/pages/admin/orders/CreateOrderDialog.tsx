@@ -436,12 +436,29 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <Button className="flex-1" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Захиалга үүсгэх
-            </Button>
+          <div className="space-y-2 pt-2">
+            {(items.length === 0 || !paymentStatus || !fulfillmentLocationId) && (
+              <div className="text-xs text-destructive">
+                Үргэлжлүүлэхийн тулд: бараа сонгох, төлбөрийн төлөв сонгох, салбар/жолооч сонгох шаардлагатай.
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button
+                className="flex-1"
+                onClick={() => createMutation.mutate()}
+                disabled={
+                  createMutation.isPending ||
+                  items.length === 0 ||
+                  !paymentStatus ||
+                  !fulfillmentLocationId
+                }
+              >
+                {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Захиалга үүсгэх
+              </Button>
+            </div>
           </div>
+
         </div>
       </DialogContent>
     </Dialog>
