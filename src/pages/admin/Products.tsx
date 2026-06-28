@@ -472,6 +472,27 @@ export default function Products() {
     }
   };
 
+  // Move product up/down in homepage order. Assigns sequential positions when missing.
+  const handleMove = (productId: string, direction: "up" | "down") => {
+    if (!products) return;
+    const idx = products.findIndex((p) => p.id === productId);
+    if (idx < 0) return;
+    const neighborIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (neighborIdx < 0 || neighborIdx >= products.length) return;
+
+    // Assign sequential positions (1..N) based on current display order, then swap target two.
+    const updates = products.map((p, i) => {
+      let pos = i + 1;
+      if (i === idx) pos = neighborIdx + 1;
+      else if (i === neighborIdx) pos = idx + 1;
+      return { id: p.id, homepage_position: pos };
+    });
+    // Only send rows whose position actually changes vs current value
+    const changed = updates.filter((u, i) => products[i].homepage_position !== u.homepage_position);
+    if (changed.length === 0) return;
+    reorderMutation.mutate(changed);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
