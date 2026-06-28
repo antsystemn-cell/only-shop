@@ -385,7 +385,7 @@ export default function Products() {
       fb_boost_cost: "",
       other_cost: "",
       other_cost_note: "",
-    });
+      homepage_position: "",
     setEditingProduct(null);
     setLocalVariants([]);
   };
