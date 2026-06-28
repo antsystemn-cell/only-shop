@@ -375,6 +375,13 @@ export default function Products() {
       low_margin_threshold: "15",
       low_stock_threshold: "5",
       restock_qty: "10",
+      purchase_cost_cny: "",
+      exchange_rate_cny: "",
+      cargo_fee: "",
+      pickup_fee: "",
+      fb_boost_cost: "",
+      other_cost: "",
+      other_cost_note: "",
     });
     setEditingProduct(null);
     setLocalVariants([]);
