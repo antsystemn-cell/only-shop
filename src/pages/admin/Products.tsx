@@ -341,6 +341,8 @@ export default function Products() {
       packaging_cost: "",
       default_delivery_cost: "",
       low_margin_threshold: "15",
+      low_stock_threshold: "5",
+      restock_qty: "10",
     });
     setEditingProduct(null);
     setLocalVariants([]);
