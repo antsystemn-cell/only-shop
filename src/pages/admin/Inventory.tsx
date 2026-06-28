@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,13 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, History, Package2, Search, TrendingDown, Skull, PercentCircle, FileSpreadsheet, Clock, Wallet, Coins, Sparkles } from "lucide-react";
+import { AlertTriangle, History, Package2, Search, Skull, PercentCircle, FileSpreadsheet, Clock, Wallet, Coins, Sparkles, Pencil } from "lucide-react";
 import * as XLSX from "xlsx";
 import { StockAdjustmentDialog } from "@/components/admin/inventory/StockAdjustmentDialog";
 import { StockHistorySheet } from "@/components/admin/inventory/StockHistorySheet";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
-import { avgDailySales, daysOfStock, marginColorClass } from "@/lib/inventoryCalc";
+import { marginColorClass } from "@/lib/inventoryCalc";
 
 interface Row {
   product_id: string;
