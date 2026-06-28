@@ -57,26 +57,27 @@ function BentoCard({
   return (
     <Link
       to={`/product/${product.slug || product.id}`}
-      className={`group relative ${slot.col} ${slot.row} ${tint} ${slot.pad} rounded-sm overflow-hidden flex flex-col transition-shadow duration-500 hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)]`}
+      className={`group relative ${slot.col} ${slot.row} ${tint} rounded-sm overflow-hidden flex transition-shadow duration-500 hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)]`}
     >
-      {/* Top-left label */}
-      <div className="relative z-10">
-        <h3 className={`font-editorial text-[13px] md:text-sm font-medium ${INK} leading-snug line-clamp-2`}>
+      {/* Top-left label — clean corner stack */}
+      <div className={`absolute top-0 left-0 z-10 ${slot.pad} pr-4`}>
+        <h3 className={`font-editorial text-[11px] md:text-[12px] font-medium tracking-[0.01em] ${INK} leading-tight line-clamp-2`}>
           {product.name_mn}
         </h3>
-        <p className={`font-editorial text-[12px] md:text-[13px] mt-1 ${SOFT_INK}`}>
+        <p className={`font-editorial text-[11px] md:text-[12px] mt-1.5 ${SOFT_INK} tabular-nums`}>
           {formatPrice(product.price)}
         </p>
       </div>
 
-      {/* Centered floating product image */}
-      <div className="flex-1 flex items-center justify-center min-h-0 mt-3">
+      {/* Floating PNG-style product image, no background, soft shadow */}
+      <div className="flex-1 flex items-end justify-center min-h-0 p-6 md:p-8 pt-16 md:pt-20">
         {product.images && product.images[0] ? (
           <img
             src={product.images[0]}
             alt={product.name_mn}
             loading="lazy"
-            className="max-w-[85%] max-h-[85%] w-auto h-auto object-contain transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
+            style={{ mixBlendMode: "multiply" }}
+            className="max-w-[78%] max-h-[78%] w-auto h-auto object-contain drop-shadow-[0_18px_24px_rgba(0,0,0,0.10)] transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
           />
         ) : null}
       </div>
