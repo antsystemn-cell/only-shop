@@ -191,41 +191,6 @@ export default function Home() {
       </section>
 
 
-      {/* ============ EDITORIAL BAND ============ */}
-      <section className="px-5 md:px-12 lg:px-20 pb-20 md:pb-32">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-10 md:gap-16 items-center">
-          <div className="md:col-span-5">
-            <span className="text-[10px] md:text-[11px] tracking-eyebrow uppercase opacity-60 block mb-6">
-              Бидний тухай
-            </span>
-            <h2 className={`font-display italic ${INK} text-4xl md:text-5xl leading-[0.95] mb-8`}>
-              Өдөр бүрийн чанартай амьдрал
-            </h2>
-            <p className={`${SOFT_INK}/85 text-base md:text-lg leading-relaxed font-light max-w-md mb-10`}>
-              Бид өдөр тутмын хэрэглээг урлаг болгон хувиргахыг зорьдог.
-              Хийц, чанар, мэдрэмж — гурван үндсэн зарчмаар сонголтоо хийдэг.
-            </p>
-            <Link
-              to="/shop"
-              className="inline-flex items-center gap-3 border-b border-[#1a1a1a] pb-1 text-[11px] tracking-eyebrow uppercase hover:opacity-50 transition-opacity"
-            >
-              Дэлгүүр үзэх <ArrowUpRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="md:col-span-7 md:pl-16">
-            <div className={`aspect-[4/3] ${CARD_TINTS[0]} rounded-sm overflow-hidden flex items-center justify-center p-10`}>
-              {products[0]?.images?.[0] && (
-                <img
-                  src={products[0].images[0]}
-                  alt=""
-                  className="max-w-[80%] max-h-[80%] object-contain"
-                  loading="lazy"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
