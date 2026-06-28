@@ -143,6 +143,27 @@
   .animate-scale-in {
     animation: scaleIn 0.2s ease-out;
   }
+
+  /* Editorial typography utilities (storefront premium lifestyle) */
+  .font-display {
+    font-family: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .font-editorial {
+    font-family: "Work Sans", "Google Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  .tracking-eyebrow {
+    letter-spacing: 0.22em;
+  }
+  .animate-editorial-rise {
+    animation: editorialRise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes editorialRise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeIn {
