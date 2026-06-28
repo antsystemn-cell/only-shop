@@ -136,7 +136,7 @@ export default function Home() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const products = (allProducts || []).slice(0, 7);
+  const products = allProducts || [];
 
   return (
     <div className={`${PAPER} ${SOFT_INK} font-editorial min-h-screen animate-fade-in`}>
