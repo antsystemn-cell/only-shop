@@ -151,6 +151,7 @@ export default function Products() {
             name_mn
           )
         `)
+        .order("homepage_position", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
 
       if (searchQuery) {
