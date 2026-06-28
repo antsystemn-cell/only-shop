@@ -115,6 +115,13 @@ export default function Products() {
     packaging_cost: "",
     default_delivery_cost: "",
     low_margin_threshold: "15",
+    purchase_cost_cny: "",
+    exchange_rate_cny: "",
+    cargo_fee: "",
+    pickup_fee: "",
+    fb_boost_cost: "",
+    other_cost: "",
+    other_cost_note: "",
     low_stock_threshold: "5",
     restock_qty: "10",
   });
