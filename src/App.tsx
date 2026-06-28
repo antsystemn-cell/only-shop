@@ -60,7 +60,7 @@ import AuthSettings from "./pages/admin/AuthSettings";
 import SmsGateway from "./pages/admin/SmsGateway";
 import OrderSettings from "./pages/admin/OrderSettings";
 import SystemTools from "./pages/admin/SystemTools";
-import Reviews from "./pages/admin/Reviews";
+
 import UserActivityLog from "./pages/admin/UserActivityLog";
 import Inventory from "./pages/admin/Inventory";
 import StockMovements from "./pages/admin/StockMovements";
@@ -140,7 +140,7 @@ const App = () => (
                 <Route path="sms-gateway" element={<SmsGateway />} />
                 <Route path="settings-orders" element={<OrderSettings />} />
                 <Route path="system-tools" element={<SystemTools />} />
-                <Route path="reviews" element={<Reviews />} />
+                
                 <Route path="inventory" element={<Inventory />} />
                 <Route path="inventory/movements" element={<StockMovements />} />
                 <Route path="expenses" element={<Expenses />} />
