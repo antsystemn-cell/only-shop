@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,13 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, History, Package2, Search, TrendingDown, Skull, PercentCircle, FileSpreadsheet, Clock, Wallet, Coins, Sparkles } from "lucide-react";
+import { AlertTriangle, History, Package2, Search, Skull, PercentCircle, FileSpreadsheet, Clock, Wallet, Coins, Sparkles, Pencil } from "lucide-react";
 import * as XLSX from "xlsx";
 import { StockAdjustmentDialog } from "@/components/admin/inventory/StockAdjustmentDialog";
 import { StockHistorySheet } from "@/components/admin/inventory/StockHistorySheet";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
-import { avgDailySales, daysOfStock, marginColorClass } from "@/lib/inventoryCalc";
+import { marginColorClass } from "@/lib/inventoryCalc";
 
 interface Row {
   product_id: string;
@@ -35,6 +35,7 @@ interface Row {
 type TabKey = "all" | "low" | "out" | "dead" | "low_margin";
 
 export default function Inventory() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -423,29 +424,26 @@ export default function Inventory() {
             <TableHeader>
               <TableRow>
                 <TableHead>Бараа</TableHead>
-                <TableHead>Хувилбар</TableHead>
-                <TableHead>SKU</TableHead>
                 <TableHead className="text-right">Үлдэгдэл</TableHead>
                 <TableHead className="text-right">Өртөг</TableHead>
                 <TableHead className="text-right">Үнэ</TableHead>
                 <TableHead className="text-right">Маржин %</TableHead>
-                <TableHead className="text-right">Үлд. өртөг</TableHead>
-                <TableHead className="text-right">30 хон.</TableHead>
-                <TableHead className="text-right">Үлдэх хоног</TableHead>
-                <TableHead className="text-right">Сүүлд зарсан</TableHead>
+                <TableHead className="text-right">Нийт өртөг</TableHead>
+                <TableHead className="text-right">Нийт борлуулах дүн</TableHead>
+                <TableHead>SKU</TableHead>
                 <TableHead className="text-right">Үйлдэл</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Ачааллаж байна...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Бараа алга
                   </TableCell>
                 </TableRow>
@@ -455,9 +453,6 @@ export default function Inventory() {
                   const isOut = r.stock <= 0;
                   const isLow = !isOut && r.stock <= effThreshold;
                   const isStale = !isOut && (r.days_since_sold === null || r.days_since_sold >= deadDays);
-                  const lowMargin = r.price > 0 && r.margin_pct < marginThreshold;
-                  const avgDaily = avgDailySales(r.total_sold_30d, 30);
-                  const daysLeft = daysOfStock(r.stock, avgDaily);
                   const stockBadgeClass = isOut
                     ? ""
                     : isLow
@@ -467,14 +462,14 @@ export default function Inventory() {
                     : "bg-green-100 text-green-800 hover:bg-green-100";
                   return (
                     <TableRow key={`${r.product_id}-${r.variant_id || "base"}`}>
-                      <TableCell className="font-medium">{r.product_name}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{r.variant_label || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{r.sku || "—"}</TableCell>
+                      <TableCell className="font-medium">
+                        {r.product_name}
+                        {r.variant_label && (
+                          <span className="ml-2 text-xs text-muted-foreground">({r.variant_label})</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
-                        <Badge
-                          variant={isOut ? "destructive" : "outline"}
-                          className={stockBadgeClass}
-                        >
+                        <Badge variant={isOut ? "destructive" : "outline"} className={stockBadgeClass}>
                           {r.stock}
                         </Badge>
                       </TableCell>
@@ -493,35 +488,23 @@ export default function Inventory() {
                           "—"
                         )}
                       </TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground">
+                      <TableCell className="text-right text-xs">
                         {r.cost > 0 && r.stock > 0 ? fmt(r.cost * r.stock) + "₮" : "—"}
                       </TableCell>
-                      <TableCell className="text-right text-xs">
-                        {r.total_sold_30d > 0 ? r.total_sold_30d : "—"}
+                      <TableCell className="text-right text-xs font-medium">
+                        {r.price > 0 && r.stock > 0 ? fmt(r.price * r.stock) + "₮" : "—"}
                       </TableCell>
-                      <TableCell className="text-right text-xs">
-                        {daysLeft === null ? (
-                          <span className="text-muted-foreground">∞</span>
-                        ) : (
-                          <span className={daysLeft <= 7 ? "text-destructive font-semibold" : daysLeft <= 30 ? "text-amber-600" : ""}>
-                            {daysLeft} хон.
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground">
-                        {r.last_sold_at ? (
-                          <span className="flex items-center justify-end gap-1">
-                            {format(new Date(r.last_sold_at), "yyyy-MM-dd")}
-                            {r.days_since_sold !== null && r.days_since_sold >= deadDays && (
-                              <TrendingDown className="h-3 w-3 text-purple-500" />
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-purple-500">Хэзээ ч</span>
-                        )}
-                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{r.sku || "—"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/admin/products?edit=${r.product_id}`)}
+                            title="Бараа засах"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"

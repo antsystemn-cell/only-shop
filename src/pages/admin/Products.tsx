@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -150,6 +150,22 @@ export default function Products() {
       return data as Product[];
     },
   });
+
+  // Auto-open edit dialog when ?edit=<productId> is in the URL
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const editId = new URLSearchParams(window.location.search).get("edit");
+    if (!editId || !products) return;
+    const found = products.find((p) => p.id === editId);
+    if (found && (!editingProduct || editingProduct.id !== editId)) {
+      handleEdit(found);
+      // strip the query param so reopening Inventory navigation works cleanly
+      const url = new URL(window.location.href);
+      url.searchParams.delete("edit");
+      window.history.replaceState({}, "", url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products]);
 
   // Fetch categories for dropdown
   const { data: categories } = useQuery({
