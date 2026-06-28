@@ -408,15 +408,17 @@ async function logStatusChange(
 // ─── Helpers ────────────────────────────────────────────────
 
 export function getFulfillmentBadge(status: string) {
-  return FULFILLMENT_STATUSES.find((s) => s.value === status) || { value: status, label: status, color: "bg-gray-100 text-gray-800" };
+  const meta = getFulfillmentMeta(status);
+  return { value: status, label: meta.label, color: meta.color };
 }
 
 export function getPaymentBadge(status: string) {
-  return PAYMENT_STATUSES.find((s) => s.value === status) || { value: status, label: status, color: "bg-gray-100 text-gray-800" };
+  const meta = getPaymentMeta(status);
+  return { value: status, label: meta.label, color: meta.color };
 }
 
 export function getSourceLabel(source: string) {
-  return ORDER_SOURCES.find((s) => s.value === source)?.label || source;
+  return getSourceLabelShared(source);
 }
 
 export function formatCurrency(amount: number): string {
