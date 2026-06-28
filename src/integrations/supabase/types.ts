@@ -1444,6 +1444,7 @@ export type Database = {
           discount_amount: number
           estimated_delivery_date: string | null
           estimated_profit: number
+          fulfillment_location_id: string | null
           fulfillment_status: string
           gross_profit: number
           id: string
@@ -1507,6 +1508,7 @@ export type Database = {
           discount_amount?: number
           estimated_delivery_date?: string | null
           estimated_profit?: number
+          fulfillment_location_id?: string | null
           fulfillment_status?: string
           gross_profit?: number
           id?: string
@@ -1570,6 +1572,7 @@ export type Database = {
           discount_amount?: number
           estimated_delivery_date?: string | null
           estimated_profit?: number
+          fulfillment_location_id?: string | null
           fulfillment_status?: string
           gross_profit?: number
           id?: string
@@ -1608,6 +1611,13 @@ export type Database = {
             columns: ["delivery_zone_id"]
             isOneToOne: false
             referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_fulfillment_location_id_fkey"
+            columns: ["fulfillment_location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
             referencedColumns: ["id"]
           },
         ]
