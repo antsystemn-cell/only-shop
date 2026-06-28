@@ -451,9 +451,20 @@ export default function Inventory() {
                 </TableRow>
               ) : (
                 filtered.slice(0, 500).map((r) => {
+                  const effThreshold = r.low_stock_threshold || threshold;
                   const isOut = r.stock <= 0;
-                  const isLow = !isOut && r.stock <= threshold;
+                  const isLow = !isOut && r.stock <= effThreshold;
+                  const isStale = !isOut && (r.days_since_sold === null || r.days_since_sold >= deadDays);
                   const lowMargin = r.price > 0 && r.margin_pct < marginThreshold;
+                  const avgDaily = avgDailySales(r.total_sold_30d, 30);
+                  const daysLeft = daysOfStock(r.stock, avgDaily);
+                  const stockBadgeClass = isOut
+                    ? ""
+                    : isLow
+                    ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
+                    : isStale
+                    ? "bg-purple-100 text-purple-800 hover:bg-purple-100"
+                    : "bg-green-100 text-green-800 hover:bg-green-100";
                   return (
                     <TableRow key={`${r.product_id}-${r.variant_id || "base"}`}>
                       <TableCell className="font-medium">{r.product_name}</TableCell>
@@ -461,8 +472,8 @@ export default function Inventory() {
                       <TableCell className="text-muted-foreground text-xs">{r.sku || "—"}</TableCell>
                       <TableCell className="text-right">
                         <Badge
-                          variant={isOut ? "destructive" : isLow ? "secondary" : "outline"}
-                          className={isLow ? "bg-amber-100 text-amber-800 hover:bg-amber-100" : ""}
+                          variant={isOut ? "destructive" : "outline"}
+                          className={stockBadgeClass}
                         >
                           {r.stock}
                         </Badge>
@@ -475,23 +486,27 @@ export default function Inventory() {
                       </TableCell>
                       <TableCell className="text-right">
                         {r.price > 0 ? (
-                          <span
-                            className={
-                              lowMargin
-                                ? "text-destructive font-semibold"
-                                : r.margin_pct >= 30
-                                ? "text-green-600 font-semibold"
-                                : ""
-                            }
-                          >
+                          <span className={`font-semibold ${marginColorClass(r.margin_pct)}`}>
                             {r.margin_pct.toFixed(1)}%
                           </span>
                         ) : (
                           "—"
                         )}
                       </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">
+                        {r.cost > 0 && r.stock > 0 ? fmt(r.cost * r.stock) + "₮" : "—"}
+                      </TableCell>
                       <TableCell className="text-right text-xs">
                         {r.total_sold_30d > 0 ? r.total_sold_30d : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {daysLeft === null ? (
+                          <span className="text-muted-foreground">∞</span>
+                        ) : (
+                          <span className={daysLeft <= 7 ? "text-destructive font-semibold" : daysLeft <= 30 ? "text-amber-600" : ""}>
+                            {daysLeft} хон.
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">
                         {r.last_sold_at ? (
