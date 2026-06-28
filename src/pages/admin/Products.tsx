@@ -126,6 +126,7 @@ export default function Products() {
     other_cost_note: "",
     low_stock_threshold: "5",
     restock_qty: "10",
+    homepage_position: "",
   });
 
   // Local variants for new product creation
