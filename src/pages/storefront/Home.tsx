@@ -63,7 +63,7 @@ function BentoCard({
     <Link
       to={`/product/${product.slug || product.id}`}
       style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}
-      className={`group relative ${slot.col} ${slot.row} ${isPng ? tint : "bg-[#1a1a1a]"} rounded-sm overflow-hidden flex animate-fade-in transition-all duration-500 will-change-transform hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)] active:scale-[0.97] active:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)]`}
+      className={`group relative ${slot.col} ${slot.row} ${isPng ? tint : "bg-[#1a1a1a]"} rounded-none overflow-hidden flex animate-fade-in transition-all duration-500 will-change-transform hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)] active:scale-[0.97] active:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)]`}
     >
       {/* Product image — PNGs float with tinted bg, non-PNGs fill edge-to-edge */}
       <div className="absolute inset-0 flex items-center justify-center">
