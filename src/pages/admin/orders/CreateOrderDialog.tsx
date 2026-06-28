@@ -293,14 +293,19 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
 
           {/* Products */}
           <div className="space-y-3">
-            <Label>Бараа нэмэх</Label>
+            <Label className="flex items-center gap-1">
+              Бараа сонгох <span className="text-destructive">*</span>
+              {items.length === 0 && (
+                <span className="ml-2 text-xs font-normal text-destructive">— заавал зөв барааг сонгоно уу</span>
+              )}
+            </Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Барааны нэр, SKU хайх..."
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                className="pl-10"
+                className={`pl-10 ${items.length === 0 ? "border-destructive/60 focus-visible:ring-destructive" : ""}`}
               />
             </div>
             {products && products.length > 0 && (
@@ -348,6 +353,31 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
               </div>
             )}
           </div>
+
+          {/* Fulfillment Location (branch / driver) */}
+          <div className="space-y-1">
+            <Label className="flex items-center gap-1">
+              Аль салбар / жолоочоос гарсан <span className="text-destructive">*</span>
+            </Label>
+            <Select value={fulfillmentLocationId} onValueChange={setFulfillmentLocationId}>
+              <SelectTrigger className={!fulfillmentLocationId ? "border-destructive/60" : ""}>
+                <SelectValue placeholder="Салбар эсвэл жолоочоо сонгоно уу" />
+              </SelectTrigger>
+              <SelectContent>
+                {(locations || []).map((loc: any) => (
+                  <SelectItem key={loc.id} value={loc.id}>
+                    {loc.icon ? `${loc.icon} ` : ""}{loc.name}
+                  </SelectItem>
+                ))}
+                {(!locations || locations.length === 0) && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">
+                    Идэвхтэй салбар алга — Үлдэгдэл цэснээс нэмнэ үү
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
 
           {/* Payment */}
           <div className="grid grid-cols-2 gap-3">
