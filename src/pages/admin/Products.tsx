@@ -35,6 +35,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductImageUpload } from "@/components/admin/ProductImageUpload";
 import { ProductVariantsManager } from "@/components/admin/ProductVariantsManager";
 import { ProductCostFields } from "@/components/admin/ProductCostFields";
+import ProductLocationStockEditor from "@/components/admin/inventory/ProductLocationStockEditor";
+
 
 import { VariantFormData } from "@/components/admin/VariantFormFields";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
