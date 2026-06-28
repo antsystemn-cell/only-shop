@@ -60,6 +60,7 @@ import UserActivityLog from "./pages/admin/UserActivityLog";
 import InventoryHub from "./pages/admin/InventoryHub";
 import Expenses from "./pages/admin/Expenses";
 import Reports from "./pages/admin/Reports";
+import Users from "./pages/admin/Users";
 
 
 const queryClient = new QueryClient();
@@ -140,6 +141,7 @@ const App = () => (
 
                 <Route path="expenses" element={<Expenses />} />
                 <Route path="reports" element={<Reports />} />
+                <Route path="users" element={<Users />} />
                 <Route path="user-activity-log" element={<UserActivityLog />} />
               </Route>
 
