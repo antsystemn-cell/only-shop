@@ -1993,6 +1993,7 @@ export type Database = {
         Row: {
           additional_cost: number | null
           brand: string | null
+          cargo_fee: number | null
           category_id: string | null
           compare_price: number | null
           cost_price: number | null
@@ -2002,6 +2003,8 @@ export type Database = {
           delivery_fee_type: string
           description: string | null
           description_mn: string | null
+          exchange_rate_cny: number | null
+          fb_boost_cost: number | null
           free_delivery_min_qty: number | null
           id: string
           images: string[] | null
@@ -2012,8 +2015,12 @@ export type Database = {
           low_stock_threshold: number | null
           name: string
           name_mn: string
+          other_cost: number | null
+          other_cost_note: string | null
           packaging_cost: number | null
+          pickup_fee: number | null
           price: number
+          purchase_cost_cny: number | null
           rating: number | null
           restock_qty: number | null
           review_count: number | null
@@ -2028,6 +2035,7 @@ export type Database = {
         Insert: {
           additional_cost?: number | null
           brand?: string | null
+          cargo_fee?: number | null
           category_id?: string | null
           compare_price?: number | null
           cost_price?: number | null
@@ -2037,6 +2045,8 @@ export type Database = {
           delivery_fee_type?: string
           description?: string | null
           description_mn?: string | null
+          exchange_rate_cny?: number | null
+          fb_boost_cost?: number | null
           free_delivery_min_qty?: number | null
           id?: string
           images?: string[] | null
@@ -2047,8 +2057,12 @@ export type Database = {
           low_stock_threshold?: number | null
           name: string
           name_mn: string
+          other_cost?: number | null
+          other_cost_note?: string | null
           packaging_cost?: number | null
+          pickup_fee?: number | null
           price: number
+          purchase_cost_cny?: number | null
           rating?: number | null
           restock_qty?: number | null
           review_count?: number | null
@@ -2063,6 +2077,7 @@ export type Database = {
         Update: {
           additional_cost?: number | null
           brand?: string | null
+          cargo_fee?: number | null
           category_id?: string | null
           compare_price?: number | null
           cost_price?: number | null
@@ -2072,6 +2087,8 @@ export type Database = {
           delivery_fee_type?: string
           description?: string | null
           description_mn?: string | null
+          exchange_rate_cny?: number | null
+          fb_boost_cost?: number | null
           free_delivery_min_qty?: number | null
           id?: string
           images?: string[] | null
@@ -2082,8 +2099,12 @@ export type Database = {
           low_stock_threshold?: number | null
           name?: string
           name_mn?: string
+          other_cost?: number | null
+          other_cost_note?: string | null
           packaging_cost?: number | null
+          pickup_fee?: number | null
           price?: number
+          purchase_cost_cny?: number | null
           rating?: number | null
           restock_qty?: number | null
           review_count?: number | null

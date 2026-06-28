@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,6 +16,14 @@ export interface ProductCostFieldsValue {
   packaging_cost: string;
   default_delivery_cost: string;
   low_margin_threshold: string;
+  // New CNY breakdown
+  purchase_cost_cny: string;
+  exchange_rate_cny: string;
+  cargo_fee: string;
+  pickup_fee: string;
+  fb_boost_cost: string;
+  other_cost: string;
+  other_cost_note: string;
 }
 
 interface Props {
@@ -31,10 +40,34 @@ export function ProductCostFields({ value, onChange, sellingPrice }: Props) {
   const set = (k: keyof ProductCostFieldsValue, v: string) =>
     onChange({ ...value, [k]: v });
 
+  const cny = parseFloat(value.purchase_cost_cny) || 0;
+  const rate = parseFloat(value.exchange_rate_cny) || 0;
+  const computedCostMnt = cny * rate;
+
+  // Auto-fill cost_price when CNY * rate changes
+  useEffect(() => {
+    if (cny > 0 && rate > 0) {
+      const next = Math.round(computedCostMnt).toString();
+      if (next !== value.cost_price) {
+        onChange({ ...value, cost_price: next });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cny, rate]);
+
+  const cargo = parseFloat(value.cargo_fee) || 0;
+  const pickup = parseFloat(value.pickup_fee) || 0;
+  const delivery = parseFloat(value.default_delivery_cost) || 0;
+  const fbBoost = parseFloat(value.fb_boost_cost) || 0;
+  const other = parseFloat(value.other_cost) || 0;
+  const extras = cargo + pickup + fbBoost + other;
+
   const landed = parseFloat(value.landed_cost) || 0;
   const cost = parseFloat(value.cost_price) || 0;
-  const additional = parseFloat(value.additional_cost) || 0;
-  const effectiveCost = landed > 0 ? landed : cost > 0 ? cost + additional : 0;
+  // Combine declared additional_cost with the new fee breakdown
+  const additionalManual = parseFloat(value.additional_cost) || 0;
+  const additionalTotal = additionalManual + extras;
+  const effectiveCost = landed > 0 ? landed : cost > 0 ? cost + additionalTotal : 0;
   const lowThreshold = parseFloat(value.low_margin_threshold) || 15;
 
   const m = calcUnitMargin(sellingPrice, effectiveCost, lowThreshold);
@@ -47,12 +80,34 @@ export function ProductCostFields({ value, onChange, sellingPrice }: Props) {
       </div>
       <p className="text-xs text-muted-foreground -mt-2">
         <strong>landed_cost</strong> (карго орсон) нь нэн тэргүүнд ашиглагдана.
-        Хоосон бол <strong>cost_price + нэмэлт</strong> ашиглана.
+        Хоосон бол <strong>cost_price + нэмэлт төлбөрүүд</strong> ашиглана.
       </p>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      {/* CNY → MNT converter */}
+      <div className="grid gap-3 md:grid-cols-3 p-3 rounded-md bg-background border">
         <div className="space-y-1.5">
-          <Label htmlFor="cost_price" className="text-xs">Худалдан авсан өртөг (₮)</Label>
+          <Label htmlFor="purchase_cost_cny" className="text-xs">Худалдан авсан өртөг (¥)</Label>
+          <Input
+            id="purchase_cost_cny" type="number" min="0" step="0.01"
+            value={value.purchase_cost_cny}
+            onChange={(e) => set("purchase_cost_cny", e.target.value)}
+            placeholder="0"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="exchange_rate_cny" className="text-xs">Тухайн өдрийн ханш (¥ → ₮)</Label>
+          <Input
+            id="exchange_rate_cny" type="number" min="0" step="0.01"
+            value={value.exchange_rate_cny}
+            onChange={(e) => set("exchange_rate_cny", e.target.value)}
+            placeholder="490"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="cost_price" className="text-xs">
+            Худалдан авсан өртөг (₮)
+            {cny > 0 && rate > 0 && <span className="text-[10px] text-muted-foreground ml-1">(авто)</span>}
+          </Label>
           <Input
             id="cost_price" type="number" min="0"
             value={value.cost_price}
@@ -60,37 +115,30 @@ export function ProductCostFields({ value, onChange, sellingPrice }: Props) {
             placeholder="0"
           />
         </div>
+      </div>
+
+      {/* Fees breakdown */}
+      <div className="grid gap-3 md:grid-cols-3">
         <div className="space-y-1.5">
-          <Label htmlFor="landed_cost" className="text-xs">
-            Бэлэн өртөг (карготой) (₮) <span className="text-primary">★</span>
-          </Label>
+          <Label htmlFor="cargo_fee" className="text-xs">Карго төлбөр (₮)</Label>
           <Input
-            id="landed_cost" type="number" min="0"
-            value={value.landed_cost}
-            onChange={(e) => set("landed_cost", e.target.value)}
+            id="cargo_fee" type="number" min="0"
+            value={value.cargo_fee}
+            onChange={(e) => set("cargo_fee", e.target.value)}
             placeholder="0"
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="additional_cost" className="text-xs">Нэмэлт өртөг (₮)</Label>
+          <Label htmlFor="pickup_fee" className="text-xs">Очиж авсан төлбөр (₮)</Label>
           <Input
-            id="additional_cost" type="number" min="0"
-            value={value.additional_cost}
-            onChange={(e) => set("additional_cost", e.target.value)}
+            id="pickup_fee" type="number" min="0"
+            value={value.pickup_fee}
+            onChange={(e) => set("pickup_fee", e.target.value)}
             placeholder="0"
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="packaging_cost" className="text-xs">Сав баглаа (₮)</Label>
-          <Input
-            id="packaging_cost" type="number" min="0"
-            value={value.packaging_cost}
-            onChange={(e) => set("packaging_cost", e.target.value)}
-            placeholder="0"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="default_delivery_cost" className="text-xs">Хүргэлтийн өртөг (₮)</Label>
+          <Label htmlFor="default_delivery_cost" className="text-xs">Хүргэлтийн төлбөр (₮)</Label>
           <Input
             id="default_delivery_cost" type="number" min="0"
             value={value.default_delivery_cost}
@@ -99,21 +147,94 @@ export function ProductCostFields({ value, onChange, sellingPrice }: Props) {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="low_margin_threshold" className="text-xs">Бага ашгийн босго (%)</Label>
+          <Label htmlFor="fb_boost_cost" className="text-xs">FB Boost (₮)</Label>
           <Input
-            id="low_margin_threshold" type="number" min="0" max="100"
-            value={value.low_margin_threshold}
-            onChange={(e) => set("low_margin_threshold", e.target.value)}
-            placeholder="15"
+            id="fb_boost_cost" type="number" min="0"
+            value={value.fb_boost_cost}
+            onChange={(e) => set("fb_boost_cost", e.target.value)}
+            placeholder="0"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="other_cost" className="text-xs">Бусад төлбөр (₮)</Label>
+          <Input
+            id="other_cost" type="number" min="0"
+            value={value.other_cost}
+            onChange={(e) => set("other_cost", e.target.value)}
+            placeholder="0"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="other_cost_note" className="text-xs">Бусад төлбөрийн тайлбар</Label>
+          <Input
+            id="other_cost_note" type="text"
+            value={value.other_cost_note}
+            onChange={(e) => set("other_cost_note", e.target.value)}
+            placeholder="Жишээ: Гаалийн төлбөр"
           />
         </div>
       </div>
+
+      {/* Advanced (collapsible feel) */}
+      <details className="border rounded-md bg-background">
+        <summary className="cursor-pointer text-xs text-muted-foreground px-3 py-2 select-none">
+          Нэмэлт талбарууд (landed_cost / сав баглаа / босго)
+        </summary>
+        <div className="grid gap-3 md:grid-cols-3 p-3 pt-0">
+          <div className="space-y-1.5">
+            <Label htmlFor="landed_cost" className="text-xs">
+              Бэлэн өртөг (карготой) (₮) <span className="text-primary">★</span>
+            </Label>
+            <Input
+              id="landed_cost" type="number" min="0"
+              value={value.landed_cost}
+              onChange={(e) => set("landed_cost", e.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="additional_cost" className="text-xs">Нэмэлт өртөг (гар) (₮)</Label>
+            <Input
+              id="additional_cost" type="number" min="0"
+              value={value.additional_cost}
+              onChange={(e) => set("additional_cost", e.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="packaging_cost" className="text-xs">Сав баглаа (₮)</Label>
+            <Input
+              id="packaging_cost" type="number" min="0"
+              value={value.packaging_cost}
+              onChange={(e) => set("packaging_cost", e.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="low_margin_threshold" className="text-xs">Бага ашгийн босго (%)</Label>
+            <Input
+              id="low_margin_threshold" type="number" min="0" max="100"
+              value={value.low_margin_threshold}
+              onChange={(e) => set("low_margin_threshold", e.target.value)}
+              placeholder="15"
+            />
+          </div>
+        </div>
+      </details>
 
       {/* Live margin preview */}
       <div className="border rounded-md bg-background p-3 space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Зарах үнэ</span>
           <span className="font-medium">{fmt(sellingPrice)}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Нэмэлт төлбөрүүд (карго + очиж авсан + FB + бусад)</span>
+          <span className="font-medium">{fmt(extras)}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Хүргэлт</span>
+          <span className="font-medium">{fmt(delivery)}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Үр дүнтэй өртөг</span>

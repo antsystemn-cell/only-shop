@@ -115,6 +115,13 @@ export default function Products() {
     packaging_cost: "",
     default_delivery_cost: "",
     low_margin_threshold: "15",
+    purchase_cost_cny: "",
+    exchange_rate_cny: "",
+    cargo_fee: "",
+    pickup_fee: "",
+    fb_boost_cost: "",
+    other_cost: "",
+    other_cost_note: "",
     low_stock_threshold: "5",
     restock_qty: "10",
   });
@@ -228,6 +235,13 @@ export default function Products() {
         low_margin_threshold: parseFloat(data.low_margin_threshold) || 15,
         low_stock_threshold: parseInt(data.low_stock_threshold) || 5,
         restock_qty: parseInt(data.restock_qty) || 10,
+        purchase_cost_cny: parseFloat(data.purchase_cost_cny) || 0,
+        exchange_rate_cny: parseFloat(data.exchange_rate_cny) || 0,
+        cargo_fee: parseFloat(data.cargo_fee) || 0,
+        pickup_fee: parseFloat(data.pickup_fee) || 0,
+        fb_boost_cost: parseFloat(data.fb_boost_cost) || 0,
+        other_cost: parseFloat(data.other_cost) || 0,
+        other_cost_note: data.other_cost_note || null,
       };
 
       let productId = data.id;
@@ -361,6 +375,13 @@ export default function Products() {
       low_margin_threshold: "15",
       low_stock_threshold: "5",
       restock_qty: "10",
+      purchase_cost_cny: "",
+      exchange_rate_cny: "",
+      cargo_fee: "",
+      pickup_fee: "",
+      fb_boost_cost: "",
+      other_cost: "",
+      other_cost_note: "",
     });
     setEditingProduct(null);
     setLocalVariants([]);
@@ -393,6 +414,13 @@ export default function Products() {
       low_margin_threshold: (product as any).low_margin_threshold?.toString() || "15",
       low_stock_threshold: (product as any).low_stock_threshold?.toString() || "5",
       restock_qty: (product as any).restock_qty?.toString() || "10",
+      purchase_cost_cny: (product as any).purchase_cost_cny?.toString() || "",
+      exchange_rate_cny: (product as any).exchange_rate_cny?.toString() || "",
+      cargo_fee: (product as any).cargo_fee?.toString() || "",
+      pickup_fee: (product as any).pickup_fee?.toString() || "",
+      fb_boost_cost: (product as any).fb_boost_cost?.toString() || "",
+      other_cost: (product as any).other_cost?.toString() || "",
+      other_cost_note: (product as any).other_cost_note || "",
     });
     setLocalVariants([]);
     setIsDialogOpen(true);
@@ -586,6 +614,13 @@ export default function Products() {
                   packaging_cost: formData.packaging_cost,
                   default_delivery_cost: formData.default_delivery_cost,
                   low_margin_threshold: formData.low_margin_threshold,
+                  purchase_cost_cny: formData.purchase_cost_cny,
+                  exchange_rate_cny: formData.exchange_rate_cny,
+                  cargo_fee: formData.cargo_fee,
+                  pickup_fee: formData.pickup_fee,
+                  fb_boost_cost: formData.fb_boost_cost,
+                  other_cost: formData.other_cost,
+                  other_cost_note: formData.other_cost_note,
                 }}
                 onChange={(v) => setFormData({ ...formData, ...v })}
                 sellingPrice={parseFloat(formData.price) || 0}
