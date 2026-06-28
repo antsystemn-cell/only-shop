@@ -808,7 +808,25 @@ export default function Products() {
                     }
                   />
                   <Label htmlFor="is_active">Идэвхтэй</Label>
+              </div>
+
+              <div className="grid sm:grid-cols-[200px_1fr] gap-3 items-end">
+                <div className="space-y-1.5">
+                  <Label htmlFor="homepage_position">Нүүр хуудасны байрлал</Label>
+                  <Input
+                    id="homepage_position"
+                    type="number"
+                    min="0"
+                    placeholder="ж: 1, 2, 3..."
+                    value={formData.homepage_position}
+                    onChange={(e) =>
+                      setFormData({ ...formData, homepage_position: e.target.value })
+                    }
+                  />
                 </div>
+                <p className="text-xs text-muted-foreground pb-2">
+                  Бага тоо — нүүр хуудсанд эхэнд харагдана. Хоосон үлдээвэл шинэ нэмэгдсэн нь эхэндээ ордог.
+                </p>
               </div>
 
               {/* Variants Section */}
