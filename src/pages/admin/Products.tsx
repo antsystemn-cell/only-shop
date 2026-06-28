@@ -70,6 +70,8 @@ interface Product {
   rating: number;
   review_count: number;
   category_id: string | null;
+  homepage_position: number | null;
+  created_at?: string;
   categories?: {
     name_mn: string;
   } | null;
