@@ -25,10 +25,11 @@ interface Row {
   stock: number;
   price: number;
   cost: number;
-  margin_pct: number; // (price-cost)/price * 100
+  margin_pct: number;
   last_sold_at: string | null;
   days_since_sold: number | null;
   total_sold_30d: number;
+  low_stock_threshold: number;
 }
 
 type TabKey = "all" | "low" | "out" | "dead" | "low_margin";
