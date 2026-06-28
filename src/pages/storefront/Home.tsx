@@ -32,13 +32,13 @@ function formatPrice(price: number) {
 /* Bento layout slots — cycles every 7 products to match the reference grid */
 type Slot = { col: string; row: string; pad: string };
 const BENTO_SLOTS: Slot[] = [
-  { col: "md:col-span-1", row: "md:row-span-2", pad: "p-6 md:p-8" },  // tall small
-  { col: "md:col-span-2", row: "md:row-span-1", pad: "p-6 md:p-8" },  // wide
-  { col: "md:col-span-2", row: "md:row-span-1", pad: "p-6 md:p-8" },  // wide
-  { col: "md:col-span-1", row: "md:row-span-1", pad: "p-5 md:p-6" },  // small
-  { col: "md:col-span-1", row: "md:row-span-2", pad: "p-5 md:p-6" },  // tall
-  { col: "md:col-span-2", row: "md:row-span-2", pad: "p-8 md:p-10" }, // big square
-  { col: "md:col-span-1", row: "md:row-span-1", pad: "p-5 md:p-6" },  // small
+  { col: "md:col-span-2", row: "md:row-span-2", pad: "p-6 md:p-8" },  // 1. big square (left)
+  { col: "md:col-span-2", row: "md:row-span-1", pad: "p-6 md:p-8" },  // 2. wide (top-right)
+  { col: "md:col-span-2", row: "md:row-span-1", pad: "p-6 md:p-8" },  // 3. wide (mid-right)
+  { col: "md:col-span-1", row: "md:row-span-1", pad: "p-5 md:p-6" },  // 4. small
+  { col: "md:col-span-1", row: "md:row-span-2", pad: "p-5 md:p-6" },  // 5. tall
+  { col: "md:col-span-2", row: "md:row-span-2", pad: "p-8 md:p-10" }, // 6. big square (right)
+  { col: "md:col-span-1", row: "md:row-span-1", pad: "p-5 md:p-6" },  // 7. small
 ];
 
 /* ---------- Bento product card ---------- */
