@@ -21,7 +21,7 @@ export default function InventoryHub() {
             </TabsTrigger>
           </TabsList>
           <Button asChild size="sm">
-            <Link to="/admin/products">
+            <Link to="/admin/products?tab=products&new=1">
               <Plus className="h-4 w-4 mr-1" /> Бараа нэмэх
             </Link>
           </Button>
