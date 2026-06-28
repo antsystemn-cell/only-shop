@@ -352,7 +352,12 @@ export default function Orders() {
                             )}
                           </TableCell>
                           <TableCell className="py-2">
-                            <div className="font-mono text-sm font-bold text-primary">{o.order_number}</div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigate(`/admin/orders/${o.id}`); }}
+                              className="font-mono text-sm font-bold text-primary hover:underline"
+                            >
+                              {o.order_number}
+                            </button>
                             <div className="text-xs text-muted-foreground truncate max-w-[200px]">{c.phone || "—"}</div>
                             <div className="text-[11px] text-muted-foreground">{itemCount} бараа</div>
                           </TableCell>
