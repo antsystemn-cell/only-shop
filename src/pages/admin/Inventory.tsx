@@ -137,6 +137,7 @@ export default function Inventory() {
           last_sold_at: last,
           days_since_sold: last ? differenceInDays(new Date(), new Date(last)) : null,
           total_sold_30d: sold30Map.get(key) || 0,
+          low_stock_threshold: Number(p.low_stock_threshold ?? threshold) || threshold,
         };
       };
 
