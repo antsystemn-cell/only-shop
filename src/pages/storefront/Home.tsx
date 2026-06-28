@@ -136,7 +136,7 @@ export default function Home() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const products = (allProducts || []).slice(0, 7);
+  const products = allProducts || [];
 
   return (
     <div className={`${PAPER} ${SOFT_INK} font-editorial min-h-screen animate-fade-in`}>
@@ -181,16 +181,6 @@ export default function Home() {
             </div>
           )}
 
-
-
-          <div className="mt-10 md:mt-14 flex justify-center">
-            <button
-              onClick={() => navigate("/shop")}
-              className="text-[10px] md:text-[11px] tracking-eyebrow uppercase hover:opacity-50 transition-opacity inline-flex items-center gap-1 border-b border-[#1a1a1a] pb-1"
-            >
-              Бүх бараа <ArrowUpRight className="h-3 w-3" />
-            </button>
-          </div>
         </div>
       </section>
 
