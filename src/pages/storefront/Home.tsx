@@ -56,31 +56,43 @@ function BentoCard({
   const { addToCart } = useCart();
   const { toast } = useToast();
 
+  const firstImage = product.images?.[0];
+  const isPng = !!firstImage && /\.png(\?|$)/i.test(firstImage);
+
   return (
     <Link
       to={`/product/${product.slug || product.id}`}
       style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}
-      className={`group relative ${slot.col} ${slot.row} ${tint} rounded-sm overflow-hidden flex animate-fade-in transition-all duration-500 will-change-transform hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)] active:scale-[0.97] active:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)]`}
+      className={`group relative ${slot.col} ${slot.row} ${isPng ? tint : "bg-[#1a1a1a]"} rounded-sm overflow-hidden flex animate-fade-in transition-all duration-500 will-change-transform hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)] active:scale-[0.97] active:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)]`}
     >
-      {/* Full-bleed product image — fills card edge-to-edge */}
+      {/* Product image — PNGs float with tinted bg, non-PNGs fill edge-to-edge */}
       <div className="absolute inset-0 flex items-center justify-center">
-        {product.images && product.images[0] ? (
-          <img
-            src={product.images[0]}
-            alt={product.name_mn}
-            loading="lazy"
-            style={{ mixBlendMode: "multiply", animationDelay: `${index * 120}ms` }}
-            className="w-full h-full object-contain p-2 md:p-3 drop-shadow-[0_18px_24px_rgba(0,0,0,0.10)] transition-transform duration-[900ms] ease-out animate-float-soft group-hover:scale-[1.04] group-active:scale-[0.96]"
-          />
+        {firstImage ? (
+          isPng ? (
+            <img
+              src={firstImage}
+              alt={product.name_mn}
+              loading="lazy"
+              style={{ mixBlendMode: "multiply", animationDelay: `${index * 120}ms` }}
+              className="w-full h-full object-contain p-2 md:p-3 drop-shadow-[0_18px_24px_rgba(0,0,0,0.10)] transition-transform duration-[900ms] ease-out animate-float-soft group-hover:scale-[1.04] group-active:scale-[0.96]"
+            />
+          ) : (
+            <img
+              src={firstImage}
+              alt={product.name_mn}
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04] group-active:scale-[0.96]"
+            />
+          )
         ) : null}
       </div>
 
-      {/* Bottom gradient + label — minimal, doesn't shrink image */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 px-3 md:px-4 pt-8 pb-3 md:pb-4 bg-gradient-to-t from-black/15 via-black/5 to-transparent pointer-events-none">
-        <h3 className={`font-editorial text-[11px] md:text-[12px] font-medium tracking-[0.01em] ${INK} leading-tight line-clamp-1`}>
+      {/* Bottom gradient + label — readable on both tinted and photo backgrounds */}
+      <div className={`absolute bottom-0 left-0 right-0 z-10 px-3 md:px-4 pt-8 pb-3 md:pb-4 pointer-events-none ${isPng ? "bg-gradient-to-t from-black/15 via-black/5 to-transparent" : "bg-gradient-to-t from-black/75 via-black/40 to-transparent"}`}>
+        <h3 className={`font-editorial text-[11px] md:text-[12px] font-medium tracking-[0.01em] leading-tight line-clamp-1 ${isPng ? INK : "text-white"}`}>
           {product.name_mn}
         </h3>
-        <p className={`font-editorial text-[11px] md:text-[12px] mt-0.5 ${SOFT_INK} tabular-nums`}>
+        <p className={`font-editorial text-[11px] md:text-[12px] mt-0.5 tabular-nums ${isPng ? SOFT_INK : "text-white/85"}`}>
           {formatPrice(product.price)}
         </p>
       </div>
