@@ -1,14 +1,12 @@
 // Centralized status label/color maps. Use these everywhere in the UI.
 // Backend values may vary (legacy keys are aliased to canonical buckets).
 
-export type FulfillmentKey =
-  | "new"
-  | "preparing"
-  | "shipped"
-  | "delivered"
-  | "cancelled";
+export type StatusColor = "green" | "amber" | "blue" | "red" | "purple" | "gray";
 
-export type PaymentKey = "pending" | "paid" | "refunded";
+export interface StatusConfig {
+  label: string;
+  color: StatusColor;
+}
 
 export interface StatusMeta {
   label: string;
@@ -16,26 +14,81 @@ export interface StatusMeta {
   variant?: "default" | "secondary" | "outline" | "destructive";
 }
 
-// Canonical → display
-const FULFILLMENT_META: Record<FulfillmentKey, StatusMeta> = {
-  new: { label: "Захиалга авсан", color: "bg-amber-100 text-amber-800", variant: "secondary" },
-  preparing: { label: "Бэлтгэгдэж буй", color: "bg-amber-100 text-amber-800", variant: "secondary" },
-  shipped: { label: "Хүргэлтэнд гарсан", color: "bg-blue-100 text-blue-800", variant: "default" },
-  delivered: { label: "Хүргэгдсэн", color: "bg-green-100 text-green-800", variant: "default" },
-  cancelled: { label: "Цуцлагдсан", color: "bg-red-100 text-red-800", variant: "destructive" },
+// =========================================================
+// 1. Canonical maps per the spec — use with <StatusBadge map={...} />
+// =========================================================
+
+export const fulfillmentStatus: Record<string, StatusConfig> = {
+  new:        { label: "Захиалга авсан",     color: "amber"  },
+  confirmed:  { label: "Баталгаажсан",        color: "amber"  },
+  preparing:  { label: "Бэлтгэгдэж буй",     color: "amber"  },
+  shipped:    { label: "Хүргэлтэнд гарсан",  color: "blue"   },
+  delivered:  { label: "Хүргэгдсэн",          color: "green"  },
+  cancelled:  { label: "Цуцлагдсан",          color: "red"    },
 };
 
-const PAYMENT_META: Record<PaymentKey, StatusMeta> = {
-  pending: { label: "Хүлээгдэж буй", color: "bg-amber-100 text-amber-800", variant: "outline" },
-  paid: { label: "Төлөгдсөн", color: "bg-green-100 text-green-800", variant: "default" },
-  refunded: { label: "Буцаагдсан", color: "bg-red-100 text-red-800", variant: "destructive" },
+export const paymentStatus: Record<string, StatusConfig> = {
+  pending:    { label: "Хүлээгдэж буй",       color: "amber"  },
+  paid:       { label: "Төлөгдсөн",            color: "green"  },
+  refunded:   { label: "Буцаагдсан",           color: "red"    },
+  failed:     { label: "Төлбөр амжилтгүй",    color: "red"    },
 };
+
+export const orderSource: Record<string, StatusConfig> = {
+  website:    { label: "Вэбсайт",              color: "purple" },
+  manual:     { label: "Гар борлуулалт",       color: "gray"   },
+  historical: { label: "Түүхэн",               color: "gray"   },
+};
+
+export const inventoryMovement: Record<string, StatusConfig> = {
+  manual_sale:  { label: "Гар зарагдсан",     color: "gray"   },
+  order_sale:   { label: "Захиалгаар",         color: "blue"   },
+  restock:      { label: "Нөхөн дүүргэлт",   color: "green"  },
+  adjustment:   { label: "Тохируулга",         color: "amber"  },
+  return:       { label: "Буцаалт",            color: "purple" },
+};
+
+export function getStatus(
+  value: string | null | undefined,
+  map: Record<string, StatusConfig>,
+): StatusConfig {
+  if (!value) return { label: "—", color: "gray" };
+  return map[value] ?? { label: value, color: "gray" };
+}
+
+// =========================================================
+// 2. Legacy meta API (tailwind class strings) — kept for existing consumers
+// =========================================================
+
+export type FulfillmentKey =
+  | "new"
+  | "confirmed"
+  | "preparing"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
+export type PaymentKey = "pending" | "paid" | "refunded" | "failed";
+
+const COLOR_CLASSES: Record<StatusColor, { bg: string; variant: StatusMeta["variant"] }> = {
+  green:  { bg: "bg-green-100 text-green-800",   variant: "default" },
+  amber:  { bg: "bg-amber-100 text-amber-800",   variant: "secondary" },
+  blue:   { bg: "bg-blue-100 text-blue-800",     variant: "default" },
+  red:    { bg: "bg-red-100 text-red-800",       variant: "destructive" },
+  purple: { bg: "bg-purple-100 text-purple-800", variant: "default" },
+  gray:   { bg: "bg-gray-100 text-gray-800",     variant: "outline" },
+};
+
+function toMeta(cfg: StatusConfig): StatusMeta {
+  const c = COLOR_CLASSES[cfg.color];
+  return { label: cfg.label, color: c.bg, variant: c.variant };
+}
 
 // Legacy / alternate backend keys → canonical bucket
 const FULFILLMENT_ALIAS: Record<string, FulfillmentKey> = {
   new: "new",
   pending: "new",
-  confirmed: "new",
+  confirmed: "confirmed",
   processing: "preparing",
   preparing: "preparing",
   phone_confirmed: "preparing",
@@ -55,7 +108,7 @@ const PAYMENT_ALIAS: Record<string, PaymentKey> = {
   unpaid: "pending",
   cash_on_delivery: "pending",
   awaiting: "pending",
-  failed: "pending",
+  failed: "failed",
   paid: "paid",
   success: "paid",
   completed: "paid",
@@ -64,10 +117,10 @@ const PAYMENT_ALIAS: Record<string, PaymentKey> = {
 
 const SOURCE_LABELS: Record<string, string> = {
   website: "Вэбсайт",
-  admin_manual: "Гар",
-  admin_manual_sale: "Админ гар",
-  manual_sale: "Гар",
-  manual: "Гар",
+  admin_manual: "Гар борлуулалт",
+  admin_manual_sale: "Гар борлуулалт",
+  manual_sale: "Гар борлуулалт",
+  manual: "Гар борлуулалт",
   phone: "Утас",
   facebook: "Facebook",
   instagram: "Instagram",
@@ -87,11 +140,11 @@ export function getPaymentKey(raw?: string | null): PaymentKey {
 }
 
 export function getFulfillmentMeta(raw?: string | null): StatusMeta {
-  return FULFILLMENT_META[getFulfillmentKey(raw)];
+  return toMeta(fulfillmentStatus[getFulfillmentKey(raw)]);
 }
 
 export function getPaymentMeta(raw?: string | null): StatusMeta {
-  return PAYMENT_META[getPaymentKey(raw)];
+  return toMeta(paymentStatus[getPaymentKey(raw)]);
 }
 
 export function getFulfillmentLabel(raw?: string | null): string {
@@ -104,20 +157,18 @@ export function getPaymentLabel(raw?: string | null): string {
 
 export function getSourceLabel(raw?: string | null): string {
   if (!raw) return "—";
-  return SOURCE_LABELS[raw] ?? raw;
+  return SOURCE_LABELS[raw] ?? orderSource[raw]?.label ?? raw;
 }
 
 // Ordered list for dropdowns / tabs (canonical keys only)
 export const FULFILLMENT_OPTIONS: { value: FulfillmentKey; label: string; color: string }[] =
-  (Object.keys(FULFILLMENT_META) as FulfillmentKey[]).map((k) => ({
-    value: k,
-    label: FULFILLMENT_META[k].label,
-    color: FULFILLMENT_META[k].color,
-  }));
+  (Object.keys(fulfillmentStatus) as FulfillmentKey[]).map((k) => {
+    const m = toMeta(fulfillmentStatus[k]);
+    return { value: k, label: m.label, color: m.color };
+  });
 
 export const PAYMENT_OPTIONS: { value: PaymentKey; label: string; color: string }[] =
-  (Object.keys(PAYMENT_META) as PaymentKey[]).map((k) => ({
-    value: k,
-    label: PAYMENT_META[k].label,
-    color: PAYMENT_META[k].color,
-  }));
+  (Object.keys(paymentStatus) as PaymentKey[]).map((k) => {
+    const m = toMeta(paymentStatus[k]);
+    return { value: k, label: m.label, color: m.color };
+  });
