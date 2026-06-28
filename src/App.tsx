@@ -140,7 +140,7 @@ const App = () => (
                 <Route path="sms-gateway" element={<SmsGateway />} />
                 <Route path="settings-orders" element={<OrderSettings />} />
                 <Route path="system-tools" element={<SystemTools />} />
-                <Route path="reviews" element={<Reviews />} />
+                
                 <Route path="inventory" element={<Inventory />} />
                 <Route path="inventory/movements" element={<StockMovements />} />
                 <Route path="expenses" element={<Expenses />} />
