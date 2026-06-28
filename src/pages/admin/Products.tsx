@@ -414,6 +414,13 @@ export default function Products() {
       low_margin_threshold: (product as any).low_margin_threshold?.toString() || "15",
       low_stock_threshold: (product as any).low_stock_threshold?.toString() || "5",
       restock_qty: (product as any).restock_qty?.toString() || "10",
+      purchase_cost_cny: (product as any).purchase_cost_cny?.toString() || "",
+      exchange_rate_cny: (product as any).exchange_rate_cny?.toString() || "",
+      cargo_fee: (product as any).cargo_fee?.toString() || "",
+      pickup_fee: (product as any).pickup_fee?.toString() || "",
+      fb_boost_cost: (product as any).fb_boost_cost?.toString() || "",
+      other_cost: (product as any).other_cost?.toString() || "",
+      other_cost_note: (product as any).other_cost_note || "",
     });
     setLocalVariants([]);
     setIsDialogOpen(true);
