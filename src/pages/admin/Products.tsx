@@ -109,6 +109,48 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("mn-MN").format(amount) + "₮";
 }
 
+
+function SortableProductRow({
+  id,
+  position,
+  children,
+}: {
+  id: string;
+  position: number | null;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: "relative",
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <TableRow ref={setNodeRef} style={style} className="hover:bg-muted/50">
+      <TableCell className="w-12">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none p-1 text-muted-foreground hover:text-foreground"
+            title="Чирэх"
+            aria-label="Дараалал солих"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {position ?? "—"}
+          </span>
+        </div>
+      </TableCell>
+      {children}
+    </TableRow>
+  );
+}
+
 export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(
