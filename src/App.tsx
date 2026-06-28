@@ -141,6 +141,7 @@ const App = () => (
 
                 <Route path="expenses" element={<Expenses />} />
                 <Route path="reports" element={<Reports />} />
+                <Route path="users" element={<Users />} />
                 <Route path="user-activity-log" element={<UserActivityLog />} />
               </Route>
 
