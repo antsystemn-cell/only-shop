@@ -425,7 +425,7 @@ export default function Orders() {
                             <div className="flex items-center justify-end gap-1">
                               {status === "delivered" && (
                                 <>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Дэлгэрэнгүй" onClick={() => { setSelectedOrderId(o.id); setDetailOpen(true); }}>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Дэлгэрэнгүй" onClick={() => navigate(`/admin/orders/${o.id}`)}>
                                     <Eye className="h-3.5 w-3.5" />
                                   </Button>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" title="Хэвлэх" onClick={() => printInvoice(o)}>
@@ -464,7 +464,7 @@ export default function Orders() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => { setSelectedOrderId(o.id); setDetailOpen(true); }}>
+                                  <DropdownMenuItem onClick={() => navigate(`/admin/orders/${o.id}`)}>
                                     <Eye className="h-4 w-4 mr-2" /> Дэлгэрэнгүй
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={(e) => copyOrderForExcel(o, e as any)}>
