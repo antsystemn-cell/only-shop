@@ -531,28 +531,41 @@ export default function Products() {
     }
   };
 
-  // Reorder via drag & drop: assigns sequential positions to the new order.
+  // Local pending order; null = no unsaved changes (use server order).
+  const [pendingOrder, setPendingOrder] = useState<Product[] | null>(null);
+  const displayProducts = pendingOrder ?? products ?? [];
+  const isOrderDirty = pendingOrder !== null;
+
+  // Reorder via drag & drop: stage changes locally, save on button click.
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id || !products) return;
-    const oldIndex = products.findIndex((p) => p.id === active.id);
-    const newIndex = products.findIndex((p) => p.id === over.id);
+    if (!over || active.id === over.id) return;
+    const base = pendingOrder ?? products;
+    if (!base) return;
+    const oldIndex = base.findIndex((p) => p.id === active.id);
+    const newIndex = base.findIndex((p) => p.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
-    const newOrder = arrayMove(products, oldIndex, newIndex);
-    const updates = newOrder
+    setPendingOrder(arrayMove(base, oldIndex, newIndex));
+  };
+
+  const handleSaveOrder = () => {
+    if (!pendingOrder || !products) return;
+    const updates = pendingOrder
       .map((p, i) => ({ id: p.id, homepage_position: i + 1 }))
       .filter((u) => {
         const current = products.find((p) => p.id === u.id);
         return current?.homepage_position !== u.homepage_position;
       });
-    if (updates.length === 0) return;
-    // Optimistic update
-    queryClient.setQueryData(
-      ["admin", "products", searchQuery],
-      newOrder.map((p, i) => ({ ...p, homepage_position: i + 1 }))
-    );
-    reorderMutation.mutate(updates);
+    if (updates.length === 0) {
+      setPendingOrder(null);
+      return;
+    }
+    reorderMutation.mutate(updates, {
+      onSuccess: () => setPendingOrder(null),
+    });
   };
+
+  const handleResetOrder = () => setPendingOrder(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -999,10 +1012,38 @@ export default function Products() {
       {/* Products table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 flex-wrap">
             <Package className="h-5 w-5 text-primary" />
             Барааны жагсаалт
             {products && <Badge variant="secondary">{products.length}</Badge>}
+            {isOrderDirty && (
+              <div className="ml-auto flex items-center gap-2">
+                <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300">
+                  Хадгалаагүй өөрчлөлт
+                </Badge>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleResetOrder}
+                  disabled={reorderMutation.isPending}
+                >
+                  Цуцлах
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveOrder}
+                  disabled={reorderMutation.isPending}
+                >
+                  {reorderMutation.isPending ? (
+                    <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Хадгалж байна...</>
+                  ) : (
+                    "Дарааллыг хадгалах"
+                  )}
+                </Button>
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1012,7 +1053,7 @@ export default function Products() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : products && products.length > 0 ? (
+          ) : displayProducts.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -1028,10 +1069,10 @@ export default function Products() {
                   </TableRow>
                 </TableHeader>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={products.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                  <SortableContext items={displayProducts.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                 <TableBody>
-                  {products.map((product) => (
-                    <SortableProductRow key={product.id} id={product.id} position={product.homepage_position}>
+                  {displayProducts.map((product, idx) => (
+                    <SortableProductRow key={product.id} id={product.id} position={isOrderDirty ? idx + 1 : product.homepage_position}>
                       <></>
                       <TableCell>
                         <div className="flex items-center gap-3">
