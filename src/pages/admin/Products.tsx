@@ -126,6 +126,7 @@ export default function Products() {
     other_cost_note: "",
     low_stock_threshold: "5",
     restock_qty: "10",
+    homepage_position: "",
   });
 
   // Local variants for new product creation
@@ -244,6 +245,7 @@ export default function Products() {
         fb_boost_cost: parseFloat(data.fb_boost_cost) || 0,
         other_cost: parseFloat(data.other_cost) || 0,
         other_cost_note: data.other_cost_note || null,
+        homepage_position: data.homepage_position !== "" ? parseInt(data.homepage_position) : null,
       };
 
       let productId = data.id;
@@ -384,6 +386,7 @@ export default function Products() {
       fb_boost_cost: "",
       other_cost: "",
       other_cost_note: "",
+      homepage_position: "",
     });
     setEditingProduct(null);
     setLocalVariants([]);
@@ -423,6 +426,7 @@ export default function Products() {
       fb_boost_cost: (product as any).fb_boost_cost?.toString() || "",
       other_cost: (product as any).other_cost?.toString() || "",
       other_cost_note: (product as any).other_cost_note || "",
+      homepage_position: (product as any).homepage_position?.toString() || "",
     });
     setLocalVariants([]);
     setIsDialogOpen(true);
@@ -805,6 +809,25 @@ export default function Products() {
                   />
                   <Label htmlFor="is_active">Идэвхтэй</Label>
                 </div>
+              </div>
+
+              <div className="grid sm:grid-cols-[200px_1fr] gap-3 items-end">
+                <div className="space-y-1.5">
+                  <Label htmlFor="homepage_position">Нүүр хуудасны байрлал</Label>
+                  <Input
+                    id="homepage_position"
+                    type="number"
+                    min="0"
+                    placeholder="ж: 1, 2, 3..."
+                    value={formData.homepage_position}
+                    onChange={(e) =>
+                      setFormData({ ...formData, homepage_position: e.target.value })
+                    }
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground pb-2">
+                  Бага тоо — нүүр хуудсанд эхэнд харагдана. Хоосон үлдээвэл шинэ нэмэгдсэн нь эхэндээ ордог.
+                </p>
               </div>
 
               {/* Variants Section */}

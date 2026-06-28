@@ -2061,6 +2061,7 @@ export type Database = {
           exchange_rate_cny: number | null
           fb_boost_cost: number | null
           free_delivery_min_qty: number | null
+          homepage_position: number | null
           id: string
           images: string[] | null
           is_active: boolean | null
@@ -2103,6 +2104,7 @@ export type Database = {
           exchange_rate_cny?: number | null
           fb_boost_cost?: number | null
           free_delivery_min_qty?: number | null
+          homepage_position?: number | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
@@ -2145,6 +2147,7 @@ export type Database = {
           exchange_rate_cny?: number | null
           fb_boost_cost?: number | null
           free_delivery_min_qty?: number | null
+          homepage_position?: number | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
