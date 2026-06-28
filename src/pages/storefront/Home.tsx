@@ -144,17 +144,6 @@ export default function Home() {
       {/* ============ BENTO PRODUCT GRID ============ */}
       <section className="px-5 md:px-12 lg:px-20 pb-20 md:pb-32">
         <div className="max-w-[1400px] mx-auto">
-          <div className="flex items-baseline justify-between mb-8 md:mb-12 border-b border-[#ece8e0] pb-5">
-            <span className="text-[10px] md:text-[11px] tracking-eyebrow uppercase opacity-60">
-              Цуглуулга
-            </span>
-            <button
-              onClick={() => navigate("/shop")}
-              className="text-[10px] md:text-[11px] tracking-eyebrow uppercase hover:opacity-50 transition-opacity inline-flex items-center gap-1"
-            >
-              Бүх бараа <ArrowUpRight className="h-3 w-3" />
-            </button>
-          </div>
 
           {productsLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[180px] md:auto-rows-[200px] gap-4 md:gap-6">
@@ -180,8 +169,18 @@ export default function Home() {
               ))}
             </div>
           )}
+
+          <div className="mt-10 md:mt-14 flex justify-center">
+            <button
+              onClick={() => navigate("/shop")}
+              className="text-[10px] md:text-[11px] tracking-eyebrow uppercase hover:opacity-50 transition-opacity inline-flex items-center gap-1 border-b border-[#1a1a1a] pb-1"
+            >
+              Бүх бараа <ArrowUpRight className="h-3 w-3" />
+            </button>
+          </div>
         </div>
       </section>
+
 
       {/* ============ EDITORIAL BAND ============ */}
       <section className="px-5 md:px-12 lg:px-20 pb-20 md:pb-32">
