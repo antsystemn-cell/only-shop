@@ -50,6 +50,8 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 interface Product {
