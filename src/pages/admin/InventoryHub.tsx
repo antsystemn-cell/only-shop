@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Boxes, History, Plus } from "lucide-react";
+import { Boxes, History, MapPin, Plus } from "lucide-react";
 import Inventory from "./Inventory";
 import StockMovements from "./StockMovements";
+import StockLocationsSettings from "@/components/admin/inventory/StockLocationsSettings";
 
 export default function InventoryHub() {
   const [tab, setTab] = useState("inventory");
@@ -19,6 +20,9 @@ export default function InventoryHub() {
             <TabsTrigger value="movements">
               <History className="h-4 w-4 mr-2" /> Үлдэгдлийн хөдөлгөөн
             </TabsTrigger>
+            <TabsTrigger value="locations">
+              <MapPin className="h-4 w-4 mr-2" /> Байршил
+            </TabsTrigger>
           </TabsList>
           <Button asChild size="sm">
             <Link to="/admin/products?tab=products&new=1">
@@ -32,7 +36,11 @@ export default function InventoryHub() {
         <TabsContent value="movements" className="mt-4">
           <StockMovements />
         </TabsContent>
+        <TabsContent value="locations" className="mt-4">
+          <StockLocationsSettings />
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
+
