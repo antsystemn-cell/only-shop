@@ -87,12 +87,12 @@ function BentoCard({
         ) : null}
       </div>
 
-      {/* Bottom gradient + label — minimal, doesn't shrink image */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 px-3 md:px-4 pt-8 pb-3 md:pb-4 bg-gradient-to-t from-black/15 via-black/5 to-transparent pointer-events-none">
-        <h3 className={`font-editorial text-[11px] md:text-[12px] font-medium tracking-[0.01em] ${INK} leading-tight line-clamp-1`}>
+      {/* Bottom gradient + label — readable on both tinted and photo backgrounds */}
+      <div className={`absolute bottom-0 left-0 right-0 z-10 px-3 md:px-4 pt-8 pb-3 md:pb-4 pointer-events-none ${isPng ? "bg-gradient-to-t from-black/15 via-black/5 to-transparent" : "bg-gradient-to-t from-black/75 via-black/40 to-transparent"}`}>
+        <h3 className={`font-editorial text-[11px] md:text-[12px] font-medium tracking-[0.01em] leading-tight line-clamp-1 ${isPng ? INK : "text-white"}`}>
           {product.name_mn}
         </h3>
-        <p className={`font-editorial text-[11px] md:text-[12px] mt-0.5 ${SOFT_INK} tabular-nums`}>
+        <p className={`font-editorial text-[11px] md:text-[12px] mt-0.5 tabular-nums ${isPng ? SOFT_INK : "text-white/85"}`}>
           {formatPrice(product.price)}
         </p>
       </div>
