@@ -56,7 +56,7 @@ export default function Inventory() {
         await Promise.all([
           supabase
             .from("products")
-            .select("id,name,name_mn,sku,stock,price,cost_price,landed_cost,additional_cost")
+            .select("id,name,name_mn,sku,stock,price,cost_price,landed_cost,additional_cost,low_stock_threshold")
             .eq("is_active", true)
             .limit(2000),
           supabase
