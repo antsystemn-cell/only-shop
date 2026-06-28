@@ -2009,11 +2009,13 @@ export type Database = {
           is_featured: boolean | null
           landed_cost: number | null
           low_margin_threshold: number | null
+          low_stock_threshold: number | null
           name: string
           name_mn: string
           packaging_cost: number | null
           price: number
           rating: number | null
+          restock_qty: number | null
           review_count: number | null
           seo_description: string | null
           seo_title: string | null
@@ -2042,11 +2044,13 @@ export type Database = {
           is_featured?: boolean | null
           landed_cost?: number | null
           low_margin_threshold?: number | null
+          low_stock_threshold?: number | null
           name: string
           name_mn: string
           packaging_cost?: number | null
           price: number
           rating?: number | null
+          restock_qty?: number | null
           review_count?: number | null
           seo_description?: string | null
           seo_title?: string | null
@@ -2075,11 +2079,13 @@ export type Database = {
           is_featured?: boolean | null
           landed_cost?: number | null
           low_margin_threshold?: number | null
+          low_stock_threshold?: number | null
           name?: string
           name_mn?: string
           packaging_cost?: number | null
           price?: number
           rating?: number | null
+          restock_qty?: number | null
           review_count?: number | null
           seo_description?: string | null
           seo_title?: string | null
