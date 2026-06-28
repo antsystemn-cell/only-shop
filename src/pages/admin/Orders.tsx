@@ -343,14 +343,19 @@ export default function Orders() {
                 <TableBody>
                   {orders.map((o: any) => {
                     const c = getCustomer(o);
-                    const fb = getFulfillmentBadge(o.fulfillment_status || "confirmed");
-                    const pb = getPaymentBadge(o.payment_status || "unpaid");
-                    const isCancelled = o.fulfillment_status === "cancelled";
-                    const pct = isCancelled ? 100 : progressFor(o.fulfillment_status || "confirmed");
-                    const hasItems = o.order_items && o.order_items.length > 0;
+                    const status = o.fulfillment_status || "confirmed";
+                    const fb = FULFILLMENT_DISPLAY[status] || { label: status, color: "bg-gray-100 text-gray-800" };
+                    const payStatus = o.payment_status || "unpaid";
+                    const pb = PAYMENT_DISPLAY[payStatus] || { label: payStatus, color: "bg-gray-100 text-gray-800" };
+                    const src = o.source || "website";
+                    const sb = SOURCE_DISPLAY[src] || { label: src, color: "bg-gray-100 text-gray-700 border-gray-200" };
+                    const isCancelled = status === "cancelled";
+                    const curStep = progressStep(status);
+                    const itemCount = o.order_items?.length || 0;
+                    const hasItems = itemCount > 0;
                     return (
                       <>
-                        <TableRow key={o.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => toggleExpand(o.id)}>
+                        <TableRow key={o.id} className="group hover:bg-muted/50 cursor-pointer" onClick={() => toggleExpand(o.id)}>
                           <TableCell className="py-2">
                             {hasItems && (
                               expanded.has(o.id)
@@ -359,28 +364,24 @@ export default function Orders() {
                             )}
                           </TableCell>
                           <TableCell className="py-2">
-                            <div className="font-mono text-xs font-medium">{o.order_number}</div>
-                            <div className="text-sm font-medium truncate max-w-[180px]">{c.name}</div>
-                            <div className="text-xs text-muted-foreground truncate max-w-[180px]">{c.phone}</div>
+                            <div className="font-mono text-sm font-bold text-primary">{o.order_number}</div>
+                            <div className="text-xs text-muted-foreground truncate max-w-[200px]">{c.phone || "—"}</div>
+                            <div className="text-[11px] text-muted-foreground">{itemCount} бараа</div>
                           </TableCell>
                           <TableCell className="py-2">
-                            <Badge variant="outline" className="text-[10px]">
-                              {getSourceLabel(o.source || "website")}
-                            </Badge>
+                            <Badge variant="outline" className={`text-[10px] ${sb.color}`}>{sb.label}</Badge>
                           </TableCell>
                           <TableCell className="text-center py-2" onClick={(e) => e.stopPropagation()}>
                             <Select
-                              value={o.fulfillment_status || "confirmed"}
-                              onValueChange={(v) => fulfillmentMutation.mutate({ id: o.id, oldStatus: o.fulfillment_status || "confirmed", newStatus: v })}
+                              value={status}
+                              onValueChange={(v) => fulfillmentMutation.mutate({ id: o.id, oldStatus: status, newStatus: v })}
                             >
-                              <SelectTrigger className="w-[140px] h-7 text-xs">
-                                <SelectValue>
-                                  <span className={`px-2 py-0.5 rounded-full text-xs ${fb.color}`}>{fb.label}</span>
-                                </SelectValue>
+                              <SelectTrigger className="w-[150px] h-7 text-xs border-0 bg-transparent shadow-none p-0 hover:bg-muted/50">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${fb.color}`}>{fb.label}</span>
                               </SelectTrigger>
                               <SelectContent>
-                                {FULFILLMENT_STATUSES.map((s) => (
-                                  <SelectItem key={s.value} value={s.value}>
+                                {Object.entries(FULFILLMENT_DISPLAY).map(([val, s]) => (
+                                  <SelectItem key={val} value={val}>
                                     <span className={`px-2 py-0.5 rounded-full text-xs ${s.color}`}>{s.label}</span>
                                   </SelectItem>
                                 ))}
@@ -389,51 +390,109 @@ export default function Orders() {
                           </TableCell>
                           <TableCell className="text-center py-2" onClick={(e) => e.stopPropagation()}>
                             <Select
-                              value={o.payment_status || "unpaid"}
-                              onValueChange={(v) => paymentMutation.mutate({ id: o.id, oldStatus: o.payment_status || "unpaid", newStatus: v })}
+                              value={payStatus}
+                              onValueChange={(v) => paymentMutation.mutate({ id: o.id, oldStatus: payStatus, newStatus: v })}
                             >
-                              <SelectTrigger className="w-[130px] h-7 text-xs">
-                                <SelectValue>
-                                  <span className={`px-2 py-0.5 rounded-full text-xs ${pb.color}`}>{pb.label}</span>
-                                </SelectValue>
+                              <SelectTrigger className="w-[130px] h-7 text-xs border-0 bg-transparent shadow-none p-0 hover:bg-muted/50">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pb.color}`}>{pb.label}</span>
                               </SelectTrigger>
                               <SelectContent>
-                                {PAYMENT_STATUSES.map((s) => (
-                                  <SelectItem key={s.value} value={s.value}>
-                                    <span className={`px-2 py-0.5 rounded-full text-xs ${s.color}`}>{s.label}</span>
-                                  </SelectItem>
-                                ))}
+                                {PAYMENT_STATUSES.map((s) => {
+                                  const disp = PAYMENT_DISPLAY[s.value] || { label: s.label, color: s.color };
+                                  return (
+                                    <SelectItem key={s.value} value={s.value}>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs ${disp.color}`}>{disp.label}</span>
+                                    </SelectItem>
+                                  );
+                                })}
                               </SelectContent>
                             </Select>
                           </TableCell>
                           <TableCell className="text-right py-2">
-                            <div className="font-medium text-sm">{formatCurrency(Number(o.total))}</div>
-                            {Number(o.delivery_fee) > 0 && (
-                              <div className="text-[10px] text-muted-foreground">+{formatCurrency(Number(o.delivery_fee))}</div>
-                            )}
+                            <div className="font-bold text-sm">{formatCurrency(Number(o.total))}</div>
                           </TableCell>
                           <TableCell className="py-2">
-                            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className={`h-full transition-all ${isCancelled ? "bg-red-500" : "bg-primary"}`}
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                            <div className="text-[10px] text-muted-foreground mt-1">
-                              {isCancelled ? "Цуцлагдсан" : `${Math.round(pct)}%`}
+                            <div className="flex items-center gap-1.5">
+                              {PROGRESS_STEPS.map((_, i) => {
+                                let cls = "bg-muted";
+                                if (isCancelled) cls = "bg-red-400";
+                                else if (i < curStep) cls = "bg-green-500";
+                                else if (i === curStep) cls = "bg-blue-500";
+                                return <span key={i} className={`w-2 h-2 rounded-full ${cls}`} />;
+                              })}
                             </div>
                           </TableCell>
                           <TableCell className="text-center py-2 text-xs text-muted-foreground">
                             {format(new Date(o.created_at), "MM/dd HH:mm")}
                           </TableCell>
-                          <TableCell className="text-center py-2" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-center gap-1">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Excel хуулах" onClick={(e) => copyOrderForExcel(o, e)}>
-                                <Copy className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Дэлгэрэнгүй" onClick={() => { setSelectedOrderId(o.id); setDetailOpen(true); }}>
-                                <Eye className="h-3.5 w-3.5" />
-                              </Button>
+                          <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              {status === "delivered" && (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Дэлгэрэнгүй" onClick={() => { setSelectedOrderId(o.id); setDetailOpen(true); }}>
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Хэвлэх" onClick={() => printInvoice(o)}>
+                                    <Printer className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                              {(status === "confirmed" || status === "phone_confirmed") && (
+                                <Button
+                                  size="sm"
+                                  className="h-7 px-2.5 text-xs bg-primary hover:bg-primary/90"
+                                  onClick={() => fulfillmentMutation.mutate({ id: o.id, oldStatus: status, newStatus: "out_for_delivery" })}
+                                >
+                                  Хүргэлт <ArrowRight className="h-3 w-3 ml-1" />
+                                </Button>
+                              )}
+                              {status === "out_for_delivery" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2.5 text-xs"
+                                  onClick={() => fulfillmentMutation.mutate({ id: o.id, oldStatus: status, newStatus: "delivered" })}
+                                >
+                                  Хүргэгдсэн <CheckCircle2 className="h-3 w-3 ml-1" />
+                                </Button>
+                              )}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Илүү"
+                                  >
+                                    <MoreHorizontal className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => { setSelectedOrderId(o.id); setDetailOpen(true); }}>
+                                    <Eye className="h-4 w-4 mr-2" /> Дэлгэрэнгүй
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => copyOrderForExcel(o, e as any)}>
+                                    <Copy className="h-4 w-4 mr-2" /> Excel хуулах
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => printInvoice(o)}>
+                                    <Printer className="h-4 w-4 mr-2" /> Нэхэмжлэх хэвлэх
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => printDeliveryLabel(o)}>
+                                    <Printer className="h-4 w-4 mr-2" /> Хүргэлтийн шошго
+                                  </DropdownMenuItem>
+                                  {!isCancelled && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => fulfillmentMutation.mutate({ id: o.id, oldStatus: status, newStatus: "cancelled" })}
+                                      >
+                                        <Ban className="h-4 w-4 mr-2" /> Цуцлах
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </TableCell>
                         </TableRow>
