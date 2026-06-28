@@ -50,6 +50,8 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 interface Product {
@@ -68,6 +70,8 @@ interface Product {
   rating: number;
   review_count: number;
   category_id: string | null;
+  homepage_position: number | null;
+  created_at?: string;
   categories?: {
     name_mn: string;
   } | null;
@@ -147,6 +151,7 @@ export default function Products() {
             name_mn
           )
         `)
+        .order("homepage_position", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
 
       if (searchQuery) {
@@ -331,6 +336,26 @@ export default function Products() {
     },
   });
 
+  // Reorder mutation (homepage position swap)
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: { id: string; homepage_position: number }[]) => {
+      for (const u of updates) {
+        const { error } = await supabase
+          .from("products")
+          .update({ homepage_position: u.homepage_position })
+          .eq("id", u.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+      queryClient.invalidateQueries({ queryKey: ["all-products"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Алдаа гарлаа", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -445,6 +470,27 @@ export default function Products() {
     if (confirm("Энэ барааг устгахдаа итгэлтэй байна уу?")) {
       deleteMutation.mutate(id);
     }
+  };
+
+  // Move product up/down in homepage order. Assigns sequential positions when missing.
+  const handleMove = (productId: string, direction: "up" | "down") => {
+    if (!products) return;
+    const idx = products.findIndex((p) => p.id === productId);
+    if (idx < 0) return;
+    const neighborIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (neighborIdx < 0 || neighborIdx >= products.length) return;
+
+    // Assign sequential positions (1..N) based on current display order, then swap target two.
+    const updates = products.map((p, i) => {
+      let pos = i + 1;
+      if (i === idx) pos = neighborIdx + 1;
+      else if (i === neighborIdx) pos = idx + 1;
+      return { id: p.id, homepage_position: pos };
+    });
+    // Only send rows whose position actually changes vs current value
+    const changed = updates.filter((u, i) => products[i].homepage_position !== u.homepage_position);
+    if (changed.length === 0) return;
+    reorderMutation.mutate(changed);
   };
 
   return (
@@ -904,6 +950,7 @@ export default function Products() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12 text-center">Дараалал</TableHead>
                     <TableHead>Бараа</TableHead>
                     <TableHead>Ангилал</TableHead>
                     <TableHead className="text-right">Үнэ</TableHead>
@@ -914,8 +961,37 @@ export default function Products() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((product) => (
+                  {products.map((product, productIdx) => (
                     <TableRow key={product.id} className="hover:bg-muted/50">
+                      <TableCell className="w-12">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            disabled={productIdx === 0 || reorderMutation.isPending}
+                            onClick={() => handleMove(product.id, "up")}
+                            title="Дээш"
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">
+                            {product.homepage_position ?? "—"}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            disabled={productIdx === products.length - 1 || reorderMutation.isPending}
+                            onClick={() => handleMove(product.id, "down")}
+                            title="Доош"
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
