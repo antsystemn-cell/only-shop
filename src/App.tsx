@@ -122,12 +122,10 @@ const App = () => (
                 <Route path="brands" element={<ProductsHub />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="sales" element={<Sales />} />
-                <Route path="users" element={<Users />} />
                 
                 <Route path="delivery-ops" element={<DeliveryOperations />} />
                 <Route path="banners" element={<Banners />} />
                 
-                <Route path="content" element={<Content />} />
                 <Route path="seo" element={<Seo />} />
                 <Route path="newsletter" element={<Newsletter />} />
                 <Route path="permissions" element={<Permissions />} />
@@ -139,8 +137,9 @@ const App = () => (
                 <Route path="settings-orders" element={<OrderSettings />} />
                 <Route path="system-tools" element={<SystemTools />} />
                 
-                <Route path="inventory" element={<Inventory />} />
-                <Route path="inventory/movements" element={<StockMovements />} />
+                <Route path="inventory" element={<InventoryHub />} />
+                <Route path="inventory/movements" element={<InventoryHub />} />
+
                 <Route path="expenses" element={<Expenses />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="user-activity-log" element={<UserActivityLog />} />
