@@ -950,6 +950,7 @@ export default function Products() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12 text-center">Дараалал</TableHead>
                     <TableHead>Бараа</TableHead>
                     <TableHead>Ангилал</TableHead>
                     <TableHead className="text-right">Үнэ</TableHead>
