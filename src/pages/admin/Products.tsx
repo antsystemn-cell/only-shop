@@ -386,6 +386,7 @@ export default function Products() {
       other_cost: "",
       other_cost_note: "",
       homepage_position: "",
+    });
     setEditingProduct(null);
     setLocalVariants([]);
   };
