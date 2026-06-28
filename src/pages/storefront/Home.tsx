@@ -56,22 +56,34 @@ function BentoCard({
   const { addToCart } = useCart();
   const { toast } = useToast();
 
+  const firstImage = product.images?.[0];
+  const isPng = !!firstImage && /\.png(\?|$)/i.test(firstImage);
+
   return (
     <Link
       to={`/product/${product.slug || product.id}`}
       style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}
-      className={`group relative ${slot.col} ${slot.row} ${tint} rounded-sm overflow-hidden flex animate-fade-in transition-all duration-500 will-change-transform hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)] active:scale-[0.97] active:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)]`}
+      className={`group relative ${slot.col} ${slot.row} ${isPng ? tint : "bg-[#1a1a1a]"} rounded-sm overflow-hidden flex animate-fade-in transition-all duration-500 will-change-transform hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)] active:scale-[0.97] active:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)]`}
     >
-      {/* Full-bleed product image — fills card edge-to-edge */}
+      {/* Product image — PNGs float with tinted bg, non-PNGs fill edge-to-edge */}
       <div className="absolute inset-0 flex items-center justify-center">
-        {product.images && product.images[0] ? (
-          <img
-            src={product.images[0]}
-            alt={product.name_mn}
-            loading="lazy"
-            style={{ mixBlendMode: "multiply", animationDelay: `${index * 120}ms` }}
-            className="w-full h-full object-contain p-2 md:p-3 drop-shadow-[0_18px_24px_rgba(0,0,0,0.10)] transition-transform duration-[900ms] ease-out animate-float-soft group-hover:scale-[1.04] group-active:scale-[0.96]"
-          />
+        {firstImage ? (
+          isPng ? (
+            <img
+              src={firstImage}
+              alt={product.name_mn}
+              loading="lazy"
+              style={{ mixBlendMode: "multiply", animationDelay: `${index * 120}ms` }}
+              className="w-full h-full object-contain p-2 md:p-3 drop-shadow-[0_18px_24px_rgba(0,0,0,0.10)] transition-transform duration-[900ms] ease-out animate-float-soft group-hover:scale-[1.04] group-active:scale-[0.96]"
+            />
+          ) : (
+            <img
+              src={firstImage}
+              alt={product.name_mn}
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04] group-active:scale-[0.96]"
+            />
+          )
         ) : null}
       </div>
 
