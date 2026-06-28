@@ -175,6 +175,7 @@ export default function Home() {
                   product={product}
                   slot={BENTO_SLOTS[i % BENTO_SLOTS.length]}
                   tint={CARD_TINTS[i % CARD_TINTS.length]}
+                  index={i}
                 />
               ))}
             </div>
