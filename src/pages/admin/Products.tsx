@@ -50,9 +50,26 @@ import {
   Loader2,
   Eye,
   EyeOff,
-  ArrowUp,
-  ArrowDown,
+  GripVertical,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Product {
   id: string;
@@ -90,6 +107,48 @@ interface Brand {
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("mn-MN").format(amount) + "₮";
+}
+
+
+function SortableProductRow({
+  id,
+  position,
+  children,
+}: {
+  id: string;
+  position: number | null;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: "relative",
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <TableRow ref={setNodeRef} style={style} className="hover:bg-muted/50">
+      <TableCell className="w-12">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none p-1 text-muted-foreground hover:text-foreground"
+            title="Чирэх"
+            aria-label="Дараалал солих"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {position ?? "—"}
+          </span>
+        </div>
+      </TableCell>
+      {children}
+    </TableRow>
+  );
 }
 
 export default function Products() {
@@ -472,26 +531,34 @@ export default function Products() {
     }
   };
 
-  // Move product up/down in homepage order. Assigns sequential positions when missing.
-  const handleMove = (productId: string, direction: "up" | "down") => {
-    if (!products) return;
-    const idx = products.findIndex((p) => p.id === productId);
-    if (idx < 0) return;
-    const neighborIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (neighborIdx < 0 || neighborIdx >= products.length) return;
-
-    // Assign sequential positions (1..N) based on current display order, then swap target two.
-    const updates = products.map((p, i) => {
-      let pos = i + 1;
-      if (i === idx) pos = neighborIdx + 1;
-      else if (i === neighborIdx) pos = idx + 1;
-      return { id: p.id, homepage_position: pos };
-    });
-    // Only send rows whose position actually changes vs current value
-    const changed = updates.filter((u, i) => products[i].homepage_position !== u.homepage_position);
-    if (changed.length === 0) return;
-    reorderMutation.mutate(changed);
+  // Reorder via drag & drop: assigns sequential positions to the new order.
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !products) return;
+    const oldIndex = products.findIndex((p) => p.id === active.id);
+    const newIndex = products.findIndex((p) => p.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const newOrder = arrayMove(products, oldIndex, newIndex);
+    const updates = newOrder
+      .map((p, i) => ({ id: p.id, homepage_position: i + 1 }))
+      .filter((u) => {
+        const current = products.find((p) => p.id === u.id);
+        return current?.homepage_position !== u.homepage_position;
+      });
+    if (updates.length === 0) return;
+    // Optimistic update
+    queryClient.setQueryData(
+      ["admin", "products", searchQuery],
+      newOrder.map((p, i) => ({ ...p, homepage_position: i + 1 }))
+    );
+    reorderMutation.mutate(updates);
   };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -960,38 +1027,12 @@ export default function Products() {
                     <TableHead className="text-right">Үйлдэл</TableHead>
                   </TableRow>
                 </TableHeader>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={products.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                 <TableBody>
-                  {products.map((product, productIdx) => (
-                    <TableRow key={product.id} className="hover:bg-muted/50">
-                      <TableCell className="w-12">
-                        <div className="flex flex-col items-center gap-0.5">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            disabled={productIdx === 0 || reorderMutation.isPending}
-                            onClick={() => handleMove(product.id, "up")}
-                            title="Дээш"
-                          >
-                            <ArrowUp className="h-3.5 w-3.5" />
-                          </Button>
-                          <span className="text-[10px] text-muted-foreground tabular-nums">
-                            {product.homepage_position ?? "—"}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            disabled={productIdx === products.length - 1 || reorderMutation.isPending}
-                            onClick={() => handleMove(product.id, "down")}
-                            title="Доош"
-                          >
-                            <ArrowDown className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                  {products.map((product) => (
+                    <SortableProductRow key={product.id} id={product.id} position={product.homepage_position}>
+                      <></>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
@@ -1082,9 +1123,11 @@ export default function Products() {
                           </Button>
                         </div>
                       </TableCell>
-                    </TableRow>
+                    </SortableProductRow>
                   ))}
                 </TableBody>
+                  </SortableContext>
+                </DndContext>
               </Table>
             </div>
           ) : (
