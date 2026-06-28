@@ -33,14 +33,16 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-card shadow-sm">
-      <div className="container flex h-14 items-center justify-between gap-3">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0">
+      <div className="container relative flex h-14 items-center justify-end gap-3">
+        {/* Centered Logo */}
+        <Link
+          to="/"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2"
+        >
           <img src={onlyLogo} alt="Only" className="h-8 w-auto" />
         </Link>
 
-        {/* Spacer */}
-        <div className="flex-1" />
+
 
 
         {/* Action Icons */}
