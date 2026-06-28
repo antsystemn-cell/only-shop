@@ -532,6 +532,33 @@ export default function Products() {
                     />
                   </div>
                 </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="low_stock_threshold">Бага үлдэгдлийн хязгаар</Label>
+                    <Input
+                      id="low_stock_threshold"
+                      type="number"
+                      min="0"
+                      value={formData.low_stock_threshold}
+                      onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
+                      placeholder="5"
+                    />
+                    <p className="text-xs text-muted-foreground">Нөөц энэ тоонд хүрвэл "Бага" гэж тэмдэглэнэ</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="restock_qty">Нөхөн дүүргэлтийн тоо</Label>
+                    <Input
+                      id="restock_qty"
+                      type="number"
+                      min="0"
+                      value={formData.restock_qty}
+                      onChange={(e) => setFormData({ ...formData, restock_qty: e.target.value })}
+                      placeholder="10"
+                    />
+                    <p className="text-xs text-muted-foreground">Дахин захиалахад санал болгох тоо ширхэг</p>
+                  </div>
+                </div>
               </div>
 
               {/* Cost & Profit */}
