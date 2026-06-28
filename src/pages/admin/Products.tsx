@@ -562,7 +562,7 @@ export default function Products() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="stock">Суурь нөөц</Label>
+                    <Label htmlFor="stock">Нийт үлдэгдэл</Label>
                     <Input
                       id="stock"
                       type="number"
@@ -575,6 +575,7 @@ export default function Products() {
                       className={localVariants.length > 0 ? "opacity-60" : ""}
                     />
                   </div>
+
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
