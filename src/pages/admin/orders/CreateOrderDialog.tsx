@@ -50,7 +50,10 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
 
   // Payment
   const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [paymentStatus, setPaymentStatus] = useState("unpaid");
+  const [paymentStatus, setPaymentStatus] = useState<string>("");
+
+  // Fulfillment location (branch / driver)
+  const [fulfillmentLocationId, setFulfillmentLocationId] = useState<string>("");
 
   // Order
   const [internalNote, setInternalNote] = useState("");
@@ -61,6 +64,20 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
   const [productSearch, setProductSearch] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [matchedUserId, setMatchedUserId] = useState<string | null>(null);
+
+  // Stock locations (branches / drivers)
+  const { data: locations } = useQuery({
+    queryKey: ["admin", "stock-locations-active"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("stock_locations")
+        .select("id, name, icon, color")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
+      return data || [];
+    },
+  });
+
 
   // Search products
   const { data: products } = useQuery({
@@ -132,8 +149,10 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (items.length === 0) throw new Error("Бараа нэмнэ үү");
+      if (items.length === 0) throw new Error("Заавал бараа сонгоно уу");
       if (!customerPhone && !customerName) throw new Error("Захиалагчийн мэдээлэл оруулна уу");
+      if (!paymentStatus) throw new Error("Төлбөр төлөгдсөн эсэхийг заавал сонгоно уу");
+      if (!fulfillmentLocationId) throw new Error("Аль салбар / жолоочоос гарсныг заавал сонгоно уу");
 
       return createManualOrder({
         source,
@@ -154,6 +173,7 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
         affects_inventory: affectsInventory,
         items,
         user_id: matchedUserId,
+        fulfillment_location_id: fulfillmentLocationId,
       });
     },
     onSuccess: (order) => {
@@ -173,9 +193,11 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
     setSource("phone");
     setCustomerName(""); setCustomerPhone(""); setAlternatePhone(""); setCustomerEmail("");
     setCustomerNote(""); setDistrict(""); setAddressText(""); setDeliveryNote("");
-    setDeliveryFee("0"); setPaymentMethod("cash"); setPaymentStatus("unpaid");
+    setDeliveryFee("0"); setPaymentMethod("cash"); setPaymentStatus("");
+    setFulfillmentLocationId("");
     setInternalNote(""); setAffectsInventory(true); setItems([]); setMatchedUserId(null);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -271,14 +293,19 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
 
           {/* Products */}
           <div className="space-y-3">
-            <Label>Бараа нэмэх</Label>
+            <Label className="flex items-center gap-1">
+              Бараа сонгох <span className="text-destructive">*</span>
+              {items.length === 0 && (
+                <span className="ml-2 text-xs font-normal text-destructive">— заавал зөв барааг сонгоно уу</span>
+              )}
+            </Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Барааны нэр, SKU хайх..."
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                className="pl-10"
+                className={`pl-10 ${items.length === 0 ? "border-destructive/60 focus-visible:ring-destructive" : ""}`}
               />
             </div>
             {products && products.length > 0 && (
@@ -327,6 +354,31 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
             )}
           </div>
 
+          {/* Fulfillment Location (branch / driver) */}
+          <div className="space-y-1">
+            <Label className="flex items-center gap-1">
+              Аль салбар / жолоочоос гарсан <span className="text-destructive">*</span>
+            </Label>
+            <Select value={fulfillmentLocationId} onValueChange={setFulfillmentLocationId}>
+              <SelectTrigger className={!fulfillmentLocationId ? "border-destructive/60" : ""}>
+                <SelectValue placeholder="Салбар эсвэл жолоочоо сонгоно уу" />
+              </SelectTrigger>
+              <SelectContent>
+                {(locations || []).map((loc: any) => (
+                  <SelectItem key={loc.id} value={loc.id}>
+                    {loc.icon ? `${loc.icon} ` : ""}{loc.name}
+                  </SelectItem>
+                ))}
+                {(!locations || locations.length === 0) && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">
+                    Идэвхтэй салбар алга — Үлдэгдэл цэснээс нэмнэ үү
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+
           {/* Payment */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -342,9 +394,13 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Төлбөрийн төлөв</Label>
+              <Label className="flex items-center gap-1">
+                Төлбөр төлөгдсөн эсэх <span className="text-destructive">*</span>
+              </Label>
               <Select value={paymentStatus} onValueChange={setPaymentStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className={!paymentStatus ? "border-destructive/60" : ""}>
+                  <SelectValue placeholder="Төлбөр орсон / ороогүйг сонгоно уу" />
+                </SelectTrigger>
                 <SelectContent>
                   {PAYMENT_STATUSES.map((s) => (
                     <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
@@ -352,6 +408,7 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
                 </SelectContent>
               </Select>
             </div>
+
           </div>
 
           {/* Notes & options */}
@@ -379,12 +436,29 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <Button className="flex-1" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Захиалга үүсгэх
-            </Button>
+          <div className="space-y-2 pt-2">
+            {(items.length === 0 || !paymentStatus || !fulfillmentLocationId) && (
+              <div className="text-xs text-destructive">
+                Үргэлжлүүлэхийн тулд: бараа сонгох, төлбөрийн төлөв сонгох, салбар/жолооч сонгох шаардлагатай.
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button
+                className="flex-1"
+                onClick={() => createMutation.mutate()}
+                disabled={
+                  createMutation.isPending ||
+                  items.length === 0 ||
+                  !paymentStatus ||
+                  !fulfillmentLocationId
+                }
+              >
+                {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Захиалга үүсгэх
+              </Button>
+            </div>
           </div>
+
         </div>
       </DialogContent>
     </Dialog>

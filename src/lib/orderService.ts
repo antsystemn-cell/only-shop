@@ -72,7 +72,9 @@ export interface CreateOrderParams {
   affects_inventory?: boolean;
   items: ManualOrderItem[];
   user_id?: string | null;
+  fulfillment_location_id?: string | null;
 }
+
 
 // ─── Create Order ───────────────────────────────────────────
 
@@ -113,7 +115,9 @@ export async function createManualOrder(params: CreateOrderParams) {
       status: isDraft ? "pending" as any : "pending" as any,
       order_number: "PENDING", // Will be overwritten by trigger
       delivery_address: params.district ? { district: params.district, street_address: params.address_text } : null,
+      fulfillment_location_id: params.fulfillment_location_id || null,
     } as any)
+
     .select()
     .single();
 

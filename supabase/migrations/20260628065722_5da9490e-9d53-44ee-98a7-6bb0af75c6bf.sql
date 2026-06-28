@@ -1,0 +1,2 @@
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS fulfillment_location_id uuid REFERENCES public.stock_locations(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_orders_fulfillment_location ON public.orders(fulfillment_location_id);
