@@ -8,12 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, History, Package2, Search, TrendingDown, Skull, PercentCircle, FileSpreadsheet, Clock } from "lucide-react";
+import { AlertTriangle, History, Package2, Search, TrendingDown, Skull, PercentCircle, FileSpreadsheet, Clock, Wallet, Coins, Sparkles } from "lucide-react";
 import * as XLSX from "xlsx";
 import { StockAdjustmentDialog } from "@/components/admin/inventory/StockAdjustmentDialog";
 import { StockHistorySheet } from "@/components/admin/inventory/StockHistorySheet";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
+import { avgDailySales, daysOfStock, marginColorClass } from "@/lib/inventoryCalc";
 
 interface Row {
   product_id: string;
@@ -24,10 +25,11 @@ interface Row {
   stock: number;
   price: number;
   cost: number;
-  margin_pct: number; // (price-cost)/price * 100
+  margin_pct: number;
   last_sold_at: string | null;
   days_since_sold: number | null;
   total_sold_30d: number;
+  low_stock_threshold: number;
 }
 
 type TabKey = "all" | "low" | "out" | "dead" | "low_margin";
@@ -54,7 +56,7 @@ export default function Inventory() {
         await Promise.all([
           supabase
             .from("products")
-            .select("id,name,name_mn,sku,stock,price,cost_price,landed_cost,additional_cost")
+            .select("id,name,name_mn,sku,stock,price,cost_price,landed_cost,additional_cost,low_stock_threshold")
             .eq("is_active", true)
             .limit(2000),
           supabase
@@ -135,6 +137,7 @@ export default function Inventory() {
           last_sold_at: last,
           days_since_sold: last ? differenceInDays(new Date(), new Date(last)) : null,
           total_sold_30d: sold30Map.get(key) || 0,
+          low_stock_threshold: Number(p.low_stock_threshold ?? threshold) || threshold,
         };
       };
 
@@ -192,6 +195,11 @@ export default function Inventory() {
   const lowMarginCount = rows.filter((x) => x.price > 0 && x.margin_pct < marginThreshold).length;
 
   const totalStockValue = rows.reduce((s, r) => s + r.stock * r.cost, 0);
+  const totalStockSelling = rows.reduce((s, r) => s + r.stock * r.price, 0);
+  const totalPotentialProfit = totalStockSelling - totalStockValue;
+  const totalStaleValue = rows
+    .filter((r) => r.stock > 0 && (r.days_since_sold === null || r.days_since_sold >= deadDays))
+    .reduce((s, r) => s + r.stock * r.cost, 0);
 
   const fmt = (n: number) => new Intl.NumberFormat("mn-MN").format(Math.round(n));
 
@@ -315,6 +323,43 @@ export default function Inventory() {
         </Card>
       </div>
 
+      {/* Profit / Value cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+              <Wallet className="h-3 w-3" /> Нийт борлуулалтын үнэ
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold">{fmt(totalStockSelling)}₮</div>
+            <p className="text-[11px] text-muted-foreground">Бүх нөөц зарагдвал</p>
+          </CardContent>
+        </Card>
+        <Card className={totalPotentialProfit > 0 ? "border-green-300" : ""}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-green-500" /> Боломжит ашиг
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-xl font-bold ${totalPotentialProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
+              {fmt(totalPotentialProfit)}₮
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={totalStaleValue > 0 ? "border-purple-300" : ""}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
+              <Coins className="h-3 w-3 text-purple-500" /> Үхсэн нөөц (₮)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-purple-600">{fmt(totalStaleValue)}₮</div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardContent className="p-4 space-y-4">
           <div className="flex flex-wrap items-center gap-3 justify-between">
@@ -384,7 +429,9 @@ export default function Inventory() {
                 <TableHead className="text-right">Өртөг</TableHead>
                 <TableHead className="text-right">Үнэ</TableHead>
                 <TableHead className="text-right">Маржин %</TableHead>
+                <TableHead className="text-right">Үлд. өртөг</TableHead>
                 <TableHead className="text-right">30 хон.</TableHead>
+                <TableHead className="text-right">Үлдэх хоног</TableHead>
                 <TableHead className="text-right">Сүүлд зарсан</TableHead>
                 <TableHead className="text-right">Үйлдэл</TableHead>
               </TableRow>
@@ -392,21 +439,32 @@ export default function Inventory() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                     Ачааллаж байна...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                     Бараа алга
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.slice(0, 500).map((r) => {
+                  const effThreshold = r.low_stock_threshold || threshold;
                   const isOut = r.stock <= 0;
-                  const isLow = !isOut && r.stock <= threshold;
+                  const isLow = !isOut && r.stock <= effThreshold;
+                  const isStale = !isOut && (r.days_since_sold === null || r.days_since_sold >= deadDays);
                   const lowMargin = r.price > 0 && r.margin_pct < marginThreshold;
+                  const avgDaily = avgDailySales(r.total_sold_30d, 30);
+                  const daysLeft = daysOfStock(r.stock, avgDaily);
+                  const stockBadgeClass = isOut
+                    ? ""
+                    : isLow
+                    ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
+                    : isStale
+                    ? "bg-purple-100 text-purple-800 hover:bg-purple-100"
+                    : "bg-green-100 text-green-800 hover:bg-green-100";
                   return (
                     <TableRow key={`${r.product_id}-${r.variant_id || "base"}`}>
                       <TableCell className="font-medium">{r.product_name}</TableCell>
@@ -414,8 +472,8 @@ export default function Inventory() {
                       <TableCell className="text-muted-foreground text-xs">{r.sku || "—"}</TableCell>
                       <TableCell className="text-right">
                         <Badge
-                          variant={isOut ? "destructive" : isLow ? "secondary" : "outline"}
-                          className={isLow ? "bg-amber-100 text-amber-800 hover:bg-amber-100" : ""}
+                          variant={isOut ? "destructive" : "outline"}
+                          className={stockBadgeClass}
                         >
                           {r.stock}
                         </Badge>
@@ -428,23 +486,27 @@ export default function Inventory() {
                       </TableCell>
                       <TableCell className="text-right">
                         {r.price > 0 ? (
-                          <span
-                            className={
-                              lowMargin
-                                ? "text-destructive font-semibold"
-                                : r.margin_pct >= 30
-                                ? "text-green-600 font-semibold"
-                                : ""
-                            }
-                          >
+                          <span className={`font-semibold ${marginColorClass(r.margin_pct)}`}>
                             {r.margin_pct.toFixed(1)}%
                           </span>
                         ) : (
                           "—"
                         )}
                       </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">
+                        {r.cost > 0 && r.stock > 0 ? fmt(r.cost * r.stock) + "₮" : "—"}
+                      </TableCell>
                       <TableCell className="text-right text-xs">
                         {r.total_sold_30d > 0 ? r.total_sold_30d : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {daysLeft === null ? (
+                          <span className="text-muted-foreground">∞</span>
+                        ) : (
+                          <span className={daysLeft <= 7 ? "text-destructive font-semibold" : daysLeft <= 30 ? "text-amber-600" : ""}>
+                            {daysLeft} хон.
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">
                         {r.last_sold_at ? (

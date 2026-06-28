@@ -115,6 +115,8 @@ export default function Products() {
     packaging_cost: "",
     default_delivery_cost: "",
     low_margin_threshold: "15",
+    low_stock_threshold: "5",
+    restock_qty: "10",
   });
 
   // Local variants for new product creation
@@ -208,6 +210,8 @@ export default function Products() {
         packaging_cost: parseFloat(data.packaging_cost) || 0,
         default_delivery_cost: parseFloat(data.default_delivery_cost) || 0,
         low_margin_threshold: parseFloat(data.low_margin_threshold) || 15,
+        low_stock_threshold: parseInt(data.low_stock_threshold) || 5,
+        restock_qty: parseInt(data.restock_qty) || 10,
       };
 
       let productId = data.id;
@@ -339,6 +343,8 @@ export default function Products() {
       packaging_cost: "",
       default_delivery_cost: "",
       low_margin_threshold: "15",
+      low_stock_threshold: "5",
+      restock_qty: "10",
     });
     setEditingProduct(null);
     setLocalVariants([]);
@@ -369,6 +375,8 @@ export default function Products() {
       packaging_cost: (product as any).packaging_cost?.toString() || "",
       default_delivery_cost: (product as any).default_delivery_cost?.toString() || "",
       low_margin_threshold: (product as any).low_margin_threshold?.toString() || "15",
+      low_stock_threshold: (product as any).low_stock_threshold?.toString() || "5",
+      restock_qty: (product as any).restock_qty?.toString() || "10",
     });
     setLocalVariants([]);
     setIsDialogOpen(true);
@@ -522,6 +530,33 @@ export default function Products() {
                       min="0"
                       className={localVariants.length > 0 ? "opacity-60" : ""}
                     />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="low_stock_threshold">Бага үлдэгдлийн хязгаар</Label>
+                    <Input
+                      id="low_stock_threshold"
+                      type="number"
+                      min="0"
+                      value={formData.low_stock_threshold}
+                      onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
+                      placeholder="5"
+                    />
+                    <p className="text-xs text-muted-foreground">Нөөц энэ тоонд хүрвэл "Бага" гэж тэмдэглэнэ</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="restock_qty">Нөхөн дүүргэлтийн тоо</Label>
+                    <Input
+                      id="restock_qty"
+                      type="number"
+                      min="0"
+                      value={formData.restock_qty}
+                      onChange={(e) => setFormData({ ...formData, restock_qty: e.target.value })}
+                      placeholder="10"
+                    />
+                    <p className="text-xs text-muted-foreground">Дахин захиалахад санал болгох тоо ширхэг</p>
                   </div>
                 </div>
               </div>

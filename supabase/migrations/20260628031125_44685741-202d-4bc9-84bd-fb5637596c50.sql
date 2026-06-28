@@ -1,0 +1,3 @@
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER DEFAULT 5,
+  ADD COLUMN IF NOT EXISTS restock_qty INTEGER DEFAULT 10;
