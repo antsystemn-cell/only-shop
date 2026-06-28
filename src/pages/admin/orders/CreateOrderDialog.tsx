@@ -50,7 +50,10 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
 
   // Payment
   const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [paymentStatus, setPaymentStatus] = useState("unpaid");
+  const [paymentStatus, setPaymentStatus] = useState<string>("");
+
+  // Fulfillment location (branch / driver)
+  const [fulfillmentLocationId, setFulfillmentLocationId] = useState<string>("");
 
   // Order
   const [internalNote, setInternalNote] = useState("");
@@ -61,6 +64,20 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
   const [productSearch, setProductSearch] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [matchedUserId, setMatchedUserId] = useState<string | null>(null);
+
+  // Stock locations (branches / drivers)
+  const { data: locations } = useQuery({
+    queryKey: ["admin", "stock-locations-active"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("stock_locations")
+        .select("id, name, icon, color")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
+      return data || [];
+    },
+  });
+
 
   // Search products
   const { data: products } = useQuery({
