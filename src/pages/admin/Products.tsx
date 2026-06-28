@@ -235,6 +235,13 @@ export default function Products() {
         low_margin_threshold: parseFloat(data.low_margin_threshold) || 15,
         low_stock_threshold: parseInt(data.low_stock_threshold) || 5,
         restock_qty: parseInt(data.restock_qty) || 10,
+        purchase_cost_cny: parseFloat(data.purchase_cost_cny) || 0,
+        exchange_rate_cny: parseFloat(data.exchange_rate_cny) || 0,
+        cargo_fee: parseFloat(data.cargo_fee) || 0,
+        pickup_fee: parseFloat(data.pickup_fee) || 0,
+        fb_boost_cost: parseFloat(data.fb_boost_cost) || 0,
+        other_cost: parseFloat(data.other_cost) || 0,
+        other_cost_note: data.other_cost_note || null,
       };
 
       let productId = data.id;
