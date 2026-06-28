@@ -960,8 +960,37 @@ export default function Products() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((product) => (
+                  {products.map((product, productIdx) => (
                     <TableRow key={product.id} className="hover:bg-muted/50">
+                      <TableCell className="w-12">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            disabled={productIdx === 0 || reorderMutation.isPending}
+                            onClick={() => handleMove(product.id, "up")}
+                            title="Дээш"
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">
+                            {product.homepage_position ?? "—"}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            disabled={productIdx === products.length - 1 || reorderMutation.isPending}
+                            onClick={() => handleMove(product.id, "down")}
+                            title="Доош"
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
