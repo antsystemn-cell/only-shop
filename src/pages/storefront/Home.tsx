@@ -108,12 +108,13 @@ export default function Home() {
   const navigate = useNavigate();
 
   const { data: allProducts, isLoading: productsLoading } = useQuery({
-    queryKey: ["all-products"],
+    queryKey: ["all-products", "home-ordered"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
         .eq("is_active", true)
+        .order("homepage_position", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as Product[];
