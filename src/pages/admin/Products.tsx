@@ -1012,10 +1012,38 @@ export default function Products() {
       {/* Products table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 flex-wrap">
             <Package className="h-5 w-5 text-primary" />
             Барааны жагсаалт
             {products && <Badge variant="secondary">{products.length}</Badge>}
+            {isOrderDirty && (
+              <div className="ml-auto flex items-center gap-2">
+                <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300">
+                  Хадгалаагүй өөрчлөлт
+                </Badge>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleResetOrder}
+                  disabled={reorderMutation.isPending}
+                >
+                  Цуцлах
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveOrder}
+                  disabled={reorderMutation.isPending}
+                >
+                  {reorderMutation.isPending ? (
+                    <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Хадгалж байна...</>
+                  ) : (
+                    "Дарааллыг хадгалах"
+                  )}
+                </Button>
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1025,7 +1053,7 @@ export default function Products() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : products && products.length > 0 ? (
+          ) : displayProducts.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -1041,10 +1069,10 @@ export default function Products() {
                   </TableRow>
                 </TableHeader>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={products.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                  <SortableContext items={displayProducts.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                 <TableBody>
-                  {products.map((product) => (
-                    <SortableProductRow key={product.id} id={product.id} position={product.homepage_position}>
+                  {displayProducts.map((product, idx) => (
+                    <SortableProductRow key={product.id} id={product.id} position={isOrderDirty ? idx + 1 : product.homepage_position}>
                       <></>
                       <TableCell>
                         <div className="flex items-center gap-3">
