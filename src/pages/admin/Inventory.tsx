@@ -306,7 +306,7 @@ export default function Inventory() {
         <Card className={deadCount > 0 ? "border-purple-300" : ""}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
-              <Skull className="h-3 w-3 text-purple-500" /> Үхсэн ({deadDays}+ хон.)
+              <Skull className="h-3 w-3 text-purple-500" /> Түр идэвхгүй ({deadDays}+ хон.)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -351,7 +351,7 @@ export default function Inventory() {
         <Card className={totalStaleValue > 0 ? "border-purple-300" : ""}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
-              <Coins className="h-3 w-3 text-purple-500" /> Үхсэн нөөц (₮)
+              <Coins className="h-3 w-3 text-purple-500" /> Түр идэвхгүй нөөц (₮)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -369,7 +369,7 @@ export default function Inventory() {
                 <TabsTrigger value="low">Бага ({lowCount})</TabsTrigger>
                 <TabsTrigger value="out">Дууссан ({outCount})</TabsTrigger>
                 <TabsTrigger value="dead">
-                  <Skull className="h-3 w-3 mr-1" /> Үхсэн ({deadCount})
+                  <Skull className="h-3 w-3 mr-1" /> Түр идэвхгүй ({deadCount})
                 </TabsTrigger>
                 <TabsTrigger value="low_margin">
                   <PercentCircle className="h-3 w-3 mr-1" /> Бага маржин ({lowMarginCount})
@@ -384,7 +384,7 @@ export default function Inventory() {
                   className="w-24"
                   value={deadDays}
                   onChange={(e) => setDeadDays(parseInt(e.target.value || "60", 10))}
-                  title="Үхсэн барааны өдрийн босго"
+                  title="Түр идэвхгүй барааны өдрийн босго"
                 />
               )}
               {tab === "low_margin" && (

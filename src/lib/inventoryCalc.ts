@@ -58,7 +58,7 @@ export function stockStatus(
 export const STOCK_STATUS_LABEL: Record<StockStatus, string> = {
   out: "Дууссан",
   low: "Бага",
-  stale: "Үхсэн",
+  stale: "Түр идэвхгүй",
   ok: "Хэвийн",
 };
 
