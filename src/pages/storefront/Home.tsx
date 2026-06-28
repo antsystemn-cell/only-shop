@@ -136,11 +136,6 @@ export default function Home() {
 
   return (
     <div className={`${PAPER} ${SOFT_INK} font-editorial min-h-screen animate-fade-in`}>
-      {isMobile && (
-        <div className={`sticky top-0 z-30 ${PAPER} px-4 pt-3 pb-3 border-b border-[#ece8e0]`}>
-          <HeaderSearch />
-        </div>
-      )}
 
       {/* ============ HERO ============ */}
       <section className="px-5 md:px-12 lg:px-20 pt-12 md:pt-20 pb-14 md:pb-20">
