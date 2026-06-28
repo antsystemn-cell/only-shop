@@ -1,0 +1,2 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS homepage_position INTEGER;
+CREATE INDEX IF NOT EXISTS idx_products_homepage_position ON public.products(homepage_position) WHERE homepage_position IS NOT NULL;
