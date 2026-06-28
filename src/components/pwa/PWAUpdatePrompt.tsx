@@ -7,7 +7,7 @@ export function PWAUpdatePrompt() {
   const { needRefresh, update, dismiss, isStandalone, isUpdating } = usePWAUpdate();
   const { data: config } = usePwaConfig();
 
-  if (!config?.update_enabled || !isStandalone || !needRefresh) return null;
+  if (!config?.update_enabled || !needRefresh) return null;
 
   const radiusMap: Record<string, string> = {
     sm: "rounded-sm",

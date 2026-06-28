@@ -70,9 +70,20 @@ export function usePWAUpdate() {
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;
 
+      // Check immediately, then every 5 minutes
+      registration.update().catch(() => {});
       setInterval(() => {
-        registration.update();
-      }, 30 * 60 * 1000);
+        registration.update().catch(() => {});
+      }, 5 * 60 * 1000);
+
+      // Check when tab becomes visible or window regains focus
+      const checkForUpdate = () => {
+        registration.update().catch(() => {});
+      };
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") checkForUpdate();
+      });
+      window.addEventListener("focus", checkForUpdate);
     },
   });
 
