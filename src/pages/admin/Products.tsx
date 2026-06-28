@@ -531,28 +531,41 @@ export default function Products() {
     }
   };
 
-  // Reorder via drag & drop: assigns sequential positions to the new order.
+  // Local pending order; null = no unsaved changes (use server order).
+  const [pendingOrder, setPendingOrder] = useState<Product[] | null>(null);
+  const displayProducts = pendingOrder ?? products ?? [];
+  const isOrderDirty = pendingOrder !== null;
+
+  // Reorder via drag & drop: stage changes locally, save on button click.
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id || !products) return;
-    const oldIndex = products.findIndex((p) => p.id === active.id);
-    const newIndex = products.findIndex((p) => p.id === over.id);
+    if (!over || active.id === over.id) return;
+    const base = pendingOrder ?? products;
+    if (!base) return;
+    const oldIndex = base.findIndex((p) => p.id === active.id);
+    const newIndex = base.findIndex((p) => p.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
-    const newOrder = arrayMove(products, oldIndex, newIndex);
-    const updates = newOrder
+    setPendingOrder(arrayMove(base, oldIndex, newIndex));
+  };
+
+  const handleSaveOrder = () => {
+    if (!pendingOrder || !products) return;
+    const updates = pendingOrder
       .map((p, i) => ({ id: p.id, homepage_position: i + 1 }))
       .filter((u) => {
         const current = products.find((p) => p.id === u.id);
         return current?.homepage_position !== u.homepage_position;
       });
-    if (updates.length === 0) return;
-    // Optimistic update
-    queryClient.setQueryData(
-      ["admin", "products", searchQuery],
-      newOrder.map((p, i) => ({ ...p, homepage_position: i + 1 }))
-    );
-    reorderMutation.mutate(updates);
+    if (updates.length === 0) {
+      setPendingOrder(null);
+      return;
+    }
+    reorderMutation.mutate(updates, {
+      onSuccess: () => setPendingOrder(null),
+    });
   };
+
+  const handleResetOrder = () => setPendingOrder(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
