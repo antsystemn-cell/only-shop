@@ -35,6 +35,7 @@ interface Row {
 type TabKey = "all" | "low" | "out" | "dead" | "low_margin";
 
 export default function Inventory() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
