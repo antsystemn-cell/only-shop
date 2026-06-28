@@ -137,25 +137,6 @@ export default function Home() {
   return (
     <div className={`${PAPER} ${SOFT_INK} font-editorial min-h-screen animate-fade-in`}>
 
-      {/* ============ HERO ============ */}
-      <section className="px-5 md:px-12 lg:px-20 pt-12 md:pt-20 pb-14 md:pb-20">
-        <div className="max-w-[1400px] mx-auto animate-editorial-rise">
-          <span className={`block text-[10px] md:text-[11px] tracking-eyebrow uppercase ${SOFT_INK}/70 mb-6 md:mb-10`}>
-            Only.mn — Сонгомол барааны дэлгүүр
-          </span>
-          <h1 className={`font-display ${INK} leading-[0.9] text-[clamp(2.75rem,9vw,7rem)]`}>
-            Сонгомол бараа,
-            <br />
-            <span className="italic md:ml-[10vw]">нарийн амт</span>
-          </h1>
-          <div className="mt-10 md:mt-14 flex flex-col md:flex-row md:justify-end gap-8">
-            <p className={`max-w-md text-base md:text-lg leading-relaxed ${SOFT_INK}/85 font-light`}>
-              Бид таны өдөр тутмын хэрэглээнд зориулж хамгийн нарийн хийцтэй,
-              чанартай бүтээгдэхүүнүүдийг нэг дор цуглууллаа.
-            </p>
-          </div>
-        </div>
-      </section>
 
 
 
