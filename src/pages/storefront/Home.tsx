@@ -57,7 +57,7 @@ function BentoCard({
   return (
     <Link
       to={`/product/${product.slug || product.id}`}
-      className={`group relative ${slot.col} ${slot.row} ${tint} ${slot.pad} rounded-sm overflow-hidden flex flex-col min-h-[220px] md:min-h-[260px] transition-shadow duration-500 hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)]`}
+      className={`group relative ${slot.col} ${slot.row} ${tint} ${slot.pad} rounded-sm overflow-hidden flex flex-col transition-shadow duration-500 hover:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)]`}
     >
       {/* Top-left label */}
       <div className="relative z-10">
