@@ -180,8 +180,11 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
       if (order?.id) {
         triggerDeliverySync(order.id);
       }
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders-unified"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders", "header-stats"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "delivery-orders"] });
+      queryClient.refetchQueries({ queryKey: ["admin", "orders-unified"] });
       toast({ title: "Захиалга үүсгэгдлээ" });
       resetForm();
       onOpenChange(false);
