@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -19,7 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   ShoppingCart, Truck, CheckCircle2, AlertTriangle, DollarSign,
   Plus, Download, Search, Eye, Copy, ChevronDown, ChevronRight,
-  Printer, MoreHorizontal, ArrowRight, Ban,
+  Printer, MoreHorizontal, ArrowRight, Ban, FileText,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
