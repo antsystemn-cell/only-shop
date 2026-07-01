@@ -81,6 +81,7 @@ export default function Orders() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { toast } = useToast();
