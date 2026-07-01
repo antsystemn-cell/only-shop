@@ -533,16 +533,15 @@ export default function Orders() {
                           </TableCell>
                           <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
-                              {status === "delivered" && (
-                                <>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Дэлгэрэнгүй" onClick={() => navigate(`/admin/orders/${o.id}`)}>
-                                    <Eye className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Хэвлэх" onClick={() => printInvoice(o)}>
-                                    <Printer className="h-3.5 w-3.5" />
-                                  </Button>
-                                </>
-                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                title="Хүргэлтийн шошго хэвлэх"
+                                onClick={() => printDeliveryLabel(o)}
+                              >
+                                <Printer className="h-3.5 w-3.5" />
+                              </Button>
                               {(status === "confirmed" || status === "phone_confirmed") && (
                                 <Button
                                   size="sm"
@@ -602,35 +601,75 @@ export default function Orders() {
                             </div>
                           </TableCell>
                         </TableRow>
-                        {expanded.has(o.id) && o.order_items?.map((item: any) => {
-                          const s = item.product_snapshot || {};
-                          const imgSrc = s.imageUrl || s.image_url || s.images?.[0];
+                        {expanded.has(o.id) && (() => {
+                          const da: any = o.delivery_address || {};
+                          const addrText = o.address_text || da.street_address || "";
+                          const district = da.district || "";
+                          const fullAddr = [district, addrText].filter(Boolean).join(", ");
+                          const paymentMethod = o.payment_method || "-";
                           return (
-                            <TableRow key={item.id} className="bg-muted/30">
-                              <TableCell></TableCell>
-                              <TableCell></TableCell>
-                              <TableCell colSpan={2} className="py-2">
-                                <div className="flex items-center gap-3">
-                                  {imgSrc && <img src={imgSrc} alt="" className="w-10 h-10 rounded object-contain border bg-muted" />}
-                                  <div className="min-w-0">
-                                    <div className="text-sm font-medium truncate">{item.product_name_snapshot || s.title || s.name || s.name_mn || "Бараа"}</div>
-                                    {(item.color_snapshot || item.size_snapshot) && (
-                                      <div className="text-xs text-muted-foreground mt-0.5">
-                                        {item.color_snapshot && `Өнгө: ${item.color_snapshot}`}
-                                        {item.size_snapshot && ` · Хэмжээ: ${item.size_snapshot}`}
+                            <TableRow key={`${o.id}-detail`} className="bg-muted/20 hover:bg-muted/20">
+                              <TableCell colSpan={10} className="py-4 px-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                  <div className="space-y-1">
+                                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Захиалагч</div>
+                                    <div className="text-sm font-medium">{c.name || "—"}</div>
+                                    <div className="text-sm">{c.phone || "—"}</div>
+                                    {o.customer_email && <div className="text-xs text-muted-foreground">{o.customer_email}</div>}
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Хүргэлтийн хаяг</div>
+                                    {district && <div className="text-sm font-medium">{district}</div>}
+                                    <div className="text-sm">{addrText || "—"}</div>
+                                    {o.notes && (
+                                      <div className="text-xs text-muted-foreground pt-1">
+                                        <span className="font-medium">Тэмдэглэл:</span> {o.notes}
                                       </div>
                                     )}
                                   </div>
+                                  <div className="space-y-1">
+                                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Төлбөр & дүн</div>
+                                    <div className="text-sm">Хэлбэр: <span className="font-medium">{paymentMethod}</span></div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Дэд дүн: {formatCurrency(Number(o.subtotal || 0))}
+                                      {Number(o.discount_amount) > 0 && ` · Хөнгөлөлт: -${formatCurrency(Number(o.discount_amount))}`}
+                                      {Number(o.delivery_fee) > 0 && ` · Хүргэлт: ${formatCurrency(Number(o.delivery_fee))}`}
+                                    </div>
+                                    <div className="text-sm font-bold">Нийт: {formatCurrency(Number(o.total || 0))}</div>
+                                  </div>
+                                </div>
+                                <div className="border-t pt-3">
+                                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Захиалсан бараа ({o.order_items?.length || 0})</div>
+                                  <div className="space-y-2">
+                                    {(o.order_items || []).map((item: any) => {
+                                      const s = item.product_snapshot || {};
+                                      const imgSrc = s.imageUrl || s.image_url || s.images?.[0];
+                                      const name = item.product_name_snapshot || s.title || s.name || s.name_mn || "Бараа";
+                                      return (
+                                        <div key={item.id} className="flex items-center gap-3 bg-background rounded-md px-3 py-2 border">
+                                          {imgSrc && <img src={imgSrc} alt="" className="w-10 h-10 rounded object-contain border bg-muted flex-shrink-0" />}
+                                          <div className="min-w-0 flex-1">
+                                            <div className="text-sm font-medium truncate">{name}</div>
+                                            {(item.color_snapshot || item.size_snapshot || item.sku_snapshot) && (
+                                              <div className="text-xs text-muted-foreground mt-0.5">
+                                                {item.sku_snapshot && `SKU: ${item.sku_snapshot}`}
+                                                {item.color_snapshot && ` · Өнгө: ${item.color_snapshot}`}
+                                                {item.size_snapshot && ` · Хэмжээ: ${item.size_snapshot}`}
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="text-sm text-muted-foreground whitespace-nowrap">×{item.quantity}</div>
+                                          <div className="text-sm font-medium whitespace-nowrap w-24 text-right">{formatCurrency(Number(item.total_price))}</div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="text-center text-sm py-2">×{item.quantity}</TableCell>
-                              <TableCell className="text-right text-sm py-2" colSpan={2}>
-                                {formatCurrency(Number(item.total_price))}
-                              </TableCell>
-                              <TableCell colSpan={3}></TableCell>
                             </TableRow>
                           );
-                        })}
+                        })()}
+
                       </>
                     );
                   })}
