@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, ShoppingCart, Package, BarChart3, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, BarChart3, Users, LogOut, Truck } from "lucide-react";
 import onlyLogo from "@/assets/only-logo.png";
 import {
   Sidebar,
@@ -27,6 +27,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { title: "Хяналтын самбар", url: "/admin", icon: LayoutDashboard, exact: true },
   { title: "Захиалга", url: "/admin/orders", icon: ShoppingCart },
+  { title: "Хүргэлт (Hub)", url: "/admin/delivery-hub", icon: Truck },
   { title: "Бараа", url: "/admin/inventory", icon: Package },
   { title: "Хэрэглэгч", url: "/admin/users", icon: Users },
   { title: "Тайлан", url: "/admin/reports", icon: BarChart3 },

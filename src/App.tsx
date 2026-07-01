@@ -61,6 +61,7 @@ import InventoryHub from "./pages/admin/InventoryHub";
 import Expenses from "./pages/admin/Expenses";
 import Reports from "./pages/admin/Reports";
 import Users from "./pages/admin/Users";
+import DeliveryHub from "./pages/admin/DeliveryHub";
 
 
 const queryClient = new QueryClient();
@@ -122,6 +123,7 @@ const App = () => (
                 <Route path="orders/:id" element={<OrderDetail />} />
                 <Route path="sales" element={<Navigate to="/admin/orders" replace />} />
                 <Route path="delivery-ops" element={<Navigate to="/admin/orders" replace />} />
+                <Route path="delivery-hub" element={<DeliveryHub />} />
 
                 <Route path="banners" element={<Banners />} />
                 
