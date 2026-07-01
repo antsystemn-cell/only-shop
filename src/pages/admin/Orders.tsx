@@ -615,7 +615,7 @@ export default function Orders() {
                                     <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Захиалагч</div>
                                     <div className="text-sm font-medium">{c.name || "—"}</div>
                                     <div className="text-sm">{c.phone || "—"}</div>
-                                    {c.email && <div className="text-xs text-muted-foreground">{c.email}</div>}
+                                    {o.customer_email && <div className="text-xs text-muted-foreground">{o.customer_email}</div>}
                                   </div>
                                   <div className="space-y-1">
                                     <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Хүргэлтийн хаяг</div>
