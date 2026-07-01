@@ -25,21 +25,17 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const deliveryApiKey = Deno.env.get("DELIVERY_API_KEY");
+  const webhookSecret = Deno.env.get("SHOP_ONLY_WEBHOOK_SECRET");
+  const legacyKey = Deno.env.get("DELIVERY_API_KEY"); // fallback during rollout
 
-  // Authenticate with API key
-  const incomingKey = req.headers.get("x-api-key");
-  if (!deliveryApiKey || incomingKey !== deliveryApiKey) {
-    return jsonResponse({ error: "Unauthorized" }, 401);
-  }
-
-  // Also accept Authorization: Bearer <key> as an alternative to x-api-key
+  // Accept shop-issued webhook secret via x-api-key OR Authorization: Bearer
   const authHeader = req.headers.get("authorization") || "";
   const bearerKey = authHeader.toLowerCase().startsWith("bearer ")
     ? authHeader.slice(7).trim()
     : null;
   const providedKey = req.headers.get("x-api-key") || bearerKey;
-  if (!deliveryApiKey || providedKey !== deliveryApiKey) {
+  const validKeys = [webhookSecret, legacyKey].filter(Boolean) as string[];
+  if (!providedKey || validKeys.length === 0 || !validKeys.includes(providedKey)) {
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
