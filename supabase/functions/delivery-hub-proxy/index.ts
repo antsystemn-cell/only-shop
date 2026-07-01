@@ -63,16 +63,11 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } }
-  );
-  const { data: claims, error: authErr } = await supabase.auth.getClaims(authHeader.replace("Bearer ", ""));
-  if (authErr || !claims?.claims?.sub) return json({ error: "Unauthorized" }, 401);
-
+  const token = authHeader.replace("Bearer ", "");
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data: isAdmin } = await admin.rpc("is_admin", { _user_id: claims.claims.sub });
+  const { data: userData, error: authErr } = await admin.auth.getUser(token);
+  if (authErr || !userData?.user?.id) return json({ error: "Unauthorized", detail: authErr?.message }, 401);
+  const { data: isAdmin } = await admin.rpc("is_admin", { _user_id: userData.user.id });
   if (!isAdmin) return json({ error: "Forbidden" }, 403);
 
   try {
