@@ -269,8 +269,9 @@ export default function Orders() {
       for (let i = 0; i < chosen.length; i++) {
         const o = chosen[i];
         const phone = o.customer_phone || o.profile?.phone || "";
-        const addr = o.address_text || o.delivery_address?.street_address || "";
-        const district = o.delivery_address?.district || "";
+        const da: any = o.delivery_address || {};
+        const addr = o.address_text || da.street_address || "";
+        const district = da.district || "";
         const fullAddr = [district, addr].filter(Boolean).join(", ");
         const items = (o.order_items || []).map((it: any) => {
           const s = it.product_snapshot || {};
