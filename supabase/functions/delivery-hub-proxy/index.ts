@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
         headers: { "x-api-key": apiKey },
       });
       const d = await safeJson(r);
-      return (d?.order_id as string) || (d?.hub_order_id as string) || null;
+      return (d?.delivery_order_id as string) || (d?.order_id as string) || null;
     };
 
     if (action === "status_check") {
