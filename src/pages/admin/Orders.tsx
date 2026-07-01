@@ -243,81 +243,79 @@ export default function Orders() {
     else setSelected(new Set(orders.map((o: any) => o.id)));
   };
 
-  const downloadSelectedPdf = () => {
+  const downloadSelectedPdf = async () => {
     if (!orders || selected.size === 0) {
       toast({ title: "Захиалга сонгоно уу", variant: "destructive" });
       return;
     }
-    // Preserve visible order from table
     const chosen = orders.filter((o: any) => selected.has(o.id));
 
-    const w = window.open("", "_blank");
-    if (!w) {
-      toast({ title: "Popup хориглогдсон байна", variant: "destructive" });
-      return;
+    try {
+      toast({ title: "PDF үүсгэж байна...", description: `${chosen.length} захиалга` });
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
+
+      const escape = (str: string) => String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+
+      // Hidden container to render each page
+      const host = document.createElement("div");
+      host.style.cssText = "position:fixed;left:-10000px;top:0;background:#fff;";
+      document.body.appendChild(host);
+
+      const pdf = new jsPDF({ unit: "mm", format: [70, 80], orientation: "portrait" });
+
+      for (let i = 0; i < chosen.length; i++) {
+        const o = chosen[i];
+        const phone = o.customer_phone || o.profile?.phone || "";
+        const da: any = o.delivery_address || {};
+        const addr = o.address_text || da.street_address || "";
+        const district = da.district || "";
+        const fullAddr = [district, addr].filter(Boolean).join(", ");
+        const items = (o.order_items || []).map((it: any) => {
+          const s = it.product_snapshot || {};
+          const name = it.product_name_snapshot || s.title || s.name || s.name_mn || "Бараа";
+          const skuRaw = it.sku_snapshot || s.sku;
+          const sku = skuRaw ? ` [${escape(skuRaw)}]` : "";
+          const qty = it.quantity ? ` x${it.quantity}` : "";
+          return `${escape(name)}${sku}${qty}`;
+        }).join(" | ");
+
+        // Render at 4x scale (280x320px = 70x80mm @ ~100dpi * 4)
+        const el = document.createElement("div");
+        el.style.cssText = `width:280px;height:320px;padding:16px 20px;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif;color:#111;display:flex;flex-direction:column;background:#fff;overflow:hidden;`;
+        el.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
+            <span style="font-size:13px;font-weight:700;">${escape(o.order_number || "")}</span>
+            <span style="font-size:13px;font-weight:700;">№${i + 1}</span>
+          </div>
+          <div style="font-size:9px;color:#888;letter-spacing:0.6px;margin-top:4px;">УТАС</div>
+          <div style="font-size:22px;font-weight:700;margin-top:2px;">${escape(phone)}</div>
+          <div style="font-size:9px;color:#888;letter-spacing:0.6px;margin-top:8px;">ХАЯГ</div>
+          <div style="font-size:13px;line-height:1.3;margin-top:2px;word-wrap:break-word;">${escape(fullAddr) || "-"}</div>
+          <div style="flex:1;min-height:8px;"></div>
+          <div style="font-size:9px;color:#888;letter-spacing:0.6px;margin-top:4px;">БАРАА</div>
+          <div style="font-size:12px;line-height:1.3;margin-top:2px;word-wrap:break-word;overflow:hidden;">${items || "-"}</div>
+        `;
+        host.appendChild(el);
+
+        const canvas = await html2canvas(el, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+        if (i > 0) pdf.addPage([70, 80], "portrait");
+        pdf.addImage(imgData, "JPEG", 0, 0, 70, 80);
+        host.removeChild(el);
+      }
+
+      document.body.removeChild(host);
+      const stamp = format(new Date(), "yyyyMMdd-HHmm");
+      pdf.save(`orders-${stamp}.pdf`);
+      toast({ title: "PDF амжилттай татагдлаа" });
+    } catch (err: any) {
+      console.error("PDF generation failed", err);
+      toast({ title: "PDF үүсгэхэд алдаа гарлаа", description: err?.message, variant: "destructive" });
     }
-    const escape = (str: string) => String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
-    const pages = chosen.map((o: any, idx: number) => {
-      const phone = o.customer_phone || o.profile?.phone || "";
-      const addr = o.address_text || o.delivery_address?.street_address || "";
-      const district = o.delivery_address?.district || "";
-      const fullAddr = [district, addr].filter(Boolean).join(", ");
-      const items = (o.order_items || []).map((it: any) => {
-        const s = it.product_snapshot || {};
-        const name = it.product_name_snapshot || s.title || s.name || s.name_mn || "Бараа";
-        const sku = it.sku_snapshot || s.sku ? ` [${escape(it.sku_snapshot || s.sku)}]` : "";
-        const qty = it.quantity ? ` x${it.quantity}` : "";
-        return `${escape(name)}${sku}${qty}`;
-      }).join(" | ");
-      return `<section class="page">
-  <header class="hd">
-    <span class="ord">${escape(o.order_number || "")}</span>
-    <span class="idx">№${idx + 1}</span>
-  </header>
-  <div class="lbl">УТАС</div>
-  <div class="phone">${escape(phone)}</div>
-  <div class="lbl">ХАЯГ</div>
-  <div class="addr">${escape(fullAddr) || "-"}</div>
-  <div class="spacer"></div>
-  <div class="lbl">БАРАА</div>
-  <div class="items">${items || "-"}</div>
-</section>`;
-    }).join("");
-
-    w.document.write(`<!DOCTYPE html>
-<html lang="mn"><head><meta charset="utf-8"><title>Захиалга - ${chosen.length}</title>
-<style>
-  @page { size: 70mm 80mm; margin: 0; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .page {
-    width: 70mm; height: 80mm; padding: 4mm 5mm;
-    display: flex; flex-direction: column;
-    page-break-after: always; overflow: hidden;
-  }
-  .page:last-child { page-break-after: auto; }
-  .hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2.5mm; }
-  .ord { font-size: 10pt; font-weight: 700; }
-  .idx { font-size: 10pt; font-weight: 700; }
-  .lbl { font-size: 6.5pt; color: #888; letter-spacing: 0.6px; margin-top: 1.5mm; }
-  .phone { font-size: 16pt; font-weight: 700; margin-top: 0.5mm; }
-  .addr { font-size: 9.5pt; line-height: 1.3; margin-top: 0.5mm; word-wrap: break-word; }
-  .spacer { flex: 1; min-height: 2mm; }
-  .items { font-size: 9pt; line-height: 1.3; margin-top: 0.5mm; word-wrap: break-word; overflow: hidden; }
-  .no-print { position: fixed; top: 8px; right: 8px; z-index: 999; }
-  .btn { padding: 6px 12px; background: #625AFA; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; }
-  @media screen {
-    body { background: #eee; padding: 20px; }
-    .page { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.15); margin: 0 auto 12px; }
-  }
-  @media print { .no-print { display: none; } body { background: #fff; padding: 0; } .page { box-shadow: none; margin: 0; } }
-</style></head><body>
-<div class="no-print"><button class="btn" onclick="window.print()">Хэвлэх / PDF</button></div>
-${pages}
-<script>window.onload = () => setTimeout(() => window.print(), 400);</script>
-</body></html>`);
-    w.document.close();
   };
 
   return (
