@@ -248,84 +248,73 @@ export default function Orders() {
       toast({ title: "Захиалга сонгоно уу", variant: "destructive" });
       return;
     }
+    // Preserve visible order from table
     const chosen = orders.filter((o: any) => selected.has(o.id));
-
-    // Aggregate items across selected orders keyed by product name + variant
-    const agg = new Map<string, { name: string; variant: string; qty: number; total: number }>();
-    let orderCount = 0;
-    let grandTotal = 0;
-    chosen.forEach((o: any) => {
-      orderCount++;
-      grandTotal += Number(o.total || 0);
-      (o.order_items || []).forEach((item: any) => {
-        const s = item.product_snapshot || {};
-        const name = item.product_name_snapshot || s.title || s.name || s.name_mn || "Бараа";
-        const variant = [item.color_snapshot, item.size_snapshot].filter(Boolean).join(" / ");
-        const key = `${name}||${variant}`;
-        const existing = agg.get(key);
-        const qty = Number(item.quantity || 0);
-        const total = Number(item.total_price || 0);
-        if (existing) {
-          existing.qty += qty;
-          existing.total += total;
-        } else {
-          agg.set(key, { name, variant, qty, total });
-        }
-      });
-    });
-
-    const rows = Array.from(agg.values()).sort((a, b) => b.qty - a.qty);
-    const totalItems = rows.reduce((s, r) => s + r.qty, 0);
-    const itemsTotal = rows.reduce((s, r) => s + r.total, 0);
 
     const w = window.open("", "_blank");
     if (!w) {
       toast({ title: "Popup хориглогдсон байна", variant: "destructive" });
       return;
     }
-    const escape = (str: string) => String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-    const dateStr = format(new Date(), "yyyy-MM-dd HH:mm");
+    const escape = (str: string) => String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+
+    const pages = chosen.map((o: any, idx: number) => {
+      const phone = o.customer_phone || o.profile?.phone || "";
+      const addr = o.address_text || o.delivery_address?.street_address || "";
+      const district = o.delivery_address?.district || "";
+      const fullAddr = [district, addr].filter(Boolean).join(", ");
+      const items = (o.order_items || []).map((it: any) => {
+        const s = it.product_snapshot || {};
+        const name = it.product_name_snapshot || s.title || s.name || s.name_mn || "Бараа";
+        const sku = it.sku_snapshot || s.sku ? ` [${escape(it.sku_snapshot || s.sku)}]` : "";
+        const qty = it.quantity ? ` x${it.quantity}` : "";
+        return `${escape(name)}${sku}${qty}`;
+      }).join(" | ");
+      return `<section class="page">
+  <header class="hd">
+    <span class="ord">${escape(o.order_number || "")}</span>
+    <span class="idx">№${idx + 1}</span>
+  </header>
+  <div class="lbl">УТАС</div>
+  <div class="phone">${escape(phone)}</div>
+  <div class="lbl">ХАЯГ</div>
+  <div class="addr">${escape(fullAddr) || "-"}</div>
+  <div class="spacer"></div>
+  <div class="lbl">БАРАА</div>
+  <div class="items">${items || "-"}</div>
+</section>`;
+    }).join("");
+
     w.document.write(`<!DOCTYPE html>
-<html lang="mn"><head><meta charset="utf-8"><title>Захиалсан бараа - ${dateStr}</title>
+<html lang="mn"><head><meta charset="utf-8"><title>Захиалга - ${chosen.length}</title>
 <style>
-  * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; padding: 32px; color: #111; }
-  h1 { margin: 0 0 4px; font-size: 22px; }
-  .meta { color: #666; font-size: 12px; margin-bottom: 20px; }
-  .summary { display: flex; gap: 24px; padding: 12px 16px; background: #f5f5f7; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
-  .summary b { display: block; font-size: 18px; color: #111; margin-top: 2px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #e5e5e5; }
-  th { background: #fafafa; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; }
-  td.num, th.num { text-align: right; }
-  .variant { color: #888; font-size: 11px; margin-top: 2px; }
-  tfoot td { font-weight: 700; border-top: 2px solid #111; border-bottom: none; padding-top: 12px; }
-  @media print { body { padding: 12mm; } .no-print { display: none; } }
-  .btn { padding: 8px 16px; background: #625AFA; color: white; border: 0; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 16px; }
+  @page { size: 70mm 80mm; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page {
+    width: 70mm; height: 80mm; padding: 4mm 5mm;
+    display: flex; flex-direction: column;
+    page-break-after: always; overflow: hidden;
+  }
+  .page:last-child { page-break-after: auto; }
+  .hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2.5mm; }
+  .ord { font-size: 10pt; font-weight: 700; }
+  .idx { font-size: 10pt; font-weight: 700; }
+  .lbl { font-size: 6.5pt; color: #888; letter-spacing: 0.6px; margin-top: 1.5mm; }
+  .phone { font-size: 16pt; font-weight: 700; margin-top: 0.5mm; }
+  .addr { font-size: 9.5pt; line-height: 1.3; margin-top: 0.5mm; word-wrap: break-word; }
+  .spacer { flex: 1; min-height: 2mm; }
+  .items { font-size: 9pt; line-height: 1.3; margin-top: 0.5mm; word-wrap: break-word; overflow: hidden; }
+  .no-print { position: fixed; top: 8px; right: 8px; z-index: 999; }
+  .btn { padding: 6px 12px; background: #625AFA; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  @media screen {
+    body { background: #eee; padding: 20px; }
+    .page { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.15); margin: 0 auto 12px; }
+  }
+  @media print { .no-print { display: none; } body { background: #fff; padding: 0; } .page { box-shadow: none; margin: 0; } }
 </style></head><body>
-<button class="btn no-print" onclick="window.print()">PDF болгож хадгалах</button>
-<h1>Захиалсан барааны жагсаалт</h1>
-<div class="meta">Огноо: ${dateStr} · Only.mn</div>
-<div class="summary">
-  <div>Захиалгын тоо<b>${orderCount}</b></div>
-  <div>Барааны нэр төрөл<b>${rows.length}</b></div>
-  <div>Нийт тоо ширхэг<b>${totalItems}</b></div>
-  <div>Нийт дүн<b>${itemsTotal.toLocaleString()}₮</b></div>
-</div>
-<table>
-  <thead><tr><th style="width:40px">№</th><th>Барааны нэр</th><th class="num" style="width:100px">Тоо ширхэг</th><th class="num" style="width:140px">Нийт дүн</th></tr></thead>
-  <tbody>
-    ${rows.map((r, i) => `<tr>
-      <td>${i + 1}</td>
-      <td>${escape(r.name)}${r.variant ? `<div class="variant">${escape(r.variant)}</div>` : ""}</td>
-      <td class="num">${r.qty}</td>
-      <td class="num">${r.total.toLocaleString()}₮</td>
-    </tr>`).join("")}
-  </tbody>
-  <tfoot>
-    <tr><td colspan="2">Нийт</td><td class="num">${totalItems}</td><td class="num">${itemsTotal.toLocaleString()}₮</td></tr>
-  </tfoot>
-</table>
+<div class="no-print"><button class="btn" onclick="window.print()">Хэвлэх / PDF</button></div>
+${pages}
 <script>window.onload = () => setTimeout(() => window.print(), 400);</script>
 </body></html>`);
     w.document.close();
