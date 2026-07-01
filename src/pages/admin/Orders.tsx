@@ -313,6 +313,25 @@ export default function Orders() {
       const stamp = format(new Date(), "yyyyMMdd-HHmm");
       pdf.save(`orders-${stamp}.pdf`);
       toast({ title: "PDF амжилттай татагдлаа" });
+
+      // Auto-mark chosen orders as "processing" (Бэлтгэгдэж буй) so the status
+      // propagates to Delivery Hub, customer order pages, everywhere.
+      const toMark = chosen.filter((o: any) => {
+        const s = o.fulfillment_status || "confirmed";
+        return s !== "processing" && s !== "shipped" && s !== "out_for_delivery" && s !== "delivered" && s !== "cancelled";
+      });
+      if (toMark.length) {
+        const results = await Promise.allSettled(
+          toMark.map((o: any) =>
+            updateFulfillmentStatus(o.id, o.fulfillment_status || "confirmed", "processing")
+          )
+        );
+        const ok = results.filter((r) => r.status === "fulfilled").length;
+        queryClient.invalidateQueries({ queryKey: ["admin", "orders-unified"] });
+        queryClient.invalidateQueries({ queryKey: ["admin", "orders", "header-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["admin", "delivery-hub-orders"] });
+        if (ok) toast({ title: `${ok} захиалга "Бэлтгэгдэж буй" төлөвт шилжлээ` });
+      }
     } catch (err: any) {
       console.error("PDF generation failed", err);
       toast({ title: "PDF үүсгэхэд алдаа гарлаа", description: err?.message, variant: "destructive" });
