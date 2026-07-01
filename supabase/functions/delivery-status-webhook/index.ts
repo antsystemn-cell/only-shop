@@ -33,31 +33,78 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
+  // Also accept Authorization: Bearer <key> as an alternative to x-api-key
+  const authHeader = req.headers.get("authorization") || "";
+  const bearerKey = authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : null;
+  const providedKey = req.headers.get("x-api-key") || bearerKey;
+  if (!deliveryApiKey || providedKey !== deliveryApiKey) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
+  }
+
   const supabase = createClient(supabaseUrl, serviceKey);
 
   try {
     const body = await req.json();
-    const { external_order_id, fulfillment_status, payment_status, note } = body;
+    const {
+      external_order_id,
+      status: hubStatus,
+      fulfillment_status: rawFulfillment,
+      payment_status,
+      note,
+      event_id,
+      tracking_code,
+      delivery_order_id,
+    } = body;
 
     if (!external_order_id) {
       return jsonResponse({ error: "external_order_id is required" }, 400);
     }
 
     // Extract order ID from external_order_id (format: "SHOP-<uuid>")
-    const orderId = external_order_id.replace(/^SHOP-/, "");
+    const orderId = String(external_order_id).replace(/^SHOP-/, "");
     if (!orderId) {
       return jsonResponse({ error: "Invalid external_order_id format" }, 400);
     }
 
-    // Validate statuses
+    // Map Hub status vocabulary → our fulfillment_status
+    // Hub: new | confirmed | assigned | picked_up | in_transit | delivered | cancelled | failed
+    const hubMap: Record<string, string> = {
+      new: "confirmed",
+      confirmed: "confirmed",
+      assigned: "phone_confirmed",
+      picked_up: "out_for_delivery",
+      in_transit: "out_for_delivery",
+      delivered: "delivered",
+      cancelled: "cancelled",
+      failed: "cancelled",
+    };
+    const fulfillment_status =
+      rawFulfillment ?? (hubStatus ? hubMap[hubStatus] : undefined);
+
     const validFulfillment = ["confirmed", "phone_confirmed", "out_for_delivery", "delivered", "cancelled"];
     const validPayment = ["unpaid", "cash_on_delivery", "paid", "refunded"];
 
     if (fulfillment_status && !validFulfillment.includes(fulfillment_status)) {
-      return jsonResponse({ error: `Invalid fulfillment_status. Must be one of: ${validFulfillment.join(", ")}` }, 400);
+      return jsonResponse({ error: `Invalid status/fulfillment_status` }, 400);
     }
     if (payment_status && !validPayment.includes(payment_status)) {
-      return jsonResponse({ error: `Invalid payment_status. Must be one of: ${validPayment.join(", ")}` }, 400);
+      return jsonResponse({ error: `Invalid payment_status` }, 400);
+    }
+
+    // Idempotency via event_id
+    if (event_id) {
+      const { data: existing } = await supabase
+        .from("audit_logs")
+        .select("id")
+        .eq("action", "delivery_webhook_status_update")
+        .eq("entity_id", orderId)
+        .contains("details", { event_id })
+        .maybeSingle();
+      if (existing) {
+        return jsonResponse({ success: true, duplicate: true, event_id });
+      }
     }
 
     // Fetch current order
@@ -78,8 +125,7 @@ Deno.serve(async (req) => {
 
     if (fulfillment_status && fulfillment_status !== order.fulfillment_status) {
       updateData.fulfillment_status = fulfillment_status;
-      
-      // Map to legacy status
+
       const legacyMap: Record<string, string> = {
         confirmed: "pending",
         phone_confirmed: "processing",
@@ -89,7 +135,6 @@ Deno.serve(async (req) => {
       };
       updateData.status = legacyMap[fulfillment_status] || "pending";
 
-      // Set timestamps
       if (fulfillment_status === "delivered") updateData.delivered_at = new Date().toISOString();
       if (fulfillment_status === "cancelled") updateData.cancelled_at = new Date().toISOString();
     }
@@ -97,6 +142,8 @@ Deno.serve(async (req) => {
     if (payment_status && payment_status !== order.payment_status) {
       updateData.payment_status = payment_status;
     }
+
+    if (delivery_order_id) updateData.delivery_external_id = external_order_id;
 
     // Apply update
     const { error: updateError } = await supabase
@@ -132,9 +179,12 @@ Deno.serve(async (req) => {
       entity_id: orderId,
       details: {
         external_order_id,
+        event_id: event_id || null,
+        hub_status: hubStatus || null,
         fulfillment_status,
         payment_status,
         note,
+        tracking_code: tracking_code || null,
         previous: {
           fulfillment_status: order.fulfillment_status,
           payment_status: order.payment_status,
