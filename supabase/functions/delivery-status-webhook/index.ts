@@ -180,9 +180,12 @@ Deno.serve(async (req) => {
       entity_id: orderId,
       details: {
         external_order_id,
+        event_id: event_id || null,
+        hub_status: hubStatus || null,
         fulfillment_status,
         payment_status,
         note,
+        tracking_code: tracking_code || null,
         previous: {
           fulfillment_status: order.fulfillment_status,
           payment_status: order.payment_status,
