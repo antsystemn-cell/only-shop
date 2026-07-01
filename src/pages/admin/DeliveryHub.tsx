@@ -16,8 +16,17 @@ import {
   Truck, Search, RefreshCw, Phone, Trash2, Printer, Store, User,
   Cloud, CloudOff, Clock, Package, AlertTriangle,
 } from "lucide-react";
-import { retryDeliverySync, retryAllFailedSyncs, notifyDeliveryStatusChange } from "@/lib/deliverySync";
-import { formatCurrency } from "@/lib/orderService";
+import { retryDeliverySync, retryAllFailedSyncs } from "@/lib/deliverySync";
+import { formatCurrency, updateFulfillmentStatus, updatePaymentStatus } from "@/lib/orderService";
+
+// Invalidate every downstream order list so Захиалга page & sidebar stats
+// reflect DeliveryHub actions immediately.
+const ORDER_QUERY_KEYS = [
+  ["admin", "delivery-hub-orders"],
+  ["admin", "orders-unified"],
+  ["admin", "orders", "header-stats"],
+  ["admin", "delivery-orders"],
+];
 
 // ------- Local status vocab (matches storefront DB values) -------
 const FULFILLMENT_LABELS: Record<string, string> = {
@@ -125,30 +134,57 @@ export default function DeliveryHub() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders]);
 
+  const invalidateAll = () => {
+    ORDER_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: k }));
+  };
+
+  // Push status/payment/driver changes to Swift Delivery Hub via portal proxy.
+  const pushHub = async (payload: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke("delivery-hub-proxy", { body: payload });
+    if (error) throw new Error(error.message);
+    if ((data as any)?.error) throw new Error((data as any).error);
+    return data;
+  };
+
   const updateFulfillment = useMutation({
-    mutationFn: async ({ id, status, external }: { id: string; status: string; external?: string | null }) => {
-      const { error } = await supabase.from("orders").update({ fulfillment_status: status }).eq("id", id);
-      if (error) throw error;
-      if (external) notifyDeliveryStatusChange(id, status);
+    mutationFn: async ({ id, oldStatus, status, external }: { id: string; oldStatus: string; status: string; external?: string | null }) => {
+      // Local update — writes status logs & fires delivery-notify-outbound.
+      await updateFulfillmentStatus(id, oldStatus, status);
+      // Also push through partner-portal so the Hub UI reflects it live.
+      if (external) {
+        try { await pushHub({ action: "update_fulfillment", order_id: id, status }); }
+        catch (e: any) { console.warn("Hub sync (fulfillment) failed:", e.message); }
+      }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin", "delivery-hub-orders"] });
-      toast({ title: "Төлөв шинэчлэгдлээ" });
-    },
+    onSuccess: () => { invalidateAll(); toast({ title: "Төлөв шинэчлэгдлээ" }); },
     onError: (e: any) => toast({ title: "Алдаа", description: e.message, variant: "destructive" }),
   });
 
   const updatePayment = useMutation({
-    mutationFn: async ({ id, status, external }: { id: string; status: string; external?: string | null }) => {
-      const { error } = await supabase.from("orders").update({ payment_status: status }).eq("id", id);
-      if (error) throw error;
-      if (external) notifyDeliveryStatusChange(id, undefined, status);
+    mutationFn: async ({ id, oldStatus, status, external }: { id: string; oldStatus: string; status: string; external?: string | null }) => {
+      await updatePaymentStatus(id, oldStatus, status);
+      if (external) {
+        try { await pushHub({ action: "update_payment", order_id: id, status }); }
+        catch (e: any) { console.warn("Hub sync (payment) failed:", e.message); }
+      }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin", "delivery-hub-orders"] });
-      toast({ title: "Төлбөрийн төлөв шинэчлэгдлээ" });
-    },
+    onSuccess: () => { invalidateAll(); toast({ title: "Төлбөрийн төлөв шинэчлэгдлээ" }); },
     onError: (e: any) => toast({ title: "Алдаа", description: e.message, variant: "destructive" }),
+  });
+
+  const assignDriver = useMutation({
+    mutationFn: async ({ id, driver_id }: { id: string; driver_id: string | null }) => {
+      await pushHub({ action: "assign_driver", order_id: id, driver_id });
+      // Refresh Hub-side info for this order so the driver name appears.
+      try {
+        const { data } = await supabase.functions.invoke("delivery-hub-proxy", {
+          body: { action: "status_check", order_id: id },
+        });
+        if (data) setHubStatusMap((m) => ({ ...m, [id]: data }));
+      } catch { /* noop */ }
+    },
+    onSuccess: () => { invalidateAll(); toast({ title: "Жолооч хуваарилагдлаа" }); },
+    onError: (e: any) => toast({ title: "Хуваарилах алдаа", description: e.message, variant: "destructive" }),
   });
 
   const deleteOrder = useMutation({
@@ -158,10 +194,7 @@ export default function DeliveryHub() {
       const { error } = await supabase.from("orders").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin", "delivery-hub-orders"] });
-      toast({ title: "Захиалга устгагдлаа" });
-    },
+    onSuccess: () => { invalidateAll(); toast({ title: "Захиалга устгагдлаа" }); },
     onError: (e: any) => toast({ title: "Алдаа", description: e.message, variant: "destructive" }),
   });
 
@@ -171,14 +204,28 @@ export default function DeliveryHub() {
       if (!r.success) throw new Error(r.error);
       return r;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "delivery-hub-orders"] }); toast({ title: "Синк амжилттай" }); },
+    onSuccess: () => { invalidateAll(); toast({ title: "Синк амжилттай" }); },
     onError: (e: any) => toast({ title: "Синк алдаа", description: e.message, variant: "destructive" }),
   });
 
   const retryAll = useMutation({
     mutationFn: retryAllFailedSyncs,
-    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ["admin", "delivery-hub-orders"] }); toast({ title: `${d.synced || 0} захиалга синк хийгдлээ` }); },
+    onSuccess: (d) => { invalidateAll(); toast({ title: `${d.synced || 0} захиалга синк хийгдлээ` }); },
   });
+
+  // Load driver list once from Hub.
+  const { data: drivers } = useQuery({
+    queryKey: ["admin", "delivery-hub-drivers"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("delivery-hub-proxy", {
+        body: { action: "list_drivers" },
+      });
+      if (error) throw error;
+      return ((data as any)?.drivers || []) as Array<{ id: string; full_name?: string; name?: string; phone?: string }>;
+    },
+    staleTime: 5 * 60_000,
+  });
+
 
   const checkStatus = async (order: any) => {
     if (!order.delivery_external_id) return;
@@ -402,7 +449,7 @@ export default function DeliveryHub() {
                     <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/50">
                       <Select
                         value={fs}
-                        onValueChange={(val) => updateFulfillment.mutate({ id: o.id, status: val, external: o.delivery_external_id })}
+                        onValueChange={(val) => updateFulfillment.mutate({ id: o.id, oldStatus: fs, status: val, external: o.delivery_external_id })}
                       >
                         <SelectTrigger className="w-[200px] h-9 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -414,7 +461,7 @@ export default function DeliveryHub() {
 
                       <Select
                         value={ps}
-                        onValueChange={(val) => updatePayment.mutate({ id: o.id, status: val, external: o.delivery_external_id })}
+                        onValueChange={(val) => updatePayment.mutate({ id: o.id, oldStatus: ps, status: val, external: o.delivery_external_id })}
                       >
                         <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -423,6 +470,32 @@ export default function DeliveryHub() {
                           ))}
                         </SelectContent>
                       </Select>
+
+                      {/* Driver assignment (syncs to Swift Delivery Hub) */}
+                      {o.delivery_external_id && (
+                        <Select
+                          value={hub?.driver_id || "__none__"}
+                          onValueChange={(val) =>
+                            assignDriver.mutate({ id: o.id, driver_id: val === "__none__" ? null : val })
+                          }
+                        >
+                          <SelectTrigger className="w-[190px] h-9 text-xs">
+                            <div className="flex items-center gap-1 truncate">
+                              <User className="h-3.5 w-3.5 shrink-0" />
+                              <SelectValue placeholder="Жолооч сонгох" />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">— Жолооч байхгүй —</SelectItem>
+                            {(drivers || []).map((d: any) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.full_name || d.name || "Жолооч"}
+                                {d.phone ? ` · ${d.phone}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
 
                       {o.delivery_external_id && (
                         <Button
@@ -436,6 +509,7 @@ export default function DeliveryHub() {
                           Hub төлөв
                         </Button>
                       )}
+
 
                       <Button
                         variant="outline"

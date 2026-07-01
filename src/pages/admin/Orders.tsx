@@ -146,6 +146,7 @@ export default function Orders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "orders-unified"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "orders", "header-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "delivery-hub-orders"] });
       toast({ title: "Төлөв шинэчлэгдлээ" });
     },
     onError: (e: any) => toast({ title: "Алдаа", description: e.message, variant: "destructive" }),
@@ -157,6 +158,7 @@ export default function Orders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "orders-unified"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "orders", "header-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "delivery-hub-orders"] });
       toast({ title: "Төлбөрийн төлөв шинэчлэгдлээ" });
     },
     onError: (e: any) => toast({ title: "Алдаа", description: e.message, variant: "destructive" }),
