@@ -127,6 +127,7 @@ export default function DeliveryHub() {
           const { data } = await supabase.functions.invoke("delivery-hub-proxy", {
             body: { action: "status_check", external_order_id: (o as any).delivery_external_id },
           });
+          // Cache even "not_found" so we don't retry every render.
           if (data) setHubStatusMap((m) => ({ ...m, [(o as any).id]: data }));
         } catch { /* ignore */ }
       }
