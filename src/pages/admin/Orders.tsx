@@ -230,6 +230,107 @@ export default function Orders() {
     });
   };
 
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    if (!orders) return;
+    if (selected.size === orders.length) setSelected(new Set());
+    else setSelected(new Set(orders.map((o: any) => o.id)));
+  };
+
+  const downloadSelectedPdf = () => {
+    if (!orders || selected.size === 0) {
+      toast({ title: "Захиалга сонгоно уу", variant: "destructive" });
+      return;
+    }
+    const chosen = orders.filter((o: any) => selected.has(o.id));
+
+    // Aggregate items across selected orders keyed by product name + variant
+    const agg = new Map<string, { name: string; variant: string; qty: number; total: number }>();
+    let orderCount = 0;
+    let grandTotal = 0;
+    chosen.forEach((o: any) => {
+      orderCount++;
+      grandTotal += Number(o.total || 0);
+      (o.order_items || []).forEach((item: any) => {
+        const s = item.product_snapshot || {};
+        const name = item.product_name_snapshot || s.title || s.name || s.name_mn || "Бараа";
+        const variant = [item.color_snapshot, item.size_snapshot].filter(Boolean).join(" / ");
+        const key = `${name}||${variant}`;
+        const existing = agg.get(key);
+        const qty = Number(item.quantity || 0);
+        const total = Number(item.total_price || 0);
+        if (existing) {
+          existing.qty += qty;
+          existing.total += total;
+        } else {
+          agg.set(key, { name, variant, qty, total });
+        }
+      });
+    });
+
+    const rows = Array.from(agg.values()).sort((a, b) => b.qty - a.qty);
+    const totalItems = rows.reduce((s, r) => s + r.qty, 0);
+    const itemsTotal = rows.reduce((s, r) => s + r.total, 0);
+
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast({ title: "Popup хориглогдсон байна", variant: "destructive" });
+      return;
+    }
+    const escape = (str: string) => String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+    const dateStr = format(new Date(), "yyyy-MM-dd HH:mm");
+    w.document.write(`<!DOCTYPE html>
+<html lang="mn"><head><meta charset="utf-8"><title>Захиалсан бараа - ${dateStr}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; padding: 32px; color: #111; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .meta { color: #666; font-size: 12px; margin-bottom: 20px; }
+  .summary { display: flex; gap: 24px; padding: 12px 16px; background: #f5f5f7; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+  .summary b { display: block; font-size: 18px; color: #111; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #e5e5e5; }
+  th { background: #fafafa; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; }
+  td.num, th.num { text-align: right; }
+  .variant { color: #888; font-size: 11px; margin-top: 2px; }
+  tfoot td { font-weight: 700; border-top: 2px solid #111; border-bottom: none; padding-top: 12px; }
+  @media print { body { padding: 12mm; } .no-print { display: none; } }
+  .btn { padding: 8px 16px; background: #625AFA; color: white; border: 0; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 16px; }
+</style></head><body>
+<button class="btn no-print" onclick="window.print()">PDF болгож хадгалах</button>
+<h1>Захиалсан барааны жагсаалт</h1>
+<div class="meta">Огноо: ${dateStr} · Only.mn</div>
+<div class="summary">
+  <div>Захиалгын тоо<b>${orderCount}</b></div>
+  <div>Барааны нэр төрөл<b>${rows.length}</b></div>
+  <div>Нийт тоо ширхэг<b>${totalItems}</b></div>
+  <div>Нийт дүн<b>${itemsTotal.toLocaleString()}₮</b></div>
+</div>
+<table>
+  <thead><tr><th style="width:40px">№</th><th>Барааны нэр</th><th class="num" style="width:100px">Тоо ширхэг</th><th class="num" style="width:140px">Нийт дүн</th></tr></thead>
+  <tbody>
+    ${rows.map((r, i) => `<tr>
+      <td>${i + 1}</td>
+      <td>${escape(r.name)}${r.variant ? `<div class="variant">${escape(r.variant)}</div>` : ""}</td>
+      <td class="num">${r.qty}</td>
+      <td class="num">${r.total.toLocaleString()}₮</td>
+    </tr>`).join("")}
+  </tbody>
+  <tfoot>
+    <tr><td colspan="2">Нийт</td><td class="num">${totalItems}</td><td class="num">${itemsTotal.toLocaleString()}₮</td></tr>
+  </tfoot>
+</table>
+<script>window.onload = () => setTimeout(() => window.print(), 400);</script>
+</body></html>`);
+    w.document.close();
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* 1. PAGE HEADER */}
@@ -238,7 +339,13 @@ export default function Orders() {
           <h1 className="text-3xl font-bold">Захиалга</h1>
           <p className="text-muted-foreground mt-1">Бүх захиалга — вэбсайт, гар, түүхэн борлуулалт</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {selected.size > 0 && (
+            <Button variant="outline" onClick={downloadSelectedPdf}>
+              <FileText className="h-4 w-4 mr-2" />
+              PDF татах ({selected.size})
+            </Button>
+          )}
           <Button variant="outline" onClick={exportCsv}>
             <Download className="h-4 w-4 mr-2" />
             CSV экспорт
