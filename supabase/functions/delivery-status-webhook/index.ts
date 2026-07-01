@@ -143,7 +143,6 @@ Deno.serve(async (req) => {
       updateData.payment_status = payment_status;
     }
 
-    if (tracking_code) updateData.delivery_tracking_code = tracking_code;
     if (delivery_order_id) updateData.delivery_external_id = external_order_id;
 
     // Apply update
