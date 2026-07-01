@@ -449,7 +449,7 @@ export default function DeliveryHub() {
                     <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/50">
                       <Select
                         value={fs}
-                        onValueChange={(val) => updateFulfillment.mutate({ id: o.id, status: val, external: o.delivery_external_id })}
+                        onValueChange={(val) => updateFulfillment.mutate({ id: o.id, oldStatus: fs, status: val, external: o.delivery_external_id })}
                       >
                         <SelectTrigger className="w-[200px] h-9 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -461,7 +461,7 @@ export default function DeliveryHub() {
 
                       <Select
                         value={ps}
-                        onValueChange={(val) => updatePayment.mutate({ id: o.id, status: val, external: o.delivery_external_id })}
+                        onValueChange={(val) => updatePayment.mutate({ id: o.id, oldStatus: ps, status: val, external: o.delivery_external_id })}
                       >
                         <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -470,6 +470,32 @@ export default function DeliveryHub() {
                           ))}
                         </SelectContent>
                       </Select>
+
+                      {/* Driver assignment (syncs to Swift Delivery Hub) */}
+                      {o.delivery_external_id && (
+                        <Select
+                          value={hub?.driver_id || "__none__"}
+                          onValueChange={(val) =>
+                            assignDriver.mutate({ id: o.id, driver_id: val === "__none__" ? null : val })
+                          }
+                        >
+                          <SelectTrigger className="w-[190px] h-9 text-xs">
+                            <div className="flex items-center gap-1 truncate">
+                              <User className="h-3.5 w-3.5 shrink-0" />
+                              <SelectValue placeholder="Жолооч сонгох" />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">— Жолооч байхгүй —</SelectItem>
+                            {(drivers || []).map((d: any) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.full_name || d.name || "Жолооч"}
+                                {d.phone ? ` · ${d.phone}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
 
                       {o.delivery_external_id && (
                         <Button
@@ -483,6 +509,7 @@ export default function DeliveryHub() {
                           Hub төлөв
                         </Button>
                       )}
+
 
                       <Button
                         variant="outline"
