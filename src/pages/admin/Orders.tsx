@@ -621,6 +621,7 @@ export default function Orders() {
                           return (
                             <TableRow key={item.id} className="bg-muted/30">
                               <TableCell></TableCell>
+                              <TableCell></TableCell>
                               <TableCell colSpan={2} className="py-2">
                                 <div className="flex items-center gap-3">
                                   {imgSrc && <img src={imgSrc} alt="" className="w-10 h-10 rounded object-contain border bg-muted" />}
