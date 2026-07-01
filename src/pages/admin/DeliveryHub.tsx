@@ -16,8 +16,17 @@ import {
   Truck, Search, RefreshCw, Phone, Trash2, Printer, Store, User,
   Cloud, CloudOff, Clock, Package, AlertTriangle,
 } from "lucide-react";
-import { retryDeliverySync, retryAllFailedSyncs, notifyDeliveryStatusChange } from "@/lib/deliverySync";
-import { formatCurrency } from "@/lib/orderService";
+import { retryDeliverySync, retryAllFailedSyncs } from "@/lib/deliverySync";
+import { formatCurrency, updateFulfillmentStatus, updatePaymentStatus } from "@/lib/orderService";
+
+// Invalidate every downstream order list so Захиалга page & sidebar stats
+// reflect DeliveryHub actions immediately.
+const ORDER_QUERY_KEYS = [
+  ["admin", "delivery-hub-orders"],
+  ["admin", "orders-unified"],
+  ["admin", "orders", "header-stats"],
+  ["admin", "delivery-orders"],
+];
 
 // ------- Local status vocab (matches storefront DB values) -------
 const FULFILLMENT_LABELS: Record<string, string> = {
