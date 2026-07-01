@@ -487,12 +487,28 @@ export default function DeliveryHub() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__none__">— Жолооч байхгүй —</SelectItem>
-                            {(drivers || []).map((d: any) => (
-                              <SelectItem key={d.id} value={d.id}>
-                                {d.full_name || d.name || "Жолооч"}
-                                {d.phone ? ` · ${d.phone}` : ""}
-                              </SelectItem>
-                            ))}
+                            {(() => {
+                              const list = (drivers || []).map((d: any) => ({
+                                id: d.user_id || d.id,
+                                name: d.full_name || d.name || "Жолооч",
+                                phone: d.phone,
+                              })).filter((d) => !!d.id);
+                              // If Hub says a driver is assigned but that driver isn't in the
+                              // active list (inactive/deleted), still show them so the select
+                              // reflects the current assignment.
+                              if (hub?.driver_id && !list.some((d) => d.id === hub.driver_id)) {
+                                list.unshift({
+                                  id: hub.driver_id,
+                                  name: hub.driver_name || "Одоогийн жолооч",
+                                  phone: hub.driver_phone,
+                                });
+                              }
+                              return list.map((d) => (
+                                <SelectItem key={d.id} value={d.id}>
+                                  {d.name}{d.phone ? ` · ${d.phone}` : ""}
+                                </SelectItem>
+                              ));
+                            })()}
                           </SelectContent>
                         </Select>
                       )}
