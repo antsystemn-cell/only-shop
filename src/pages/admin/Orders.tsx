@@ -426,6 +426,13 @@ export default function Orders() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8">
+                      <Checkbox
+                        checked={orders.length > 0 && selected.size === orders.length}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Бүгд сонгох"
+                      />
+                    </TableHead>
                     <TableHead className="w-8"></TableHead>
                     <TableHead className="w-[200px]">Захиалга / Захиалагч</TableHead>
                     <TableHead className="w-[100px]">Суваг</TableHead>
@@ -453,6 +460,13 @@ export default function Orders() {
                     return (
                       <>
                         <TableRow key={o.id} className="group hover:bg-muted/50 cursor-pointer" onClick={() => toggleExpand(o.id)}>
+                          <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selected.has(o.id)}
+                              onCheckedChange={() => toggleSelect(o.id)}
+                              aria-label="Захиалга сонгох"
+                            />
+                          </TableCell>
                           <TableCell className="py-2">
                             {hasItems && (
                               expanded.has(o.id)
