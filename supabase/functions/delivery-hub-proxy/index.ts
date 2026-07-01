@@ -97,11 +97,17 @@ Deno.serve(async (req) => {
 
     if (action === "status_check") {
       const ext = await resolveExternal();
-      if (!ext) return json({ error: "Missing external_order_id" }, 400);
+      if (!ext) return json({ not_found: true, external_order_id: null }, 200);
       const r = await fetch(`${HUB_BASE}/delivery-status-check?external_order_id=${encodeURIComponent(ext)}`, {
         headers: { "x-api-key": apiKey },
       });
-      return json(await safeJson(r), r.status);
+      const body = await safeJson(r);
+      // Hub returns 404 for external ids it doesn't know — normalise to 200 so
+      // the client doesn't treat "not yet in Hub" as an invocation error.
+      if (r.status === 404 || (body && (body as any).success === false)) {
+        return json({ not_found: true, external_order_id: ext, hub_error: (body as any)?.error || null }, 200);
+      }
+      return json(body, r.status);
     }
 
     if (action === "list_drivers") {
