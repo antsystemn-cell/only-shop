@@ -182,7 +182,7 @@ function BentoCard({
           <h3 className={`font-editorial text-[11px] md:text-[12px] font-medium tracking-[0.01em] leading-tight line-clamp-1 ${isPng ? INK : "text-white"}`}>
             {product.name_mn}
           </h3>
-          <p className={`font-editorial text-[11px] md:text-[12px] mt-0.5 tabular-nums ${isPng ? SOFT_INK : "text-white/85"}`}>
+          <p className={`font-editorial text-[14px] md:text-[16px] font-semibold mt-1 tabular-nums ${isPng ? INK : "text-white"}`}>
             {formatPrice(product.price)}
           </p>
         </div>
