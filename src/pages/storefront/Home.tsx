@@ -7,6 +7,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ShoppingCart, ArrowUpRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
+import { useRef, useState, useCallback } from "react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Product = Tables<"products">;
