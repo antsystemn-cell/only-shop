@@ -286,8 +286,19 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Дэлгэрэнгүй хаяг</Label>
-              <Textarea value={addressText} onChange={(e) => setAddressText(e.target.value)} rows={2} placeholder="Байр, орц, тоот..." />
+              <Label className="text-xs flex items-center gap-1">
+                Дэлгэрэнгүй хаяг <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                value={addressText}
+                onChange={(e) => setAddressText(e.target.value)}
+                rows={2}
+                placeholder="Байр, орц, тоот..."
+                className={!addressText.trim() ? "border-destructive/60 focus-visible:ring-destructive" : ""}
+              />
+              {!addressText.trim() && (
+                <p className="text-xs text-destructive">Хаяг заавал оруулна уу</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Хүргэлтийн тэмдэглэл</Label>
