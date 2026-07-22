@@ -151,6 +151,7 @@ export default function CreateOrderDialog({ open, onOpenChange }: Props) {
     mutationFn: async () => {
       if (items.length === 0) throw new Error("Заавал бараа сонгоно уу");
       if (!customerPhone && !customerName) throw new Error("Захиалагчийн мэдээлэл оруулна уу");
+      if (!addressText.trim()) throw new Error("Хаяг заавал оруулна уу");
       if (!paymentStatus) throw new Error("Төлбөр төлөгдсөн эсэхийг заавал сонгоно уу");
       if (!fulfillmentLocationId) throw new Error("Аль салбар / жолоочоос гарсныг заавал сонгоно уу");
 
