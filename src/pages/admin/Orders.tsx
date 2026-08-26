@@ -259,55 +259,30 @@ export default function Orders() {
         import("html2canvas"),
       ]);
 
-      const escape = (str: string) => String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-
-      // Hidden container to render each page
+      // Hidden container to render each label page (identical markup to the print view)
       const host = document.createElement("div");
       host.style.cssText = "position:fixed;left:-10000px;top:0;background:#fff;";
+      const styleEl = document.createElement("style");
+      styleEl.textContent = LABEL_CSS;
+      host.appendChild(styleEl);
       document.body.appendChild(host);
 
       const pdf = new jsPDF({ unit: "mm", format: [70, 80], orientation: "portrait" });
 
       for (let i = 0; i < chosen.length; i++) {
         const o = chosen[i];
-        const phone = o.customer_phone || o.profile?.phone || "";
-        const da: any = o.delivery_address || {};
-        const addr = o.address_text || da.street_address || "";
-        const district = da.district || "";
-        const fullAddr = [district, addr].filter(Boolean).join(", ");
-        const items = (o.order_items || []).map((it: any) => {
-          const s = it.product_snapshot || {};
-          const name = it.product_name_snapshot || s.title || s.name || s.name_mn || "Бараа";
-          const skuRaw = it.sku_snapshot || s.sku;
-          const sku = skuRaw ? ` [${escape(skuRaw)}]` : "";
-          const qty = it.quantity ? ` x${it.quantity}` : "";
-          return `${escape(name)}${sku}${qty}`;
-        }).join(" | ");
-
-        // Render at 4x scale (280x320px = 70x80mm @ ~100dpi * 4)
         const el = document.createElement("div");
-        el.style.cssText = `width:280px;height:320px;padding:16px 20px;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif;color:#111;display:flex;flex-direction:column;background:#fff;overflow:hidden;`;
-        el.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
-            <span style="font-size:13px;font-weight:700;">${escape(o.order_number || "")}</span>
-            <span style="font-size:13px;font-weight:700;">№${i + 1}</span>
-          </div>
-          <div style="font-size:9px;color:#888;letter-spacing:0.6px;margin-top:4px;">УТАС</div>
-          <div style="font-size:22px;font-weight:700;margin-top:2px;">${escape(phone)}</div>
-          <div style="font-size:9px;color:#888;letter-spacing:0.6px;margin-top:8px;">ХАЯГ</div>
-          <div style="font-size:13px;line-height:1.3;margin-top:2px;word-wrap:break-word;">${escape(fullAddr) || "-"}</div>
-          <div style="flex:1;min-height:8px;"></div>
-          <div style="font-size:9px;color:#888;letter-spacing:0.6px;margin-top:4px;">БАРАА</div>
-          <div style="font-size:12px;line-height:1.3;margin-top:2px;word-wrap:break-word;overflow:hidden;">${items || "-"}</div>
-        `;
+        el.className = "label";
+        el.innerHTML = buildLabelInnerHtml(o);
         host.appendChild(el);
 
-        const canvas = await html2canvas(el, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
-        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+        const canvas = await html2canvas(el, { scale: 4, backgroundColor: "#ffffff", useCORS: true });
+        const imgData = canvas.toDataURL("image/jpeg", 0.95);
         if (i > 0) pdf.addPage([70, 80], "portrait");
         pdf.addImage(imgData, "JPEG", 0, 0, 70, 80);
         host.removeChild(el);
       }
+
 
       document.body.removeChild(host);
       const stamp = format(new Date(), "yyyyMMdd-HHmm");
