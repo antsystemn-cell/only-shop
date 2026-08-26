@@ -93,11 +93,7 @@ export function printDeliveryLabel(order: any) {
 <meta charset="utf-8">
 <title>Label - ${order.order_number}</title>
 <style>
-  @page {
-    size: 70mm 80mm;
-    margin: 0;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: 70mm 80mm; margin: 0; }
   html, body {
     width: 70mm;
     height: 80mm;
@@ -107,51 +103,7 @@ export function printDeliveryLabel(order: any) {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .label {
-    width: 70mm;
-    height: 80mm;
-    padding: 3mm;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .district {
-    background: #000;
-    color: #fff;
-    text-align: center;
-    font-weight: bold;
-    font-size: 14pt;
-    padding: 2mm;
-    margin: -3mm -3mm 2mm -3mm;
-  }
-  .address {
-    font-size: 9pt;
-    line-height: 1.3;
-    margin-bottom: 2mm;
-    word-wrap: break-word;
-  }
-  .phone {
-    font-size: 11pt;
-    font-weight: bold;
-    margin-bottom: 2mm;
-    text-align: center;
-  }
-  .items {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    border-top: 0.5px solid #ccc;
-    padding-top: 1.5mm;
-    margin-bottom: 1.5mm;
-  }
-  .footer {
-    text-align: center;
-    font-size: 6.5pt;
-    color: #555;
-    border-top: 0.5px solid #ccc;
-    padding-top: 1mm;
-    margin-top: auto;
-  }
+  ${LABEL_CSS}
   @media screen {
     body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; }
     .label { border: 1px solid #ccc; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
@@ -160,13 +112,9 @@ export function printDeliveryLabel(order: any) {
 </head>
 <body>
 <div class="label">
-  ${district ? `<div class="district">${district}</div>` : ""}
-  <div class="address">${addressText || "Хаяг оруулаагүй"}</div>
-  ${phone ? `<div class="phone">📞 ${phone}</div>` : ""}
-  <div class="items">${itemsHtml || '<div style="font-size:8pt;color:#999;">Бараа байхгүй</div>'}</div>
-  ${paymentHtml}
-  <div class="footer">Манайхаар үйлчлүүлсэн танд баярлалаа.</div>
+  ${buildLabelInnerHtml(order)}
 </div>
+
 <script>
   window.onload = function() {
     setTimeout(function() { window.print(); }, 300);
