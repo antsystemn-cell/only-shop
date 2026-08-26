@@ -4,10 +4,8 @@ interface DeliveryLabelPrintProps {
   order: any;
 }
 
-export function printDeliveryLabel(order: any) {
-  const win = window.open("", "_blank", "width=400,height=500");
-  if (!win) return;
-
+/** Shared 70x80mm label markup (styles inlined so it can be reused for print AND html2canvas/PDF). */
+export function buildLabelInnerHtml(order: any) {
   const deliveryAddress = order.delivery_address || {};
   const district = deliveryAddress.district || "";
   const addressText = order.address_text || deliveryAddress.street_address || "";
@@ -15,7 +13,6 @@ export function printDeliveryLabel(order: any) {
   const isPaid = order.payment_status === "paid";
   const items = order.order_items || [];
 
-  // Build items HTML
   let itemsHtml = "";
   if (items.length > 0) {
     const displayItems = items.slice(0, 3);
@@ -32,7 +29,6 @@ export function printDeliveryLabel(order: any) {
     }
   }
 
-  // Payment block (only if not paid)
   const paymentHtml = !isPaid ? `
     <div style="border:1px dashed #000;padding:2mm;margin-top:2mm;text-align:center;">
       <div style="font-size:8pt;font-weight:bold;margin-bottom:1mm;">Төлбөр: ${formatCurrency(Number(order.total))}</div>
@@ -42,26 +38,18 @@ export function printDeliveryLabel(order: any) {
     </div>
   ` : "";
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Label - ${order.order_number}</title>
-<style>
-  @page {
-    size: 70mm 80mm;
-    margin: 0;
-  }
+  return `
+  ${district ? `<div class="district">${district}</div>` : ""}
+  <div class="address">${addressText || "Хаяг оруулаагүй"}</div>
+  ${phone ? `<div class="phone">📞 ${phone}</div>` : ""}
+  <div class="items">${itemsHtml || '<div style="font-size:8pt;color:#999;">Бараа байхгүй</div>'}</div>
+  ${paymentHtml}
+  <div class="footer">Манайхаар үйлчлүүлсэн танд баярлалаа.</div>`;
+}
+
+/** Shared label CSS (class rules used by buildLabelInnerHtml). */
+export const LABEL_CSS = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    width: 70mm;
-    height: 80mm;
-    margin: 0;
-    padding: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
   .label {
     width: 70mm;
     height: 80mm;
@@ -69,6 +57,9 @@ export function printDeliveryLabel(order: any) {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background: #fff;
+    color: #000;
+    font-family: Arial, Helvetica, sans-serif;
   }
   .district {
     background: #000;
@@ -79,34 +70,40 @@ export function printDeliveryLabel(order: any) {
     padding: 2mm;
     margin: -3mm -3mm 2mm -3mm;
   }
-  .address {
-    font-size: 9pt;
-    line-height: 1.3;
-    margin-bottom: 2mm;
-    word-wrap: break-word;
-  }
-  .phone {
-    font-size: 11pt;
-    font-weight: bold;
-    margin-bottom: 2mm;
-    text-align: center;
-  }
+  .address { font-size: 9pt; line-height: 1.3; margin-bottom: 2mm; word-wrap: break-word; }
+  .phone { font-size: 11pt; font-weight: bold; margin-bottom: 2mm; text-align: center; }
   .items {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    border-top: 0.5px solid #ccc;
-    padding-top: 1.5mm;
-    margin-bottom: 1.5mm;
+    flex: 1; min-height: 0; overflow: hidden;
+    border-top: 0.5px solid #ccc; padding-top: 1.5mm; margin-bottom: 1.5mm;
   }
   .footer {
-    text-align: center;
-    font-size: 6.5pt;
-    color: #555;
-    border-top: 0.5px solid #ccc;
-    padding-top: 1mm;
-    margin-top: auto;
+    text-align: center; font-size: 6.5pt; color: #555;
+    border-top: 0.5px solid #ccc; padding-top: 1mm; margin-top: auto;
   }
+`;
+
+export function printDeliveryLabel(order: any) {
+  const win = window.open("", "_blank", "width=400,height=500");
+  if (!win) return;
+
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Label - ${order.order_number}</title>
+<style>
+  @page { size: 70mm 80mm; margin: 0; }
+  html, body {
+    width: 70mm;
+    height: 80mm;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  ${LABEL_CSS}
   @media screen {
     body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; }
     .label { border: 1px solid #ccc; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
@@ -115,13 +112,9 @@ export function printDeliveryLabel(order: any) {
 </head>
 <body>
 <div class="label">
-  ${district ? `<div class="district">${district}</div>` : ""}
-  <div class="address">${addressText || "Хаяг оруулаагүй"}</div>
-  ${phone ? `<div class="phone">📞 ${phone}</div>` : ""}
-  <div class="items">${itemsHtml || '<div style="font-size:8pt;color:#999;">Бараа байхгүй</div>'}</div>
-  ${paymentHtml}
-  <div class="footer">Манайхаар үйлчлүүлсэн танд баярлалаа.</div>
+  ${buildLabelInnerHtml(order)}
 </div>
+
 <script>
   window.onload = function() {
     setTimeout(function() { window.print(); }, 300);
