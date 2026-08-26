@@ -25,7 +25,7 @@ import {
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { printDeliveryLabel } from "@/components/admin/DeliveryLabelPrint";
+import { printDeliveryLabel, buildLabelInnerHtml, LABEL_CSS } from "@/components/admin/DeliveryLabelPrint";
 import { printInvoice } from "@/components/admin/InvoicePrint";
 import { format } from "date-fns";
 import {
